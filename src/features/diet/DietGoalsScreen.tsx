@@ -139,6 +139,7 @@ export function DietGoalsScreen() {
             carbsG: m.carbsG,
             fatG: m.fatG,
             description: '',
+            isMain: false,
           })),
         });
       }

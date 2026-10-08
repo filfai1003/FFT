@@ -158,6 +158,86 @@ export function autoSplit(total: Totals, shares: readonly number[]): Totals[] {
   return result;
 }
 
+/** A main meal ("bigger meal", e.g. lunch and dinner) gets this many times the base calories. */
+export const MAIN_MEAL_FACTOR = 1.4;
+/** Pre-workout meal: this share of its calories moves from fat to carbs. */
+export const PRE_WORKOUT_CARBS_SHIFT = 0.12;
+/** Post-workout meal: this share of its calories moves from fat to protein. */
+export const POST_WORKOUT_PROTEIN_SHIFT = 0.08;
+
+export type MealRole = { isMain: boolean; workout: 'pre' | 'post' | null };
+
+/**
+ * Auto-split of the day over meals, aware of the workout:
+ * - every meal gets the same base calories, a main meal gets MAIN_MEAL_FACTOR times more;
+ * - the meal before the workout gets more carbs, the one after it more protein (taken from fat);
+ * - the other meals absorb the difference so the day still adds up to the target macros.
+ * Meal calories are the calories of the meal's macros (4/4/9), as in the editor.
+ */
+export function splitDay(goal: Totals, roles: readonly MealRole[]): Totals[] {
+  const weights = roles.map((r) => (r.isMain ? MAIN_MEAL_FACTOR : 1));
+  const weightSum = weights.reduce((a, b) => a + b, 0);
+  const mealKcal = weights.map((w) => (goal.kcal * w) / weightSum);
+
+  const goalKcal = {
+    protein: goal.proteinG * kcalPerGram.protein,
+    carbs: goal.carbsG * kcalPerGram.carbs,
+    fat: goal.fatG * kcalPerGram.fat,
+  };
+  const goalTotal = goalKcal.protein + goalKcal.carbs + goalKcal.fat || 1;
+  const base = {
+    protein: goalKcal.protein / goalTotal,
+    carbs: goalKcal.carbs / goalTotal,
+    fat: goalKcal.fat / goalTotal,
+  };
+
+  type Share = { protein: number; carbs: number; fat: number };
+  const shares: Share[] = roles.map((r) => {
+    if (r.workout === 'pre') {
+      const shift = Math.min(PRE_WORKOUT_CARBS_SHIFT, Math.max(0, base.fat - 0.05));
+      return { ...base, carbs: base.carbs + shift, fat: base.fat - shift };
+    }
+    if (r.workout === 'post') {
+      const shift = Math.min(POST_WORKOUT_PROTEIN_SHIFT, Math.max(0, base.fat - 0.05));
+      return { ...base, protein: base.protein + shift, fat: base.fat - shift };
+    }
+    return { ...base };
+  });
+
+  // The plain meals take whatever the workout meals did not cover, so the day keeps its totals.
+  const plain = roles.map((r, i) => (r.workout === null ? i : -1)).filter((i) => i >= 0);
+  const plainKcal = plain.reduce((a, i) => a + mealKcal[i], 0);
+  if (plain.length > 0 && plainKcal > 0) {
+    const keys = ['protein', 'carbs', 'fat'] as const;
+    const covered = { protein: 0, carbs: 0, fat: 0 };
+    roles.forEach((r, i) => {
+      if (r.workout !== null) for (const k of keys) covered[k] += mealKcal[i] * shares[i][k];
+    });
+    const need = keys.map((k) => Math.max(0, goalKcal[k] - covered[k]));
+    const needSum = need.reduce((a, b) => a + b, 0) || 1;
+    const plainShare = {
+      protein: need[0] / needSum,
+      carbs: need[1] / needSum,
+      fat: need[2] / needSum,
+    };
+    for (const i of plain) shares[i] = plainShare;
+  }
+
+  const grams = roles.map((_, i) => ({
+    proteinG: Math.round((mealKcal[i] * shares[i].protein) / kcalPerGram.protein),
+    carbsG: Math.round((mealKcal[i] * shares[i].carbs) / kcalPerGram.carbs),
+    fatG: Math.round((mealKcal[i] * shares[i].fat) / kcalPerGram.fat),
+  }));
+  // Rounding remainder goes to the biggest plain meal (or the biggest meal) so grams add up.
+  const pool = plain.length > 0 ? plain : roles.map((_, i) => i);
+  const biggest = pool.reduce((best, i) => (mealKcal[i] > mealKcal[best] ? i : best), pool[0]);
+  for (const k of ['proteinG', 'carbsG', 'fatG'] as const) {
+    const assigned = grams.reduce((a, g) => a + g[k], 0);
+    grams[biggest][k] = Math.max(0, grams[biggest][k] + Math.round(goal[k]) - assigned);
+  }
+  return grams.map((g) => ({ ...g, kcal: Math.round(macroKcal(g)) }));
+}
+
 /** Scales grams of each macro by a ratio (when the calorie target changes, the split stays). */
 export function scaleMacros(
   m: { proteinG: number; carbsG: number; fatG: number },

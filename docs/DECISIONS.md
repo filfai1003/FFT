@@ -49,6 +49,7 @@ before the phase that depends on it.
 25. **Demo data**: `supabase/scripts/demo-data.sql` fills 12 weeks of body entries and workouts for the first onboarded user (local only).
 26. **Photos**: private bucket + signed URLs; blur-until-tapped and device lock are client settings in `privacy-store`.
 27. **Withdrawing health consent** pauses the app behind `ConsentGate` (give consent again, export or delete).
+28. **Fixed-meals auto-split** (only the Auto-split button; every value stays editable): same base calories per meal, a main meal gets 1.4x, the meal right before the workout shifts 12% of its calories from fat to carbs, the one right after shifts 8% from fat to protein; the other meals absorb the difference so the day keeps its macro totals. Stored as `fixed_meals.is_main` and `fixed_meal_plans.workout_after_meal_id`.
 
 ## Still open
 

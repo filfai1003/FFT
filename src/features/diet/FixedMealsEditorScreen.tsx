@@ -5,13 +5,16 @@ import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { ChipGroup } from '@/components/ui/ChipGroup';
 import { FormHeader } from '@/components/ui/FormHeader';
+import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
+import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
-import { autoSplit, macroKcal, scaleMacros, type Totals } from '@/domain/nutrition';
+import { macroKcal, scaleMacros, splitDay, type MealRole } from '@/domain/nutrition';
 import { parseDecimal } from '@/domain/numbers';
 import { useToday } from '@/features/profile/use-today';
 import { newId } from '@/lib/uuid';
@@ -33,6 +36,7 @@ export function FixedMealsEditorScreen() {
   const save = useSaveFixedPlan();
   const [name, setName] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft[] | null>(null);
+  const [workoutDraft, setWorkoutDraft] = useState<string | null | undefined>(undefined);
   const [open, setOpen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +48,9 @@ export function FixedMealsEditorScreen() {
   const setMeals = (next: Draft[]) => setDraft(next);
 
   const planName = name ?? plan.data.name;
+  const requested = workoutDraft === undefined ? plan.data.workoutAfterMealId : workoutDraft;
+  // A deleted meal cannot hold the workout any more.
+  const workoutAfter = meals.some((m) => m.id === requested) ? requested : null;
   const sum = meals.reduce(
     (a, m) => ({ kcal: a.kcal + m.kcal, p: a.p + m.proteinG, c: a.c + m.carbsG, f: a.f + m.fatG }),
     { kcal: 0, p: 0, c: 0, f: 0 },
@@ -54,17 +61,17 @@ export function FixedMealsEditorScreen() {
   const update = (id: string, patch: Partial<Draft>) =>
     setMeals(meals.map((m) => (m.id === id ? { ...m, ...patch } : m)));
 
+  // Roles of each meal for auto-split: the meal before the workout is the pre-workout one, the next the post.
+  const workoutIndex = meals.findIndex((m) => m.id === workoutAfter);
+  const roleOf = (i: number): MealRole['workout'] =>
+    workoutIndex < 0 ? null : i === workoutIndex ? 'pre' : i === workoutIndex + 1 ? 'post' : null;
+
   const doAutoSplit = () => {
-    const parts = autoSplit(
+    const parts = splitDay(
       { kcal: goal.kcal, proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG },
-      meals.map((m) => m.kcal || 1),
+      meals.map((m, i) => ({ isMain: m.isMain, workout: roleOf(i) })),
     );
-    setMeals(
-      meals.map((m, i) => {
-        const p: Totals = parts[i];
-        return { ...m, kcal: p.kcal, proteinG: p.proteinG, carbsG: p.carbsG, fatG: p.fatG };
-      }),
-    );
+    setMeals(meals.map((m, i) => ({ ...m, ...parts[i] })));
   };
 
   const submit = async () => {
@@ -74,6 +81,7 @@ export function FixedMealsEditorScreen() {
         planId: plan.data!.id,
         name: planName,
         meals,
+        workoutAfterMealId: workoutAfter,
         removedIds: originalIds.filter((id) => !meals.some((m) => m.id === id)),
       });
       goBack(router);
@@ -109,6 +117,137 @@ export function FixedMealsEditorScreen() {
       />
     </View>
   );
+
+  const mealCard = (m: Draft, index: number) => {
+    const role = roleOf(index);
+    if (open === m.id) {
+      return (
+        <Card size="small" selected gap={12}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Input
+                accessibilityLabel={t('fixed.mealName')}
+                value={m.name}
+                onChangeText={(v) => update(m.id, { name: v })}
+              />
+            </View>
+            <IconButton
+              icon="trash"
+              accessibilityLabel={t('fixed.deleteMeal', { name: m.name })}
+              disabled={meals.length <= 1}
+              onPress={() => {
+                setMeals(meals.filter((x) => x.id !== m.id));
+                setOpen(null);
+              }}
+            />
+          </View>
+          <View
+            style={{
+              minHeight: 44,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text>{t('fixed.mainMeal')}</Text>
+              <Text variant="label" muted>
+                {t('fixed.mainMealDetail')}
+              </Text>
+            </View>
+            <Toggle
+              value={m.isMain}
+              onValueChange={(v) => update(m.id, { isMain: v })}
+              accessibilityLabel={t('fixed.mainMeal')}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {numField(m, 'kcal', t('diet.field.kcal'))}
+            {numField(m, 'proteinG', t('diet.field.protein'))}
+            {numField(m, 'carbsG', t('diet.field.carbs'))}
+            {numField(m, 'fatG', t('diet.field.fat'))}
+          </View>
+          <Input
+            accessibilityLabel={t('fixed.whatYouEat')}
+            placeholder={t('fixed.whatYouEat')}
+            value={m.description}
+            onChangeText={(v) => update(m.id, { description: v })}
+          />
+          <Button label={t('fixed.done')} variant="secondary" onPress={() => setOpen(null)} />
+        </Card>
+      );
+    }
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={m.isMain ? `${m.name}, ${t('fixed.mainBadge')}` : m.name}
+        onPress={() => setOpen(m.id)}
+        style={({ pressed }) => ({
+          minHeight: 60,
+          justifyContent: 'center',
+          gap: 2,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.borderDecorative,
+          backgroundColor: colors.surfaceAlt,
+          opacity: pressed ? 0.8 : 1,
+        })}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text variant="body">{m.name}</Text>
+          {m.isMain ? (
+            <Text variant="label" muted>
+              {t('fixed.mainBadge')}
+            </Text>
+          ) : null}
+        </View>
+        <Text variant="label" muted>
+          {t('diet.mealLine', {
+            kcal: m.kcal,
+            p: Math.round(m.proteinG),
+            c: Math.round(m.carbsG),
+            f: Math.round(m.fatG),
+          })}
+        </Text>
+        {role ? (
+          <Text variant="label" muted>
+            {t(`fixed.${role}`)}
+          </Text>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const workoutRow = (index: number) => {
+    const next = meals[index + 1];
+    return (
+      <View
+        accessible
+        accessibilityLabel={
+          next
+            ? t('fixed.workoutRowLabel', { before: meals[index].name, after: next.name })
+            : t('fixed.workoutRowEnd', { before: meals[index].name })
+        }
+        style={{
+          minHeight: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: colors.borderControl,
+        }}
+      >
+        <Icon name="train" size={16} color={colors.text} />
+        <Text variant="label">{t('fixed.workoutRow')}</Text>
+      </View>
+    );
+  };
 
   return (
     <>
@@ -151,73 +290,27 @@ export function FixedMealsEditorScreen() {
             />
           </View>
         </Card>
+        <Text variant="bodyS" muted>
+          {t('fixed.autoSplitNote')}
+        </Text>
+
+        <ChipGroup
+          legend={t('fixed.workoutWhere')}
+          value={workoutAfter ?? 'none'}
+          onChange={(v) => setWorkoutDraft(v === 'none' ? null : v)}
+          options={[
+            { value: 'none', label: t('fixed.workoutNone') },
+            ...meals.map((m) => ({ value: m.id, label: m.name || t('fixed.mealName') })),
+          ]}
+        />
 
         <View style={{ gap: 8 }}>
-          {meals.map((m) =>
-            open === m.id ? (
-              <Card key={m.id} size="small" selected gap={12}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      accessibilityLabel={t('fixed.mealName')}
-                      value={m.name}
-                      onChangeText={(v) => update(m.id, { name: v })}
-                    />
-                  </View>
-                  <IconButton
-                    icon="trash"
-                    accessibilityLabel={t('fixed.deleteMeal', { name: m.name })}
-                    disabled={meals.length <= 1}
-                    onPress={() => {
-                      setMeals(meals.filter((x) => x.id !== m.id));
-                      setOpen(null);
-                    }}
-                  />
-                </View>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {numField(m, 'kcal', t('diet.field.kcal'))}
-                  {numField(m, 'proteinG', t('diet.field.protein'))}
-                  {numField(m, 'carbsG', t('diet.field.carbs'))}
-                  {numField(m, 'fatG', t('diet.field.fat'))}
-                </View>
-                <Input
-                  accessibilityLabel={t('fixed.whatYouEat')}
-                  placeholder={t('fixed.whatYouEat')}
-                  value={m.description}
-                  onChangeText={(v) => update(m.id, { description: v })}
-                />
-                <Button label={t('fixed.done')} variant="secondary" onPress={() => setOpen(null)} />
-              </Card>
-            ) : (
-              <Pressable
-                key={m.id}
-                accessibilityRole="button"
-                accessibilityLabel={m.name}
-                onPress={() => setOpen(m.id)}
-                style={({ pressed }) => ({
-                  minHeight: 60,
-                  justifyContent: 'center',
-                  gap: 2,
-                  paddingHorizontal: 16,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.borderDecorative,
-                  backgroundColor: colors.surfaceAlt,
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Text variant="body">{m.name}</Text>
-                <Text variant="label" muted>
-                  {t('diet.mealLine', {
-                    kcal: m.kcal,
-                    p: Math.round(m.proteinG),
-                    c: Math.round(m.carbsG),
-                    f: Math.round(m.fatG),
-                  })}
-                </Text>
-              </Pressable>
-            ),
-          )}
+          {meals.map((m, index) => (
+            <View key={m.id} style={{ gap: 8 }}>
+              {mealCard(m, index)}
+              {m.id === workoutAfter ? workoutRow(index) : null}
+            </View>
+          ))}
         </View>
 
         <Button
@@ -235,6 +328,7 @@ export function FixedMealsEditorScreen() {
                 carbsG: 0,
                 fatG: 0,
                 description: '',
+                isMain: false,
               },
             ]);
             setOpen(id);

@@ -14,9 +14,16 @@ export type FixedMeal = {
   carbsG: number;
   fatG: number;
   description: string;
+  isMain: boolean;
 };
 
-export type FixedPlan = { id: string; name: string; meals: FixedMeal[] };
+export type FixedPlan = {
+  id: string;
+  name: string;
+  meals: FixedMeal[];
+  /** The workout sits right after this meal (null = not placed). */
+  workoutAfterMealId: string | null;
+};
 
 type MealRow = {
   id: string;
@@ -27,6 +34,7 @@ type MealRow = {
   carbs_g: number | string;
   fat_g: number | string;
   description: string | null;
+  is_main: boolean;
   deleted_at: string | null;
 };
 
@@ -41,7 +49,7 @@ export function useFixedPlan() {
     queryFn: async (): Promise<FixedPlan | null> => {
       const { data, error } = await getSupabase()
         .from('fixed_meal_plans')
-        .select('id, name, fixed_meals(*)')
+        .select('id, name, workout_after_meal_id, fixed_meals(*)')
         .eq('active', true)
         .is('deleted_at', null)
         .maybeSingle();
@@ -59,8 +67,14 @@ export function useFixedPlan() {
           carbsG: Number(m.carbs_g),
           fatG: Number(m.fat_g),
           description: m.description ?? '',
+          isMain: m.is_main,
         }));
-      return { id: data.id, name: data.name, meals };
+      return {
+        id: data.id,
+        name: data.name,
+        meals,
+        workoutAfterMealId: data.workout_after_meal_id,
+      };
     },
   });
 }
@@ -173,6 +187,7 @@ export function useSaveFixedPlan() {
       name: string;
       meals: MealDraft[];
       removedIds: string[];
+      workoutAfterMealId?: string | null;
     }) => {
       const supabase = getSupabase();
       const planId = args.planId ?? newId();
@@ -181,6 +196,7 @@ export function useSaveFixedPlan() {
         user_id: userId!,
         name: args.name.trim(),
         active: true,
+        workout_after_meal_id: args.workoutAfterMealId ?? null,
         deleted_at: null,
       });
       if (plan.error) throw plan.error;
@@ -197,6 +213,7 @@ export function useSaveFixedPlan() {
             carbs_g: m.carbsG,
             fat_g: m.fatG,
             description: m.description.trim() || null,
+            is_main: m.isMain,
             deleted_at: null,
           })),
         );

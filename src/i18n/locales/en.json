@@ -643,7 +643,19 @@
     "done": "Done",
     "addMeal": "+ Add meal",
     "newMealName": "Meal {{n}}",
-    "save": "Save plan"
+    "save": "Save plan",
+    "autoSplitNote": "Auto-split shares the day evenly, gives more to main meals, carbs before the workout and protein after it. You can still edit every meal.",
+    "mainMeal": "Main meal",
+    "mainMealDetail": "Gets more calories in auto-split",
+    "mainBadge": "Main",
+    "workoutTitle": "Workout",
+    "workoutWhere": "Workout goes after",
+    "workoutNone": "No workout",
+    "workoutRow": "Workout",
+    "workoutRowLabel": "Workout between {{before}} and {{after}}",
+    "workoutRowEnd": "Workout after {{before}}",
+    "pre": "Pre-workout · more carbs",
+    "post": "Post-workout · more protein"
   },
   "progress": {
     "since": "Since {{date}}",

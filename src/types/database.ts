@@ -265,6 +265,7 @@ export type Database = {
           source: string;
           updated_at: string;
           user_id: string;
+          workout_after_meal_id: string | null;
         };
         ComputedFields: never;
         Insert: {
@@ -276,6 +277,7 @@ export type Database = {
           source?: string;
           updated_at?: string;
           user_id?: string;
+          workout_after_meal_id?: string | null;
         };
         Update: {
           active?: boolean;
@@ -286,6 +288,7 @@ export type Database = {
           source?: string;
           updated_at?: string;
           user_id?: string;
+          workout_after_meal_id?: string | null;
         };
         Relationships: [];
       };
@@ -297,6 +300,7 @@ export type Database = {
           description: string | null;
           fat_g: number;
           id: string;
+          is_main: boolean;
           kcal: number;
           name: string;
           plan_id: string;
@@ -313,6 +317,7 @@ export type Database = {
           description?: string | null;
           fat_g?: number;
           id?: string;
+          is_main?: boolean;
           kcal: number;
           name: string;
           plan_id: string;
@@ -328,6 +333,7 @@ export type Database = {
           description?: string | null;
           fat_g?: number;
           id?: string;
+          is_main?: boolean;
           kcal?: number;
           name?: string;
           plan_id?: string;

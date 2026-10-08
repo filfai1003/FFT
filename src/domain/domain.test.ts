@@ -10,6 +10,7 @@ import {
   minimumAllowedKcal,
   portion,
   setMacroPercent,
+  splitDay,
   suggestedKcal,
   targetProblem,
 } from './nutrition';
@@ -163,6 +164,31 @@ describe('calories and macros', () => {
       carbsG: 200,
       fatG: 67,
     });
+  });
+
+  it('splitDay: equal base meals, bigger main meals, carbs before and protein after the workout', () => {
+    const goal = { kcal: 2400, proteinG: 180, carbsG: 250, fatG: 76 };
+    const plain = { isMain: false, workout: null } as const;
+    const flat = splitDay(goal, [plain, plain, plain, plain]);
+    expect(
+      Math.max(...flat.map((m) => m.kcal)) - Math.min(...flat.map((m) => m.kcal)),
+    ).toBeLessThan(15);
+
+    const day = splitDay(goal, [
+      { isMain: false, workout: null },
+      { isMain: true, workout: 'pre' },
+      { isMain: false, workout: 'post' },
+      { isMain: true, workout: null },
+    ]);
+    const [breakfast, pre, post, dinner] = day;
+    expect(dinner.kcal).toBeGreaterThan(breakfast.kcal);
+    expect(pre.carbsG / pre.kcal).toBeGreaterThan(dinner.carbsG / dinner.kcal);
+    expect(post.proteinG / post.kcal).toBeGreaterThan(breakfast.proteinG / breakfast.kcal);
+    const sum = (k: 'proteinG' | 'carbsG' | 'fatG') => day.reduce((a, m) => a + m[k], 0);
+    expect(sum('proteinG')).toBe(180);
+    expect(sum('carbsG')).toBe(250);
+    expect(sum('fatG')).toBe(76);
+    expect(Math.abs(day.reduce((a, m) => a + m.kcal, 0) - 2400)).toBeLessThan(40);
   });
 
   it('portion values come from per-100 g values', () => {
