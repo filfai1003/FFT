@@ -93,6 +93,22 @@ describe('schema', () => {
   });
 });
 
+describe('exercise images', () => {
+  it('every image_path in the seed has its PNG in assets/exercise-images', async () => {
+    await admin();
+    const rows = (
+      await db.query('select image_path from public.exercises where image_path is not null')
+    ).rows;
+    assert.ok(rows.length >= 3);
+    for (const { image_path } of rows) {
+      assert.ok(
+        fs.existsSync(path.join(supabaseDir, '..', 'assets', 'exercise-images', image_path)),
+        image_path + ' is missing',
+      );
+    }
+  });
+});
+
 describe('row level security', () => {
   before(async () => {
     await as(A);
