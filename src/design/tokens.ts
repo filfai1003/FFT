@@ -29,6 +29,9 @@ export const color = {
   dotOff: '#2A2A2A',
   chartDotOff: '#222222',
   danger: '#FF6B6B',
+  // From the ExerciseIcon mockup (not listed in tokens.json)
+  exerciseBorder: '#333333',
+  exerciseBorderEmpty: '#444444',
   accentDefault: accentOptions.red,
   macroSplit: { protein: '#F2F2F2', carbs: '#8E8E8E', fat: '#666666' },
   overlay: 'rgba(0,0,0,0.6)',
