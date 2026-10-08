@@ -21,3 +21,6 @@ void i18n.use(initReactI18next).init({
 });
 
 export default i18n;
+
+/** `t` as seen by helper functions that build several keys dynamically (keeps type-checking fast). */
+export type Translate = (key: string, options?: Record<string, unknown>) => string;

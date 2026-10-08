@@ -22,7 +22,24 @@
   },
   "today": {
     "title": "Today",
-    "caloriesLeft": "Calories left"
+    "caloriesLeft": "Calories left",
+    "notifications": "Notifications and reminders",
+    "live": "Live",
+    "ofKcal": "/ {{kcal}} kcal",
+    "workout": "Today's workout",
+    "cycleProgress": "Cycle {{n}} · {{done}}/{{total}}",
+    "noPlan": "No plan yet. Create one to see your next workout here.",
+    "goTrain": "Go to Train",
+    "meal": "Meal",
+    "nextMeal": "Next meal",
+    "logMeal": "Log a meal",
+    "markNextMeal": "Mark the next meal as done",
+    "weight": "Weight {{unit}}",
+    "logWeight": "Log your weight",
+    "water": "Water {{n}}/{{total}}",
+    "addWater": "Add a glass of water",
+    "waterAdded": "Glass of water added",
+    "waterBar": "{{n}} of {{total}} glasses"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -365,7 +382,9 @@
     "discard": "Discard workout",
     "discardTitle": "Discard this workout?",
     "discardBody": "Everything you logged in this workout is lost. This cannot be undone.",
-    "discardConfirm": "Discard workout"
+    "discardConfirm": "Discard workout",
+    "restDoneTitle": "Rest is over",
+    "restDoneBody": "Time for your next set."
   },
   "summary": {
     "done": "Done",
@@ -624,5 +643,333 @@
     "addMeal": "+ Add meal",
     "newMealName": "Meal {{n}}",
     "save": "Save plan"
+  },
+  "progress": {
+    "since": "Since {{date}}",
+    "newCheckIn": "New check-in",
+    "range": "Time range",
+    "period": {
+      "4w": "4 wk",
+      "12w": "12 wk",
+      "1y": "1 yr",
+      "all": "All"
+    },
+    "periodLong": {
+      "4w": "Last 4 weeks",
+      "12w": "Last 12 weeks",
+      "1y": "Last year",
+      "all": "All time"
+    },
+    "strength": "Strength",
+    "avgChange": "Avg change in est. 1RM",
+    "strengthChart": "Strength {{pct}} percent over the period",
+    "strengthEmpty": "Train the same exercise on two different days to see your strength change.",
+    "top": "Top",
+    "group": {
+      "chest": "Chest",
+      "back": "Back",
+      "shoulders": "Shoulders",
+      "arms": "Arms",
+      "legs": "Legs",
+      "core": "Core"
+    },
+    "bodyWeight": "Body weight",
+    "bodyFat": "Body fat",
+    "weightChart": "Weekly average weight over the period",
+    "bodyFatChart": "Body fat over the period",
+    "pts": "{{delta}} pts",
+    "photos": "Photos",
+    "photosLast": "Photos · last check-in {{date}}",
+    "photosNone": "Photos · none yet",
+    "today": "Today is {{date}}",
+    "strengthTitle": "Strength",
+    "groupBy": "Group by",
+    "byGroups": "Muscle groups",
+    "byExercises": "Exercises",
+    "overall": "Overall",
+    "strengthExplain": "Average change in estimated 1RM across every exercise you trained, weighted by sets.",
+    "byGroup": "By muscle group",
+    "exercisesEst": "Exercises · est. 1RM",
+    "fromTo": "{{from}} → {{to}} {{unit}}",
+    "groupsEmpty": "Nothing to compare yet in this period.",
+    "setsCount_one": "{{count}} set",
+    "setsCount_other": "{{count}} sets",
+    "stat": {
+      "sets": "Sets",
+      "perWeek": "Sets / week",
+      "volume": "Weekly volume"
+    },
+    "muscleGroup": "Muscle group",
+    "groupChart": "{{name}} strength {{pct}} percent over the period",
+    "bodyWeightTitle": "Body weight",
+    "kgToday": "{{unit}} today",
+    "sevenDay": "7-day avg {{value}}",
+    "weightEmpty": "Log your weight to see the trend.",
+    "weightExplain": "Weekly averages. Daily weight jumps around; the trend is what counts.",
+    "goal": "Goal {{value}} {{unit}}",
+    "toGo": "{{value}} {{unit}} to go",
+    "goalBar": "Progress to your weight goal",
+    "setGoal": "Set a weight goal",
+    "changeGoal": "Change goal",
+    "goalWeight": "Goal weight ({{unit}})",
+    "entries": "Entries",
+    "deleteEntry": "Delete the entry of {{day}}",
+    "entryRemoved": "Entry removed",
+    "todayWeight": "Today ({{unit}})",
+    "weightSaved": "Weight saved",
+    "bodyFatTitle": "Body fat",
+    "logMeasurements": "Log measurements",
+    "sinceDate": "Since {{date}}",
+    "bodyFatEmpty": "Log your body fat in a check-in to see the trend.",
+    "lean": "Lean mass{{delta}}",
+    "fat": "Fat mass{{delta}}",
+    "measuredWith": "Measured with · keep it the same",
+    "method": {
+      "scale": "Smart scale",
+      "calipers": "Calipers",
+      "tape": "Tape estimate",
+      "other": "Other"
+    },
+    "measurements": "Measurements · change since {{date}}",
+    "measure": {
+      "waist": "Waist",
+      "hips": "Hips",
+      "chest": "Chest",
+      "arm": "Arm",
+      "thigh": "Thigh"
+    }
+  },
+  "checkIn": {
+    "title": "Check-in",
+    "optional": "Every field is optional · fill what you have",
+    "weight": "Weight",
+    "bodyFat": "Body fat",
+    "last": "Last {{value}} · {{day}}",
+    "firstTime": "First check-in",
+    "measurements": "Measurements · cm",
+    "photos": "Photos · private",
+    "takePhoto": "Take {{pose}} photo",
+    "notes": "Notes",
+    "notesPlaceholder": "Notes (sleep, how you feel…)",
+    "tip": "Tip: weigh in after waking, before eating. You can turn on a weekly check-in reminder in Settings.",
+    "save": "Save check-in",
+    "saved": "Check-in saved"
+  },
+  "photos": {
+    "title": "Photos",
+    "private": "Private · encrypted · only you can see them",
+    "add": "Add photos",
+    "all": "All",
+    "pose": {
+      "front": "Front",
+      "side": "Side",
+      "back": "Back"
+    },
+    "empty": "No photos yet. Take some in a check-in.",
+    "compare": "Compare two check-ins",
+    "compareTitle": "Compare",
+    "view": "View",
+    "sideBySide": "Side by side",
+    "slider": "Slider",
+    "needTwo": "You need photos from two different days of this pose to compare.",
+    "changeDate": "Change date, now {{date}}",
+    "pickDate": "Pick a check-in",
+    "show": "Show photos",
+    "unlock": "Unlock your progress photos",
+    "bfPts": "Body fat pts",
+    "waistCm": "Waist cm",
+    "fairTip": "For fair comparisons, keep the same light, time of day and distance. The camera shows a faint outline of your last photo.",
+    "sliderLabel": "Drag to compare the two photos",
+    "photo": "photo",
+    "hidden": "hidden, tap to show",
+    "noPhoto": "no photo",
+    "cameraTitle": "{{pose}} photo",
+    "flip": "Flip camera",
+    "needCamera": "Allow the camera to take your check-in photos.",
+    "library": "Library",
+    "shutter": "Take photo",
+    "unlockToEnable": "Confirm it's you to lock your photos"
+  },
+  "profile": {
+    "you": "You",
+    "memberSince": "Member since {{date}}",
+    "free": "Free",
+    "premium": "Premium",
+    "premiumLine": "Widgets, app sync, AI plans and coaching",
+    "seePlans": "See plans",
+    "premiumBody": "Premium is coming later. Nothing in the free app is locked or removed.",
+    "premiumItem": {
+      "widgets": "Home screen widgets",
+      "sync": "Apple Health, Health Connect, Garmin and Strava sync",
+      "ai": "AI-generated plans",
+      "coach": "Verified trainers and nutritionists"
+    },
+    "comingSoon": "Coming soon",
+    "premiumFree": "Everything you use today stays free.",
+    "personalInfo": "Personal info",
+    "dietGoals": "Diet goals & mode",
+    "settings": "Units, look & alerts",
+    "accessibility": "Accessibility",
+    "privacy": "Privacy & data",
+    "help": "Help & feedback",
+    "helpBody": "Feedback and support options will be added here. Your data is always yours: export or delete it any time in Privacy & data.",
+    "version": "Version {{version}}",
+    "logOut": "Log out",
+    "logOutAnyway": "Log out anyway",
+    "stay": "Stay logged in",
+    "unsyncedTitle": "A workout is not uploaded yet",
+    "unsyncedBody": "You are offline, so your last workout is only saved on this device. If you log out now it will be lost.",
+    "personalTitle": "Personal info",
+    "height": "Height (cm)",
+    "personalNote": "These are used to calculate your calorie target. If they change, we'll suggest new targets — nothing changes until you accept.",
+    "saveChanges": "Save changes",
+    "newTargets": "New calorie target?",
+    "newTargetsBody": "Your details changed, so your calorie target would change too. It only changes if you accept.",
+    "updateTarget": "Update my target",
+    "keepTarget": "Keep my current target"
+  },
+  "settings": {
+    "title": "Settings",
+    "units": "Units",
+    "weight": "Weight",
+    "length": "Length",
+    "energy": "Energy",
+    "weekStarts": "Week starts",
+    "appearance": "Appearance",
+    "accent": "Accent color",
+    "color": {
+      "red": "Red",
+      "orange": "Orange",
+      "yellow": "Yellow",
+      "green": "Green",
+      "blue": "Blue",
+      "white": "White"
+    },
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System",
+    "themeNote": "Light and System are coming with the light theme.",
+    "language": "Language",
+    "english": "English",
+    "moreLanguages": "More languages are coming.",
+    "notifications": "Notifications",
+    "off": "Off",
+    "notification": {
+      "rest_timer": {
+        "name": "Rest timer done",
+        "detail": "Sound + vibration"
+      },
+      "workout_reminder": {
+        "name": "Workout reminder",
+        "detail": "Every day · 18:00"
+      },
+      "weekly_check_in": {
+        "name": "Weekly check-in",
+        "detail": "Thursday · 08:00"
+      },
+      "meals": {
+        "name": "Meal reminders",
+        "detail": "08:00 · 13:00 · 20:00"
+      }
+    },
+    "reminder": {
+      "workout": {
+        "title": "Time to train",
+        "body": "Your next workout is waiting."
+      },
+      "checkin": {
+        "title": "Weekly check-in",
+        "body": "Log your weight and measurements."
+      },
+      "meals": {
+        "title": "Meal time",
+        "body": "Log what you ate."
+      }
+    },
+    "deniedTitle": "Notifications are blocked",
+    "deniedBody": "Allow notifications for this app in your device settings, then turn this on again."
+  },
+  "a11y": {
+    "title": "Accessibility",
+    "preview": "Preview",
+    "text": "Text",
+    "vision": "Vision & motion",
+    "workouts": "During workouts",
+    "textSize": "Text size",
+    "smaller": "Smaller text",
+    "larger": "Larger text",
+    "sizeOf": "Text size {{n}} of 5",
+    "option": {
+      "boldText": {
+        "name": "Bold text",
+        "detail": "Thicker body text"
+      },
+      "dotNumbers": {
+        "name": "Dot-matrix numbers",
+        "detail": "Off = plain, easier-to-read digits"
+      },
+      "highContrast": {
+        "name": "Higher contrast",
+        "detail": "Brighter greys and borders"
+      },
+      "reduceMotion": {
+        "name": "Reduce motion",
+        "detail": "No animations or transitions"
+      },
+      "haptics": {
+        "name": "Haptics",
+        "detail": "Vibrate on ticks and sets"
+      },
+      "oneHandMode": {
+        "name": "One-hand mode",
+        "detail": "Bigger buttons, actions at the bottom"
+      },
+      "spokenCountdown": {
+        "name": "Spoken rest countdown",
+        "detail": "Reads 10 … 3, 2, 1 out loud"
+      }
+    }
+  },
+  "privacy": {
+    "title": "Privacy & data",
+    "yourData": "Your data",
+    "downloadAll": "Download everything",
+    "downloadAllDetail": "ZIP · JSON + CSV + photos",
+    "workoutsOnly": "Workouts only",
+    "workoutsOnlyDetail": "CSV · opens in any spreadsheet",
+    "export": "Export",
+    "preparing": "Preparing your file…",
+    "photos": "Progress photos",
+    "blur": "Blur photos until tapped",
+    "blurDetail": "Safe to open the app in public",
+    "lock": "Lock photos",
+    "lockDetail": "Face ID or passcode to view",
+    "sharing": "Sharing",
+    "analytics": "Anonymous usage stats",
+    "analyticsDetail": "Helps us fix bugs · no health data",
+    "coach": "Share with a coach",
+    "coachDetail": "Premium · nobody has access now",
+    "consent": "Health data consent",
+    "givenOn": "Given {{date}}",
+    "notGiven": "Not given",
+    "withdraw": "Withdraw",
+    "withdrawTitle": "Withdraw your consent?",
+    "withdrawBody": "Weight, food, workouts and photos are health data. Without your consent the app cannot work. Your data stays safe and you can give consent again, export it or delete it.",
+    "withdrawConfirm": "Withdraw consent",
+    "keepConsent": "Keep my consent",
+    "delete": "Delete account",
+    "deleteNote": "Removes all your data and photos within 30 days. This can't be undone.",
+    "deleteTitle": "Delete your account?",
+    "deleteBody": "Everything is removed: workouts, food log, body data and photos. This cannot be undone.",
+    "deleteWord": "DELETE",
+    "typeToConfirm": "Type {{word}} to confirm",
+    "deleteConfirm": "Delete everything",
+    "deleted": "Your account was deleted"
+  },
+  "gate": {
+    "title": "Consent withdrawn",
+    "body": "You withdrew your consent to process health data, so the app is paused. You can give it again, download your data, or delete your account.",
+    "give": "Give consent again"
   }
 }

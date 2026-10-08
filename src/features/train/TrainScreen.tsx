@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
@@ -41,7 +42,7 @@ export function TrainScreen() {
     return 'todo';
   };
 
-  const outOfOrder = plan && rotation ? outOfOrderNote(plan, rotation, t) : null;
+  const outOfOrder = plan && rotation ? outOfOrderNote(plan, rotation, t as Translate) : null;
 
   return (
     <>
@@ -182,7 +183,7 @@ export function TrainScreen() {
             title={t('train.history')}
             info={
               lastDay.data
-                ? t('train.historyLast', { when: whenLabel(lastDay.data, today, t) })
+                ? t('train.historyLast', { when: whenLabel(lastDay.data, today, t as Translate) })
                 : t('train.historyNone')
             }
             onPress={() => router.push('/train/history')}
@@ -259,7 +260,7 @@ function NavTile({ title, info, onPress }: { title: string; info: string; onPres
   );
 }
 
-type T = ReturnType<typeof useTranslation>['t'];
+type T = Translate;
 
 function whenLabel(day: string, today: string, t: T): string {
   const r = relativeDay(day, today);

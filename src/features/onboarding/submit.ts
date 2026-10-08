@@ -32,7 +32,7 @@ export async function completeOnboarding(
   const id = (purpose: string) => stableId(userId, purpose);
   const ids = {
     weight: await id('first-weight'),
-    goal: await id('first-goal'),
+    goal: await id(`goal-${day}`), // same id as a later "Save goals" of that day: one goal per day
     plan: await id('first-meal-plan'),
     health: await id('consent-health_data'),
     analytics: await id('consent-analytics'),

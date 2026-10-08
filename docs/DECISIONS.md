@@ -40,8 +40,18 @@ before the phase that depends on it.
 19. **Theme**: dark only for now; the Light/System options stay disabled until the light theme is designed.
 20. **Accent colours**: the 6 options of `tokens.json`; text on the accent picks black or light for ≥ 4.5:1 contrast (the white accent needs black text).
 
+## Decided while building Phases 1–5
+
+21. **Auth session** is stored encrypted (AES key in SecureStore, ciphertext in AsyncStorage). Apple / Google sign-in is deferred: email + password only for now.
+22. **Shared screens** (exercise detail, session detail) are re-exported inside each tab's folder instead of being root routes, so the tab bar and back stack stay correct.
+23. **Notifications**: `src/lib/notifications.ts` is a web no-op, `notifications.native.ts` is the real local-notification code (expo-notifications has no web build).
+24. **Edge Functions** (`off`, `delete-account`) need `supabase functions serve` locally (`supabase start -x imgproxy,edge-runtime`).
+25. **Demo data**: `supabase/scripts/demo-data.sql` fills 12 weeks of body entries and workouts for the first onboarded user (local only).
+26. **Photos**: private bucket + signed URLs; blur-until-tapped and device lock are client settings in `privacy-store`.
+27. **Withdrawing health consent** pauses the app behind `ConsentGate` (give consent again, export or delete).
+
 ## Still open
 
 - Exercise images: 3 of the 12 PNGs are in (deadlift, bench press, back squat). Missing: incline-db-press, overhead-press, lateral-raise, cable-fly, pushdown, pull-up, barbell-row, lat-pulldown, biceps-curl, romanian-deadlift. Drop them in `assets/exercise-images/<slug>.png`, then `npm run db:seed` and `npm run db:images`.
-- Onboarding screens are not designed yet (Phase 1: propose first, then build).
-- Auth session storage (AsyncStorage vs encrypted) is decided in Phase 1.
+- Apple / Google sign-in, light theme, "How to perform" section of exercise detail.
+- Not verified on a device: camera / photo capture, barcode scanner, biometrics, local notifications.

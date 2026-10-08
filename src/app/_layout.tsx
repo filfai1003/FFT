@@ -10,6 +10,9 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { startAuthListener, useSessionStore } from '@/features/auth/session-store';
 import { isOnboarded, useProfile } from '@/features/profile/api';
+import { ConsentGate } from '@/features/profile/ConsentGate';
+import { activeConsent, useConsents } from '@/features/profile/account';
+import { usePendingSync } from '@/features/session/use-pending-sync';
 import { useSettingsSync } from '@/features/settings/use-settings-sync';
 import { useAppFonts } from '@/design/fonts';
 import { color } from '@/design/tokens';
@@ -46,6 +49,8 @@ function AppNavigator() {
   const status = useSessionStore((s) => s.status);
   const profile = useProfile();
   useSettingsSync();
+  const consents = useConsents();
+  usePendingSync(status === 'signedIn');
 
   const signedIn = status === 'signedIn';
   const onboarded = isOnboarded(profile.data);
@@ -60,6 +65,11 @@ function AppNavigator() {
         <Button label={t('common.retry')} onPress={() => void profile.refetch()} />
       </Screen>
     );
+  }
+
+  // Health data consent withdrawn: the app cannot run, but the user can still export or delete.
+  if (signedIn && onboarded && consents.isSuccess && !activeConsent(consents.data, 'health_data')) {
+    return <ConsentGate />;
   }
 
   return (

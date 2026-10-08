@@ -4,7 +4,7 @@ import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Text } from './Text';
 
-export type SegmentedOption<T extends string> = { value: T; label: string };
+export type SegmentedOption<T extends string> = { value: T; label: string; disabled?: boolean };
 
 export type SegmentedProps<T extends string> = {
   options: readonly SegmentedOption<T>[];
@@ -44,8 +44,10 @@ export function Segmented<T extends string>({
             accessibilityState={{ checked: selected }}
             aria-checked={selected}
             accessibilityLabel={o.label}
+            disabled={o.disabled}
+            aria-disabled={o.disabled}
             onPress={() => {
-              if (selected) return;
+              if (selected || o.disabled) return;
               tick();
               onChange(o.value);
             }}
@@ -58,6 +60,7 @@ export function Segmented<T extends string>({
               backgroundColor: selected ? colors.surfaceSelected : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
+              opacity: o.disabled ? 0.35 : 1,
             }}
           >
             <Text variant="label" style={{ color: selected ? colors.text : colors.textMuted }}>

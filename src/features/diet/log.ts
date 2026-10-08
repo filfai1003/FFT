@@ -135,7 +135,8 @@ export function useGoals() {
         .from('nutrition_goals')
         .select('*')
         .is('deleted_at', null)
-        .order('valid_from', { ascending: false });
+        .order('valid_from', { ascending: false })
+        .order('updated_at', { ascending: false });
       if (error) throw error;
       return (data as unknown as GoalRow[]).map(toGoal);
     },

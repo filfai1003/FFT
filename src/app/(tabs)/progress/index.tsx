@@ -1,7 +1,5 @@
-import { useTranslation } from 'react-i18next';
-import { PlaceholderScreen } from '@/components/ui/PlaceholderScreen';
+import { ProgressScreen } from '@/features/progress/ProgressScreen';
 
-export default function ProgressScreen() {
-  const { t } = useTranslation();
-  return <PlaceholderScreen title={t('nav.progress')} />;
+export default function Progress() {
+  return <ProgressScreen />;
 }

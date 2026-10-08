@@ -1,0 +1,314 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Screen } from '@/components/ui/Screen';
+import { Sheet } from '@/components/ui/Sheet';
+import { Text } from '@/components/ui/Text';
+import { Toggle } from '@/components/ui/Toggle';
+import { TopBar } from '@/components/ui/TopBar';
+import { useTabBarHeight } from '@/components/ui/TabBar';
+import { useTheme } from '@/design/use-theme';
+import { authenticate } from '@/lib/biometrics';
+import { goBack } from '@/lib/navigation';
+import { useToastStore } from '@/lib/toast-store';
+import { activeConsent, deleteAccount, useConsents, useSetConsent } from './account';
+import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
+import { usePrivacyStore } from './privacy-store';
+
+/** Privacy & data: export, photo privacy, sharing, consent, delete account. */
+export function PrivacyScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const barHeight = useTabBarHeight();
+  const privacy = usePrivacyStore();
+  const consents = useConsents();
+  const setConsent = useSetConsent();
+  const showToast = useToastStore((s) => s.show);
+  const [busy, setBusy] = useState<'full' | 'workouts' | null>(null);
+  const [withdraw, setWithdraw] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const health = activeConsent(consents.data, 'health_data');
+  const analytics = activeConsent(consents.data, 'analytics');
+  const grantedOn = health
+    ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' })
+        .format(new Date(health.grantedAt))
+        .toUpperCase()
+    : '';
+
+  const runExport = async (kind: 'full' | 'workouts') => {
+    setBusy(kind);
+    setError(null);
+    try {
+      if (kind === 'full')
+        await deliverFile(exportFileNames.full(), await fullExportZip(), 'application/zip');
+      else
+        await deliverFile(
+          exportFileNames.workouts(),
+          new TextEncoder().encode(await workoutsCsv()),
+          'text/csv',
+        );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const toggleLock = async (value: boolean) => {
+    if (value && !(await authenticate(t('photos.unlockToEnable')))) return;
+    privacy.set('lockPhotos', value);
+  };
+
+  const rows = (
+    items: {
+      name: string;
+      detail: string;
+      value: boolean;
+      onChange: (v: boolean) => void;
+      disabled?: boolean;
+    }[],
+  ) =>
+    items.map((r, i) => (
+      <View
+        key={r.name}
+        style={{
+          minHeight: 56,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          borderTopWidth: i === 0 ? 0 : 1,
+          borderStyle: 'dashed',
+          borderColor: colors.borderDecorative,
+          opacity: r.disabled ? 0.5 : 1,
+        }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="bodyS">{r.name}</Text>
+          <Text variant="label" muted>
+            {r.detail}
+          </Text>
+        </View>
+        <Toggle value={r.value} onValueChange={r.onChange} accessibilityLabel={r.name} />
+      </View>
+    ));
+
+  return (
+    <>
+      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <Text variant="screenTitle" style={{ fontSize: 28 }}>
+          {t('privacy.title')}
+        </Text>
+
+        <Card size="small" gap={0}>
+          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.yourData')}
+          </Text>
+          <View
+            style={{
+              minHeight: 60,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyS">{t('privacy.downloadAll')}</Text>
+              <Text variant="label" muted>
+                {t('privacy.downloadAllDetail')}
+              </Text>
+            </View>
+            <Button
+              label={t('privacy.export')}
+              block={false}
+              variant="secondary"
+              disabled={busy != null}
+              onPress={() => runExport('full')}
+            />
+          </View>
+          <View
+            style={{
+              minHeight: 60,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              borderTopWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: colors.borderDecorative,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyS">{t('privacy.workoutsOnly')}</Text>
+              <Text variant="label" muted>
+                {t('privacy.workoutsOnlyDetail')}
+              </Text>
+            </View>
+            <Button
+              label={t('privacy.export')}
+              block={false}
+              variant="secondary"
+              disabled={busy != null}
+              onPress={() => runExport('workouts')}
+            />
+          </View>
+          {busy ? (
+            <Text variant="label" muted>
+              {t('privacy.preparing')}
+            </Text>
+          ) : null}
+          {error ? (
+            <Text variant="bodyS" danger accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
+        </Card>
+
+        <Card size="small" gap={0}>
+          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.photos')}
+          </Text>
+          {rows([
+            {
+              name: t('privacy.blur'),
+              detail: t('privacy.blurDetail'),
+              value: privacy.blurPhotos,
+              onChange: (v) => privacy.set('blurPhotos', v),
+            },
+            {
+              name: t('privacy.lock'),
+              detail: t('privacy.lockDetail'),
+              value: privacy.lockPhotos,
+              onChange: toggleLock,
+            },
+          ])}
+        </Card>
+
+        <Card size="small" gap={0}>
+          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.sharing')}
+          </Text>
+          {rows([
+            {
+              name: t('privacy.analytics'),
+              detail: t('privacy.analyticsDetail'),
+              value: analytics != null,
+              onChange: (v) => setConsent.mutate({ type: 'analytics', granted: v }),
+            },
+            {
+              name: t('privacy.coach'),
+              detail: t('privacy.coachDetail'),
+              value: false,
+              onChange: () => undefined,
+              disabled: true,
+            },
+          ])}
+        </Card>
+
+        <Card size="small" gap={0}>
+          <View
+            style={{
+              minHeight: 60,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyS">{t('privacy.consent')}</Text>
+              <Text variant="label" muted>
+                {health ? t('privacy.givenOn', { date: grantedOn }) : t('privacy.notGiven')}
+              </Text>
+            </View>
+            <Button
+              label={t('privacy.withdraw')}
+              block={false}
+              variant="secondary"
+              disabled={!health}
+              onPress={() => setWithdraw(true)}
+            />
+          </View>
+        </Card>
+
+        <View style={{ gap: 8, paddingTop: 8 }}>
+          <Button label={t('privacy.delete')} variant="danger" onPress={() => setRemoving(true)} />
+          <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
+            {t('privacy.deleteNote')}
+          </Text>
+        </View>
+      </Screen>
+
+      <Sheet
+        visible={withdraw}
+        onClose={() => setWithdraw(false)}
+        title={t('privacy.withdrawTitle')}
+        closeLabel={t('common.close')}
+        footer={
+          <View style={{ gap: 8 }}>
+            <Button
+              size="large"
+              variant="danger"
+              label={t('privacy.withdrawConfirm')}
+              onPress={async () => {
+                await setConsent.mutateAsync({ type: 'health_data', granted: false });
+                setWithdraw(false);
+              }}
+            />
+            <Button
+              variant="secondary"
+              label={t('privacy.keepConsent')}
+              onPress={() => setWithdraw(false)}
+            />
+          </View>
+        }
+      >
+        <Text muted>{t('privacy.withdrawBody')}</Text>
+      </Sheet>
+
+      <Sheet
+        visible={removing}
+        onClose={() => {
+          setRemoving(false);
+          setTyped('');
+        }}
+        title={t('privacy.deleteTitle')}
+        closeLabel={t('common.close')}
+        footer={
+          <Button
+            size="large"
+            variant="danger"
+            label={t('privacy.deleteConfirm')}
+            disabled={typed.trim().toUpperCase() !== t('privacy.deleteWord')}
+            onPress={async () => {
+              const message = await deleteAccount(queryClient);
+              if (message) setError(message);
+              else showToast({ message: t('privacy.deleted') });
+              setRemoving(false);
+            }}
+          />
+        }
+      >
+        <Text muted>{t('privacy.deleteBody')}</Text>
+        <Input
+          label={t('privacy.typeToConfirm', { word: t('privacy.deleteWord') })}
+          value={typed}
+          onChangeText={setTyped}
+          autoCapitalize="characters"
+        />
+      </Sheet>
+    </>
+  );
+}

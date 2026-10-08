@@ -1212,6 +1212,7 @@ export type Database = {
           exercise_id: string | null;
           sets: number | null;
           user_id: string | null;
+          volume_kg: number | null;
         };
         ComputedFields: never;
         Relationships: [

@@ -9,7 +9,9 @@ import { touch } from '@/design/tokens';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { useTheme } from '@/design/use-theme';
 import { confirm } from '@/lib/haptics';
+import { cancelRestEnd, scheduleRestEnd } from '@/lib/notifications';
 import { useNow } from '@/lib/use-now';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { adjustRest, formatClock, restRemainingS } from './logic';
 import { useSessionStore } from './store';
 
@@ -24,6 +26,21 @@ export function RestCard() {
   const spoken = useAppearanceStore((s) => s.spokenCountdown);
   const now = useNow(250, rest != null);
   const lastSpoken = useRef<number | null>(null);
+  const restAlerts = usePreferencesStore((st) => st.notifications.rest_timer);
+  const endsAt = rest?.endsAt ?? null;
+
+  // A notification at the end of the rest, for when the app is in the background.
+  useEffect(() => {
+    if (endsAt == null || !restAlerts) {
+      void cancelRestEnd();
+      return;
+    }
+    void scheduleRestEnd((endsAt - Date.now()) / 1000, {
+      title: t('session.restDoneTitle'),
+      body: t('session.restDoneBody'),
+    });
+    return () => void cancelRestEnd();
+  }, [endsAt, restAlerts, t]);
 
   const remaining = rest ? Math.max(0, Math.ceil((rest.endsAt - now) / 1000)) : 0;
 

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
@@ -80,7 +81,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
               />
             ) : null}
             <Text variant="label" muted>
-              {headerLine(p, rotation, t)}
+              {headerLine(p, rotation, t as Translate)}
             </Text>
           </View>
           <Text variant="screenTitle" accessibilityRole="header">
@@ -199,11 +200,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
   );
 }
 
-function headerLine(
-  p: PlanView,
-  rotation: Rotation | null,
-  t: ReturnType<typeof useTranslation>['t'],
-) {
+function headerLine(p: PlanView, rotation: Rotation | null, t: Translate) {
   const status = t(`train.status.${p.status}`);
   const days = t('plan.daysCount', { count: p.days.length });
   return p.status === 'active' && rotation
