@@ -11,7 +11,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const supabaseDir = path.join(here, '..', '..');
+const supabaseDir = path.join(here, '..');
 
 const A = 'aaaaaaaa-0000-0000-0000-00000000000a';
 const B = 'bbbbbbbb-0000-0000-0000-00000000000b';

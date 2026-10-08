@@ -1,7 +1,7 @@
 -- Domain rules in SQL: Epley, records, strength score, nutrition totals, safety limits.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(17);
 
 create function pg_temp.as_user(uid uuid) returns void language plpgsql as $$
 begin

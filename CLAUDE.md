@@ -10,9 +10,9 @@ Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/a
 - `npm run check` — lint + typecheck + Jest + DB verification (run before every commit)
 - `npm run lint | typecheck | test | format`
 - `npm run db:verify` — migrations + seed + RLS/domain rules on embedded Postgres (no Docker)
-- `npm run db:start | db:stop | db:reset | db:test | db:types` — real Supabase stack (needs Docker; `db:types` rewrites `src/types/database.ts`)
+- `npm run db:start | db:stop | db:reset | db:test | db:types | db:images` — real Supabase stack (needs Docker; `db:types` rewrites `src/types/database.ts`)
 - `npm run db:seed` — regenerates `supabase/seed.sql` from `supabase/scripts/generate-seed.js`
-- `.env` from `.env.example` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
+- `.env.local` from `.env.example` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
 
 ## Structure
 ```
@@ -23,7 +23,7 @@ src/domain/         pure logic with tests: strength (Epley), nutrition (Mifflin,
 src/features/       per-area queries and screens
 src/lib/            supabase client, query client, toast store, haptics
 src/i18n/           en.json + typed keys
-supabase/           migrations/, seed.sql, tests/ (pglite + pgTAP), scripts/
+supabase/           migrations/, seed.sql, tests/database (pgTAP, real stack), verify/ (embedded Postgres), scripts/
 ```
 
 ## Non-negotiables
@@ -56,4 +56,4 @@ supabase/           migrations/, seed.sql, tests/ (pglite + pgTAP), scripts/
 Small verifiable steps, explain non-obvious choices in two lines, commit at the end of each step (only if `npm run check` passes), ask before expensive-to-change decisions (sync, navigation, auth, data structure).
 
 ## Status
-Phase 0 done except what needs Docker (see `docs/DECISIONS.md` → Still open).
+Phase 0 done and verified on the real local Supabase stack (migrations, pgTAP, generated types, image upload, end-to-end smoke screen `/dev/exercises`). Next: Phase 1 (auth + onboarding). Docker Desktop must be running for `npm run db:*` (except `db:verify`).

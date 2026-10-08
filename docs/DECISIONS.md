@@ -13,7 +13,7 @@ before the phase that depends on it.
 | `i18next` + `expo-localization`, typed keys; ESLint rule `react/jsx-no-literals` forbids literal JSX text | Enforces "no hardcoded strings". Props such as `accessibilityLabel` are not caught by the rule: review by hand. |
 | Sheet and Toast written in-house (RN `Modal` / `Animated`) | No heavy dependency; behaviour is simple and fully testable. |
 | Supabase CLI as a devDependency (`npx supabase`) | No global install. |
-| DB verification runs on embedded Postgres (`npm run db:verify`, PGlite) in `npm run check`; pgTAP tests are also kept for the real stack (`npm run db:test`) | Docker Desktop could not start (WSL missing), and a fast DB test must not need Docker. |
+| DB checks run twice: on embedded Postgres in `npm run check` (`db:verify`, fast, no Docker) and as pgTAP on the real stack (`npm run db:test`) | A quick check must not need Docker; the real stack confirms it. |
 | Auth session in AsyncStorage for now | Phase 1 decides whether to encrypt it (health data). |
 | Open Food Facts rows are written by an Edge Function with the service role (Phase 3); users cannot write global rows | Keeps RLS strict ("everyone writes only their own rows"). |
 
@@ -42,6 +42,6 @@ before the phase that depends on it.
 
 ## Still open
 
-- Run `npm run db:start`, `db:test` and `db:types` once Docker works (needs WSL), then replace `src/types/database.ts`.
-- Exercise images: 12 PNGs from the owner (`docs/design/screens/ExerciseIcons.dc.html`); seed slugs already match the file names.
+- Exercise images: 3 of the 12 PNGs are in (deadlift, bench press, back squat). Missing: incline-db-press, overhead-press, lateral-raise, cable-fly, pushdown, pull-up, barbell-row, lat-pulldown, biceps-curl, romanian-deadlift. Drop them in `assets/exercise-images/<slug>.png`, then `npm run db:seed` and `npm run db:images`.
 - Onboarding screens are not designed yet (Phase 1: propose first, then build).
+- Auth session storage (AsyncStorage vs encrypted) is decided in Phase 1.

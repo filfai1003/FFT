@@ -1,7 +1,16 @@
 -- RLS: every table is protected and users are isolated from each other.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(15);
+
+-- Rows affected by a statement (a data-modifying WITH cannot be nested inside is()).
+create function pg_temp.rows_updated(stmt text) returns bigint language plpgsql as $$
+declare n bigint;
+begin
+  execute stmt;
+  get diagnostics n = row_count;
+  return n;
+end $$;
 
 -- Impersonation helpers (rolled back with the transaction).
 create function pg_temp.as_user(uid uuid) returns void language plpgsql as $$
@@ -69,9 +78,7 @@ select throws_ok(
 );
 
 select is(
-  (with u as (
-     update public.body_metrics set weight_kg = 1 returning 1
-   ) select count(*) from u),
+  pg_temp.rows_updated($q$update public.body_metrics set weight_kg = 1$q$),
   0::bigint,
   'B cannot update A rows'
 );
@@ -103,7 +110,7 @@ select pg_temp.as_user('aaaaaaaa-0000-0000-0000-00000000000a');
 insert into public.consents (type, policy_version) values ('health_data', '2026-10');
 
 select is(
-  (with d as (delete from public.consents returning 1) select count(*) from d),
+  pg_temp.rows_updated($q$delete from public.consents$q$),
   0::bigint,
   'consents cannot be deleted by the user'
 );
