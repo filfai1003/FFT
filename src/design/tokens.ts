@@ -37,8 +37,11 @@ export const color = {
 export const fontFamily = {
   display: 'Doto_800ExtraBold',
   label: 'SpaceMono_400Regular',
+  labelBold: 'SpaceMono_700Bold',
   body: 'SpaceGrotesk_400Regular',
   bodyMedium: 'SpaceGrotesk_500Medium',
+  bodySemiBold: 'SpaceGrotesk_600SemiBold',
+  bodyBold: 'SpaceGrotesk_700Bold',
 } as const;
 
 export const typeScale = {
