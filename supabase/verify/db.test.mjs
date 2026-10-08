@@ -250,6 +250,25 @@ describe('domain rules', () => {
     assert.equal(other.rows.length, 0, "strength functions only see the caller's data");
   });
 
+  it('last_sets returns the completed sets of the latest finished session only', async () => {
+    await as(A);
+    const squat = (await one(`select id from public.exercises where slug = 'back-squat'`)).id;
+    const rows = (await db.query(`select * from public.last_sets(array[$1::uuid])`, [squat])).rows;
+    assert.equal(rows.length, 1);
+    assert.equal(Number(rows[0].weight_kg), 130, 'latest done session, not the active 300 kg one');
+    await as(B);
+    assert.equal(
+      (await db.query(`select * from public.last_sets(array[$1::uuid])`, [squat])).rows.length,
+      0,
+    );
+  });
+
+  it('daily view also exposes the heaviest weight of the day', async () => {
+    await as(A);
+    const r = await one(`select max(best_weight_kg) as n from public.exercise_e1rm_daily`);
+    assert.equal(Number(r.n), 130);
+  });
+
   it('one active session per user', async () => {
     await as(A);
     await rejects(

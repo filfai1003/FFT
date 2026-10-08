@@ -30,6 +30,7 @@ export function IconButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
+      aria-disabled={disabled}
       disabled={disabled}
       onPress={() => {
         tick();

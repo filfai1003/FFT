@@ -1,17 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { getSupabase } from '@/lib/supabase';
 
-export const muscles = [
-  'chest',
-  'back',
-  'shoulders',
-  'biceps',
-  'triceps',
-  'legs',
-  'glutes',
-  'abs',
-] as const;
-export type Muscle = (typeof muscles)[number];
+import { muscles, type Muscle } from '@/domain/muscles';
+
+export { muscles };
+export type { Muscle };
 
 export type LogType = 'weight_reps' | 'reps' | 'time' | 'distance_time';
 
@@ -57,6 +51,10 @@ export function exerciseImageUrl(baseUrl: string, imagePath: string | null): str
   return `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/exercise-images/${imagePath}`;
 }
 
+function useAuthUser() {
+  return useAuth((s) => s.userId);
+}
+
 export const exerciseKeys = { all: ['exercises'] as const };
 
 /** Catalogue + the user's own exercises (RLS decides what is visible), alphabetical. */
@@ -74,5 +72,53 @@ export function useExercises() {
       if (error) throw error;
       return (data as ExerciseRow[]).map(toExercise);
     },
+  });
+}
+
+// --- create / edit / delete own exercises ------------------------------------------------------
+
+export type ExerciseInput = {
+  id: string;
+  name: string;
+  primaryMuscle: Muscle;
+  secondaryMuscles: Muscle[];
+  equipment: string;
+  logType: LogType;
+  imagePath?: string | null;
+};
+
+export function useSaveExercise() {
+  const userId = useAuthUser();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ExerciseInput) => {
+      const row = {
+        id: input.id,
+        owner_id: userId!,
+        name: input.name.trim(),
+        primary_muscle: input.primaryMuscle,
+        secondary_muscles: input.secondaryMuscles.filter((m) => m !== input.primaryMuscle),
+        equipment: input.equipment,
+        log_type: input.logType,
+        ...(input.imagePath !== undefined ? { image_path: input.imagePath } : {}),
+      };
+      const { error } = await getSupabase().from('exercises').upsert(row);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exerciseKeys.all }),
+  });
+}
+
+export function useDeleteExercise() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await getSupabase()
+        .from('exercises')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: exerciseKeys.all }),
   });
 }

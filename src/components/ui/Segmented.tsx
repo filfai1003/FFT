@@ -42,6 +42,7 @@ export function Segmented<T extends string>({
             key={o.value}
             accessibilityRole="radio"
             accessibilityState={{ checked: selected }}
+            aria-checked={selected}
             accessibilityLabel={o.label}
             onPress={() => {
               if (selected) return;

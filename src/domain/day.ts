@@ -65,3 +65,42 @@ export function monthYearLabel(day: string): string {
   const m = Number(day.slice(5, 7));
   return `${MONTHS[m - 1]} ${day.slice(0, 4)}`;
 }
+
+export type RelativeDay =
+  | { kind: 'today' }
+  | { kind: 'yesterday' }
+  | { kind: 'daysAgo'; days: number }
+  | { kind: 'date'; label: string };
+
+/** Whole days between two YYYY-MM-DD dates (b - a). */
+export function daysBetween(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number);
+  const [by, bm, bd] = b.split('-').map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
+}
+
+/** "today", "yesterday", "3 days ago" within a week, otherwise "OCT 05". */
+export function relativeDay(day: string, today: string): RelativeDay {
+  const diff = daysBetween(day, today);
+  if (diff <= 0) return { kind: 'today' };
+  if (diff === 1) return { kind: 'yesterday' };
+  if (diff < 7) return { kind: 'daysAgo', days: diff };
+  const label = shortDateLabel(day).split(' ').slice(1).join(' ');
+  return { kind: 'date', label };
+}
+
+const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
+
+/** English weekday name of a YYYY-MM-DD date. */
+export function weekdayName(day: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  return WEEKDAY_NAMES[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}

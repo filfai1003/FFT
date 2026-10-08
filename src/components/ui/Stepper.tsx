@@ -69,6 +69,7 @@ export function Stepper({
         accessibilityRole="button"
         accessibilityLabel={kind === 'dec' ? decreaseLabel : increaseLabel}
         accessibilityState={{ disabled }}
+        aria-disabled={disabled}
         disabled={disabled}
         onPress={() => change(kind === 'dec' ? -step : step)}
         style={({ pressed }) => [

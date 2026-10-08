@@ -1,6 +1,7 @@
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { columnLevels } from '@/domain/dots';
 import { useTheme } from '@/design/use-theme';
+import { Text } from './Text';
 
 export type DotColumnChartProps = {
   /** One value per column (e.g. per week). */
@@ -13,6 +14,10 @@ export type DotColumnChartProps = {
   dotSize?: number;
   columnGap?: number;
   dotGap?: number;
+  /** Small caption under each column (the value, a week number…). */
+  labels?: readonly string[];
+  /** Columns share the full width instead of being as narrow as their dots. */
+  stretch?: boolean;
   /** Text alternative, e.g. "Strength rising steadily over 12 weeks". */
   accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
@@ -27,6 +32,8 @@ export function DotColumnChart({
   dotSize = 6,
   columnGap = 4,
   dotGap = 2,
+  labels,
+  stretch = false,
   accessibilityLabel,
   style,
 }: DotColumnChartProps) {
@@ -41,7 +48,15 @@ export function DotColumnChart({
       style={[{ flexDirection: 'row', alignItems: 'flex-end', gap: columnGap }, style]}
     >
       {levels.map((level, c) => (
-        <View key={c} style={{ flexDirection: 'column', gap: dotGap }}>
+        <View
+          key={c}
+          style={{
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: dotGap,
+            ...(stretch ? { flex: 1 } : null),
+          }}
+        >
           {Array.from({ length: rows }, (_, r) => (
             <View
               key={r}
@@ -54,6 +69,11 @@ export function DotColumnChart({
               }}
             />
           ))}
+          {labels ? (
+            <Text variant="label" muted style={{ marginTop: 4, letterSpacing: 0 }}>
+              {labels[c]}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>

@@ -1,0 +1,245 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable, View } from 'react-native';
+import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { Screen } from '@/components/ui/Screen';
+import { Text } from '@/components/ui/Text';
+import { touch } from '@/design/tokens';
+import { useTheme } from '@/design/use-theme';
+import { deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { displayWeight } from '@/domain/units';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { formatClock, trimNumber } from './logic';
+import { syncPendingSessions } from './sync';
+import { useSessionHydrated, useSessionStore } from './store';
+import { useQueryClient } from '@tanstack/react-query';
+import { historyKeys } from '@/features/train/history';
+
+const FEELINGS = [1, 2, 3, 4, 5] as const;
+
+/** "DONE": totals, new records, how it felt, notes. Works offline (reads the local copy). */
+export function SummaryScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const barHeight = useActionBarHeight();
+  const queryClient = useQueryClient();
+  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const hydrated = useSessionHydrated();
+  const finished = useSessionStore((s) => (sessionId ? s.finished[sessionId] : undefined));
+  const patch = useSessionStore((s) => s.patchFinished);
+  const unit = usePreferencesStore((s) => s.weightUnit);
+  const [feeling, setFeeling] = useState<number | null>(null);
+  const [notes, setNotes] = useState('');
+  const [showSets, setShowSets] = useState(false);
+
+  if (!hydrated) return <Screen>{null}</Screen>;
+  if (!finished) {
+    return (
+      <Screen gap={16}>
+        <Text variant="screenTitle">{t('session.noneTitle')}</Text>
+        <Button label={t('session.backToTrain')} onPress={() => router.replace('/train')} />
+      </Screen>
+    );
+  }
+
+  const { session, totals: sum, records } = finished;
+  const day = localDay(new Date(session.startedAt), deviceTimeZone());
+  const volume = displayWeight(sum.volumeKg, unit);
+  const minutes = Math.max(1, Math.round(sum.durationS / 60));
+
+  const stats = [
+    {
+      label: t('summary.duration'),
+      value: formatClock(sum.durationS),
+      unit: t('summary.min'),
+    },
+    { label: t('summary.volume'), value: String(Math.round(volume)), unit: unit.toUpperCase() },
+    { label: t('summary.sets'), value: String(sum.setsDone), unit: `/ ${sum.setsTotal}` },
+    { label: t('summary.records'), value: String(records.length), unit: t('summary.new') },
+  ];
+
+  const close = async () => {
+    patch(finished.session.id, { feeling, notes });
+    await syncPendingSessions(
+      () => void queryClient.invalidateQueries({ queryKey: historyKeys.all }),
+    );
+    router.replace('/');
+  };
+
+  return (
+    <>
+      <Screen scroll bottomBarHeight={barHeight + 100} gap={16}>
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
+            />
+            <Text variant="label" muted>
+              {`${session.dayName} · ${shortDateLabel(day)}`}
+            </Text>
+          </View>
+          <Text
+            variant="displayXL"
+            style={{ fontSize: 64, lineHeight: 64 }}
+            accessibilityRole="header"
+          >
+            {t('summary.done')}
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {stats.map((s) => (
+            <Card key={s.label} size="small" gap={6} style={{ width: '48%', flexGrow: 1 }}>
+              <Text variant="label" muted>
+                {s.label}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                <Text variant="displayM" numeric>
+                  {s.value}
+                </Text>
+                <Text variant="label" muted>
+                  {s.unit}
+                </Text>
+              </View>
+            </Card>
+          ))}
+        </View>
+
+        {records.length > 0 ? (
+          <Card size="small" gap={0}>
+            {records.map((r) => (
+              <View
+                key={`${r.exerciseId}-${r.kind}`}
+                style={{
+                  minHeight: 52,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingVertical: 6,
+                }}
+              >
+                <View
+                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }}
+                />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="bodyS">{r.name}</Text>
+                  <Text variant="label" muted>
+                    {r.kind === 'max'
+                      ? t('summary.maxDetail', {
+                          value: trimNumber(displayWeight(r.value, unit)),
+                          unit: unit.toUpperCase(),
+                          reps: r.reps,
+                          was: trimNumber(displayWeight(r.was, unit)),
+                        })
+                      : t('summary.estDetail', {
+                          value: Math.round(displayWeight(r.value, unit)),
+                          unit: unit.toUpperCase(),
+                          was: Math.round(displayWeight(r.was, unit)),
+                        })}
+                  </Text>
+                </View>
+                <Text variant="label" style={{ letterSpacing: 1 }}>
+                  {r.kind === 'max' ? t('summary.newMax') : t('summary.newEst')}
+                </Text>
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
+        <View
+          style={{ gap: 8 }}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('summary.howFelt')}
+        >
+          <Text variant="label" muted>
+            {t('summary.howFelt')}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {FEELINGS.map((n) => {
+              const selected = feeling === n;
+              return (
+                <Pressable
+                  key={n}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  aria-checked={selected}
+                  accessibilityLabel={`${n} ${t(`summary.feeling.${n}`)}`}
+                  onPress={() => setFeeling(selected ? null : n)}
+                  style={{
+                    flex: 1,
+                    minHeight: 52,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: selected ? colors.borderSelected : colors.borderControl,
+                    backgroundColor: selected ? colors.surfaceSelected : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <Text variant="displayS" numeric>
+                    {n}
+                  </Text>
+                  <Text variant="label" muted={!selected} style={{ letterSpacing: 0.3 }}>
+                    {t(`summary.feeling.${n}`)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <Input
+          accessibilityLabel={t('summary.notes')}
+          placeholder={t('summary.notesPlaceholder')}
+          value={notes}
+          onChangeText={setNotes}
+        />
+
+        {showSets ? (
+          <Card size="small" gap={10}>
+            {session.exercises
+              .filter((e) => e.sets.some((s) => s.done))
+              .map((e) => (
+                <View key={e.rowId} style={{ gap: 4 }}>
+                  <Text variant="bodyS" medium>
+                    {e.name}
+                  </Text>
+                  <Text variant="label" muted style={{ letterSpacing: 0.2 }}>
+                    {e.sets
+                      .filter((s) => s.done)
+                      .map((s) =>
+                        e.logType === 'weight_reps'
+                          ? `${s.weight}×${s.reps}`
+                          : s.reps || s.duration || s.distance,
+                      )
+                      .join(' · ')}
+                  </Text>
+                </View>
+              ))}
+          </Card>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setShowSets((v) => !v)}
+          style={{ minHeight: touch.minTarget, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text variant="label" muted>
+            {showSets ? t('summary.hideSets') : t('summary.seeSets')}
+          </Text>
+        </Pressable>
+        <Text variant="label" muted style={{ textAlign: 'center' }}>
+          {t('summary.minutes', { count: minutes })}
+        </Text>
+      </Screen>
+      <BottomActionBar>
+        <Button size="large" label={t('summary.saveAndClose')} onPress={close} />
+      </BottomActionBar>
+    </>
+  );
+}

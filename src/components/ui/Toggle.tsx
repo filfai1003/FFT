@@ -17,6 +17,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: ToggleProps
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value }}
+      aria-checked={value}
       // The visual is 44×26; the pressable area is 44px high.
       style={{ minWidth: touch.minTarget, minHeight: touch.minTarget, justifyContent: 'center' }}
       onPress={() => {

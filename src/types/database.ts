@@ -1207,6 +1207,7 @@ export type Database = {
       exercise_e1rm_daily: {
         Row: {
           best_e1rm_kg: number | null;
+          best_weight_kg: number | null;
           day: string | null;
           exercise_id: string | null;
           sets: number | null;
@@ -1226,6 +1227,8 @@ export type Database = {
       exercise_records: {
         Row: {
           actual_max_kg: number | null;
+          best_duration_s: number | null;
+          best_reps: number | null;
           completed_sets: number | null;
           est_1rm_kg: number | null;
           exercise_id: string | null;
@@ -1258,6 +1261,17 @@ export type Database = {
     };
     Functions: {
       epley_1rm: { Args: { reps: number; weight_kg: number }; Returns: number };
+      last_sets: {
+        Args: { p_exercise_ids: string[] };
+        Returns: {
+          distance_m: number;
+          duration_s: number;
+          exercise_id: string;
+          reps: number;
+          set_index: number;
+          weight_kg: number;
+        }[];
+      };
       strength_by_exercise: {
         Args: { p_from: string; p_to?: string };
         Returns: {

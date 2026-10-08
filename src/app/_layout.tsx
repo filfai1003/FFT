@@ -75,6 +75,8 @@ function AppNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={signedIn && onboarded}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="session" options={{ gestureEnabled: false }} />
       </Stack.Protected>
     </Stack>
   );

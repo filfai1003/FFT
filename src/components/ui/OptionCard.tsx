@@ -26,6 +26,7 @@ export function OptionCard({
     <Pressable
       accessibilityRole={role}
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       accessibilityLabel={description ? `${title}. ${description}` : title}
       onPress={() => {
         tick();

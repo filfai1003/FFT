@@ -1,7 +1,5 @@
-import { useTranslation } from 'react-i18next';
-import { PlaceholderScreen } from '@/components/ui/PlaceholderScreen';
+import { TrainScreen } from '@/features/train/TrainScreen';
 
-export default function TrainScreen() {
-  const { t } = useTranslation();
-  return <PlaceholderScreen title={t('nav.train')} />;
+export default function Train() {
+  return <TrainScreen />;
 }
