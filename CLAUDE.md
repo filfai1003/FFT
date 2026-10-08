@@ -56,4 +56,4 @@ supabase/           migrations/, seed.sql, tests/database (pgTAP, real stack), v
 Small verifiable steps, explain non-obvious choices in two lines, commit at the end of each step (only if `npm run check` passes), ask before expensive-to-change decisions (sync, navigation, auth, data structure).
 
 ## Status
-Phase 0 done and verified on the real local Supabase stack (migrations, pgTAP, generated types, image upload, end-to-end smoke screen `/dev/exercises`). Next: Phase 1 (auth + onboarding). Docker Desktop must be running for `npm run db:*` (except `db:verify`).
+Phases 0–5 built (foundations, auth/onboarding, training, diet, Today/Progress, Profile/privacy). Open items: `docs/DECISIONS.md` → Still open. Docker Desktop must be running for `npm run db:*` (except `db:verify`). Local backend: `npm run db:start`, then `npx supabase functions serve` for the Edge Functions; demo history via `supabase/scripts/demo-data.sql`.
