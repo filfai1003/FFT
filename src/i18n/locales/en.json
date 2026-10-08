@@ -1,0 +1,21 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "close": "Close",
+    "undo": "Undo",
+    "kcal": "kcal"
+  },
+  "nav": {
+    "today": "Today",
+    "train": "Train",
+    "diet": "Diet",
+    "progress": "Progress",
+    "profile": "Profile"
+  },
+  "today": {
+    "title": "Today",
+    "caloriesLeft": "Calories left"
+  }
+}
