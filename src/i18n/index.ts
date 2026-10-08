@@ -1,5 +1,5 @@
 import { getLocales } from 'expo-localization';
-import i18n, { use } from 'i18next';
+import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 
@@ -11,7 +11,8 @@ function deviceLanguage(): string {
   return supportedLanguages.includes(code) ? code : 'en';
 }
 
-void use(initReactI18next).init({
+// eslint-disable-next-line import/no-named-as-default-member
+void i18n.use(initReactI18next).init({
   resources,
   lng: deviceLanguage(),
   fallbackLng: 'en',
