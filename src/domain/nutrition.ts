@@ -133,3 +133,18 @@ export function autoSplit(total: Totals, shares: readonly number[]): Totals[] {
   }
   return result;
 }
+
+/** Scales grams of each macro by a ratio (when the calorie target changes, the split stays). */
+export function scaleMacros(
+  m: { proteinG: number; carbsG: number; fatG: number },
+  ratio: number,
+): { proteinG: number; carbsG: number; fatG: number } {
+  return {
+    proteinG: Math.round(m.proteinG * ratio),
+    carbsG: Math.round(m.carbsG * ratio),
+    fatG: Math.round(m.fatG * ratio),
+  };
+}
+
+/** Extra calories on training days when "Higher target on training days" is on. */
+export const TRAINING_DAY_BONUS_KCAL = 200;

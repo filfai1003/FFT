@@ -6,6 +6,7 @@ import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { ExerciseBrowser } from './ExerciseBrowser';
+import { goBack } from '@/lib/navigation';
 
 export function LibraryScreen({
   exerciseRoute,
@@ -18,7 +19,7 @@ export function LibraryScreen({
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
       <TopBar
-        onBack={() => router.back()}
+        onBack={() => goBack(router)}
         backLabel={t('common.back')}
         right={
           <IconButton

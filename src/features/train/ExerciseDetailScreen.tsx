@@ -24,6 +24,7 @@ import { ExerciseThumb } from './exercise-image';
 import { useExerciseTrend, useRecords } from './exercise-stats';
 import { useExerciseSessions } from './history';
 import { useDeleteExercise, useExercises, type Exercise } from './exercises';
+import { goBack } from '@/lib/navigation';
 
 type Metric = 'est1rm' | 'max';
 const POINTS = 8;
@@ -68,7 +69,7 @@ export function ExerciseDetailScreen({
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() => router.back()}
+          onBack={() => goBack(router)}
           backLabel={t('common.back')}
           right={
             exercise.ownerId ? (
@@ -253,7 +254,7 @@ export function ExerciseDetailScreen({
             onPress={async () => {
               await remove.mutateAsync(exerciseId);
               setConfirmDelete(false);
-              router.back();
+              goBack(router);
             }}
           />
         }

@@ -25,6 +25,7 @@ import {
 import { ExerciseThumb } from './exercise-image';
 import { useDeleteDay, usePlan, useSaveDay, type DayDraftExercise } from './plans';
 import { Sheet } from '@/components/ui/Sheet';
+import { goBack } from '@/lib/navigation';
 
 /** Edit one day of a plan: name, exercises, sets / reps / rest of each. */
 export function DayEditorScreen() {
@@ -83,7 +84,7 @@ export function DayEditorScreen() {
         exercises: state.exercises,
         removedIds: state.removedIds,
       });
-      router.back();
+      goBack(router);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -93,7 +94,7 @@ export function DayEditorScreen() {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={16}>
         <FormHeader
-          left={{ label: t('common.cancel'), onPress: () => router.back() }}
+          left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
           title={subtitle}
         />
 
@@ -192,7 +193,7 @@ export function DayEditorScreen() {
             onPress={async () => {
               await deleteDay.mutateAsync(state.dayId);
               setConfirmDelete(false);
-              router.back();
+              goBack(router);
             }}
           />
         }

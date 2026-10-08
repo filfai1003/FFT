@@ -18,6 +18,7 @@ import { setLabel } from './ExerciseDetailScreen';
 import { ExerciseThumb } from './exercise-image';
 import { useSessionDetail } from './history';
 import { useExercises } from './exercises';
+import { goBack } from '@/lib/navigation';
 
 export function SessionDetailScreen({
   sessionId,
@@ -63,7 +64,7 @@ export function SessionDetailScreen({
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => router.back()} backLabel={t('common.back')} />
+      <TopBar onBack={() => goBack(router)} backLabel={t('common.back')} />
 
       <View style={{ gap: 6 }}>
         <Text variant="label" muted>

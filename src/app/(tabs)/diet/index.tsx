@@ -1,7 +1,5 @@
-import { useTranslation } from 'react-i18next';
-import { PlaceholderScreen } from '@/components/ui/PlaceholderScreen';
+import { DietScreen } from '@/features/diet/DietScreen';
 
-export default function DietScreen() {
-  const { t } = useTranslation();
-  return <PlaceholderScreen title={t('nav.diet')} />;
+export default function Diet() {
+  return <DietScreen />;
 }

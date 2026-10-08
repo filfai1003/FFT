@@ -23,6 +23,7 @@ import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions, type SessionView } from './history';
+import { goBack } from '@/lib/navigation';
 
 /** Days of a month as a grid (Monday or Sunday first), with leading blanks. */
 export function monthGrid(ym: string, weekStart: 'mon' | 'sun'): (string | null)[] {
@@ -70,7 +71,7 @@ export function HistoryScreen({
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => router.back()} backLabel={t('common.back')} />
+      <TopBar onBack={() => goBack(router)} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('history.title')}</Text>
 
       <Card size="small" gap={10}>

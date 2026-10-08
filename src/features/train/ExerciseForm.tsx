@@ -17,6 +17,7 @@ import { newId } from '@/lib/uuid';
 import { useExerciseImageUri } from './exercise-image';
 import { muscles, useExercises, useSaveExercise, type LogType, type Muscle } from './exercises';
 import { pickSquareImage, uploadPrivateImage } from './pick-image';
+import { goBack } from '@/lib/navigation';
 
 const equipment = ['barbell', 'dumbbells', 'machine', 'cables', 'bodyweight', 'bands'] as const;
 const logTypes: LogType[] = ['weight_reps', 'reps', 'time', 'distance_time'];
@@ -69,7 +70,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
         logType,
         imagePath,
       });
-      router.back();
+      goBack(router);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -79,7 +80,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={22}>
         <FormHeader
-          left={{ label: t('common.cancel'), onPress: () => router.back() }}
+          left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
           title={editing ? t('exerciseForm.editTitle') : t('exerciseForm.newTitle')}
         />
 

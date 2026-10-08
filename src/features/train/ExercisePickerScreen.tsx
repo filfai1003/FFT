@@ -13,6 +13,7 @@ import { useSessionStore } from '@/features/session/store';
 import { addExercisesToDay, useDayEditorStore } from './day-editor';
 import { ExerciseBrowser } from './ExerciseBrowser';
 import { useExercises, type Exercise } from './exercises';
+import { goBack } from '@/lib/navigation';
 
 /** Pick exercises for a plan day (`target=day`) or for the workout in progress (`target=session`). */
 export function ExercisePickerScreen() {
@@ -62,7 +63,7 @@ export function ExercisePickerScreen() {
       patchDay((s) => addExercisesToDay(s, chosen));
     }
     setBusy(false);
-    router.back();
+    goBack(router);
   };
 
   return (
@@ -72,7 +73,7 @@ export function ExercisePickerScreen() {
           <IconButton
             icon="close"
             accessibilityLabel={t('common.close')}
-            onPress={() => router.back()}
+            onPress={() => goBack(router)}
           />
           <View style={{ gap: 2, flex: 1 }}>
             <Text variant="label" muted>

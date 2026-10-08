@@ -35,6 +35,7 @@ import {
   type SetField,
 } from './logic';
 import { useSessionHydrated, useSessionStore } from './store';
+import { goBack } from '@/lib/navigation';
 
 const BOTTOM_NAV_HEIGHT = 60 + 34 + 12;
 
@@ -70,7 +71,7 @@ export function SessionScreen() {
   const previousEx = active.exercises[index - 1];
   const nextEx = active.exercises[index + 1];
 
-  const minimize = () => (router.canGoBack() ? router.back() : router.replace('/train'));
+  const minimize = () => (router.canGoBack() ? goBack(router) : router.replace('/train'));
 
   const onChange = (setIndex: number, field: SetField, value: string) =>
     update((s) => setField(s, index, setIndex, field, value));

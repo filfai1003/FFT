@@ -26,6 +26,7 @@ import {
   type PlanView,
   type Rotation,
 } from './plans';
+import { goBack } from '@/lib/navigation';
 
 type SheetKind = null | 'menu' | 'rename' | 'deletePlan';
 
@@ -60,7 +61,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() => router.back()}
+          onBack={() => goBack(router)}
           backLabel={t('common.back')}
           right={
             <IconButton
@@ -318,7 +319,7 @@ function PlanSheets({
             onPress={async () => {
               await deletePlan.mutateAsync(plan.id);
               close();
-              router.back();
+              goBack(router);
             }}
           />
         }
