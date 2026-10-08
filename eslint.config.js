@@ -6,6 +6,7 @@ module.exports = defineConfig([
   expo,
   prettier,
   { ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*'] },
+  { files: ['jest.setup.js'], languageOptions: { globals: { jest: 'readonly' } } },
   {
     // UI copy must go through i18n: no literal text inside JSX.
     files: ['src/**/*.tsx'],
