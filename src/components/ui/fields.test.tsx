@@ -46,6 +46,15 @@ function Harness({
 }
 
 describe('Stepper', () => {
+  it('buttons are at least 44x44', async () => {
+    await renderUI(<Harness />);
+    for (const name of ['Fewer sets', 'More sets']) {
+      const style = flat(screen.getByRole('button', { name }).props.style);
+      expect(style.width).toBeGreaterThanOrEqual(44);
+      expect(style.height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
   it('increments and decrements within bounds', async () => {
     await renderUI(<Harness initial={2} min={1} max={3} />);
     await fireEvent.press(screen.getByRole('button', { name: 'More sets' }));

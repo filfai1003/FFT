@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 
@@ -16,8 +17,8 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: ToggleProps
       accessibilityRole="switch"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value }}
-      // The visual is 26px high; the touch area is extended to 44px.
-      hitSlop={{ top: 9, bottom: 9, left: 4, right: 4 }}
+      // The visual is 44×26; the pressable area is 44px high.
+      style={{ minWidth: touch.minTarget, minHeight: touch.minTarget, justifyContent: 'center' }}
       onPress={() => {
         tick();
         onValueChange(!value);

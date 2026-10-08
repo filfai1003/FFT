@@ -121,6 +121,7 @@ export function Stepper({
             selectionColor={colors.accent}
             style={{
               minWidth: 60,
+              height: 46,
               padding: 0,
               textAlign: 'right',
               color: colors.text,
@@ -152,11 +153,11 @@ export function Stepper({
         backgroundColor: colors.bg,
       }}
     >
-      {button('dec', 40)}
+      {button('dec', touch.minTarget)}
       <Text variant="body" style={{ fontFamily: fontFamily.label }} accessibilityRole="adjustable">
         {format(value)}
       </Text>
-      {button('inc', 40)}
+      {button('inc', touch.minTarget)}
     </View>
   );
 }

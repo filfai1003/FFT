@@ -32,12 +32,7 @@ export function Sheet({ visible, onClose, title, closeLabel, children, footer }:
       navigationBarTranslucent
     >
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}>
-        <Pressable
-          accessible={false}
-          importantForAccessibility="no"
-          onPress={onClose}
-          style={{ flex: 1 }}
-        />
+        <Pressable accessible={false} aria-hidden onPress={onClose} style={{ flex: 1 }} />
         <View
           accessibilityViewIsModal
           style={{

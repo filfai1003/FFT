@@ -86,8 +86,8 @@ describe('Toggle', () => {
     expect(toggle.props.accessibilityState).toEqual({ checked: false });
     await fireEvent.press(toggle);
     expect(onValueChange).toHaveBeenCalledWith(true);
-    // 26px visual + hit slop above and below must reach 44px
-    const slop = toggle.props.hitSlop as { top: number; bottom: number };
-    expect(26 + slop.top + slop.bottom).toBeGreaterThanOrEqual(44);
+    const style = flat(toggle.props.style);
+    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+    expect(style.minWidth).toBeGreaterThanOrEqual(44);
   });
 });

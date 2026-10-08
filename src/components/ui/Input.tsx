@@ -58,6 +58,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     flex: 1,
     minWidth: 0,
     padding: 0,
+    height: '100%' as const,
   };
 
   return (
