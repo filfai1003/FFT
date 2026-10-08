@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Exercise images to provide</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&amp;family=Space+Grotesk:wght@400;500&amp;family=Space+Mono&amp;display=swap">
+<style>
+body{margin:0;background:#000}
+</style>
+</helmet>
+<div style="width: 640px; height: 460px; box-sizing: border-box; background-color: #000; background-image: radial-gradient(#1c1c1c 1px, transparent 1px); background-size: 14px 14px; color: #fff; font-family: 'Space Grotesk', sans-serif; padding: 48px; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-family: 'Doto', monospace; font-weight: 800; font-size: 32px; line-height: 1">EXERCISE IMAGES</h1>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">SQUARE 1:1 · 512×512 PNG · DARK OR TRANSPARENT BACKGROUND</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); row-gap: 24px; column-gap: 16px">
+<sc-for list="{{items}}" as="i" hint-placeholder-count="12">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<dc-import name="ExerciseIcon" src="" size="64" hint-size="64px,64px"></dc-import>
+<span style="display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center">
+<span style="font-size: 12px; line-height: 1.3">{{i.name}}</span>
+<span style="font-family: 'Space Mono', monospace; font-size: 9px; color: #8e8e8e">{{i.file}}</span>
+</span>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":460}}'>
+class Component extends DCLogic {
+renderVals() {
+const i = (name, file) => ({ name, file });
+return {
+items: [
+i('Bench press', 'bench-press.png'),
+i('Incline DB press', 'incline-db-press.png'),
+i('Overhead press', 'overhead-press.png'),
+i('Lateral raise', 'lateral-raise.png'),
+i('Cable fly', 'cable-fly.png'),
+i('Triceps pushdown', 'pushdown.png'),
+i('Pull-up', 'pull-up.png'),
+i('Barbell row', 'barbell-row.png'),
+i('Lat pulldown', 'lat-pulldown.png'),
+i('Biceps curl', 'biceps-curl.png'),
+i('Back squat', 'back-squat.png'),
+i('Romanian deadlift', 'romanian-deadlift.png')
+]
+};
+}
+}
+</script>
+</body>
+</html>

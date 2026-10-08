@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Check-in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&amp;family=Space+Grotesk:wght@400;500&amp;family=Space+Mono&amp;display=swap">
+<style>
+body{margin:0;background:#000}
+a{color:#fff}a:hover{color:#bbb}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background-color: #000; background-image: radial-gradient(#1c1c1c 1px, transparent 1px); background-size: 14px 14px; color: #f2f2f2; font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; padding: 59px 20px 112px; gap: 18px; overflow: hidden">
+
+<div style="display: flex; justify-content: space-between; align-items: center">
+<a href="Progressi.dc.html" style="text-decoration: none; height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #6e6e6e; color: #f2f2f2; display: flex; align-items: center; font-size: 14px">Cancel</a>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">CHECK-IN</span>
+<span aria-hidden="true" style="width: 86px"></span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h1 style="margin: 0; font-family: 'Doto', monospace; font-weight: 800; font-size: 36px; line-height: 1">THU OCT 08</h1>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">EVERY FIELD IS OPTIONAL · FILL WHAT YOU HAVE</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{main}}" as="f" hint-placeholder-count="2">
+<label style="display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 18px; border: 1px solid #6e6e6e; background: #111">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">{{f.label}}</span>
+<span style="display: flex; align-items: baseline; gap: 4px"><input type="text" inputmode="decimal" value="{{f.val}}" style="width: 90px; border: none; background: transparent; color: #f2f2f2; font-family: 'Doto', monospace; font-weight: 800; font-size: 32px; line-height: 1"><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: #8e8e8e">{{f.unit}}</span></span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">{{f.hint}}</span>
+</label>
+</sc-for>
+</div>
+
+<fieldset style="border: none; margin: 0; padding: 0">
+<legend style="padding: 0 0 8px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">MEASUREMENTS · CM</legend>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{meas}}" as="m" hint-placeholder-count="4">
+<label style="display: flex; align-items: center; justify-content: space-between; height: 48px; box-sizing: border-box; border-radius: 14px; border: 1px solid #262626; background: #0d0d0d; padding: 0 14px">
+<span style="font-size: 14px">{{m.n}}</span>
+<input type="text" inputmode="decimal" placeholder="{{m.last}}" style="width: 56px; border: none; background: transparent; color: #f2f2f2; text-align: right; font-family: 'Space Mono', monospace; font-size: 16px">
+</label>
+</sc-for>
+</div>
+</fieldset>
+
+<fieldset style="border: none; margin: 0; padding: 0">
+<legend style="padding: 0 0 8px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">PHOTOS · PRIVATE</legend>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{poses}}" as="p" hint-placeholder-count="3">
+<button aria-label="Take {{p}} photo" style="height: 112px; border-radius: 14px; border: 1px dashed #6e6e6e; background: transparent; color: #ccc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-family: inherit">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em">{{p}}</span>
+</button>
+</sc-for>
+</div>
+</fieldset>
+
+<label style="display: block">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Notes</span>
+<input type="text" placeholder="Notes (sleep, how you feel…)" style="width: 100%; box-sizing: border-box; height: 48px; border-radius: 16px; border: 1px solid #262626; background: #0d0d0d; color: #f2f2f2; padding: 0 16px; font-family: inherit; font-size: 16px">
+</label>
+
+<span style="margin-top: auto; color: #8e8e8e; font-size: 13px; line-height: 1.45">Tip: weigh in after waking, before eating. You can turn on a weekly check-in reminder in Settings.</span>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 20px 34px; background: #000; border-top: 1px solid #262626">
+<a href="Progressi.dc.html" style="text-decoration: none; height: 56px; border-radius: 28px; background: {{accent}}; color: #f2f2f2; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 17px">Save check-in</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#D71921","options":["#D71921","#FF5A1F","#FFFFFF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+accent: this.props.accent ?? '#D71921',
+main: [
+{ label: 'WEIGHT', val: '78.4', unit: 'KG', hint: 'LAST 78.7 · WED' },
+{ label: 'BODY FAT', val: '16.8', unit: '%', hint: 'SMART SCALE' }
+],
+meas: [
+{ n: 'Waist', last: '83.0' }, { n: 'Hips', last: '96.5' },
+{ n: 'Chest', last: '102.0' }, { n: 'Arm', last: '36.5' }
+],
+poses: ['FRONT', 'SIDE', 'BACK']
+};
+}
+}
+</script>
+</body>
+</html>

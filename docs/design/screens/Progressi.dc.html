@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Progress</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&amp;family=Space+Grotesk:wght@400;500&amp;family=Space+Mono&amp;display=swap">
+<style>
+body{margin:0;background:#000}
+a{color:#fff}a:hover{color:#bbb}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background-color: #000; background-image: radial-gradient(#1c1c1c 1px, transparent 1px); background-size: 14px 14px; color: #f2f2f2; font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; padding: 59px 20px 100px; gap: 14px; overflow: hidden">
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: #8e8e8e">SINCE JUL 16</span>
+<h1 style="margin: 0; font-family: 'Doto', monospace; font-weight: 800; font-size: 44px; line-height: 1">PROGRESS</h1>
+</div>
+<a href="CheckIn.dc.html" aria-label="New check-in" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #6e6e6e; background: #0d0d0d; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</a>
+</div>
+
+<div role="radiogroup" aria-label="Time range" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 22px; border: 1px solid #262626; background: #0d0d0d">
+<sc-for list="{{ranges}}" as="r" hint-placeholder-count="4">
+<sc-if value="{{r.on}}" hint-placeholder-val="{{ false }}"><button role="radio" aria-checked="true" style="height: 44px; border-radius: 22px; border: 1px solid #fff; background: #161616; color: #f2f2f2; font-family: 'Space Mono', monospace; font-size: 11px">{{r.label}}</button></sc-if>
+<sc-if value="{{r.off}}" hint-placeholder-val="{{ true }}"><button role="radio" aria-checked="false" style="height: 44px; border-radius: 22px; border: none; background: transparent; color: #8e8e8e; font-family: 'Space Mono', monospace; font-size: 11px">{{r.label}}</button></sc-if>
+</sc-for>
+</div>
+
+<a href="ForzaGruppi.dc.html" style="text-decoration: none; color: #f2f2f2; background: #111; border: 1px solid #262626; border-radius: 24px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">STRENGTH</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e8e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 12px">
+<span style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 48px; line-height: 1">+8.4%</span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">AVG CHANGE IN EST. 1RM</span>
+</span>
+<div role="img" aria-label="Strength rising steadily over 12 weeks" style="display: flex; gap: 4px; align-items: flex-end">
+<sc-for list="{{sCols}}" as="c" hint-placeholder-count="12">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{c.off}}" as="d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #222"></span></sc-for>
+<sc-for list="{{c.on}}" as="d"><span style="width: 6px; height: 6px; border-radius: 3px; background: #fff"></span></sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+<span style="padding-top: 10px; border-top: 1px dashed #2e2e2e; font-family: 'Space Mono', monospace; font-size: 11px; color: #ccc">TOP · BACK +11% · CHEST +9% · SHOULDERS +7%</span>
+</a>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{body}}" as="b" hint-placeholder-count="2">
+<a href="{{b.href}}" style="text-decoration: none; color: #f2f2f2; background: #111; border: 1px solid #262626; border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">{{b.label}}</span>
+<span style="display: flex; align-items: baseline; gap: 4px"><span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 30px; line-height: 1">{{b.val}}</span><span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">{{b.unit}}</span></span>
+<div aria-hidden="true" style="display: flex; gap: 3px; align-items: flex-end">
+<sc-for list="{{b.cols}}" as="c">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{c.off}}" as="d"><span style="width: 4px; height: 4px; border-radius: 2px; background: #222"></span></sc-for>
+<sc-for list="{{c.on}}" as="d"><span style="width: 4px; height: 4px; border-radius: 2px; background: #fff"></span></sc-for>
+</div>
+</sc-for>
+</div>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #ccc">{{b.delta}}</span>
+</a>
+</sc-for>
+</div>
+
+<a href="Foto.dc.html" style="text-decoration: none; color: #f2f2f2; background: #111; border: 1px solid #262626; border-radius: 24px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">PHOTOS · LAST CHECK-IN OCT 1</span>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e8e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{poses}}" as="p" hint-placeholder-count="3">
+<div style="height: 96px; border-radius: 14px; border: 1px dashed #6e6e6e; background: #161616; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #666">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2.5"/><path d="M8 21v-6l-2-1 1-5h10l1 5-2 1v6"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8e8e8e">{{p}}</span>
+</div>
+</sc-for>
+</div>
+</a>
+
+<nav aria-label="Main navigation" style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid #262626; background: #000; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 4px 34px">
+<a href="Main.dc.html" style="text-decoration: none; color: #8e8e8e; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">TODAY</span>
+<span style="width: 4px; height: 4px"></span>
+</a>
+<a href="Schede.dc.html" style="text-decoration: none; color: #8e8e8e; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 9v6M21 9v6M6 6v12M18 6v12M6 12h12"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">TRAIN</span>
+<span style="width: 4px; height: 4px"></span>
+</a>
+<a href="Diario.dc.html" style="text-decoration: none; color: #8e8e8e; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-2 0-3 3-3 6s1 4 3 4v8"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">DIET</span>
+<span style="width: 4px; height: 4px"></span>
+</a>
+<a href="Progressi.dc.html" style="text-decoration: none; color: #f2f2f2; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">PROGRESS</span>
+<span style="width: 4px; height: 4px; border-radius: 2px; background: {{accent}}"></span>
+</a>
+<a href="Profilo.dc.html" style="text-decoration: none; color: #8e8e8e; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">PROFILE</span>
+<span style="width: 4px; height: 4px"></span>
+</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#D71921","options":["#D71921","#FF5A1F","#FFFFFF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dots = (n) => Array.from({ length: n }, (_, i) => ({ i }));
+const cols = (vals, lo, hi, h) => vals.map((v) => {
+const on = Math.max(1, Math.min(h, Math.round(((v - lo) / (hi - lo)) * (h - 1)) + 1));
+return { on: dots(on), off: dots(h - on) };
+});
+const s = [0, 0.8, 1.5, 2.4, 3.1, 3.6, 4.5, 5.2, 6.0, 6.9, 7.6, 8.4];
+const w = [81.2, 81.0, 80.7, 80.5, 80.1, 79.9, 79.6, 79.4, 79.1, 78.9, 78.6, 78.4];
+const bf = [18.9, 18.8, 18.6, 18.4, 18.2, 18.0, 17.8, 17.6, 17.4, 17.2, 17.0, 16.8];
+const r = (label, on) => ({ label, on, off: !on });
+return {
+accent: this.props.accent ?? '#D71921',
+ranges: [r('4 WK', false), r('12 WK', true), r('1 YR', false), r('ALL', false)],
+sCols: cols(s, 0, 8.4, 8),
+body: [
+{ href: 'Peso.dc.html', label: 'BODY WEIGHT', val: '78.4', unit: 'KG', delta: '−2.8 KG', cols: cols(w, 78.4, 81.2, 5) },
+{ href: 'Composizione.dc.html', label: 'BODY FAT', val: '16.8', unit: '%', delta: '−2.1 PTS', cols: cols(bf, 16.8, 18.9, 5) }
+],
+poses: ['FRONT', 'SIDE', 'BACK']
+};
+}
+}
+</script>
+</body>
+</html>

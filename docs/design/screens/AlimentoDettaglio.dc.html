@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Food detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&amp;family=Space+Grotesk:wght@400;500&amp;family=Space+Mono&amp;display=swap">
+<style>
+body{margin:0;background:#000}
+a{color:#fff}a:hover{color:#bbb}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background-color: #000; background-image: radial-gradient(#1c1c1c 1px, transparent 1px); background-size: 14px 14px; color: #f2f2f2; font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; padding: 59px 20px 112px; gap: 14px; overflow: hidden">
+
+<div style="display: flex; justify-content: space-between; align-items: center">
+<a href="Cerca.dc.html" aria-label="Back" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #6e6e6e; background: #0d0d0d; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+</a>
+<button aria-label="Change meal" style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #6e6e6e; background: transparent; color: #f2f2f2; display: flex; align-items: center; gap: 6px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">TO LUNCH<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+<button aria-label="Save to favorites" style="width: 44px; height: 44px; border-radius: 22px; border: 1px solid #6e6e6e; background: #0d0d0d; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 4l2.5 5 5.5.8-4 3.9.9 5.5L12 16.6 7.1 19.2 8 13.7 4 9.8 9.5 9z"/></svg>
+</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 24px; font-weight: 500; line-height: 1.15">Skyr, plain 0% fat</h1>
+<span style="display: flex; align-items: center; gap: 6px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8e8e8e"><span style="width: 5px; height: 5px; border-radius: 3px; background: #fff"></span>VERIFIED · OPEN FOOD FACTS</span>
+</div>
+
+<div style="background: #111; border: 1px solid #262626; border-radius: 24px; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="display: flex; align-items: baseline; gap: 6px"><span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 48px; line-height: 1">107</span><span style="font-family: 'Space Mono', monospace; font-size: 12px; color: #8e8e8e">KCAL</span></span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">FOR 170 G</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 12px; border-top: 1px dashed #2e2e2e">
+<sc-for list="{{macros}}" as="m" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8e8e8e">{{m.label}}</span>
+<span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 22px; line-height: 1">{{m.val}}<span style="font-family: 'Space Mono', monospace; font-weight: 400; font-size: 11px; color: #8e8e8e"> g</span></span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">{{m.share}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+<fieldset style="border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+<legend style="padding: 0 0 8px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">AMOUNT</legend>
+<div style="display: flex; gap: 8px">
+<button style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #6e6e6e; background: transparent; color: #ccc; font-family: 'Space Mono', monospace; font-size: 12px">100 G</button>
+<button style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #fff; background: #161616; color: #f2f2f2; font-family: 'Space Mono', monospace; font-size: 12px">1 POT · 170 G</button>
+<button style="height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid #6e6e6e; background: transparent; color: #ccc; font-family: 'Space Mono', monospace; font-size: 12px">CUSTOM</button>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button aria-label="Decrease amount" style="width: 48px; height: 48px; border-radius: 24px; border: 1px solid #6e6e6e; background: transparent; color: #f2f2f2; font-size: 20px">−</button>
+<label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 24px; background: #111; border: 1px solid #6e6e6e">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Amount in grams</span>
+<input type="text" inputmode="numeric" value="170" style="width: 60px; border: none; background: transparent; text-align: right; font-family: 'Space Mono', monospace; font-size: 18px; color: #f2f2f2">
+<span style="font-family: 'Space Mono', monospace; font-size: 14px; color: #8e8e8e">g</span>
+</label>
+<button aria-label="Increase amount" style="width: 48px; height: 48px; border-radius: 24px; border: 1px solid #6e6e6e; background: transparent; color: #f2f2f2; font-size: 20px">+</button>
+</div>
+</fieldset>
+
+<table style="width: 100%; border-collapse: collapse; font-size: 13px">
+<thead><tr style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #8e8e8e"><th scope="col" style="text-align: left; font-weight: 400; padding: 0 0 6px">NUTRITION</th><th scope="col" style="text-align: right; font-weight: 400; padding: 0 0 6px">PER 100 G</th><th scope="col" style="text-align: right; font-weight: 400; padding: 0 0 6px">PER 170 G</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr style="border-top: 1px dashed #262626"><th scope="row" style="text-align: left; font-weight: 400; padding: 6px 0 6px {{r.indent}}; color: {{r.color}}">{{r.name}}</th><td style="text-align: right; font-family: 'Space Mono', monospace; font-size: 12px; padding: 6px 0">{{r.a}}</td><td style="text-align: right; font-family: 'Space Mono', monospace; font-size: 12px; padding: 6px 0">{{r.b}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 20px 34px; background: #000; border-top: 1px solid #262626">
+<a href="Diario.dc.html" style="text-decoration: none; height: 56px; border-radius: 28px; background: {{accent}}; color: #f2f2f2; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 17px">Add to lunch</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#D71921","options":["#D71921","#FF5A1F","#FFFFFF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const r = (name, a, b, sub) => ({ name, a, b, indent: sub ? '14px' : '0', color: sub ? '#8e8e8e' : '#fff' });
+return {
+accent: this.props.accent ?? '#D71921',
+macros: [
+{ label: 'PROTEIN', val: '18.7', share: '12% OF GOAL' },
+{ label: 'CARBS', val: '6.8', share: '3% OF GOAL' },
+{ label: 'FAT', val: '0.3', share: '0% OF GOAL' }
+],
+rows: [
+r('Energy', '63 kcal', '107 kcal', false),
+r('Protein', '11 g', '18.7 g', false),
+r('Carbohydrates', '4 g', '6.8 g', false),
+r('of which sugars', '4 g', '6.8 g', true),
+r('Fat', '0.2 g', '0.3 g', false),
+r('of which saturates', '0.1 g', '0.2 g', true),
+r('Fiber', '0 g', '0 g', false),
+r('Salt', '0.1 g', '0.2 g', false)
+]
+};
+}
+}
+</script>
+</body>
+</html>
