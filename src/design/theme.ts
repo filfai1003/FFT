@@ -1,3 +1,4 @@
+import { readableOn } from './contrast';
 import { accentOptions, color, type AccentName } from './tokens';
 
 /** Text-size steps of the Accessibility screen ("Text size 3 of 5"; step 3 = 1x). */
@@ -17,7 +18,11 @@ const highContrastOverrides = {
 } as const;
 
 type Widen<T> = { [K in keyof T]: T[K] extends string ? string : T[K] };
-export type ThemeColors = Widen<Omit<typeof color, 'accentDefault'>> & { accent: string };
+export type ThemeColors = Widen<Omit<typeof color, 'accentDefault'>> & {
+  accent: string;
+  /** Text/icon colour that stays readable on top of the accent (the white accent needs black). */
+  onAccent: string;
+};
 
 export function buildTheme({ accent, highContrast }: ThemeOptions): ThemeColors {
   const { accentDefault: _accentDefault, ...base } = color;
@@ -25,6 +30,7 @@ export function buildTheme({ accent, highContrast }: ThemeOptions): ThemeColors 
     ...base,
     ...(highContrast ? highContrastOverrides : {}),
     accent: accentOptions[accent],
+    onAccent: readableOn(accentOptions[accent]),
   };
 }
 

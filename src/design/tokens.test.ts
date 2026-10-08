@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { accentOptions, bars, color, radius, space, touch, typeScale } from './tokens';
+import { contrastRatio as contrast } from './contrast';
 import { buildTheme, textScaleFor, textScaleSteps } from './theme';
 import { defaultAppearance, useAppearanceStore } from './appearance-store';
 
@@ -78,6 +79,13 @@ describe('theme', () => {
     );
   });
 
+  it('text on every accent colour is readable (>= 4.5:1)', () => {
+    for (const name of Object.keys(accentOptions) as (keyof typeof accentOptions)[]) {
+      const th = buildTheme({ accent: name, highContrast: false });
+      expect(contrast(th.onAccent, th.accent)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('text scale: step 3 of 5 is 1x, out-of-range steps are clamped', () => {
     expect(textScaleFor(3)).toBe(1);
     expect(textScaleFor(0)).toBe(textScaleSteps[0]);
@@ -94,15 +102,3 @@ describe('appearance store', () => {
     expect(useAppearanceStore.getState().highContrast).toBe(false);
   });
 });
-
-function luminance(hex: string) {
-  const [r, g, b] = [1, 3, 5]
-    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrast(a: string, b: string) {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
