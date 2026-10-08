@@ -37,6 +37,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.20.5",
@@ -48,6 +49,7 @@
     "jest-expo": "^57.0.5",
     "prettier": "^3.9.9",
     "react-test-renderer": "^19.2.3",
+    "supabase": "^2.120.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -60,7 +62,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",
-    "check": "npm run lint && npm run typecheck && npm test"
+    "check": "npm run lint && npm run typecheck && npm test && npm run db:verify",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:seed": "node supabase/scripts/generate-seed.js",
+    "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "db:verify": "node --test supabase/tests/pglite/db.test.mjs"
   },
   "private": true,
   "jest": {
