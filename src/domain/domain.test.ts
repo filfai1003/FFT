@@ -5,9 +5,11 @@ import {
   defaultMacros,
   macroKcal,
   macroPercents,
+  macrosFromPercents,
   maintenanceKcal,
   minimumAllowedKcal,
   portion,
+  setMacroPercent,
   suggestedKcal,
   targetProblem,
 } from './nutrition';
@@ -140,6 +142,27 @@ describe('calories and macros', () => {
     expect(Math.abs(macroKcal(m) - 2350)).toBeLessThan(10);
     const small = defaultMacros(1500, 120);
     expect(small.proteinG).toBeLessThanOrEqual(Math.round((1500 * 0.35) / 4));
+  });
+
+  it('changing one macro percentage rescales the others to keep 100%', () => {
+    const next = setMacroPercent({ protein: 27, carbs: 44, fat: 29 }, 'protein', 40);
+    expect(next.protein).toBe(40);
+    expect(next.protein + next.carbs + next.fat).toBe(100);
+    expect(next.carbs).toBeGreaterThan(next.fat);
+    expect(setMacroPercent({ protein: 100, carbs: 0, fat: 0 }, 'protein', 50)).toEqual({
+      protein: 50,
+      carbs: 25,
+      fat: 25,
+    });
+    expect(setMacroPercent({ protein: 30, carbs: 40, fat: 30 }, 'fat', 150).fat).toBe(100);
+  });
+
+  it('grams follow from calories and percentages', () => {
+    expect(macrosFromPercents(2000, { protein: 30, carbs: 40, fat: 30 })).toEqual({
+      proteinG: 150,
+      carbsG: 200,
+      fatG: 67,
+    });
   });
 
   it('portion values come from per-100 g values', () => {

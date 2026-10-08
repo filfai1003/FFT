@@ -97,6 +97,30 @@ export function macroPercents(m: { proteinG: number; carbsG: number; fatG: numbe
   return { protein, carbs: 100 - protein - fat, fat };
 }
 
+type Percents = { protein: number; carbs: number; fat: number };
+
+/**
+ * Sets one macro's share of the calories and rescales the other two proportionally so the
+ * three whole percentages keep adding up to 100.
+ */
+export function setMacroPercent(current: Percents, key: keyof Percents, value: number): Percents {
+  const next = Math.min(100, Math.max(0, Math.round(value)));
+  const [a, b] = (['protein', 'carbs', 'fat'] as const).filter((k) => k !== key);
+  const rest = 100 - next;
+  const others = current[a] + current[b];
+  const aShare = others === 0 ? Math.round(rest / 2) : Math.round((current[a] / others) * rest);
+  return { ...current, [key]: next, [a]: aShare, [b]: rest - aShare };
+}
+
+/** Grams of each macro for a calorie target and a percentage split. */
+export function macrosFromPercents(kcal: number, p: Percents) {
+  return {
+    proteinG: Math.round((kcal * p.protein) / 100 / kcalPerGram.protein),
+    carbsG: Math.round((kcal * p.carbs) / 100 / kcalPerGram.carbs),
+    fatG: Math.round((kcal * p.fat) / 100 / kcalPerGram.fat),
+  };
+}
+
 /** Values of a portion of food from its per-100 g values. */
 export function portion(per100g: number, grams: number): number {
   return Math.round(((per100g * grams) / 100) * 10) / 10;

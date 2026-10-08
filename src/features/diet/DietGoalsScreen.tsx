@@ -17,11 +17,11 @@ import { parseDecimal } from '@/domain/numbers';
 import {
   ageInYears,
   defaultMacros,
-  macroKcal,
   macroPercents,
+  macrosFromPercents,
   maintenanceKcal,
   minimumAllowedKcal,
-  scaleMacros,
+  setMacroPercent,
   suggestedKcal,
   targetProblem,
   TRAINING_DAY_BONUS_KCAL,
@@ -51,10 +51,10 @@ export function DietGoalsScreen() {
 
   const [mode, setMode] = useState<'tracking' | 'fixed_meals' | null>(null);
   const [kcalDraft, setKcal] = useState<number | null>(null);
-  const [macroDraft, setMacro] = useState<{
-    proteinG: number;
-    carbsG: number;
-    fatG: number;
+  const [percentDraft, setPercents] = useState<{
+    protein: number;
+    carbs: number;
+    fat: number;
   } | null>(null);
   const [bonusDraft, setBonus] = useState<boolean | null>(null);
   const [maintenanceDraft, setMaintenance] = useState<number | null>(null);
@@ -65,19 +65,23 @@ export function DietGoalsScreen() {
   const chosenMode = mode ?? (profile.data.diet_mode as 'tracking' | 'fixed_meals');
   const maintenance = maintenanceDraft ?? goal.maintenanceKcal;
   const kcal = kcalDraft ?? goal.kcal;
-  const macros = macroDraft ?? { proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG };
+  // The split is edited as percentages of the calorie target; grams are derived from it.
+  const percents =
+    percentDraft ??
+    macroPercents({ proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG });
+  const macros = percentDraft
+    ? macrosFromPercents(kcal, percentDraft)
+    : { proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG };
   const bonusOn = bonusDraft ?? goal.trainingDayBonusKcal > 0;
-  const percents = macroPercents(macros);
   const minimum = maintenance ? minimumAllowedKcal(maintenance) : 1500;
   const problem = maintenance
     ? targetProblem(kcal, maintenance)
     : kcal < 1500
       ? 'below_minimum'
       : null;
-  const macroTotal = macroKcal(macros);
-
   const changeKcal = (next: number) => {
-    setMacro(scaleMacros(macros, next / kcal));
+    // Keep the percentages (grams follow the new target).
+    setPercents(percents);
     setKcal(next);
   };
 
@@ -95,7 +99,7 @@ export function DietGoalsScreen() {
     const next = suggestedKcal(m, p.goal as 'lose_fat' | 'maintain' | 'build_muscle');
     setMaintenance(m);
     setKcal(next);
-    setMacro(defaultMacros(next, weight.data.weightKg));
+    setPercents(macroPercents(defaultMacros(next, weight.data.weightKg)));
   };
 
   const suggestion = (() => {
@@ -147,9 +151,9 @@ export function DietGoalsScreen() {
   };
 
   const rows = [
-    ['protein', macros.proteinG, 'proteinG', colors.macroSplit.protein, percents.protein],
-    ['carbs', macros.carbsG, 'carbsG', colors.macroSplit.carbs, percents.carbs],
-    ['fat', macros.fatG, 'fatG', colors.macroSplit.fat, percents.fat],
+    ['protein', macros.proteinG, colors.macroSplit.protein, percents.protein],
+    ['carbs', macros.carbsG, colors.macroSplit.carbs, percents.carbs],
+    ['fat', macros.fatG, colors.macroSplit.fat, percents.fat],
   ] as const;
   const dots = (pct: number) => Math.round((pct / 100) * 30);
 
@@ -271,7 +275,7 @@ export function DietGoalsScreen() {
               );
             })}
           </View>
-          {rows.map(([key, grams, field, color, pct]) => (
+          {rows.map(([key, grams, color, pct]) => (
             <View
               key={key}
               style={{
@@ -286,29 +290,26 @@ export function DietGoalsScreen() {
             >
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
               <Text style={{ flex: 1 }}>{t(`diet.macro.${key}`)}</Text>
-              <Text variant="label" muted style={{ width: 40, textAlign: 'right' }}>
-                {`${pct}%`}
+              <Text variant="label" muted style={{ width: 52, textAlign: 'right' }}>
+                {t('goals.gramsValue', { g: grams })}
               </Text>
               <View style={{ width: 84 }}>
                 <Input
                   variant="compact"
-                  accessibilityLabel={t('goals.gramsOf', { name: t(`diet.macro.${key}`) })}
-                  value={String(grams)}
-                  onChangeText={(v) => {
-                    const g = parseDecimal(v);
-                    if (g != null) setMacro({ ...macros, [field]: Math.round(g) });
-                  }}
+                  accessibilityLabel={t('goals.percentOf', { name: t(`diet.macro.${key}`) })}
+                  value={String(pct)}
+                  onChangeText={(v) =>
+                    setPercents(setMacroPercent(percents, key, parseDecimal(v) ?? 0))
+                  }
                   keyboardType="number-pad"
                   selectTextOnFocus
                 />
               </View>
+              <Text variant="label" muted>
+                {t('goals.percentSign')}
+              </Text>
             </View>
           ))}
-          {Math.abs(macroTotal - kcal) > 100 ? (
-            <Text variant="bodyS" muted>
-              {t('goals.macroMismatch', { kcal: Math.round(macroTotal) })}
-            </Text>
-          ) : null}
         </Card>
 
         <View

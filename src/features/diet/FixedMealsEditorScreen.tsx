@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { autoSplit, type Totals } from '@/domain/nutrition';
+import { autoSplit, macroKcal, scaleMacros, type Totals } from '@/domain/nutrition';
 import { parseDecimal } from '@/domain/numbers';
 import { useToday } from '@/features/profile/use-today';
 import { newId } from '@/lib/uuid';
@@ -82,13 +82,28 @@ export function FixedMealsEditorScreen() {
     }
   };
 
+  // Calories always agree with the macros: editing a macro recalculates the kcal (4/4/9 per gram);
+  // editing the kcal scales the macros proportionally (when there are any).
+  const edit = (m: Draft, key: 'kcal' | 'proteinG' | 'carbsG' | 'fatG', value: number) => {
+    if (key !== 'kcal') {
+      const next = { ...m, [key]: value };
+      update(m.id, { [key]: value, kcal: Math.round(macroKcal(next)) });
+      return;
+    }
+    const current = macroKcal(m);
+    update(
+      m.id,
+      current > 0 ? { ...scaleMacros(m, value / current), kcal: value } : { kcal: value },
+    );
+  };
+
   const numField = (m: Draft, key: 'kcal' | 'proteinG' | 'carbsG' | 'fatG', label: string) => (
     <View key={key} style={{ flex: 1 }}>
       <Input
         variant="compact"
         label={label}
         value={String(m[key])}
-        onChangeText={(v) => update(m.id, { [key]: Math.max(0, Math.round(parseDecimal(v) ?? 0)) })}
+        onChangeText={(v) => edit(m, key, Math.max(0, Math.round(parseDecimal(v) ?? 0)))}
         keyboardType="number-pad"
         selectTextOnFocus
       />
