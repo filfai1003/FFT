@@ -16,7 +16,8 @@ const highContrastOverrides = {
   chartDotOff: '#3A3A3A',
 } as const;
 
-export type ThemeColors = Omit<typeof color, 'accentDefault'> & { accent: string };
+type Widen<T> = { [K in keyof T]: T[K] extends string ? string : T[K] };
+export type ThemeColors = Widen<Omit<typeof color, 'accentDefault'>> & { accent: string };
 
 export function buildTheme({ accent, highContrast }: ThemeOptions): ThemeColors {
   const { accentDefault: _accentDefault, ...base } = color;

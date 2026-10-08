@@ -49,7 +49,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest"
+    "test": "jest",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "private": true,
   "jest": {
