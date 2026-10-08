@@ -622,6 +622,8 @@
     "percentOf": "{{name}} percent of calories",
     "percentSign": "%",
     "gramsValue": "{{g}} g",
+    "totalOk": "The split adds up to 100%.",
+    "totalOff": "The split adds up to {{pct}}%, so your macros come to {{kcal}} kcal. You can keep it that way.",
     "trainingBonus": "Higher target on training days",
     "trainingBonusDetail": "+ Carbs when a session is logged",
     "save": "Save goals",

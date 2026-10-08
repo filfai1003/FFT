@@ -17,11 +17,11 @@ import { parseDecimal } from '@/domain/numbers';
 import {
   ageInYears,
   defaultMacros,
+  macroKcal,
   macroPercents,
   macrosFromPercents,
   maintenanceKcal,
   minimumAllowedKcal,
-  setMacroPercent,
   suggestedKcal,
   targetProblem,
   TRAINING_DAY_BONUS_KCAL,
@@ -156,7 +156,9 @@ export function DietGoalsScreen() {
     ['carbs', macros.carbsG, colors.macroSplit.carbs, percents.carbs],
     ['fat', macros.fatG, colors.macroSplit.fat, percents.fat],
   ] as const;
-  const dots = (pct: number) => Math.round((pct / 100) * 30);
+  const percentTotal = percents.protein + percents.carbs + percents.fat;
+  // The dot bar always shows the split relative to the total, whatever the total is.
+  const dots = (pct: number) => (percentTotal > 0 ? Math.round((pct / percentTotal) * 30) : 0);
 
   return (
     <>
@@ -300,7 +302,11 @@ export function DietGoalsScreen() {
                   accessibilityLabel={t('goals.percentOf', { name: t(`diet.macro.${key}`) })}
                   value={String(pct)}
                   onChangeText={(v) =>
-                    setPercents(setMacroPercent(percents, key, parseDecimal(v) ?? 0))
+                    // Each percentage is independent: the others never move.
+                    setPercents({
+                      ...percents,
+                      [key]: Math.min(100, Math.max(0, Math.round(parseDecimal(v) ?? 0))),
+                    })
                   }
                   keyboardType="number-pad"
                   selectTextOnFocus
@@ -311,6 +317,11 @@ export function DietGoalsScreen() {
               </Text>
             </View>
           ))}
+          <Text variant="bodyS" muted={percentTotal === 100} danger={percentTotal !== 100}>
+            {percentTotal === 100
+              ? t('goals.totalOk')
+              : t('goals.totalOff', { pct: percentTotal, kcal: Math.round(macroKcal(macros)) })}
+          </Text>
         </Card>
 
         <View
