@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
+import { authStorage } from './secure-storage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -14,8 +14,7 @@ let client: SupabaseClient<Database> | null = null;
  * The app-wide Supabase client. Created on first use so screens that do not need the backend
  * (like the component catalogue) work without a .env file.
  *
- * Session storage: AsyncStorage for now. Phase 1 (auth) decides whether to move the session to
- * an encrypted store, because the account holds health data.
+ * The session is stored encrypted on devices (see secure-storage.ts).
  */
 export function getSupabase(): SupabaseClient<Database> {
   if (!url || !anonKey) {
@@ -25,7 +24,7 @@ export function getSupabase(): SupabaseClient<Database> {
   }
   client ??= createClient<Database>(url, anonKey, {
     auth: {
-      storage: AsyncStorage,
+      storage: authStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,

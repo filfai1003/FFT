@@ -10,6 +10,8 @@ export type TextProps = RNTextProps & {
   muted?: boolean;
   /** Overrides the colour with the accent. Use sparingly: never for body text. */
   accent?: boolean;
+  /** Error / destructive text colour. */
+  danger?: boolean;
 };
 
 export function Text({
@@ -18,6 +20,7 @@ export function Text({
   medium,
   muted,
   accent,
+  danger,
   style,
   ...rest
 }: TextProps) {
@@ -30,6 +33,12 @@ export function Text({
     numeric,
     medium,
   });
-  const color = accent ? theme.colors.accent : muted ? theme.colors.textMuted : theme.colors.text;
+  const color = danger
+    ? theme.colors.danger
+    : accent
+      ? theme.colors.accent
+      : muted
+        ? theme.colors.textMuted
+        : theme.colors.text;
   return <RNText maxFontSizeMultiplier={1.5} {...rest} style={[resolved, { color }, style]} />;
 }

@@ -5,7 +5,9 @@
     "back": "Back",
     "close": "Close",
     "undo": "Undo",
-    "kcal": "kcal"
+    "kcal": "kcal",
+    "continue": "Continue",
+    "retry": "Try again"
   },
   "nav": {
     "today": "Today",
@@ -17,5 +19,119 @@
   "today": {
     "title": "Today",
     "caloriesLeft": "Calories left"
+  },
+  "app": {
+    "loadErrorTitle": "Can't load your data",
+    "loadErrorBody": "Check your connection and try again.",
+    "setupTitle": "Backend not configured",
+    "setupBody": "Copy .env.example to .env.local, start Supabase (npm run db:start) and fill in the URL and the anon key from npx supabase status."
+  },
+  "auth": {
+    "kicker": "Training and diet",
+    "title": "Welcome",
+    "tagline": "Train, eat and track your progress in one place.",
+    "modeLabel": "Sign in or create an account",
+    "modeSignIn": "Sign in",
+    "modeSignUp": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "errorEmail": "Enter a valid email address.",
+    "errorPassword": "Use at least 8 characters.",
+    "continueSignIn": "Sign in",
+    "continueSignUp": "Create account",
+    "forgot": "Forgot password?",
+    "resetSent": "If that address has an account, a reset link is on its way.",
+    "confirmEmail": "Check your inbox to confirm your email, then sign in.",
+    "legal": "By continuing you accept the terms and the privacy policy."
+  },
+  "onboarding": {
+    "signOut": "Sign out",
+    "progress": "Step {{current}} of {{total}}",
+    "finish": "Start using the app",
+    "goal": {
+      "title": "Your goal",
+      "subtitle": "We use it to suggest your daily calories.",
+      "loseFat": "Lose fat",
+      "loseFatDetail": "A moderate calorie deficit.",
+      "maintain": "Maintain",
+      "maintainDetail": "Stay where you are.",
+      "buildMuscle": "Build muscle",
+      "buildMuscleDetail": "A small calorie surplus."
+    },
+    "body": {
+      "title": "About you",
+      "subtitle": "Used only to calculate your calorie target.",
+      "name": "Name",
+      "birthDate": "Birth date",
+      "day": "Day of birth",
+      "month": "Month of birth",
+      "year": "Year of birth",
+      "dayPlaceholder": "DD",
+      "monthPlaceholder": "MM",
+      "yearPlaceholder": "YYYY",
+      "underage": "You must be 18 or older to use this app.",
+      "errorBirth": "Enter a valid date.",
+      "sex": "Sex · for the calorie formula",
+      "male": "Male",
+      "female": "Female",
+      "height": "Height (cm)",
+      "weight": "Weight (kg)",
+      "errorHeight": "Between 100 and 250 cm.",
+      "errorWeight": "Between 30 and 300 kg."
+    },
+    "lifestyle": {
+      "title": "Your routine",
+      "subtitle": "Helps us set a realistic calorie target and a starting plan.",
+      "activity": "Daily activity outside training",
+      "sedentary": "Mostly sitting",
+      "light": "Light",
+      "active": "On my feet",
+      "physical": "Physical job",
+      "experience": "Training experience",
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "location": "Where you train",
+      "gym": "Full gym",
+      "home": "Home",
+      "bodyweight": "Bodyweight only"
+    },
+    "target": {
+      "title": "Your daily target",
+      "subtitle": "Change it if you like. You can edit it any time in Diet.",
+      "daily": "Daily calories",
+      "lower": "Lower calories by 50",
+      "raise": "Raise calories by 50",
+      "suggested": "Suggested: {{kcal}} · maintenance {{maintenance}} {{pct}}",
+      "suggestedSame": "Suggested: {{kcal}} · same as maintenance",
+      "macroSplit": "Macro split",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional."
+    },
+    "mode": {
+      "title": "How you track food",
+      "subtitle": "You can switch any time in Diet goals.",
+      "tracking": "Count foods",
+      "trackingDetail": "Log every food you eat, by search or barcode.",
+      "fixed": "Fixed meals",
+      "fixedDetail": "Set your meals once, then tick them off."
+    },
+    "meals": {
+      "title": "Your meals",
+      "subtitle": "We split your target into four meals. You can edit them any time in Diet.",
+      "planName": "My meals",
+      "line": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}"
+    },
+    "consent": {
+      "title": "Your health data",
+      "subtitle": "Please read and decide.",
+      "body": "Weight, food, workouts and photos are health data. We store them encrypted and only to run the app. You can export or delete everything at any time in Privacy & data.",
+      "health": "I agree to the processing of my health data",
+      "healthDetail": "Required to use the app. You can withdraw it later.",
+      "analytics": "Share anonymous usage statistics",
+      "analyticsDetail": "Optional, off by default."
+    }
   }
 }

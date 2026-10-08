@@ -101,3 +101,35 @@ export function macroPercents(m: { proteinG: number; carbsG: number; fatG: numbe
 export function portion(per100g: number, grams: number): number {
   return Math.round(((per100g * grams) / 100) * 10) / 10;
 }
+
+export type MealShare = { name: string; share: number };
+
+/** Default meals of the fixed-meals mode and how the daily target is split between them. */
+export const defaultMealShares = [
+  { name: 'Breakfast', share: 0.25 },
+  { name: 'Lunch', share: 0.3 },
+  { name: 'Snack', share: 0.15 },
+  { name: 'Dinner', share: 0.3 },
+] as const satisfies readonly MealShare[];
+
+export type Totals = { kcal: number; proteinG: number; carbsG: number; fatG: number };
+
+/**
+ * "Auto-split": divides a daily target between meals by share. Values are whole numbers and the
+ * meals always add up exactly to the target (the rounding remainder goes to the biggest meal).
+ */
+export function autoSplit(total: Totals, shares: readonly number[]): Totals[] {
+  const sum = shares.reduce((a, b) => a + b, 0);
+  const keys = ['kcal', 'proteinG', 'carbsG', 'fatG'] as const;
+  const result: Totals[] = shares.map((s) => {
+    const r = {} as Totals;
+    for (const k of keys) r[k] = Math.floor((total[k] * s) / sum);
+    return r;
+  });
+  const biggest = shares.indexOf(Math.max(...shares));
+  for (const k of keys) {
+    const assigned = result.reduce((a, m) => a + m[k], 0);
+    result[biggest][k] += Math.round(total[k]) - assigned;
+  }
+  return result;
+}
