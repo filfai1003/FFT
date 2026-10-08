@@ -30,6 +30,7 @@ export function resolveTextStyle(o: TextStyleOptions): TextStyle {
   const style: TextStyle = { fontSize, lineHeight };
 
   if (displayVariants.includes(o.variant)) {
+    style.textTransform = 'uppercase'; // Doto titles are always uppercase in the design
     if (o.numeric && !o.dotNumbers) {
       style.fontFamily = o.boldText ? fontFamily.bodyBold : fontFamily.bodyMedium;
     } else {

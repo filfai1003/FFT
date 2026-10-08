@@ -9,6 +9,10 @@ describe('resolveTextStyle', () => {
     expect(resolveTextStyle({ ...base, variant: 'displayL' }).fontFamily).toBe(fontFamily.display);
   });
 
+  it('display text is uppercase', () => {
+    expect(resolveTextStyle({ ...base, variant: 'screenTitle' }).textTransform).toBe('uppercase');
+  });
+
   it('numbers fall back to Space Grotesk when dot-matrix is off, titles do not', () => {
     const off = { ...base, dotNumbers: false };
     expect(resolveTextStyle({ ...off, variant: 'displayL', numeric: true }).fontFamily).toBe(
