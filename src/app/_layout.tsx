@@ -2,6 +2,7 @@ import '@/i18n';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ToastHost } from '@/components/ui/ToastHost';
 import { useAppFonts } from '@/design/fonts';
 import { color } from '@/design/tokens';
 
@@ -18,8 +19,11 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+      <ToastHost />
+    </>
   );
 }
