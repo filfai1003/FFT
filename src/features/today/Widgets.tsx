@@ -56,14 +56,25 @@ function Frame({
   );
   if (size === 'large') {
     return (
-      <Card gap={14} onPress={onPress} accessibilityLabel={onPress ? label : undefined}>
+      <Card
+        gap={14}
+        style={{ flexGrow: 1, padding: 16 }}
+        onPress={onPress}
+        accessibilityLabel={onPress ? label : undefined}
+      >
         {head}
         {children}
       </Card>
     );
   }
   return (
-    <Card size="small" gap={10} onPress={onPress} accessibilityLabel={onPress ? label : undefined}>
+    <Card
+      size="small"
+      gap={10}
+      style={{ flexGrow: 1, padding: 16 }}
+      onPress={onPress}
+      accessibilityLabel={onPress ? label : undefined}
+    >
       {head}
       {children}
     </Card>

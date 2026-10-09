@@ -14,6 +14,8 @@ import { useCreatine } from './creatine-store';
 import { useHomeLayout } from './layout-store';
 import { widgetComponents } from './Widgets';
 
+const WIDGET_GAP = 10;
+
 /** Today: the widgets you chose (calories and meals, workout, water, creatine, calendar) and the AI bar. */
 export function TodayScreen() {
   const { t } = useTranslation();
@@ -29,6 +31,9 @@ export function TodayScreen() {
     if (!creatineLoaded) void loadCreatine();
   }, [loaded, load, creatineLoaded, loadCreatine]);
 
+  const [width, setWidth] = useState(0);
+  // Two small widgets side by side leave the same gap as the rows above and below.
+  const half = width > 0 ? (width - WIDGET_GAP) / 2 : '48%';
   const shown = widgets.filter((w) => w.visible);
 
   return (
@@ -53,17 +58,16 @@ export function TodayScreen() {
         <ActiveSessionBanner />
 
         <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            rowGap: 10,
-          }}
+          onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: WIDGET_GAP }}
         >
           {shown.map((w) => {
             const Widget = widgetComponents[w.id];
             return (
-              <View key={w.id} style={{ width: w.size === 'large' ? '100%' : '48.5%' }}>
+              <View
+                key={w.id}
+                style={{ width: w.size === 'large' ? '100%' : half, flexDirection: 'column' }}
+              >
                 <Widget size={w.size} />
               </View>
             );
