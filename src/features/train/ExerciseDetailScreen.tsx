@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -42,6 +42,7 @@ export function ExerciseDetailScreen({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
   const barHeight = useTabBarHeight();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const exercises = useExercises();
@@ -72,17 +73,19 @@ export function ExerciseDetailScreen({
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() =>
-            fromSession
-              ? router.dismissTo({
-                  pathname: '/session/[sessionId]',
-                  params: { sessionId: fromSession },
-                })
-              : goBack(
-                  router,
-                  sessionRoute.startsWith('/progress') ? '/progress' : '/train/library',
-                )
-          }
+          onBack={() => {
+            if (fromSession)
+              return router.dismissTo({
+                pathname: '/session/[sessionId]',
+                params: { sessionId: fromSession },
+              });
+            const library = sessionRoute.startsWith('/progress') ? '/progress' : '/train/library';
+            // Opened from a link or after a reload, the only page below is the tab's first one:
+            // go to the library instead.
+            const routes = navigation.getState()?.routes ?? [];
+            if (routes.length > 1 && routes[routes.length - 2].name !== 'index') goBack(router);
+            else router.replace(library);
+          }}
           backLabel={t('common.back')}
           right={
             exercise.ownerId ? (

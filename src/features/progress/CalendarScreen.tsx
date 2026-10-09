@@ -18,7 +18,7 @@ import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { monthGrid, shiftMonth } from '@/features/train/HistoryScreen';
 import { useMonthSessions, type SessionView } from '@/features/train/history';
-import { goBack } from '@/lib/navigation';
+import { useGoUp } from '@/lib/navigation';
 import { getSupabase } from '@/lib/supabase';
 
 /** Calories eaten on each day of a month (from the same view as Today and the diary). */
@@ -46,7 +46,7 @@ function useMonthKcal(ym: string) {
 export function CalendarScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const router = useRouter();
+  const goUp = useGoUp('/progress');
   const barHeight = useTabBarHeight();
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
@@ -91,7 +91,7 @@ export function CalendarScreen() {
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/progress')} backLabel={t('common.back')} />
+      <TopBar onBack={goUp} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('calendar.title')}</Text>
 
       <Card size="small" gap={10}>

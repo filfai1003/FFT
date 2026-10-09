@@ -31,7 +31,9 @@ function AppTabBar({ state, navigation }: TabBarProps) {
             target: route.key,
             canPreventDefault: true,
           });
-          if (state.index !== index && !event.defaultPrevented) navigation.navigate(route.name);
+          // Always the tab's first page, even if a detail page of it was left open earlier.
+          if (state.index !== index && !event.defaultPrevented)
+            navigation.navigate(route.name, { screen: 'index' });
         },
         onLongPress: () => navigation.emit({ type: 'tabLongPress', target: route.key }),
       },
@@ -44,7 +46,9 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
       {tabs.map((tab) => (
-        <Tabs.Screen key={tab.name} name={tab.name} />
+        // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page
+        // that was opened from elsewhere (e.g. the calendar opened from Today).
+        <Tabs.Screen key={tab.name} name={tab.name} options={{ popToTopOnBlur: true }} />
       ))}
     </Tabs>
   );

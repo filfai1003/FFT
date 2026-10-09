@@ -1,12 +1,66 @@
-import type { Href, useRouter } from 'expo-router';
+import { useNavigation, useRouter, type Href } from 'expo-router';
+import { Platform } from 'react-native';
 
 type Router = ReturnType<typeof useRouter>;
 
+/** Pages you can land on when going "up" (the others, like /train/plan/<id>, have no page of their own). */
+const PAGES = new Set([
+  '/train',
+  '/train/library',
+  '/train/history',
+  '/diet',
+  '/progress',
+  '/progress/strength',
+  '/progress/weight',
+  '/progress/body',
+  '/progress/photos',
+  '/progress/calendar',
+  '/profile',
+  '/profile/settings',
+  '/profile/accessibility',
+  '/profile/privacy',
+]);
+
+/** One level up: "/progress/calendar" -> "/progress"; the nearest page when a level has none. */
+export function parentPath(pathname: string): Href {
+  const parts = pathname.split('/').filter(Boolean);
+  while (parts.length > 1) {
+    parts.pop();
+    const path = `/${parts.join('/')}`;
+    if (PAGES.has(path)) return path as Href;
+  }
+  return '/(tabs)';
+}
+
 /**
- * Back with a fallback: after a page reload (web) or a deep link there is no history to go back
- * to, so we land on a sensible screen instead of doing nothing.
+ * Back. With no history to go back to (a reloaded page, a deep link) it goes up one level of the
+ * address instead (`fallback` overrides that where "up" is not the right place, e.g. an exercise
+ * goes back to the library). The address is only known on the web; devices land on Today.
  */
-export function goBack(router: Router, fallback: Href = '/(tabs)') {
-  if (router.canGoBack()) router.back();
-  else router.replace(fallback);
+export function goBack(router: Router, fallback?: Href) {
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+  const up =
+    fallback ??
+    (Platform.OS === 'web' && typeof window !== 'undefined'
+      ? parentPath(window.location.pathname)
+      : '/(tabs)');
+  router.replace(up);
+}
+
+/**
+ * "Up" for a page that can be opened from another tab (the calendar from Today): back when the
+ * page under this one is the parent, otherwise straight to the parent. So it never lands on an
+ * unrelated tab, whatever way the page was opened.
+ */
+export function useGoUp(parent: Href, parentRoute = 'index') {
+  const router = useRouter();
+  const navigation = useNavigation();
+  return () => {
+    const routes = navigation.getState()?.routes ?? [];
+    if (routes.length > 1 && routes[routes.length - 2].name === parentRoute) router.back();
+    else router.replace(parent);
+  };
 }
