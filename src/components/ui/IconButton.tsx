@@ -1,8 +1,9 @@
-import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { type StyleProp, type ViewStyle } from 'react-native';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
+import { AnimatedPressable, usePressScale } from './motion';
 
 export type IconButtonProps = {
   icon: IconName;
@@ -24,19 +25,22 @@ export function IconButton({
   style,
 }: IconButtonProps) {
   const { colors } = useTheme();
+  const press = usePressScale(0.92);
   const box = Math.max(size, touch.minTarget);
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       aria-disabled={disabled}
       disabled={disabled}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       onPress={() => {
         tick();
         onPress();
       }}
-      style={({ pressed }) => [
+      style={[
         {
           width: box,
           height: box,
@@ -46,12 +50,13 @@ export function IconButton({
           backgroundColor: colors.surfaceAlt,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
+          opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
         },
         style,
+        press.style,
       ]}
     >
       <Icon name={icon} color={colors.text} />
-    </Pressable>
+    </AnimatedPressable>
   );
 }

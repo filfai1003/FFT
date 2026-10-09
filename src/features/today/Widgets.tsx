@@ -168,18 +168,7 @@ export function NutritionWidget({ size }: Props) {
   }
 
   return (
-    <Frame
-      size="large"
-      label={t('today.caloriesLeft')}
-      right={
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }} />
-          <Text variant="label" muted>
-            {t('today.live')}
-          </Text>
-        </View>
-      }
-    >
+    <Frame size="large" label={t('today.caloriesLeft')}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
         <Text variant="displayXL" numeric>
           {left}

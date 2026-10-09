@@ -9,6 +9,8 @@ import { shortDateLabel } from '@/domain/day';
 import { AI_DOCK_HEIGHT, AiDock } from '@/features/ai/AiDock';
 import { useToday } from '@/features/profile/use-today';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
+import { Reveal } from '@/components/ui/motion';
+import { NextUpCard } from './NextUpCard';
 import { CustomizeSheet } from './CustomizeSheet';
 import { useCreatine } from './creatine-store';
 import { useHomeLayout } from './layout-store';
@@ -56,19 +58,24 @@ export function TodayScreen() {
         </View>
 
         <ActiveSessionBanner />
+        <Reveal>
+          <NextUpCard />
+        </Reveal>
 
         <View
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
           style={{ flexDirection: 'row', flexWrap: 'wrap', gap: WIDGET_GAP }}
         >
-          {shown.map((w) => {
+          {shown.map((w, n) => {
             const Widget = widgetComponents[w.id];
             return (
               <View
                 key={w.id}
                 style={{ width: w.size === 'large' ? '100%' : half, flexDirection: 'column' }}
               >
-                <Widget size={w.size} />
+                <Reveal index={n + 1}>
+                  <Widget size={w.size} />
+                </Reveal>
               </View>
             );
           })}

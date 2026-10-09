@@ -24,7 +24,6 @@
   "today": {
     "title": "Today",
     "caloriesLeft": "Calories left",
-    "live": "Live",
     "ofKcal": "/ {{kcal}} kcal",
     "workout": "Today's workout",
     "cycleProgress": "Cycle {{n}} · {{done}}/{{total}}",
@@ -69,7 +68,16 @@
       "calendar": "Calendar",
       "ai": "AI coach bar"
     },
-    "reorderHint": "Hold and slide to reorder"
+    "reorderHint": "Hold and slide to reorder",
+    "focus": {
+      "train": "Train now",
+      "eat": "Eat next",
+      "done": "All set",
+      "doneTitle": "You are done for now",
+      "doneInfo": "Nothing left to do today. Check your numbers below.",
+      "logTitle": "Log what you eat",
+      "logInfo": "{{kcal}} kcal left today"
+    }
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -200,7 +208,7 @@
     "addDays": "Add days to this plan",
     "differentDay": "Train a different day",
     "library": "Library",
-    "libraryInfo": "Exercises",
+    "libraryInfo": "Browse exercises and see your records",
     "history": "History",
     "historyLast": "Last: {{when}}",
     "historyNone": "No workouts yet",
@@ -213,7 +221,14 @@
       "archived": "Archived"
     },
     "plans": "Plans",
-    "planOptions": "Options for {{name}}: set active, rename, duplicate, archive, delete"
+    "planOptions": "Options for {{name}}: set active, rename, duplicate, archive, delete",
+    "nextWorkout": "Next workout",
+    "thisCycle": "Cycle {{n}}",
+    "cycleHelp": "Your plan days. A tick means done this cycle, the outlined one is next.",
+    "explore": "Explore",
+    "yourPlans": "Your plans",
+    "noDays": "This plan has no days yet.",
+    "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done"
   },
   "plan": {
     "more": "More options: rename, duplicate, archive, delete",
@@ -645,7 +660,7 @@
   },
   "progress": {
     "since": "Since {{date}}",
-    "newCheckIn": "New check-in",
+    "newCheckIn": "Add a check-in",
     "range": "Time range",
     "period": {
       "4w": "4 wk",
@@ -736,7 +751,12 @@
       "chest": "Chest",
       "arm": "Arm",
       "thigh": "Thigh"
-    }
+    },
+    "logTitle": "Log your progress",
+    "logInfo": "Weight, body fat, measurements and photos, in one quick check-in.",
+    "compare": "Compare two photo dates",
+    "compareInfo": "Put two dates side by side, or slide between them.",
+    "compareNeedsTwo": "Add photos on two different days to compare them."
   },
   "checkIn": {
     "title": "Check-in",
@@ -1083,6 +1103,6 @@
     "newDiet": "New diet",
     "currentLine": "{{mode}} · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
     "noCurrentDiet": "No diet set yet.",
-    "dockPlaceholder": "Ask the AI coach…"
+    "dockPlaceholder": "Ask your AI coach…"
   }
 }

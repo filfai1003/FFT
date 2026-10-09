@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { AnimatedPressable, usePressScale } from './motion';
 
 export type CardProps = {
   children: ReactNode;
@@ -27,6 +28,7 @@ export function Card({
   style,
 }: CardProps) {
   const { colors } = useTheme();
+  const press = usePressScale(0.985);
   const base: ViewStyle = {
     backgroundColor: selected
       ? colors.surfaceSelected
@@ -43,17 +45,20 @@ export function Card({
   if (!onPress) return <View style={[base, style]}>{children}</View>;
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={[
         base,
-        { minHeight: touch.listRowMin, opacity: pressed ? 0.8 : 1 },
+        { minHeight: touch.listRowMin, opacity: press.pressed ? 0.85 : 1 },
         style,
+        press.style,
       ]}
     >
       {children}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

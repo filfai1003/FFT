@@ -1,7 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
+import { Reveal } from '@/components/ui/motion';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
@@ -43,6 +46,7 @@ export function ProgressScreen() {
   const photos = usePhotos();
   const body = bodyProgress(entries.data ?? [], period, today);
 
+  const photoDays = new Set((photos.data ?? []).map((p) => p.day)).size;
   const lastPhotoDay = photos.data?.[0]?.day ?? null;
   const lastSet = photos.data?.filter((p) => p.day === lastPhotoDay) ?? [];
   const top = strength.groups.slice(0, 3);
@@ -73,13 +77,24 @@ export function ProgressScreen() {
             accessibilityLabel={t('calendar.open')}
             onPress={() => router.push('/progress/calendar')}
           />
-          <IconButton
-            icon="plus"
-            accessibilityLabel={t('progress.newCheckIn')}
-            onPress={() => router.push('/check-in')}
-          />
         </View>
       </View>
+
+      <Reveal>
+        <Card gap={12}>
+          <View style={{ gap: 4 }}>
+            <Text variant="titleM">{t('progress.logTitle')}</Text>
+            <Text variant="bodyS" muted>
+              {t('progress.logInfo')}
+            </Text>
+          </View>
+          <Button
+            label={t('progress.newCheckIn')}
+            icon="plus"
+            onPress={() => router.push('/check-in')}
+          />
+        </Card>
+      </Reveal>
 
       <Segmented
         accessibilityLabel={t('progress.range')}
@@ -93,9 +108,7 @@ export function ProgressScreen() {
         accessibilityLabel={t('progress.strength')}
         gap={12}
       >
-        <Text variant="label" muted>
-          {t('progress.strength')}
-        </Text>
+        <CardHead label={t('progress.strength')} />
         {strength.overall != null ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
@@ -131,9 +144,7 @@ export function ProgressScreen() {
           onPress={() => router.push('/progress/weight')}
           accessibilityLabel={t('progress.bodyWeight')}
         >
-          <Text variant="label" muted>
-            {t('progress.bodyWeight')}
-          </Text>
+          <CardHead label={t('progress.bodyWeight')} />
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
             <Text variant="displayM" numeric>
               {weightValue ?? '—'}
@@ -165,9 +176,7 @@ export function ProgressScreen() {
           onPress={() => router.push('/progress/body')}
           accessibilityLabel={t('progress.bodyFat')}
         >
-          <Text variant="label" muted>
-            {t('progress.bodyFat')}
-          </Text>
+          <CardHead label={t('progress.bodyFat')} />
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
             <Text variant="displayM" numeric>
               {body.bodyFat.latestPct ?? '—'}
@@ -194,37 +203,59 @@ export function ProgressScreen() {
         </Card>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('progress.photos')}
+      <Card
         onPress={() => router.push('/progress/photos')}
-        style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+        accessibilityLabel={t('progress.photos')}
+        gap={10}
       >
-        <Card gap={10}>
-          <Text variant="label" muted>
-            {lastPhotoDay
+        <CardHead
+          label={
+            lastPhotoDay
               ? t('progress.photosLast', {
                   date: shortDateLabel(lastPhotoDay).split(' ').slice(1).join(' '),
                 })
-              : t('progress.photosNone')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {poses.map((pose) => (
-              <View key={pose} style={{ flex: 1 }}>
-                <PhotoTile
-                  photo={lastSet.find((p) => p.pose === pose)}
-                  pose={pose}
-                  height={72}
-                  interactive={false}
-                />
-              </View>
-            ))}
-          </View>
-        </Card>
-      </Pressable>
+              : t('progress.photosNone')
+          }
+        />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {poses.map((pose) => (
+            <View key={pose} style={{ flex: 1 }}>
+              <PhotoTile
+                photo={lastSet.find((p) => p.pose === pose)}
+                pose={pose}
+                height={72}
+                interactive={false}
+              />
+            </View>
+          ))}
+        </View>
+      </Card>
+      <Button
+        label={t('progress.compare')}
+        icon="swap"
+        variant="secondary"
+        disabled={photoDays < 2}
+        onPress={() => router.push('/progress/photos/compare')}
+      />
+      <Text variant="bodyS" muted>
+        {photoDays < 2 ? t('progress.compareNeedsTwo') : t('progress.compareInfo')}
+      </Text>
       <Text variant="label" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
         {t('progress.today', { date: shortDateLabel(today) })}
       </Text>
     </Screen>
+  );
+}
+
+/** Label of a card that opens a detail page; the chevron says it is tappable. */
+function CardHead({ label }: { label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Text variant="label" muted style={{ flex: 1 }}>
+        {label}
+      </Text>
+      <Icon name="chevronRight" size={16} color={colors.textMuted} />
+    </View>
   );
 }

@@ -6,12 +6,14 @@ import { Pressable, View } from 'react-native';
 import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
-import { radius, touch } from '@/design/tokens';
+import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { relativeDay, weekdayName, localDay, deviceTimeZone } from '@/domain/day';
 import { useToday } from '@/features/profile/use-today';
@@ -46,6 +48,9 @@ export function TrainScreen() {
     return 'todo';
   };
 
+  const openPlan = () =>
+    plan && router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } });
+
   const outOfOrder = plan && rotation ? outOfOrderNote(plan, rotation, t as Translate) : null;
 
   return (
@@ -57,7 +62,11 @@ export function TrainScreen() {
           <View style={{ gap: 4 }}>
             {plan && rotation ? (
               <Text variant="label" muted>
-                {t('train.cycle', { n: rotation.state.cycle })}
+                {t('train.cycleProgress', {
+                  n: rotation.state.cycle,
+                  done: rotation.state.doneCount,
+                  total: rotation.state.totalDays,
+                })}
               </Text>
             ) : null}
             <Text variant="screenTitle">{t('nav.train')}</Text>
@@ -87,118 +96,81 @@ export function TrainScreen() {
           </Card>
         ) : null}
 
-        {plan ? (
-          <Card gap={12}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('train.activePlan')}: ${plan.name}`}
-              onPress={() =>
-                router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } })
-              }
-              style={{ minHeight: touch.minTarget, gap: 4, justifyContent: 'center' }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View
-                  style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
-                />
-                <Text variant="label" muted>
-                  {t('train.activePlan')}
+        {plan && upNext ? (
+          <Reveal index={1}>
+            <Card gap={12}>
+              <Text variant="label" muted>
+                {t('train.nextWorkout')}
+              </Text>
+              <View style={{ gap: 4 }}>
+                <Text variant="displayM" numberOfLines={2}>
+                  {upNext.name}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {t('train.exerciseCount', {
+                    count: upNext.exercises.length,
+                    min: estimateMinutes(upNext),
+                  })}
                 </Text>
               </View>
-              <Text variant="titleM">{plan.name}</Text>
-            </Pressable>
-
-            {plan.days.length > 0 ? (
-              <View style={{ gap: 8 }}>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {plan.days.slice(0, 6).map((d) => (
-                    <View key={d.id} style={{ flex: 1 }}>
-                      <DayPill label={shortDayLabel(d.name)} state={pillState(d.id)} />
-                    </View>
-                  ))}
-                </View>
-                {outOfOrder ? (
-                  <Text variant="bodyS" muted>
-                    {outOfOrder}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-
-            {upNext ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  borderTopWidth: 1,
-                  borderStyle: 'dashed',
-                  borderColor: colors.borderDecorative,
-                  paddingTop: 12,
-                }}
-              >
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="label" muted>
-                    {t('train.upNext')}
-                  </Text>
-                  <Text variant="displayM" numberOfLines={1}>
-                    {upNext.name}
-                  </Text>
-                  <Text variant="bodyS" muted>
-                    {t('train.exerciseCount', {
-                      count: upNext.exercises.length,
-                      min: estimateMinutes(upNext),
-                    })}
-                  </Text>
-                </View>
-                <Button
-                  label={t('train.start')}
-                  icon="play"
-                  block={false}
-                  disabled={upNext.exercises.length === 0}
-                  onPress={() => startDay(plan, upNext, rotation)}
-                />
-              </View>
-            ) : (
               <Button
-                label={t('train.addDays')}
-                variant="secondary"
-                onPress={() =>
-                  router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } })
-                }
+                label={t('train.start')}
+                icon="play"
+                disabled={upNext.exercises.length === 0}
+                onPress={() => startDay(plan, upNext, rotation)}
               />
-            )}
-
-            <Button
-              label={t('train.differentDay')}
-              variant="ghost"
-              onPress={() =>
-                router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } })
-              }
-            />
+              <Button label={t('train.differentDay')} variant="ghost" onPress={openPlan} />
+            </Card>
+          </Reveal>
+        ) : plan ? (
+          <Card gap={12}>
+            <Text muted>{t('train.noDays')}</Text>
+            <Button label={t('train.addDays')} variant="secondary" onPress={openPlan} />
           </Card>
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <NavTile
-            title={t('train.library')}
-            info={t('train.libraryInfo')}
-            onPress={() => router.push('/train/library')}
-          />
-          <NavTile
-            title={t('train.history')}
-            info={
-              lastDay.data
-                ? t('train.historyLast', { when: whenLabel(lastDay.data, today, t as Translate) })
-                : t('train.historyNone')
-            }
-            onPress={() => router.push('/train/history')}
-          />
-        </View>
+        {plan && plan.days.length > 0 ? (
+          <Reveal index={2}>
+            <Section title={t('train.thisCycle', { n: rotation?.state.cycle ?? 1 })} gap={8}>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {plan.days.slice(0, 6).map((d) => (
+                  <View key={d.id} style={{ flex: 1 }}>
+                    <DayPill label={shortDayLabel(d.name)} state={pillState(d.id)} />
+                  </View>
+                ))}
+              </View>
+              <Text variant="bodyS" muted>
+                {outOfOrder ?? t('train.cycleHelp')}
+              </Text>
+            </Section>
+          </Reveal>
+        ) : null}
+
+        <Reveal index={3}>
+          <Section title={t('train.explore')} gap={8}>
+            <NavRow
+              icon="search"
+              title={t('train.library')}
+              info={t('train.libraryInfo')}
+              onPress={() => router.push('/train/library')}
+            />
+            <NavRow
+              icon="calendar"
+              title={t('train.history')}
+              info={
+                lastDay.data
+                  ? t('train.historyLast', {
+                      when: whenLabel(lastDay.data, today, t as Translate),
+                    })
+                  : t('train.historyNone')
+              }
+              onPress={() => router.push('/train/history')}
+            />
+          </Section>
+        </Reveal>
 
         {plans && plans.length > 0 ? (
-          <Section title={t('train.plans')} gap={8}>
+          <Section title={t('train.yourPlans')} gap={8}>
             {plans.map((p) => (
               <View
                 key={p.id}
@@ -230,7 +202,7 @@ export function TrainScreen() {
                   })}
                 >
                   <Text variant="body">{p.name}</Text>
-                  <Text variant="label" muted>
+                  <Text variant="label" muted={p.status !== 'active'}>
                     {t('train.planInfo', {
                       count: p.days.length,
                       status: t(`train.status.${p.status}`),
@@ -247,6 +219,12 @@ export function TrainScreen() {
                 />
               </View>
             ))}
+            <Button
+              label={t('train.newPlan')}
+              icon="plus"
+              variant="secondary"
+              onPress={() => setCreating(true)}
+            />
           </Section>
         ) : null}
       </Screen>
@@ -267,34 +245,34 @@ export function TrainScreen() {
   );
 }
 
-function NavTile({ title, info, onPress }: { title: string; info: string; onPress: () => void }) {
+/** A full-width row that opens a section of the tab: icon, what it is, what is inside, chevron. */
+function NavRow({
+  icon,
+  title,
+  info,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  info: string;
+  onPress: () => void;
+}) {
   const { colors } = useTheme();
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${info}`}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        minHeight: 92,
-        borderRadius: radius.cardSmall,
-        borderWidth: 1,
-        borderColor: colors.borderDecorative,
-        backgroundColor: colors.surfaceAlt,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        justifyContent: 'flex-end',
-        gap: 2,
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <Text variant="body" medium>
-        {title}
-      </Text>
-      <Text variant="label" muted>
-        {info}
-      </Text>
-    </Pressable>
+    <Card size="small" onPress={onPress} accessibilityLabel={`${title}. ${info}`} gap={0}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <Icon name={icon} size={22} color={colors.text} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="body" medium>
+            {title}
+          </Text>
+          <Text variant="label" muted>
+            {info}
+          </Text>
+        </View>
+        <Icon name="chevronRight" size={18} color={colors.textMuted} />
+      </View>
+    </Card>
   );
 }
 

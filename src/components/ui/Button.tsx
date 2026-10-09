@@ -1,8 +1,9 @@
-import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { type StyleProp, type ViewStyle } from 'react-native';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
+import { AnimatedPressable, usePressScale } from './motion';
 import { Text } from './Text';
 
 export type ButtonVariant =
@@ -41,6 +42,7 @@ export function Button({
   style,
 }: ButtonProps) {
   const { colors } = useTheme();
+  const press = usePressScale();
   const large = size === 'large';
   const height = large ? touch.primaryButtonHeight : touch.secondaryButtonHeight + 4;
 
@@ -83,17 +85,19 @@ export function Button({
   const mono = variant !== 'primary';
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       aria-disabled={disabled}
       disabled={disabled}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       onPress={() => {
         tick();
         onPress();
       }}
-      style={({ pressed }) => [
+      style={[
         {
           height,
           minHeight: touch.minTarget,
@@ -104,10 +108,11 @@ export function Button({
           paddingHorizontal: 22,
           // Inline buttons sit in rows (or centred columns): centre them, never pin them to the top.
           alignSelf: block ? 'stretch' : 'center',
-          opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
+          opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
         },
         container,
         style,
+        press.style,
       ]}
     >
       {icon ? <Icon name={icon} size={20} color={fg} /> : null}
@@ -119,6 +124,6 @@ export function Button({
         {label}
       </Text>
       {variant === 'ghost' ? <Icon name="chevronRight" size={16} color={fg} /> : null}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

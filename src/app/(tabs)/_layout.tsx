@@ -44,7 +44,10 @@ function AppTabBar({ state, navigation }: TabBarProps) {
 
 export default function TabsLayout() {
   return (
-    <Tabs tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tabs
+      tabBar={(props) => <AppTabBar {...props} />}
+      screenOptions={{ headerShown: false, animation: 'fade' }}
+    >
       {tabs.map((tab) => (
         // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page
         // that was opened from elsewhere (e.g. the calendar opened from Today).

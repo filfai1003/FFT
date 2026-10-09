@@ -50,6 +50,7 @@ export function DayPill({ label, state }: { label: string; state: DayPillState }
 export function shortDayLabel(name: string): string {
   const words = name.trim().split(/\s+/);
   // A short suffix (A, B, 2) keeps the days of a plan tell-apart-able.
-  const label = words[1] && words[1].length <= 2 ? `${words[0]} ${words[1]}` : words[0];
+  const last = words[words.length - 1] ?? '';
+  const label = words.length > 1 && last.length <= 2 ? `${words[0]} ${last}` : words[0];
   return label.slice(0, 6).toUpperCase();
 }
