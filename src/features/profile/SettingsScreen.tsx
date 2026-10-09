@@ -160,23 +160,12 @@ export function SettingsScreen() {
           <Segmented
             accessibilityLabel={t('settings.background')}
             value={background.mode}
-            onChange={(mode) => {
-              // Choosing the waves again after a failure is a new try.
-              if (mode === 'waves' && background.health === 'failed')
-                background.setHealth('untested');
-              background.setMode(mode);
-            }}
+            onChange={background.setMode}
             options={[
               { value: 'black', label: t('settings.bgBlack') },
               { value: 'dots', label: t('settings.bgDots') },
-              { value: 'waves', label: t('settings.bgWaves') },
             ]}
           />
-          <Text variant="bodyS" muted>
-            {background.health === 'failed'
-              ? t('settings.wavesFailed')
-              : t('settings.backgroundNote')}
-          </Text>
         </View>
       </Card>
 

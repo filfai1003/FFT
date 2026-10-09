@@ -894,8 +894,6 @@
     "background": "Background",
     "bgBlack": "Black",
     "bgDots": "Dots",
-    "bgWaves": "Waves",
-    "backgroundNote": "Waves are still with Reduce motion on.",
     "openDeviceSettings": "Open device settings",
     "app": {
       "title": "App",
@@ -909,8 +907,7 @@
       "restart": "Update ready: restart the app",
       "upToDate": "You have the latest version.",
       "error": "Could not check for updates. Check your connection and try again."
-    },
-    "wavesFailed": "The waves stopped the app on this phone, so they were switched off. Choose Waves again to retry."
+    }
   },
   "a11y": {
     "title": "Accessibility",

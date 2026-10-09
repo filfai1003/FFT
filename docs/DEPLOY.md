@@ -66,7 +66,7 @@ Package name: `com.filfai1003.fft`.
 ## Install page and APK download
 - Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
   Address: `https://site-production-b946.up.railway.app`. It shows the download button, the install
-  steps, screenshots (`site/screens/`) and the same wave background as the app.
+  steps, screenshots (`site/screens/`) and an animated dot-grid background.
 - The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit). Publish a new
   one with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
   (it also updates `site/config.js`: address, version, size; commit and push that file).

@@ -4,30 +4,23 @@ import { useBackground } from './background-store';
 describe('background store', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
-    useBackground.setState({ mode: 'dots', health: 'untested', loaded: false });
+    useBackground.setState({ mode: 'dots', loaded: false });
   });
 
-  it('starts on the plain dots', async () => {
+  it('starts on the dots', async () => {
     await useBackground.getState().load();
-    expect(useBackground.getState()).toMatchObject({
-      mode: 'dots',
-      health: 'untested',
-      loaded: true,
-    });
+    expect(useBackground.getState()).toMatchObject({ mode: 'dots', loaded: true });
   });
 
-  it('keeps the chosen mode and a healthy result', async () => {
+  it('keeps the chosen mode', async () => {
+    await AsyncStorage.setItem('fft.background', 'black');
+    await useBackground.getState().load();
+    expect(useBackground.getState().mode).toBe('black');
+  });
+
+  it('turns the removed animated background into the dots', async () => {
     await AsyncStorage.setItem('fft.background', 'waves');
-    await AsyncStorage.setItem('fft.waves-health-2', 'ok');
     await useBackground.getState().load();
-    expect(useBackground.getState()).toMatchObject({ mode: 'waves', health: 'ok' });
-  });
-
-  it('switches the waves off when the last start with them never got to ok', async () => {
-    await AsyncStorage.setItem('fft.background', 'waves');
-    await AsyncStorage.setItem('fft.waves-health-2', 'trying');
-    await useBackground.getState().load();
-    expect(useBackground.getState().health).toBe('failed');
-    expect(await AsyncStorage.getItem('fft.waves-health-2')).toBe('failed');
+    expect(useBackground.getState().mode).toBe('dots');
   });
 });
