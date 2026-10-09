@@ -1,4 +1,5 @@
 # Built from the repository root (Railway: no root directory, dockerfilePath = server/Dockerfile).
+# Deployed by Railway on every push to main that touches server/, supabase/migrations or supabase/functions.
 FROM node:24-slim
 WORKDIR /app
 COPY server/package.json server/package-lock.json ./
