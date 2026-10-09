@@ -23,7 +23,8 @@
       "channel": "preview",
       "env": {
         "FFT_UPDATES": "1"
-      }
+      },
+      "autoIncrement": true
     },
     "production": {
       "autoIncrement": true,
