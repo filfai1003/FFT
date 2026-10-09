@@ -114,6 +114,7 @@ export function useApplyImport() {
     if (problem === 'deficit_too_large')
       throw new Error('The calorie target is more than 25% under your maintenance calories.');
 
+    const tracking = diet.mode === 'tracking';
     // The meals always add up to the daily target.
     const target: Totals = {
       kcal: diet.kcal,
@@ -143,23 +144,24 @@ export function useApplyImport() {
       waterMl: goal?.waterMl ?? 2000,
     });
     const after = diet.meals.findIndex((m) => m.name === diet.workoutAfter);
-    await saveFixed.mutateAsync({
-      planId: fixed.data?.id ?? null,
-      name: fixed.data?.name ?? 'My meals',
-      removedIds: (fixed.data?.meals ?? []).map((m) => m.id),
-      workoutAfterMealId: after >= 0 ? ids[after] : null,
-      meals: diet.meals.map((m, i) => ({
-        id: ids[i],
-        name: m.name,
-        kcal: meals[i].kcal,
-        proteinG: meals[i].proteinG,
-        carbsG: meals[i].carbsG,
-        fatG: meals[i].fatG,
-        description: m.description,
-        isMain: m.isMain,
-      })),
-    });
-    await updateProfile.mutateAsync({ diet_mode: 'fixed_meals' });
+    if (!tracking)
+      await saveFixed.mutateAsync({
+        planId: fixed.data?.id ?? null,
+        name: fixed.data?.name ?? 'My meals',
+        removedIds: (fixed.data?.meals ?? []).map((m) => m.id),
+        workoutAfterMealId: after >= 0 ? ids[after] : null,
+        meals: diet.meals.map((m, i) => ({
+          id: ids[i],
+          name: m.name,
+          kcal: meals[i].kcal,
+          proteinG: meals[i].proteinG,
+          carbsG: meals[i].carbsG,
+          fatG: meals[i].fatG,
+          description: m.description,
+          isMain: m.isMain,
+        })),
+      });
+    await updateProfile.mutateAsync({ diet_mode: diet.mode });
     result.dietApplied = true;
   }
 

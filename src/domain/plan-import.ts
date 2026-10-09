@@ -48,7 +48,10 @@ export type ImportedMeal = {
   carbsG: number;
   fatG: number;
 };
+export type DietMode = 'fixed_meals' | 'tracking';
 export type ImportedDiet = {
+  /** fixed_meals = set meals to tick off; tracking = only the daily target, foods are logged by hand. */
+  mode: DietMode;
   kcal: number;
   proteinG: number;
   carbsG: number;
@@ -201,12 +204,29 @@ function parseDiet(raw: unknown, errors: string[], warnings: string[]): Imported
       kcal: Math.round(macroKcal({ proteinG: p, carbsG: c, fatG: f })),
     });
   });
-  if (meals.length === 0) errors.push('diet_plan needs at least one meal');
+  const mode: DietMode =
+    raw.mode === 'tracking' || raw.mode === 'fixed_meals'
+      ? raw.mode
+      : meals.length > 0
+        ? 'fixed_meals'
+        : 'tracking';
+  if (mode === 'fixed_meals' && meals.length === 0)
+    errors.push('diet_plan with mode "fixed_meals" needs at least one meal');
   const after = text(raw.workout_after, 40);
   const workoutAfter =
     meals.find((m) => m.name.toLowerCase() === after.toLowerCase())?.name ?? null;
   if (after && !workoutAfter) warnings.push(`workout_after "${after}" is not one of the meals`);
-  return errors.length ? null : { kcal, proteinG, carbsG, fatG, meals, workoutAfter };
+  return errors.length
+    ? null
+    : {
+        mode,
+        kcal,
+        proteinG,
+        carbsG,
+        fatG,
+        meals: mode === 'tracking' ? [] : meals,
+        workoutAfter: mode === 'tracking' ? null : workoutAfter,
+      };
 }
 
 /** Reads an AI reply (or pasted JSON): what it would import, plus what is wrong or worth knowing. */
@@ -272,6 +292,7 @@ export const FORMAT_EXAMPLE = {
     ],
   },
   diet_plan: {
+    mode: 'fixed_meals',
     daily: { kcal: 2400, protein_g: 180, carbs_g: 250, fat_g: 70 },
     meals: [
       {
@@ -297,8 +318,9 @@ export function formatRules(exercises: readonly string[]): string {
     'Rules:',
     `- workout_plan.days: 1 to 14 days, each with 1 to 20 exercises. sets 1-20, reps a string like "8-12", rest_s 0-1800 seconds.`,
     '- "exercise" must be one of the names in the EXERCISE LIST below, spelled exactly. If you really need another exercise, add "primary_muscle" (chest, back, shoulders, biceps, triceps, legs, glutes, abs), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type" (weight_reps, reps, time, distance_time) to that exercise.',
+    '- diet_plan.mode: "fixed_meals" when the user wants set meals to follow (meals are required), or "tracking" when they only want a daily calorie and macro target and will log what they eat themselves (then leave "meals" out).',
     '- diet_plan.daily.kcal must be at least 1500 and the macros must match it (4 kcal per g of protein and carbs, 9 per g of fat). Never go below 1500 kcal or more than 25% under the maintenance calories.',
-    '- diet_plan.meals: 1 to 8 meals that add up to the daily target. "main": true for bigger meals. "description" says what to eat. "workout_after" is the name of the meal after which the workout happens (optional).',
+    '- diet_plan.meals (fixed_meals only): 1 to 8 meals that add up to the daily target. "main": true for bigger meals. "description" says what to eat. "workout_after" is the name of the meal after which the workout happens (optional).',
     '- Use metric units and English names.',
     'EXERCISE LIST:',
     exercises.join(', '),
@@ -327,6 +349,7 @@ export function buildChatSystemPrompt(ctx: {
   return [
     'You are the coach inside a training and nutrition app. Chat briefly and practically, in the language the user writes in (the plan JSON stays in English).',
     'You can create and modify workout plans and the diet. When you propose or change a plan, include the whole plan as JSON so the app can apply it; the user reviews it before anything changes. Do not include JSON when you are only talking.',
+    'To create a NEW workout plan, give it a new name and no "id" (the existing plans are not touched). Changing the diet replaces the current one, and the user confirms it after seeing the new diet.',
     'To MODIFY an existing workout plan, return it again with the same "id" and "name" as in CURRENT DATA and all of its days (not only the changed ones). Without an "id" a new plan is created.',
     '',
     `ABOUT THE USER: ${ctx.profile}`,

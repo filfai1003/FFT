@@ -95,6 +95,33 @@ describe('parseBundle', () => {
   });
 });
 
+describe('diet modes', () => {
+  it('tracking needs no meals; fixed_meals does; the mode is guessed from the meals', () => {
+    const tracking = parseBundle({
+      diet_plan: {
+        mode: 'tracking',
+        daily: { kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 67 },
+      },
+    });
+    expect(tracking.errors).toEqual([]);
+    expect(tracking.diet).toMatchObject({ mode: 'tracking', meals: [], workoutAfter: null });
+    const noMeals = parseBundle({
+      diet_plan: {
+        mode: 'fixed_meals',
+        daily: { kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 67 },
+      },
+    });
+    expect(noMeals.errors[0]).toMatch(/at least one meal/);
+    const guessed = parseBundle({
+      diet_plan: {
+        daily: { kcal: 2000, protein_g: 150, carbs_g: 200, fat_g: 67 },
+        meals: [{ name: 'A', protein_g: 10 }],
+      },
+    });
+    expect(guessed.diet?.mode).toBe('fixed_meals');
+  });
+});
+
 describe('matchExercise', () => {
   const list = [
     { name: 'Barbell bench press' },

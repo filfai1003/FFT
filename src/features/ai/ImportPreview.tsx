@@ -1,10 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { matchExercise, type ParsedBundle } from '@/domain/plan-import';
+import { useGoalForDay } from '@/features/diet/log';
+import { useFixedPlan } from '@/features/diet/fixed';
+import { useProfile } from '@/features/profile/api';
+import { useToday } from '@/features/profile/use-today';
 import { useExercises } from '@/features/train/exercises';
+import { DietDetail } from './DietDetail';
 import { usePlans } from '@/features/train/plans';
 
 type Props = {
@@ -20,6 +27,10 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
   const { t } = useTranslation();
   const exercises = useExercises();
   const plans = usePlans();
+  const profile = useProfile();
+  const goal = useGoalForDay(useToday());
+  const fixed = useFixedPlan();
+  const [confirming, setConfirming] = useState(false);
   const { workout, diet, errors, warnings } = bundle;
 
   const names = new Set(workout?.days.flatMap((d) => d.exercises.map((e) => e.name)) ?? []);
@@ -75,20 +86,9 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
       ) : null}
 
       {diet ? (
-        <View style={{ gap: 2 }}>
+        <View style={{ gap: 6 }}>
           <Text variant="body">{t('ai.dietTitle')}</Text>
-          <Text variant="label" muted>
-            {t('ai.dietSummary', {
-              kcal: diet.kcal,
-              p: diet.proteinG,
-              c: diet.carbsG,
-              f: diet.fatG,
-              meals: diet.meals.length,
-            })}
-          </Text>
-          <Text variant="label" muted>
-            {t('ai.dietReplaces')}
-          </Text>
+          <DietDetail diet={diet} />
         </View>
       ) : null}
 
@@ -108,9 +108,65 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
           <Button
             label={busy ? t('ai.importing') : t('ai.import')}
             disabled={busy}
-            onPress={onApply}
+            onPress={diet ? () => setConfirming(true) : onApply}
           />
         ) : null)}
+
+      {diet ? (
+        <Sheet
+          visible={confirming}
+          onClose={() => setConfirming(false)}
+          title={t('ai.confirmDietTitle')}
+          closeLabel={t('common.close')}
+          footer={
+            <View style={{ gap: 8 }}>
+              <Button
+                size="large"
+                label={t('ai.confirmDietYes')}
+                disabled={busy}
+                onPress={() => {
+                  setConfirming(false);
+                  onApply();
+                }}
+              />
+              <Button
+                label={t('common.cancel')}
+                variant="ghost"
+                onPress={() => setConfirming(false)}
+              />
+            </View>
+          }
+        >
+          <Text muted>{t('ai.confirmDietBody')}</Text>
+          <View style={{ gap: 4 }}>
+            <Text variant="label" muted>
+              {t('ai.currentDiet')}
+            </Text>
+            <Text variant="bodyS">
+              {goal
+                ? t('ai.currentLine', {
+                    mode:
+                      profile.data?.diet_mode === 'tracking'
+                        ? t('ai.modeTrackingShort')
+                        : t('ai.modeFixedShort'),
+                    kcal: goal.kcal,
+                    p: goal.proteinG,
+                    c: goal.carbsG,
+                    f: goal.fatG,
+                    meals:
+                      profile.data?.diet_mode === 'tracking' ? 0 : (fixed.data?.meals.length ?? 0),
+                  })
+                : t('ai.noCurrentDiet')}
+            </Text>
+          </View>
+          <View style={{ gap: 4 }}>
+            <Text variant="label" muted>
+              {t('ai.newDiet')}
+            </Text>
+            <DietDetail diet={diet} />
+          </View>
+        </Sheet>
+      ) : null}
     </Card>
   );
 }

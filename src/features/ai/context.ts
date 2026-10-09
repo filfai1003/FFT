@@ -26,10 +26,11 @@ export function exportWorkoutPlan(plan: PlanView) {
   };
 }
 
-export function exportDiet(goal: Goal | null, plan: FixedPlan | null) {
+export function exportDiet(goal: Goal | null, plan: FixedPlan | null, mode: string | null) {
   if (!goal) return null;
   const workoutAfter = plan?.meals.find((m) => m.id === plan.workoutAfterMealId)?.name;
   return {
+    mode: mode === 'tracking' ? 'tracking' : 'fixed_meals',
     daily: { kcal: goal.kcal, protein_g: goal.proteinG, carbs_g: goal.carbsG, fat_g: goal.fatG },
     meals: (plan?.meals ?? []).map((m) => ({
       name: m.name,
@@ -77,7 +78,10 @@ export function useAiContext() {
   return {
     ready: !profile.isPending && !plans.isPending && !exercises.isPending,
     profileText: parts.length ? parts.join(', ') : 'not given',
-    current: { workout_plans: workoutPlans, diet_plan: exportDiet(goal, fixed.data ?? null) },
+    current: {
+      workout_plans: workoutPlans,
+      diet_plan: exportDiet(goal, fixed.data ?? null, p?.diet_mode ?? null),
+    },
     exerciseNames: (exercises.data ?? []).map((e) => e.name),
   };
 }

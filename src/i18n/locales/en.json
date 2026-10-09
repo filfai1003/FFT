@@ -1023,8 +1023,6 @@
     "notFound_other": "{{count}} exercises are not in the library and will be skipped",
     "backupNote": "A copy of the current plan is kept in your archived plans.",
     "dietTitle": "Diet",
-    "dietSummary": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
-    "dietReplaces": "Replaces your calorie target and fixed meals.",
     "import": "Import",
     "importing": "Importing…",
     "done": "Imported",
@@ -1034,7 +1032,7 @@
     "doneExercises_one": "{{count}} new exercise was added to your library.",
     "doneExercises_other": "{{count}} new exercises were added to your library.",
     "doneSkipped": "Skipped (not found): {{names}}",
-    "doneDiet": "Your calorie target and meals were updated; the diet is now in fixed meals mode.",
+    "doneDiet": "Your calorie target (and meals, if any) were updated.",
     "openPlan": "Open the plan",
     "openDiet": "Open the diet",
     "workoutSummary": "{{days}} days · {{exercises}} exercises",
@@ -1044,6 +1042,19 @@
     "openSettings": "Open AI settings",
     "copyForOwnApp": "Copy and use my own AI app",
     "copiedForApp": "Copied: paste it in your AI app",
-    "importAnswer": "Import its answer"
+    "importAnswer": "Import its answer",
+    "modeFixed": "Fixed meals: meals to follow and tick off",
+    "modeTracking": "Count foods: a daily target, you log what you eat",
+    "modeFixedShort": "Fixed meals",
+    "modeTrackingShort": "Count foods",
+    "dailyLine": "Daily target: {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
+    "workoutAfter": "workout after",
+    "confirmDietTitle": "Replace your diet?",
+    "confirmDietBody": "This changes your calorie target and your meals. Check the new diet before you confirm.",
+    "confirmDietYes": "Replace my diet",
+    "currentDiet": "Now",
+    "newDiet": "New diet",
+    "currentLine": "{{mode}} · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
+    "noCurrentDiet": "No diet set yet."
   }
 }
