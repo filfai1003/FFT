@@ -33,10 +33,12 @@ Not applied: the data of earlier local accounts (nothing to migrate: free accoun
 - Build an installable APK: `npx eas-cli build -p android --profile preview` (download link at the end).
 - `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` are EAS environment variables
   (`preview` and `production`), baked into the build.
-- Updates without reinstalling: `.github/workflows/app-update.yml` publishes an over-the-air update
-  (EAS Update, channel `preview`) on every push to `main` that changes the app. It needs the GitHub
-  secret `EXPO_TOKEN` (expo.dev → Account settings → Access tokens). Native changes (new native
-  package, SDK upgrade) need a new APK; the app version in `app.json` is the update compatibility key.
+- Automatic (`.github/workflows/app-deploy.yml`, on every push to `main` that touches the app): if the native
+  part changed (new native package, Expo SDK, native config) it builds a new APK; otherwise it publishes an
+  over-the-air update (EAS Update, branch `preview`) that installed apps get the next time they open.
+  The decision uses the project fingerprint (`runtimeVersion` policy in `app.json`): an update only reaches
+  builds with the same fingerprint. Needs the GitHub secret `EXPO_TOKEN` (expo.dev → Account settings →
+  Access tokens). The new APK is on expo.dev → the project → Builds.
 - Play Store: `--profile production` (an `.aab`) and a Google Play developer account.
 Package name: `com.filfai1003.fft`.
 
@@ -57,11 +59,6 @@ Package name: `com.filfai1003.fft`.
   and email verification (needs an SMTP service) are possible later.
 
 ## What happens on a push to `main`
-| Changed files                                         | Result                                                        |
-|-------------------------------------------------------|---------------------------------------------------------------|
-| `server/`, `supabase/migrations/`, `supabase/functions/` | Railway rebuilds and restarts `api`, applying new migrations |
-| `src/`, `assets/` (and the files below)               | `app-update.yml`: lint + typecheck + tests, then an over-the-air update to installed apps |
-| `package.json`, `package-lock.json`, `app.json`, `eas.json` | `app-build.yml`: a new APK on EAS Build (also runnable by hand) |
-
-A new APK is only needed when the native part changes; every other change reaches the installed app
-as an update the next time it is opened. Both workflows need the `EXPO_TOKEN` repository secret.
+- `server/`, `supabase/migrations/`, `supabase/functions/`: Railway rebuilds `api`, which applies new migrations.
+- Anything in the app: `app-deploy.yml` runs lint, typecheck and tests, then either builds a new APK (native
+  change) or publishes an over-the-air update (everything else).

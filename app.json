@@ -51,7 +51,7 @@
     },
     "owner": "filfai",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/8a17cd65-5196-4180-afc7-fc70847de542"
