@@ -43,7 +43,10 @@
     "markEaten": "Mark {{name}} as eaten",
     "allMealsDone": "All meals done for today.",
     "removeWater": "Remove a glass of water",
-    "waterRemoved": "Glass of water removed"
+    "waterRemoved": "Glass of water removed",
+    "workoutDone": "Workout done today",
+    "workoutDoneInfo": "{{names}} · {{sets}} sets",
+    "trainAgain": "Train another day"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",

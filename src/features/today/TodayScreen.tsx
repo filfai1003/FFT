@@ -14,7 +14,7 @@ import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { shortDateLabel } from '@/domain/day';
+import { deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { dotsOn } from '@/domain/dots';
 import { parseDecimal } from '@/domain/numbers';
@@ -29,6 +29,7 @@ import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
 import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { useMonthSessions } from '@/features/train/history';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
@@ -53,6 +54,12 @@ export function TodayScreen() {
   const { plan } = useActivePlan();
   const rotation = useRotation(plan);
   const { startDay } = useStartWorkout();
+  // Workouts already finished today (the card says so instead of offering to start again).
+  const tz = profile.data?.timezone ?? deviceTimeZone();
+  const monthSessions = useMonthSessions(today.slice(0, 7));
+  const doneToday = (monthSessions.data ?? []).filter(
+    (s) => localDay(new Date(s.startedAt), tz) === today,
+  );
   const upNext = plan?.days.find((d) => d.id === rotation?.state.upNextDayId) ?? plan?.days[0];
 
   const weight = useLatestWeight();
@@ -240,7 +247,30 @@ export function TodayScreen() {
               </Text>
             ) : null}
           </View>
-          {upNext && plan ? (
+          {doneToday.length > 0 ? (
+            <>
+              <View style={{ gap: 4 }}>
+                <Text variant="displayM" numberOfLines={2}>
+                  {t('today.workoutDone')}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {t('today.workoutDoneInfo', {
+                    names: doneToday.map((s) => s.name || t('train.emptyWorkout')).join(', '),
+                    sets: doneToday.reduce((a, s) => a + s.stats.sets, 0),
+                  })}
+                </Text>
+              </View>
+              {plan ? (
+                <Button
+                  label={t('today.trainAgain')}
+                  variant="ghost"
+                  onPress={() =>
+                    router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } })
+                  }
+                />
+              ) : null}
+            </>
+          ) : upNext && plan ? (
             <>
               <View
                 style={{
