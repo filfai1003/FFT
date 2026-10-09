@@ -34,12 +34,10 @@ export function useExerciseImageUri(e: ImageSource | null | undefined): string |
 
   if (!path) return null;
   if (own) return signed.data ?? null;
-  // Offline mode has no server: the catalogue images that ship with the app are used.
-  if (getMode() === 'offline') {
-    const asset = catalogueImages[path];
-    return asset ? Asset.fromModule(asset).uri : null;
-  }
-  return exerciseImageUrl(base, path);
+  // Catalogue images ship with the app; the server's public copy is only a fallback.
+  const asset = catalogueImages[path];
+  if (asset) return Asset.fromModule(asset).uri;
+  return getMode() === 'cloud' && base ? exerciseImageUrl(base, path) : null;
 }
 
 export function ExerciseThumb({ exercise, size }: { exercise: ImageSource; size?: number }) {

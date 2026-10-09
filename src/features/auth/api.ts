@@ -1,5 +1,5 @@
 import { getMode } from '@/lib/mode';
-import { getSupabase } from '@/lib/supabase';
+import { getAuthClient } from '@/lib/supabase';
 import { leaveOfflineMode } from './session-store';
 
 export type Credentials = { email: string; password: string };
@@ -20,7 +20,7 @@ export function credentialProblems({ email, password }: Credentials): Credential
 }
 
 export async function signIn({ email, password }: Credentials) {
-  const { error } = await getSupabase().auth.signInWithPassword({
+  const { error } = await getAuthClient().auth.signInWithPassword({
     email: email.trim(),
     password,
   });
@@ -28,14 +28,14 @@ export async function signIn({ email, password }: Credentials) {
 }
 
 export async function signUp({ email, password }: Credentials) {
-  const { data, error } = await getSupabase().auth.signUp({ email: email.trim(), password });
+  const { data, error } = await getAuthClient().auth.signUp({ email: email.trim(), password });
   if (error) return { error: error.message, needsConfirmation: false };
   // With e-mail confirmation on, there is a user but no session yet.
   return { error: null, needsConfirmation: data.session == null };
 }
 
 export async function resetPassword(email: string) {
-  const { error } = await getSupabase().auth.resetPasswordForEmail(email.trim());
+  const { error } = await getAuthClient().auth.resetPasswordForEmail(email.trim());
   return error?.message ?? null;
 }
 
@@ -44,5 +44,5 @@ export async function signOut() {
     await leaveOfflineMode();
     return;
   }
-  await getSupabase().auth.signOut();
+  await getAuthClient().auth.signOut();
 }

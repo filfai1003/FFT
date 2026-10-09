@@ -26,8 +26,8 @@ src/i18n/           en.json + typed keys
 supabase/           migrations/, seed.sql, tests/database (pgTAP, real stack), verify/ (embedded Postgres), scripts/
 ```
 
-## Offline mode
-`src/lib/local-db` is a stand-in for the Supabase client used when the user picks "Use without an account" (`src/lib/mode.ts`): same table/column names, same query-builder calls. When a feature needs a new query shape (operator, embedded relation, view, rpc), add it there (`query.ts`, `schema.ts` relations/columns/uniques, `views.ts`) and a test in `local-db.test.ts`. New tables/columns need the same entry in `schema.ts`; the exercise catalogue is regenerated with `npm run db:seed`.
+## Where data lives
+Free accounts and the account-less mode keep ALL user data on the device: `getSupabase()` returns `src/lib/local-db`, a stand-in for the Supabase client (same table/column names, same query-builder calls; one database per user id). The server (`getAuthClient()`) holds only the account and the Edge Functions. Never read or write user data through `getAuthClient()`. When a feature needs a new query shape (operator, embedded relation, view, rpc), add it in `local-db` (`query.ts`, `schema.ts` relations/columns/uniques, `views.ts`) and a test in `local-db.test.ts`; new tables/columns need the same entry in `schema.ts`; the exercise catalogue is regenerated with `npm run db:seed`. Premium (later) is decided in `src/lib/plan.ts`.
 
 ## Non-negotiables
 - UI copy in English, always through i18n (`t('…')`). Code, tables, variables in English. ESLint forbids literal JSX text.

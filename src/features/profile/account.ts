@@ -3,7 +3,8 @@ import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { signOut } from '@/features/auth/api';
 import { useSessionStore as useWorkout } from '@/features/session/store';
 import { syncPendingSessions } from '@/features/session/sync';
-import { getSupabase } from '@/lib/supabase';
+import { getMode } from '@/lib/mode';
+import { getAuthClient, getSupabase } from '@/lib/supabase';
 import { newId } from '@/lib/uuid';
 import { POLICY_VERSION } from '@/features/onboarding/logic';
 
@@ -98,8 +99,15 @@ export async function logOutAnyway(queryClient: { clear: () => void }) {
   clearLocalUserData(queryClient);
 }
 
-/** Deletes the account and every piece of data (Edge Function with the service role). */
+/**
+ * Deletes the account (Edge Function with the service role: the email and password kept online)
+ * and every piece of data on this device.
+ */
 export async function deleteAccount(queryClient: { clear: () => void }): Promise<string | null> {
+  if (getMode() === 'cloud') {
+    const online = await getAuthClient().functions.invoke('delete-account');
+    if (online.error) return online.error.message;
+  }
   const { error } = await getSupabase().functions.invoke('delete-account');
   if (error) return error.message;
   await signOut().catch(() => undefined);

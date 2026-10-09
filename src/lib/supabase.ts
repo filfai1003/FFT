@@ -1,8 +1,10 @@
 import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
-import { getLocalClient } from './local-db';
+import { getCurrentUserId } from './current-user';
+import { getLocalClient, LOCAL_USER_ID } from './local-db';
 import { getMode } from './mode';
+import { isPremium } from './plan';
 import { authStorage } from './secure-storage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -13,14 +15,11 @@ export const isSupabaseConfigured = Boolean(url && anonKey);
 let client: SupabaseClient<Database> | null = null;
 
 /**
- * The app-wide Supabase client. Created on first use so screens that do not need the backend
- * (like the component catalogue) work without a .env file.
- *
- * The session is stored encrypted on devices (see secure-storage.ts).
+ * The server client: accounts (sign in / up / out, password reset) and the Edge Functions. Created
+ * on first use so screens that do not need the backend work without a .env file. The session is
+ * stored encrypted on devices (see secure-storage.ts).
  */
-export function getSupabase(): SupabaseClient<Database> {
-  // Offline mode: the same API, answered by the database on this device.
-  if (getMode() === 'offline') return getLocalClient() as unknown as SupabaseClient<Database>;
+export function getAuthClient(): SupabaseClient<Database> {
   if (!url || !anonKey) {
     throw new Error(
       'Supabase is not configured: copy .env.example to .env and fill in the URL and anon key (npx supabase status).',
@@ -35,4 +34,16 @@ export function getSupabase(): SupabaseClient<Database> {
     },
   });
   return client;
+}
+
+/** True when the user's data lives on the server (premium); otherwise it stays on the device. */
+export const dataIsOnline = () => getMode() === 'cloud' && isPremium();
+
+/**
+ * Where the user's DATA lives (plans, workouts, food, body, photos…). Free accounts and the
+ * account-less mode use the database on this device, one per user, with the same API as Supabase.
+ */
+export function getSupabase(): SupabaseClient<Database> {
+  if (dataIsOnline()) return getAuthClient();
+  return getLocalClient(getCurrentUserId() ?? LOCAL_USER_ID) as unknown as SupabaseClient<Database>;
 }

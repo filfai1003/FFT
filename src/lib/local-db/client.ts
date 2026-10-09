@@ -1,6 +1,5 @@
 import type { LocalDb } from './engine';
 import { LocalQuery, runRpc } from './query';
-import { LOCAL_USER_ID } from './schema';
 
 type FileBody = ArrayBuffer | Uint8Array | Blob;
 
@@ -16,7 +15,7 @@ async function toBytes(body: FileBody): Promise<Uint8Array> {
  * Nothing leaves the device and there is no sync.
  */
 export function createLocalClient(db: LocalDb) {
-  const session = { user: { id: LOCAL_USER_ID, email: null } };
+  const session = { user: { id: db.userId, email: null } };
   return {
     from: (table: string) => new LocalQuery(db, table),
     rpc: (name: string, args: Record<string, unknown> = {}) => runRpc(db, name, args),

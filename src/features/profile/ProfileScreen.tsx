@@ -96,11 +96,9 @@ export function ProfileScreen() {
             {t('profile.memberSince', { date: since })}
           </Text>
           <Text variant="screenTitle">{t('nav.profile')}</Text>
-          {offline ? (
-            <Text variant="label" muted>
-              {t('profile.offlineBadge')}
-            </Text>
-          ) : null}
+          <Text variant="label" muted>
+            {offline ? t('profile.offlineBadge') : t('profile.localBadge')}
+          </Text>
         </View>
 
         <Pressable

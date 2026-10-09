@@ -1,6 +1,6 @@
 import { newId } from '../uuid';
 
-/** The one user of the offline mode: everything on the device belongs to them. */
+/** The user of the account-less offline mode (accounts use their own id). */
 export const LOCAL_USER_ID = '00000000-0000-4000-8000-0000000000a1';
 
 export type Row = Record<string, unknown>;
@@ -359,12 +359,12 @@ const specific: Record<string, () => Row> = {
 };
 
 /** A new row: every column present (null when empty), defaults applied like the database does. */
-export function withDefaults(table: string, input: Row): Row {
+export function withDefaults(table: string, input: Row, userId: string): Row {
   const now = new Date().toISOString();
   const row: Row = {};
   for (const c of columns[table]) row[c] = null;
   if (columns[table].includes('id')) row.id = newId();
-  if (userOwned.has(table)) row.user_id = LOCAL_USER_ID;
+  if (userOwned.has(table)) row.user_id = userId;
   if (columns[table].includes('created_at')) row.created_at = now;
   if (columns[table].includes('updated_at')) row.updated_at = now;
   Object.assign(row, specific[table]?.() ?? {}, input);

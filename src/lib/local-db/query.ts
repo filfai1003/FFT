@@ -212,7 +212,7 @@ export class LocalQuery implements PromiseLike<Result> {
 
   private source(): Row[] {
     return isView(this.table)
-      ? computeView(this.table, this.db.tables)
+      ? computeView(this.table, this.db.tables, this.db.userId)
       : (this.db.tables[this.table] ?? []);
   }
 
@@ -297,7 +297,7 @@ export class LocalQuery implements PromiseLike<Result> {
           };
         const row = existing
           ? { ...existing, ...input, updated_at: new Date().toISOString() }
-          : withDefaults(table, input);
+          : withDefaults(table, input, this.db.userId);
         const others = store.filter((r) => r !== existing);
         const error =
           checkRow(table, row) ??

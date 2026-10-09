@@ -11,7 +11,7 @@ export type Kv = {
   clearAll(): Promise<void>;
 };
 
-const DB_KEY = 'database.json';
+const dbKey = (userId: string) => `database-${userId}.json`;
 const FORMAT = 1;
 
 /** A stable UUID-shaped id for a catalogue exercise, so plans keep pointing at it after updates. */
@@ -37,12 +37,19 @@ export class LocalDb {
   readonly ready: Promise<void>;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(readonly kv: Kv) {
+  /** One database per user: accounts on the same device never see each other's data. */
+  constructor(
+    readonly kv: Kv,
+    readonly userId: string,
+  ) {
     this.ready = this.load();
   }
 
   private async load() {
-    const text = await this.kv.getText(DB_KEY);
+    // Before accounts had their own file, the account-less mode used `database.json`.
+    const text =
+      (await this.kv.getText(dbKey(this.userId))) ??
+      (this.userId === LOCAL_USER_ID ? await this.kv.getText('database.json') : null);
     let saved: Record<string, Row[]> = {};
     if (text) {
       try {
@@ -72,18 +79,24 @@ export class LocalDb {
       if (existing) Object.assign(existing, fields);
       else
         exercises.push(
-          withDefaults('exercises', {
-            id: catalogueId(e.slug),
-            owner_id: null,
-            slug: e.slug,
-            ...fields,
-          }),
+          withDefaults(
+            'exercises',
+            {
+              id: catalogueId(e.slug),
+              owner_id: null,
+              slug: e.slug,
+              ...fields,
+            },
+            this.userId,
+          ),
         );
     }
-    if (!this.tables.profiles.some((p) => p.id === LOCAL_USER_ID))
-      this.tables.profiles.push(withDefaults('profiles', { id: LOCAL_USER_ID }));
-    if (!this.tables.user_settings.some((s) => s.user_id === LOCAL_USER_ID))
-      this.tables.user_settings.push(withDefaults('user_settings', { user_id: LOCAL_USER_ID }));
+    if (!this.tables.profiles.some((p) => p.id === this.userId))
+      this.tables.profiles.push(withDefaults('profiles', { id: this.userId }, this.userId));
+    if (!this.tables.user_settings.some((s) => s.user_id === this.userId))
+      this.tables.user_settings.push(
+        withDefaults('user_settings', { user_id: this.userId }, this.userId),
+      );
     void this.save();
   }
 
@@ -101,13 +114,22 @@ export class LocalDb {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    await this.kv.setText(DB_KEY, JSON.stringify({ format: FORMAT, tables: this.tables }));
+    await this.kv.setText(
+      dbKey(this.userId),
+      JSON.stringify({ format: FORMAT, tables: this.tables }),
+    );
   }
 
-  /** Erases everything on the device (delete account) and starts again empty. */
+  /** Erases this user's data on the device (delete account) and starts again empty. */
   async wipe() {
     await this.ready;
-    await this.kv.clearAll();
+    const files = [
+      ...this.tables.progress_photos.map((p) => `progress-photos/${p.storage_path}`),
+      ...this.tables.exercises
+        .filter((e) => e.owner_id != null && e.image_path)
+        .map((e) => `user-exercise-images/${e.image_path}`),
+    ];
+    for (const key of files) await this.kv.removeFile(key);
     for (const name of tableNames) this.tables[name] = [];
     this.seed();
     await this.save();

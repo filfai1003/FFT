@@ -1,17 +1,43 @@
 import { useQuery } from '@tanstack/react-query';
-import { getSupabase } from '@/lib/supabase';
+import { getMode } from '@/lib/mode';
+import { newId } from '@/lib/uuid';
+import { getAuthClient, getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { toFood, type Food } from './foods';
 
 type OffResponse = { foods?: Parameters<typeof toFood>[0][]; offline?: boolean };
 
+type OffRow = Parameters<typeof toFood>[0];
+
+/** Keeps products found online in the on-device foods, so they can be logged (and found) offline. */
+async function saveLocally(rows: OffRow[]) {
+  const db = getSupabase();
+  for (const row of rows) {
+    const { food_servings: servings, ...food } = row;
+    await db.from('foods').upsert(food as never);
+    const known = await db.from('food_servings').select('id').eq('food_id', row.id).limit(1);
+    if (!known.data?.length && servings?.length)
+      await db.from('food_servings').insert(
+        servings.map((s) => ({
+          id: newId(),
+          food_id: row.id,
+          label: s.label,
+          grams: s.grams,
+        })) as never,
+      );
+  }
+}
+
 /**
- * Foods from Open Food Facts, through the `off` Edge Function: it saves new products as global
- * rows in our database, so the next search finds them locally. Returns [] when offline.
+ * Foods from Open Food Facts, through the `off` Edge Function (it needs the account and
+ * internet; it only looks products up, nothing of the user is sent). Found products are saved on
+ * the device. Returns [] without an account, offline or on any error.
  */
 async function callOff(body: { query?: string; barcode?: string }): Promise<Food[]> {
+  if (getMode() !== 'cloud' || !isSupabaseConfigured) return [];
   try {
-    const { data, error } = await getSupabase().functions.invoke<OffResponse>('off', { body });
+    const { data, error } = await getAuthClient().functions.invoke<OffResponse>('off', { body });
     if (error || !data?.foods) return [];
+    await saveLocally(data.foods);
     return data.foods.map(toFood);
   } catch {
     return [];

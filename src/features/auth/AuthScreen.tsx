@@ -119,6 +119,10 @@ export function AuthScreen() {
           </Text>
         )}
 
+        <Text variant="bodyS" muted>
+          {t('auth.dataNote')}
+        </Text>
+
         <OfflineChoice />
       </Screen>
 

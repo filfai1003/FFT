@@ -68,7 +68,8 @@
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
     "legal": "By continuing you accept the terms and the privacy policy.",
     "useOffline": "Use without an account",
-    "offlineBody": "Offline mode: no account and no sync. Everything is saved on this device only, so it is not backed up."
+    "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up.",
+    "dataNote": "Free accounts keep only your email and password online. Your workouts, food and photos stay on this device, so they are not backed up."
   },
   "onboarding": {
     "signOut": "Sign out",
@@ -803,7 +804,8 @@
     "updateTarget": "Update my target",
     "keepTarget": "Keep my current target",
     "offlineBadge": "Offline mode · data stays on this device",
-    "leaveOffline": "Leave offline mode"
+    "leaveOffline": "Leave offline mode",
+    "localBadge": "Free account · data stays on this device"
   },
   "settings": {
     "title": "Settings",

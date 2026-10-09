@@ -1,6 +1,6 @@
 import { deviceTimeZone, localDay } from '../../domain/day';
 import { epley1RM } from '../../domain/strength';
-import { LOCAL_USER_ID, type Row } from './schema';
+import type { Row } from './schema';
 
 type Tables = Record<string, Row[]>;
 
@@ -15,15 +15,15 @@ const alive = (r: Row) => r.deleted_at == null;
 const n = (v: unknown) => (v == null ? 0 : Number(v));
 
 /** The three SQL views of the database, computed from the tables (same rules as the SQL). */
-export function computeView(name: string, t: Tables): Row[] {
-  if (name === 'daily_nutrition_totals') return dailyNutritionTotals(t);
+export function computeView(name: string, t: Tables, userId: string): Row[] {
+  if (name === 'daily_nutrition_totals') return dailyNutritionTotals(t, userId);
   const sets = doneSets(t);
-  if (name === 'exercise_records') return exerciseRecords(sets);
-  if (name === 'exercise_e1rm_daily') return exerciseE1rmDaily(sets, t);
+  if (name === 'exercise_records') return exerciseRecords(sets, userId);
+  if (name === 'exercise_e1rm_daily') return exerciseE1rmDaily(sets, t, userId);
   throw new Error(`Unknown view ${name}`);
 }
 
-function dailyNutritionTotals(t: Tables): Row[] {
+function dailyNutritionTotals(t: Tables, userId: string): Row[] {
   const byDay = new Map<
     string,
     { kcal: number; protein_g: number; carbs_g: number; fat_g: number }
@@ -40,7 +40,7 @@ function dailyNutritionTotals(t: Tables): Row[] {
   for (const r of t.food_logs ?? []) if (alive(r)) add(r);
   for (const r of t.fixed_meal_checks ?? [])
     if (alive(r) && (r.status === 'done' || r.status === 'adjusted')) add(r);
-  return [...byDay].map(([day, v]) => ({ user_id: LOCAL_USER_ID, day, ...v }));
+  return [...byDay].map(([day, v]) => ({ user_id: userId, day, ...v }));
 }
 
 type DoneSet = { set: Row; session: Row };
@@ -68,12 +68,12 @@ const e1rm = (set: Row) =>
     ? null
     : epley1RM(Number(set.weight_kg), Number(set.reps));
 
-function exerciseRecords(sets: DoneSet[]): Row[] {
+function exerciseRecords(sets: DoneSet[], userId: string): Row[] {
   const groups = new Map<string, Row[]>();
   for (const { set } of sets)
     groups.set(String(set.exercise_id), [...(groups.get(String(set.exercise_id)) ?? []), set]);
   return [...groups].map(([exercise_id, rows]) => ({
-    user_id: LOCAL_USER_ID,
+    user_id: userId,
     exercise_id,
     actual_max_kg: maxOf(rows.filter((s) => n(s.weight_kg) > 0).map((s) => n(s.weight_kg))),
     est_1rm_kg: maxOf(rows.map(e1rm)),
@@ -83,7 +83,7 @@ function exerciseRecords(sets: DoneSet[]): Row[] {
   }));
 }
 
-function exerciseE1rmDaily(sets: DoneSet[], t: Tables): Row[] {
+function exerciseE1rmDaily(sets: DoneSet[], t: Tables, userId: string): Row[] {
   const tz = String((t.profiles ?? [])[0]?.timezone ?? deviceTimeZone());
   const groups = new Map<string, { exercise_id: string; day: string; rows: Row[] }>();
   for (const { set, session } of sets) {
@@ -94,7 +94,7 @@ function exerciseE1rmDaily(sets: DoneSet[], t: Tables): Row[] {
     groups.set(key, g);
   }
   return [...groups.values()].map(({ exercise_id, day, rows }) => ({
-    user_id: LOCAL_USER_ID,
+    user_id: userId,
     exercise_id,
     day,
     best_e1rm_kg: maxOf(rows.map(e1rm)),

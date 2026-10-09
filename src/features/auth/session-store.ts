@@ -1,8 +1,9 @@
 import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { LOCAL_USER_ID } from '@/lib/local-db';
+import { setCurrentUserId } from '@/lib/current-user';
 import { getMode, loadMode, setMode } from '@/lib/mode';
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { getAuthClient, isSupabaseConfigured } from '@/lib/supabase';
 
 export type AuthStatus = 'loading' | 'unconfigured' | 'signedOut' | 'signedIn';
 
@@ -19,6 +20,7 @@ export const useSessionStore = create<State>(() => ({
 }));
 
 function apply(session: Session | null) {
+  setCurrentUserId(session?.user.id ?? null);
   useSessionStore.setState({
     status: session ? 'signedIn' : 'signedOut',
     session,
@@ -28,6 +30,7 @@ function apply(session: Session | null) {
 
 /** Offline mode: no account, the one local user is always "signed in". */
 function applyOffline() {
+  setCurrentUserId(LOCAL_USER_ID);
   useSessionStore.setState({
     status: 'signedIn',
     session: { user: { id: LOCAL_USER_ID } } as unknown as Session,
@@ -44,7 +47,7 @@ async function connectCloud() {
     useSessionStore.setState({ status: 'unconfigured', session: null, userId: null });
     return;
   }
-  const supabase = getSupabase();
+  const supabase = getAuthClient();
   if (!subscribed) {
     subscribed = true;
     supabase.auth.onAuthStateChange((_event, session) => {

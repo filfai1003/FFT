@@ -21,7 +21,7 @@ function memoryKv(): Kv & { texts: Map<string, string> } {
 
 const setup = () => {
   const kv = memoryKv();
-  const db = new LocalDb(kv);
+  const db = new LocalDb(kv, LOCAL_USER_ID);
   return { kv, db, c: createLocalClient(db) };
 };
 
@@ -51,7 +51,7 @@ describe('offline database', () => {
     const { kv, db, c } = setup();
     await c.from('water_logs').upsert({ id: id(1), day: '2026-10-09', ml: 250 });
     await db.save();
-    const again = createLocalClient(new LocalDb(kv));
+    const again = createLocalClient(new LocalDb(kv, LOCAL_USER_ID));
     const water = await again.from('water_logs').select('id, ml').eq('day', '2026-10-09');
     expect(water.data).toEqual([{ id: id(1), ml: 250 }]);
   });
@@ -233,16 +233,38 @@ describe('offline database', () => {
     const { c } = setup();
     await c.storage
       .from('progress-photos')
-      .upload('u/1.jpg', new Uint8Array([1, 2, 3]), { contentType: 'image/jpeg' });
-    const url = await c.storage.from('progress-photos').createSignedUrl('u/1.jpg', 60);
-    expect(url.data?.signedUrl).toContain('progress-photos/u/1.jpg');
+      .upload(`${LOCAL_USER_ID}/1.jpg`, new Uint8Array([1, 2, 3]), { contentType: 'image/jpeg' });
+    const url = await c.storage
+      .from('progress-photos')
+      .createSignedUrl(`${LOCAL_USER_ID}/1.jpg`, 60);
+    expect(url.data?.signedUrl).toContain(`progress-photos/${LOCAL_USER_ID}/1.jpg`);
+    await c
+      .from('progress_photos')
+      .insert({ day: '2026-10-09', pose: 'front', storage_path: `${LOCAL_USER_ID}/1.jpg` });
     await c.from('water_logs').insert({ day: '2026-10-09', ml: 250 });
     await c.functions.invoke('delete-account');
     expect(((await c.from('water_logs').select('id')).data as unknown[]).length).toBe(0);
     expect(
-      (await c.storage.from('progress-photos').createSignedUrl('u/1.jpg', 60)).data,
+      (await c.storage.from('progress-photos').createSignedUrl(`${LOCAL_USER_ID}/1.jpg`, 60)).data,
     ).toBeNull();
     expect(((await c.from('exercises').select('id')).data as unknown[]).length).toBeGreaterThan(60);
+  });
+
+  it('each account has its own data on the same device', async () => {
+    const kv = memoryKv();
+    const alice = createLocalClient(new LocalDb(kv, 'aaaaaaaa-0000-4000-8000-000000000001'));
+    const bob = createLocalClient(new LocalDb(kv, 'bbbbbbbb-0000-4000-8000-000000000002'));
+    await alice.from('water_logs').insert({ day: '2026-10-09', ml: 250 });
+    expect(((await alice.from('water_logs').select('id')).data as unknown[]).length).toBe(1);
+    expect(((await bob.from('water_logs').select('id')).data as unknown[]).length).toBe(0);
+    const row = await alice.from('water_logs').select('user_id').single();
+    expect(row.data).toEqual({ user_id: 'aaaaaaaa-0000-4000-8000-000000000001' });
+    const profile = await bob.from('profiles').select('id').single();
+    expect(profile.data).toEqual({ id: 'bbbbbbbb-0000-4000-8000-000000000002' });
+    // deleting Alice's account leaves Bob's data alone
+    await bob.from('water_logs').insert({ day: '2026-10-09', ml: 500 });
+    await alice.functions.invoke('delete-account');
+    expect(((await bob.from('water_logs').select('id')).data as unknown[]).length).toBe(1);
   });
 
   it('online-only helpers say so instead of failing silently', async () => {
