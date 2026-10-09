@@ -1,37 +1,41 @@
-# Deploy: server on Railway, Android app (APK)
+# Deploy: server on Railway, Android app (EAS)
 
 ## What the server holds
-Free accounts keep all their data on the phone. The server only needs: Auth (email + password), the
-`profiles` row created by the `handle_new_user` trigger, the exercise-image bucket, and two small
-functions (`off` = Open Food Facts search proxy, `delete-account`). See `CLAUDE.md` → "Where data lives".
+Free accounts keep all their data on the phone. The server only holds: Auth (email + password), the
+empty `profiles` row created by the `handle_new_user` trigger, the exercise-image bucket, and two
+small functions (`off` = Open Food Facts search, `delete-account`). See `CLAUDE.md` → "Where data lives".
 
-## 1. Server on Railway (project `fft`, production environment)
-Railway has no official Supabase service. The template "Supabase (Self-Hosted, Full Stack)" deploys
-Postgres 17, GoTrue (auth), PostgREST, Storage, postgres-meta, Studio and Kong behind one public URL.
-It does NOT include Edge Functions.
+## Server (Railway project `fft`, environment `production`)
+Services, all on Railway's private network, one public URL (Kong):
 
-1. Generate `JWT_SECRET`, `ANON_KEY`, `SERVICE_ROLE_KEY` (supabase.com/docs/guides/self-hosting/docker#securing-your-services).
-2. Deploy the template into the `fft` project with those three values.
-3. Apply `supabase/migrations/*` to the Postgres service (`supabase db push --db-url …`), then the
-   catalogue seed (`supabase/seed.sql`) and `npm run db:images` for the exercise images.
-4. Functions: run `off` and `delete-account` as one small Node service on Railway (they need the
-   service-role key, which never goes in the app).
-5. Auth: set `GOTRUE_SITE_URL`, keep `GOTRUE_MAILER_AUTOCONFIRM=true` until SMTP is configured.
+| Service    | Image / source                     | Notes                                           |
+|------------|------------------------------------|-------------------------------------------------|
+| `Postgres` | supabase/postgres:17.6.1.136       | volume `/var/lib/postgresql`                    |
+| `auth`     | supabase/gotrue:v2.189.0           | email + password, `GOTRUE_MAILER_AUTOCONFIRM=true` (no SMTP yet) |
+| `rest`     | postgrest/postgrest:v14.12         |                                                 |
+| `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
+| `kong`     | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1` |
+| `api`      | this repo (`server/Dockerfile`)    | **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
 
-The app needs two public values: `EXPO_PUBLIC_SUPABASE_URL` (the Kong public URL) and
-`EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+Public URL: `https://kong-production-d2ca.up.railway.app`.
 
-## 2. Android APK (EAS Build, in the cloud)
-Needs a free Expo account. One-time, in a terminal:
+`api` is the automatic part: at every start it applies the `supabase/migrations/*.sql` not applied yet
+(tracked in `public.app_migrations`) and serves `off` and `delete-account` (the Deno files in
+`supabase/functions/`, run on Node by `server/index.js`). So a new migration or a function change
+reaches the server just by pushing to `main`.
 
-```bash
-npx eas-cli login
-npx eas-cli init
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_URL --value https://<kong-domain> --environment preview --visibility plaintext
-npx eas-cli env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <anon key> --environment preview --visibility plaintext
-npx eas-cli build -p android --profile preview
-```
+Secrets (`JWT_SECRET`, the anon and service-role keys, the database password) live only in Railway
+variables and in `.secrets/` (git-ignored). The anon key is public by design and is in the EAS env.
 
-The build gives a download link to an installable `.apk` (profile `preview`, in `eas.json`). For the
-Play Store use `--profile production` (an `.aab`) and a Google Play developer account (one-off fee).
+Not applied: the data of earlier local accounts (nothing to migrate: free accounts keep data on the phone).
+
+## Android app (EAS, project `@filfai/fft`)
+- Build an installable APK: `npx eas-cli build -p android --profile preview` (download link at the end).
+- `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` are EAS environment variables
+  (`preview` and `production`), baked into the build.
+- Updates without reinstalling: `.github/workflows/app-update.yml` publishes an over-the-air update
+  (EAS Update, channel `preview`) on every push to `main` that changes the app. It needs the GitHub
+  secret `EXPO_TOKEN` (expo.dev → Account settings → Access tokens). Native changes (new native
+  package, SDK upgrade) need a new APK; the app version in `app.json` is the update compatibility key.
+- Play Store: `--profile production` (an `.aab`) and a Google Play developer account.
 Package name: `com.filfai1003.fft`.

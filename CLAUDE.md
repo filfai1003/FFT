@@ -59,4 +59,4 @@ Free accounts and the account-less mode keep ALL user data on the device: `getSu
 Small verifiable steps, explain non-obvious choices in two lines, commit at the end of each step (only if `npm run check` passes), ask before expensive-to-change decisions (sync, navigation, auth, data structure).
 
 ## Status
-Phases 0–5 built (foundations, auth/onboarding, training, diet, Today/Progress, Profile/privacy). Open items: `docs/DECISIONS.md` → Still open. Docker Desktop must be running for `npm run db:*` (except `db:verify`). Local backend: `npm run db:start`, then `npx supabase functions serve` for the Edge Functions; demo history via `supabase/scripts/demo-data.sql`.
+Hosted backend: Railway (docs/DEPLOY.md), app builds with EAS. Phases 0–5 built (foundations, auth/onboarding, training, diet, Today/Progress, Profile/privacy). Open items: `docs/DECISIONS.md` → Still open. Docker Desktop must be running for `npm run db:*` (except `db:verify`). Local backend: `npm run db:start`, then `npx supabase functions serve` for the Edge Functions; demo history via `supabase/scripts/demo-data.sql`.
