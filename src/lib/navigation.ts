@@ -73,5 +73,11 @@ export function useGoUp(parent: Href, parentRoute = 'index') {
 export function useBack(fallback?: Href) {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
-  return () => (from ? router.dismissTo(from as Href) : goBack(router, fallback));
+  return () => {
+    if (!from) return goBack(router, fallback);
+    // The tab bar is the root of everything: replacing the page with it works even when the page was
+    // opened directly (reload, link) and there is nothing to dismiss to.
+    if (from === '/(tabs)') router.replace('/(tabs)');
+    else router.dismissTo(from as Href);
+  };
 }
