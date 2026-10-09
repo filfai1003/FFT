@@ -1,4 +1,5 @@
 # Admin panel. Built from the repository root (Railway: dockerfilePath = admin/Dockerfile).
+# (Admin panel: see docs/ADMIN.md.)
 FROM node:24-slim
 WORKDIR /app
 COPY admin/package.json admin/package-lock.json ./
