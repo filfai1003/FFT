@@ -7,14 +7,13 @@ import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
+import { useToday } from '@/features/profile/use-today';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { fontFamily } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ageInYears } from '@/domain/nutrition';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
-import { useToday } from '@/features/profile/use-today';
-import { useGoalForDay } from '@/features/diet/log';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { getMode } from '@/lib/mode';
 import { logOut, logOutAnyway } from './account';
@@ -30,7 +29,6 @@ export function ProfileScreen() {
   const profile = useProfile();
   const weight = useLatestWeight();
   const today = useToday();
-  const goal = useGoalForDay(today);
   const prefs = usePreferencesStore();
   const [premium, setPremium] = useState(false);
   const [help, setHelp] = useState(false);
@@ -69,14 +67,6 @@ export function ProfileScreen() {
     : '';
 
   const groups: { name: string; value?: string; onPress: () => void }[][] = [
-    [
-      { name: t('profile.personalInfo'), onPress: () => router.push('/profile-edit') },
-      {
-        name: t('profile.dietGoals'),
-        value: goal ? `${goal.kcal} ${t('common.kcal').toUpperCase()}` : undefined,
-        onPress: () => router.push('/diet-goals'),
-      },
-    ],
     [
       {
         name: t('profile.settings'),

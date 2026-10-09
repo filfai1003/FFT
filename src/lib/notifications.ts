@@ -4,6 +4,11 @@
  */
 export type ReminderKind = 'workout' | 'checkin' | 'meals';
 
+/** Whether the system lets the app notify (never asks). Never on the web. */
+export async function notificationsAllowed(): Promise<boolean> {
+  return false;
+}
+
 export async function ensurePermission(): Promise<boolean> {
   return false;
 }

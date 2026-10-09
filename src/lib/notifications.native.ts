@@ -18,6 +18,12 @@ if (supported) {
   });
 }
 
+/** Whether the system lets the app notify (never asks). */
+export async function notificationsAllowed(): Promise<boolean> {
+  if (!supported) return false;
+  return (await Notifications.getPermissionsAsync()).granted;
+}
+
 export async function ensurePermission(): Promise<boolean> {
   if (!supported) return false;
   const current = await Notifications.getPermissionsAsync();

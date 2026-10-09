@@ -13,6 +13,7 @@ import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
 import { activeConsent, useConsents } from '@/features/profile/account';
 import { usePendingSync } from '@/features/session/use-pending-sync';
+import { useNotificationGuard } from '@/features/settings/use-notification-guard';
 import { useSettingsSync } from '@/features/settings/use-settings-sync';
 import { useAppFonts } from '@/design/fonts';
 import { color } from '@/design/tokens';
@@ -49,6 +50,7 @@ function AppNavigator() {
   const status = useSessionStore((s) => s.status);
   const profile = useProfile();
   useSettingsSync();
+  useNotificationGuard(status === 'signedIn');
   const consents = useConsents();
   usePendingSync(status === 'signedIn');
 
