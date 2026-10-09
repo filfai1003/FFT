@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -109,6 +109,11 @@ export function FixedMealsLog() {
             <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
             <Text variant="screenTitle">{t('diet.title')}</Text>
           </View>
+          <IconButton
+            icon="more"
+            accessibilityLabel={t('diet.goalsAndMode')}
+            onPress={() => router.push('/diet-goals')}
+          />
         </View>
 
         <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
@@ -123,12 +128,6 @@ export function FixedMealsLog() {
             })}
           />
         ) : null}
-
-        <Button
-          label={t('diet.goalsAndMode')}
-          variant="ghost"
-          onPress={() => router.push('/diet-goals')}
-        />
 
         <View style={{ gap: 8 }}>
           {meals.map((m) => {

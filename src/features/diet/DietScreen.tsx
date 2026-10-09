@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/Button';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,6 +55,11 @@ function FoodLog() {
             />
             <Text variant="screenTitle">{t('diet.title')}</Text>
           </View>
+          <IconButton
+            icon="more"
+            accessibilityLabel={t('diet.goalsAndMode')}
+            onPress={() => router.push('/diet-goals')}
+          />
         </View>
 
         <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
@@ -67,12 +71,6 @@ function FoodLog() {
             caption={t('diet.left', { kcal: Math.max(0, Math.round(target.kcal - eaten.kcal)) })}
           />
         ) : null}
-
-        <Button
-          label={t('diet.goalsAndMode')}
-          variant="ghost"
-          onPress={() => router.push('/diet-goals')}
-        />
 
         <View style={{ gap: 10 }}>
           {meals.map((meal) => (
