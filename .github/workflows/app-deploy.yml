@@ -1,0 +1,44 @@
+# On every push to main that touches the app: if the native part changed (a new native package, a new
+# Expo SDK, native config) it builds a new installable APK (EAS Build, profile "preview"); otherwise it
+# publishes a simple over-the-air update (EAS Update, branch "preview") that installed apps pick up the
+# next time they are opened. The choice is made by the project "fingerprint" (runtimeVersion policy in
+# app.json): an update only reaches builds with the same native fingerprint.
+# The server (Railway) redeploys by itself from the same push.
+# Needs the repository secret EXPO_TOKEN (expo.dev -> Account settings -> Access tokens).
+name: App deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'server/**'
+      - 'supabase/**'
+      - 'docs/**'
+      - 'tools/**'
+      - '*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: app-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint && npm run typecheck && npm test
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - uses: expo/expo-github-action/continuous-deploy-fingerprint@main
+        with:
+          profile: preview
+          branch: preview
+          platform: android
