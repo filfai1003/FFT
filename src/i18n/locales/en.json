@@ -174,7 +174,6 @@
     "history": "History",
     "historyLast": "Last: {{when}}",
     "historyNone": "No workouts yet",
-    "otherPlans": "Other plans",
     "planInfo_one": "{{count}} day · {{status}}",
     "planInfo_other": "{{count}} days · {{status}}",
     "outOfOrderNote": "{{done}} was done out of order on {{weekday}}, so {{next}} is still up next.",
@@ -182,7 +181,9 @@
       "draft": "Draft",
       "active": "Active",
       "archived": "Archived"
-    }
+    },
+    "plans": "Plans",
+    "planOptions": "Options for {{name}}: set active, rename, duplicate, archive, delete"
   },
   "plan": {
     "more": "More options: rename, duplicate, archive, delete",

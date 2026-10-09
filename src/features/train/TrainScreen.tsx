@@ -18,6 +18,7 @@ import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
 import { useStartWorkout } from '@/features/session/start';
 import { DayPill, shortDayLabel, type DayPillState } from './DayPill';
 import { NewPlanSheet } from './NewPlanSheet';
+import { PlanSheets, type PlanSheetKind } from './PlanDetailScreen';
 import { estimateMinutes, useActivePlan, useRotation, type PlanView } from './plans';
 import { useLastSessionDay } from './history';
 
@@ -26,7 +27,9 @@ export function TrainScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const barHeight = useTabBarHeight();
-  const { plan, others, isPending } = useActivePlan();
+  const { plan, data: plans, isPending } = useActivePlan();
+  const [menuPlan, setMenuPlan] = useState<PlanView | null>(null);
+  const [sheet, setSheet] = useState<PlanSheetKind>(null);
   const rotation = useRotation(plan);
   const { startDay, startEmpty } = useStartWorkout();
   const [creating, setCreating] = useState(false);
@@ -190,41 +193,72 @@ export function TrainScreen() {
           />
         </View>
 
-        {others.length > 0 ? (
-          <Section title={t('train.otherPlans')} gap={8}>
-            {others.map((p) => (
-              <Pressable
+        {plans && plans.length > 0 ? (
+          <Section title={t('train.plans')} gap={8}>
+            {plans.map((p) => (
+              <View
                 key={p.id}
-                accessibilityRole="button"
-                accessibilityLabel={p.name}
-                onPress={() =>
-                  router.push({ pathname: '/train/plan/[planId]', params: { planId: p.id } })
-                }
-                style={({ pressed }) => ({
+                style={{
                   minHeight: 60,
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   borderRadius: radius.row + 2,
                   borderWidth: 1,
-                  borderColor: colors.borderDecorative,
+                  borderColor:
+                    p.status === 'active' ? colors.borderSelected : colors.borderDecorative,
                   backgroundColor: colors.surfaceAlt,
-                  paddingHorizontal: 16,
-                  justifyContent: 'center',
-                  gap: 2,
-                  opacity: pressed ? 0.8 : 1,
-                })}
+                  paddingLeft: 16,
+                  paddingRight: 4,
+                }}
               >
-                <Text variant="body">{p.name}</Text>
-                <Text variant="label" muted>
-                  {t('train.planInfo', {
-                    count: p.days.length,
-                    status: t(`train.status.${p.status}`),
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={p.name}
+                  onPress={() =>
+                    router.push({ pathname: '/train/plan/[planId]', params: { planId: p.id } })
+                  }
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    minHeight: 60,
+                    justifyContent: 'center',
+                    gap: 2,
+                    opacity: pressed ? 0.7 : 1,
                   })}
-                </Text>
-              </Pressable>
+                >
+                  <Text variant="body">{p.name}</Text>
+                  <Text variant="label" muted>
+                    {t('train.planInfo', {
+                      count: p.days.length,
+                      status: t(`train.status.${p.status}`),
+                    })}
+                  </Text>
+                </Pressable>
+                <IconButton
+                  icon="more"
+                  accessibilityLabel={t('train.planOptions', { name: p.name })}
+                  onPress={() => {
+                    setMenuPlan(p);
+                    setSheet('menu');
+                  }}
+                />
+              </View>
             ))}
           </Section>
         ) : null}
       </Screen>
       <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />
+      {menuPlan ? (
+        <PlanSheets
+          plan={menuPlan}
+          sheet={sheet}
+          setSheet={(next) => {
+            setSheet(next);
+            if (next === null) setMenuPlan(null);
+          }}
+          onDuplicated={() => undefined}
+          onDeleted={() => undefined}
+        />
+      ) : null}
     </>
   );
 }

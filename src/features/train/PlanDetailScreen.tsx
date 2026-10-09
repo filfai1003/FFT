@@ -29,7 +29,8 @@ import {
 } from './plans';
 import { goBack } from '@/lib/navigation';
 
-type SheetKind = null | 'menu' | 'rename' | 'deletePlan';
+export type PlanSheetKind = null | 'menu' | 'rename' | 'deletePlan';
+type SheetKind = PlanSheetKind;
 
 export function PlanDetailScreen({ planId }: { planId: string }) {
   const { t } = useTranslation();
@@ -208,14 +209,21 @@ function headerLine(p: PlanView, rotation: Rotation | null, t: Translate) {
     : `${status} · ${days}`;
 }
 
-function PlanSheets({
+/** Options of a plan (set active, rename, duplicate, archive, delete), as bottom sheets. */
+export function PlanSheets({
   plan,
   sheet,
   setSheet,
+  onDuplicated,
+  onDeleted,
 }: {
   plan: PlanView;
   sheet: SheetKind;
   setSheet: (s: SheetKind) => void;
+  /** Default: open the copy. */
+  onDuplicated?: (id: string) => void;
+  /** Default: leave the plan page. */
+  onDeleted?: () => void;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -262,7 +270,8 @@ function PlanSheets({
               name: t('plan.copyName', { name: plan.name }),
             });
             close();
-            router.replace({ pathname: '/train/plan/[planId]', params: { planId: id } });
+            if (onDuplicated) onDuplicated(id);
+            else router.replace({ pathname: '/train/plan/[planId]', params: { planId: id } });
           }}
         />
         {plan.status !== 'archived' ? (
@@ -316,7 +325,8 @@ function PlanSheets({
             onPress={async () => {
               await deletePlan.mutateAsync(plan.id);
               close();
-              goBack(router, '/train');
+              if (onDeleted) onDeleted();
+              else goBack(router, '/train');
             }}
           />
         }
