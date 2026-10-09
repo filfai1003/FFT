@@ -68,8 +68,14 @@ export function OnboardingFlow() {
       return;
     }
     reset();
-    // The profile now says "onboarded": the navigation guard sends the user to the app.
-    await queryClient.invalidateQueries({ queryKey: profileKey(userId) });
+    // Consents, goals, meals… were read before they existed: refresh everything else first, so the
+    // app does not start on stale data (e.g. "consent withdrawn"), then the profile, which says
+    // "onboarded" and makes the navigation guard send the user to the app.
+    const profile = profileKey(userId);
+    await queryClient.invalidateQueries({
+      predicate: (q) => q.queryKey.join('/') !== profile.join('/'),
+    });
+    await queryClient.invalidateQueries({ queryKey: profile });
   };
 
   return (
