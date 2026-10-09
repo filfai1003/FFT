@@ -943,5 +943,23 @@
     "title": "Consent withdrawn",
     "body": "You withdrew your consent to process health data, so the app is paused. You can give it again, download your data, or delete your account.",
     "give": "Give consent again"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "open": "Open the calendar",
+    "summary": "{{workouts}} workouts · {{diet}} diet days",
+    "trained": "trained",
+    "dietOnTarget": "diet on target",
+    "dietOff": "diet off target",
+    "legendWorkout": "Workout",
+    "legendDietOn": "Diet on target",
+    "legendDietOff": "Diet logged",
+    "workouts": "Workouts",
+    "noWorkout": "No workout this day.",
+    "workoutInfo": "{{sets}} sets",
+    "diet": "Diet",
+    "noDiet": "Nothing logged this day.",
+    "dietLine": "{{eaten}} of {{target}} kcal",
+    "future": "Nothing yet."
   }
 }

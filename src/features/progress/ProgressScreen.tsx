@@ -67,11 +67,18 @@ export function ProgressScreen() {
           </Text>
           <Text variant="screenTitle">{t('nav.progress')}</Text>
         </View>
-        <IconButton
-          icon="plus"
-          accessibilityLabel={t('progress.newCheckIn')}
-          onPress={() => router.push('/check-in')}
-        />
+        <View style={{ flexDirection: 'row', gap: 4 }}>
+          <IconButton
+            icon="calendar"
+            accessibilityLabel={t('calendar.open')}
+            onPress={() => router.push('/progress/calendar')}
+          />
+          <IconButton
+            icon="plus"
+            accessibilityLabel={t('progress.newCheckIn')}
+            onPress={() => router.push('/check-in')}
+          />
+        </View>
       </View>
 
       <Segmented

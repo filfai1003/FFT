@@ -63,6 +63,18 @@ export type Goal = {
   waterMl: number;
 };
 
+export type DietDayStatus = 'none' | 'off' | 'onTarget';
+
+/** Share of the calorie target a day may be off by and still count as "followed the diet". */
+export const ON_TARGET_TOLERANCE = 0.1;
+
+/** Nothing logged = 'none'; within 10% of the target = 'onTarget'; otherwise 'off'. */
+export function dietDayStatus(eatenKcal: number, targetKcal: number): DietDayStatus {
+  if (eatenKcal <= 0) return 'none';
+  if (targetKcal <= 0) return 'off';
+  return Math.abs(eatenKcal - targetKcal) / targetKcal <= ON_TARGET_TOLERANCE ? 'onTarget' : 'off';
+}
+
 /** The goal in force on `day`: the latest one that started on or before it (else the first). */
 export function goalForDay<T extends { validFrom: string }>(
   goals: readonly T[],

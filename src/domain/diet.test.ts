@@ -6,6 +6,7 @@ import {
   mealForHour,
   mealForPosition,
   mealsDone,
+  dietDayStatus,
   nextFixedMeal,
   portionOptions,
   scaleNutrition,
@@ -140,5 +141,15 @@ describe('fixed meals', () => {
     expect(eatenFromChecks(checks).kcal).toBe(900);
     expect(mealsDone(checks)).toBe(1);
     expect(nextFixedMeal(planned, checks)).toBe('s');
+  });
+});
+
+describe('dietDayStatus', () => {
+  it('nothing logged, on target (±10%) or off', () => {
+    expect(dietDayStatus(0, 2000)).toBe('none');
+    expect(dietDayStatus(1850, 2000)).toBe('onTarget');
+    expect(dietDayStatus(2200, 2000)).toBe('onTarget');
+    expect(dietDayStatus(2300, 2000)).toBe('off');
+    expect(dietDayStatus(1200, 2000)).toBe('off');
   });
 });

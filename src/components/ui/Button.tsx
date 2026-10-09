@@ -102,7 +102,8 @@ export function Button({
           justifyContent: 'center',
           gap: 8,
           paddingHorizontal: 22,
-          alignSelf: block ? 'stretch' : 'flex-start',
+          // Inline buttons sit in rows (or centred columns): centre them, never pin them to the top.
+          alignSelf: block ? 'stretch' : 'center',
           opacity: disabled ? 0.4 : pressed ? 0.8 : 1,
         },
         container,

@@ -138,11 +138,18 @@ export function TodayScreen() {
             </Text>
             <Text variant="displayL">{t('today.title')}</Text>
           </View>
-          <IconButton
-            icon="bell"
-            accessibilityLabel={t('today.notifications')}
-            onPress={() => router.push('/profile/settings')}
-          />
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <IconButton
+              icon="calendar"
+              accessibilityLabel={t('calendar.open')}
+              onPress={() => router.push('/progress/calendar')}
+            />
+            <IconButton
+              icon="bell"
+              accessibilityLabel={t('today.notifications')}
+              onPress={() => router.push('/profile/settings')}
+            />
+          </View>
         </View>
 
         <ActiveSessionBanner />
