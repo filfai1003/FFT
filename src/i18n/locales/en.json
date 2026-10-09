@@ -66,7 +66,9 @@
     "forgot": "Forgot password?",
     "resetSent": "If that address has an account, a reset link is on its way.",
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
-    "legal": "By continuing you accept the terms and the privacy policy."
+    "legal": "By continuing you accept the terms and the privacy policy.",
+    "useOffline": "Use without an account",
+    "offlineBody": "Offline mode: no account and no sync. Everything is saved on this device only, so it is not backed up."
   },
   "onboarding": {
     "signOut": "Sign out",
@@ -799,7 +801,9 @@
     "newTargets": "New calorie target?",
     "newTargetsBody": "Your details changed, so your calorie target would change too. It only changes if you accept.",
     "updateTarget": "Update my target",
-    "keepTarget": "Keep my current target"
+    "keepTarget": "Keep my current target",
+    "offlineBadge": "Offline mode · data stays on this device",
+    "leaveOffline": "Leave offline mode"
   },
   "settings": {
     "title": "Settings",

@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { ExerciseImage } from '@/components/ui/ExerciseImage';
+import { Asset } from 'expo-asset';
+import { catalogueImages } from '@/lib/local-db/catalogue';
+import { getMode } from '@/lib/mode';
 import { getSupabase } from '@/lib/supabase';
 import { exerciseImageUrl, type Exercise } from './exercises';
 
@@ -30,7 +33,13 @@ export function useExerciseImageUri(e: ImageSource | null | undefined): string |
   });
 
   if (!path) return null;
-  return own ? (signed.data ?? null) : exerciseImageUrl(base, path);
+  if (own) return signed.data ?? null;
+  // Offline mode has no server: the catalogue images that ship with the app are used.
+  if (getMode() === 'offline') {
+    const asset = catalogueImages[path];
+    return asset ? Asset.fromModule(asset).uri : null;
+  }
+  return exerciseImageUrl(base, path);
 }
 
 export function ExerciseThumb({ exercise, size }: { exercise: ImageSource; size?: number }) {

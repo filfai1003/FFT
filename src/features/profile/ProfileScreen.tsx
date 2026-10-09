@@ -16,6 +16,7 @@ import { cmToFeetInches, displayWeight } from '@/domain/units';
 import { useToday } from '@/features/profile/use-today';
 import { useGoalForDay } from '@/features/diet/log';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { getMode } from '@/lib/mode';
 import { logOut, logOutAnyway } from './account';
 import { useLatestWeight, useProfile } from './api';
 
@@ -90,6 +91,8 @@ export function ProfileScreen() {
     ],
   ];
 
+  const offline = getMode() === 'offline';
+
   const doLogOut = async () => {
     const result = await logOut(queryClient);
     if (!result.ok) setUnsynced(true);
@@ -103,6 +106,11 @@ export function ProfileScreen() {
             {t('profile.memberSince', { date: since })}
           </Text>
           <Text variant="screenTitle">{t('nav.profile')}</Text>
+          {offline ? (
+            <Text variant="label" muted>
+              {t('profile.offlineBadge')}
+            </Text>
+          ) : null}
         </View>
 
         <Pressable
@@ -247,12 +255,12 @@ export function ProfileScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t('profile.logOut')}
+          accessibilityLabel={offline ? t('profile.leaveOffline') : t('profile.logOut')}
           onPress={doLogOut}
           style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text variant="label" muted>
-            {t('profile.logOut')}
+            {offline ? t('profile.leaveOffline') : t('profile.logOut')}
           </Text>
         </Pressable>
       </Screen>

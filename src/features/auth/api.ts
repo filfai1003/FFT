@@ -1,4 +1,6 @@
+import { getMode } from '@/lib/mode';
 import { getSupabase } from '@/lib/supabase';
+import { leaveOfflineMode } from './session-store';
 
 export type Credentials = { email: string; password: string };
 
@@ -38,5 +40,9 @@ export async function resetPassword(email: string) {
 }
 
 export async function signOut() {
+  if (getMode() === 'offline') {
+    await leaveOfflineMode();
+    return;
+  }
   await getSupabase().auth.signOut();
 }

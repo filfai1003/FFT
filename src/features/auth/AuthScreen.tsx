@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
 import { credentialProblems, resetPassword, signIn, signUp } from './api';
+import { OfflineChoice } from './OfflineChoice';
 
 type Mode = 'signIn' | 'signUp';
 
@@ -117,6 +118,8 @@ export function AuthScreen() {
             {t('auth.legal')}
           </Text>
         )}
+
+        <OfflineChoice />
       </Screen>
 
       <BottomActionBar>

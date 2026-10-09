@@ -54,6 +54,7 @@ before the phase that depends on it.
 30. **Meals stay on target**: editing a meal in the fixed-meals plan re-shares the rest between the other meals (`rebalanceMeals`); one meal can never take more than the whole day. Auto-split works from the macro targets (calories = 4/4/9 of those macros).
 31. **Onboarding** lets you set the macro split (independent percentages) and set up your meals, main meals and workout position with the same editor as the plan (`MealPlanEditor`).
 32. **First workout plan** becomes active right away; a workout with nothing logged is replaced (with UNDO) when you start another one.
+33. **Offline mode** ("Use without an account" on the sign-in and setup screens): no account, no sync; everything is saved on the device. `getSupabase()` returns a local client (`src/lib/local-db`) with the same API as supabase-js (query builder, nested selects, the 3 views, `last_sets`, storage, `delete-account`), backed by an in-memory copy of the tables saved to IndexedDB (web) or files (iOS/Android). Same schema rules as the SQL (checks, unique indexes). Leaving offline mode keeps the data for next time; Delete account wipes it. Open Food Facts search is online-only. No migration between modes.
 
 ## Still open
 

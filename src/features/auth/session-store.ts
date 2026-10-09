@@ -1,5 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { create } from 'zustand';
+import { LOCAL_USER_ID } from '@/lib/local-db';
+import { getMode, loadMode, setMode } from '@/lib/mode';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export type AuthStatus = 'loading' | 'unconfigured' | 'signedOut' | 'signedIn';
@@ -11,7 +13,7 @@ type State = {
 };
 
 export const useSessionStore = create<State>(() => ({
-  status: isSupabaseConfigured ? 'loading' : 'unconfigured',
+  status: 'loading',
   session: null,
   userId: null,
 }));
@@ -24,13 +26,53 @@ function apply(session: Session | null) {
   });
 }
 
-let started = false;
+/** Offline mode: no account, the one local user is always "signed in". */
+function applyOffline() {
+  useSessionStore.setState({
+    status: 'signedIn',
+    session: { user: { id: LOCAL_USER_ID } } as unknown as Session,
+    userId: LOCAL_USER_ID,
+  });
+}
 
-/** Restores the saved session and follows sign-in / sign-out / token refresh. Call once. */
-export function startAuthListener() {
-  if (started || !isSupabaseConfigured) return;
-  started = true;
+let started = false;
+let subscribed = false;
+
+/** Signs in to the server account side: restores the saved session and follows its changes. */
+async function connectCloud() {
+  if (!isSupabaseConfigured) {
+    useSessionStore.setState({ status: 'unconfigured', session: null, userId: null });
+    return;
+  }
   const supabase = getSupabase();
-  void supabase.auth.getSession().then(({ data }) => apply(data.session));
-  supabase.auth.onAuthStateChange((_event, session) => apply(session));
+  if (!subscribed) {
+    subscribed = true;
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (getMode() === 'cloud') apply(session);
+    });
+  }
+  const { data } = await supabase.auth.getSession();
+  apply(data.session);
+}
+
+/** Picks the saved mode (account or offline) and follows sign-in / sign-out. Call once. */
+export function startAuthListener() {
+  if (started) return;
+  started = true;
+  void loadMode().then((mode) => (mode === 'offline' ? applyOffline() : connectCloud()));
+}
+
+/** "Use without an account": from now on everything is saved on this device only. */
+export async function enterOfflineMode(queryClient: { clear: () => void }) {
+  await setMode('offline');
+  queryClient.clear();
+  applyOffline();
+}
+
+/** Back to the account screen. The data stays on the device for the next time. */
+export async function leaveOfflineMode(queryClient?: { clear: () => void }) {
+  await setMode('cloud');
+  queryClient?.clear();
+  useSessionStore.setState({ status: 'loading', session: null, userId: null });
+  await connectCloud();
 }
