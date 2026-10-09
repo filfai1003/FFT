@@ -98,7 +98,8 @@
   "jest": {
     "preset": "jest-expo",
     "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/src/$1"
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^.*/assets/images/grid-dot(-big)?.png$": "<rootDir>/assets/images/icon.png"
     },
     "setupFiles": [
       "<rootDir>/jest.setup.js"
