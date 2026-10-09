@@ -78,6 +78,6 @@ export function useBack(fallback?: Href) {
     // The tab bar is the root of everything: replacing the page with it works even when the page was
     // opened directly (reload, link) and there is nothing to dismiss to.
     if (from === '/(tabs)') router.replace('/(tabs)');
-    else router.dismissTo(from as Href);
+    else router.navigate(from as Href);
   };
 }
