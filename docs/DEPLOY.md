@@ -39,3 +39,19 @@ Not applied: the data of earlier local accounts (nothing to migrate: free accoun
   package, SDK upgrade) need a new APK; the app version in `app.json` is the update compatibility key.
 - Play Store: `--profile production` (an `.aab`) and a Google Play developer account.
 Package name: `com.filfai1003.fft`.
+
+## Access rules (who can reach what)
+- Only Kong has a public address. Postgres, auth, rest, storage and api have none (private network
+  only) and Postgres has no TCP proxy, so the database cannot be reached from the internet.
+- Every call to `/auth`, `/rest` and `/functions` needs the app's `apikey` (the anon key). The anon key
+  is public by design (it is inside the APK): the real protection is the user's signed token (JWT)
+  plus row level security on every table (a test fails if a table has none). A user only sees their
+  own rows; the anon key alone sees nothing.
+- The service-role key never leaves Railway (`api`, `kong`, `storage`) and `.secrets/`.
+- Rate limits per IP (per minute): auth 60, functions 60, rest and storage 600; request bodies on
+  auth/rest/functions are capped at 1 MB. Passwords need 8+ characters, refresh tokens rotate.
+- REST exposes the `public` schema only.
+- Check it after a change: `SUPABASE_URL=… SUPABASE_ANON_KEY=… bash supabase/scripts/smoke-hosted.sh`.
+- Not covered: someone can still extract the anon key from the APK and sign up for accounts (that
+  is all it allows: they only ever see their own data). Stronger app-only checks (Play Integrity)
+  and email verification (needs an SMTP service) are possible later.
