@@ -10,7 +10,8 @@ import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { shortDateLabel } from '@/domain/day';
+import { shortDateLabel, weekOf } from '@/domain/day';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
 import {
   checkAsPlanned,
   eatenFromChecks,
@@ -23,6 +24,7 @@ import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { AdjustMealSheet } from './AdjustMealSheet';
 import { DayPickerSheet } from './DayPickerSheet';
+import { DayStrip } from './DayStrip';
 import { DaySummaryCard } from './DaySummaryCard';
 import { useDayTarget, useDietDay } from './day-hooks';
 import {
@@ -40,6 +42,7 @@ export function FixedMealsLog() {
   const { colors } = useTheme();
   const router = useRouter();
   const barHeight = useTabBarHeight();
+  const weekStart = usePreferencesStore((s) => s.weekStart);
   const { day, today, setDay } = useDietDay();
   const plan = useFixedPlan();
   const checks = useFixedChecks(day);
@@ -122,6 +125,8 @@ export function FixedMealsLog() {
             />
           </View>
         </View>
+
+        <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
 
         {plan.data ? (
           <View
