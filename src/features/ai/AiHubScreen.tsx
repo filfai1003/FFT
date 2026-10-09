@@ -34,7 +34,6 @@ export function AiHubScreen() {
     baseUrl: stored.baseUrl,
   };
   const patch = (p: Partial<AiSettings>) => setDraft({ ...value, ...p });
-  const ready = hasAiKey(stored) && stored.model.trim() !== '';
   const canSave =
     hasAiKey(value) &&
     value.model.trim() !== '' &&
@@ -47,20 +46,6 @@ export function AiHubScreen() {
       <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.title')}</Text>
       <Text muted>{t('ai.intro')}</Text>
-
-      <Card gap={10}>
-        <Text variant="label" muted>
-          {t('ai.chatTitle')}
-        </Text>
-        <Text variant="bodyS" muted>
-          {ready ? t('ai.chatReady') : t('ai.chatNeedsKey')}
-        </Text>
-        <Button
-          label={t('ai.openChat')}
-          disabled={!ready}
-          onPress={() => router.push({ pathname: '/ai-chat' })}
-        />
-      </Card>
 
       <Card gap={10}>
         <Text variant="label" muted>

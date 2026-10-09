@@ -16,7 +16,7 @@ import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { monthGrid, shiftMonth } from '@/features/train/HistoryScreen';
 import { type SessionView } from '@/features/train/history';
-import { useBack } from '@/lib/navigation';
+import { goBack as goBackTo } from '@/lib/navigation';
 import { CalendarGrid, CalendarLegend, useCalendarData } from './CalendarGrid';
 
 export type CalendarMode = 'week' | 'month';
@@ -24,7 +24,8 @@ export type CalendarMode = 'week' | 'month';
 /** Calendar of the week or the month: which days you trained and which days you followed the diet. */
 export function CalendarScreen() {
   const { t } = useTranslation();
-  const goBack = useBack('/progress');
+  const router = useRouter();
+  const goBack = () => goBackTo(router, '/(tabs)');
   const barHeight = useTabBarHeight();
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);

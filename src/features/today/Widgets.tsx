@@ -480,7 +480,7 @@ export function CalendarWidget({ size }: Props) {
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const [mode, setMode] = useState<'week' | 'month'>('week');
-  const open = () => router.push({ pathname: '/progress/calendar', params: { from: '/(tabs)' } });
+  const open = () => router.push('/calendar');
 
   const cells: (string | null)[] =
     mode === 'week' || size === 'small'

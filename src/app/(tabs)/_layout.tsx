@@ -24,7 +24,10 @@ function AppTabBar({ state, navigation }: TabBarProps) {
         key: route.key,
         label: t(tab.label),
         icon: tab.icon,
-        active: state.index === index,
+        // The calendar is a page of Today, so Today stays lit while it is open.
+        active:
+          state.index === index ||
+          (route.name === 'index' && state.routes[state.index]?.name === 'calendar'),
         onPress: () => {
           const event = navigation.emit({
             type: 'tabPress',

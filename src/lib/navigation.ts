@@ -14,7 +14,6 @@ const PAGES = new Set([
   '/progress/weight',
   '/progress/body',
   '/progress/photos',
-  '/progress/calendar',
   '/profile',
   '/profile/settings',
   '/profile/accessibility',

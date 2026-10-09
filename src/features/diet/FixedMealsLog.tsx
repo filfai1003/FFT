@@ -1,10 +1,9 @@
+import { Button } from '@/components/ui/Button';
 import { useRouter } from 'expo-router';
-import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
-import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
@@ -26,6 +25,7 @@ import { AdjustMealSheet } from './AdjustMealSheet';
 import { DayPickerSheet } from './DayPickerSheet';
 import { DayStrip } from './DayStrip';
 import { DaySummaryCard } from './DaySummaryCard';
+import { PickDayLabel } from './PickDayLabel';
 import { useDayTarget, useDietDay } from './day-hooks';
 import {
   useFixedChecks,
@@ -106,23 +106,8 @@ export function FixedMealsLog() {
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
           <View style={{ gap: 4 }}>
-            <Text variant="label" muted>
-              {shortDateLabel(day)}
-            </Text>
+            <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
             <Text variant="screenTitle">{t('diet.title')}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <AiChatButton />
-            <IconButton
-              icon="more"
-              accessibilityLabel={t('diet.goalsAndMode')}
-              onPress={() => router.push('/diet-goals')}
-            />
-            <IconButton
-              icon="calendar"
-              accessibilityLabel={t('diet.openCalendar')}
-              onPress={() => setCalendar(true)}
-            />
           </View>
         </View>
 
@@ -138,6 +123,12 @@ export function FixedMealsLog() {
             })}
           />
         ) : null}
+
+        <Button
+          label={t('diet.goalsAndMode')}
+          variant="ghost"
+          onPress={() => router.push('/diet-goals')}
+        />
 
         <View style={{ gap: 8 }}>
           {meals.map((m) => {

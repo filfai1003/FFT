@@ -1,13 +1,12 @@
 import { useRouter } from 'expo-router';
-import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
@@ -70,14 +69,6 @@ export function TrainScreen() {
               </Text>
             ) : null}
             <Text variant="screenTitle">{t('nav.train')}</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 4 }}>
-            <AiChatButton />
-            <IconButton
-              icon="plus"
-              accessibilityLabel={t('train.newPlan')}
-              onPress={() => setCreating(true)}
-            />
           </View>
         </View>
 

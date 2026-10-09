@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Reveal } from '@/components/ui/motion';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
-import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { useTabBarHeight } from '@/components/ui/TabBar';
@@ -70,13 +69,6 @@ export function ProgressScreen() {
             })}
           </Text>
           <Text variant="screenTitle">{t('nav.progress')}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 4 }}>
-          <IconButton
-            icon="calendar"
-            accessibilityLabel={t('calendar.open')}
-            onPress={() => router.push('/progress/calendar')}
-          />
         </View>
       </View>
 

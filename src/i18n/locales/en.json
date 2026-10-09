@@ -1066,7 +1066,6 @@
     "openPlan": "Open the plan",
     "openDiet": "Open the diet",
     "workoutSummary": "{{days}} days · {{exercises}} exercises",
-    "openCoach": "Ask the AI coach",
     "keyProblem": "Your API key is not set correctly",
     "keyProblemBody": "The AI provider did not accept it. Check the key and the model in the settings, or copy your request and use your own AI app.",
     "openSettings": "Open AI settings",
