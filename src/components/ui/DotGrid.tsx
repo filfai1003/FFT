@@ -116,7 +116,13 @@ export function DotGrid() {
       pointerEvents="none"
       onLayout={(e) => setSize(e.nativeEvent.layout)}
     >
-      <Svg style={StyleSheet.absoluteFill} pointerEvents="none" aria-hidden>
+      <Svg
+        width="100%"
+        height="100%"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        aria-hidden
+      >
         <StaticDots id={id} />
         {animate ? <Waves id={id} width={size.width} height={size.height} now={now} /> : null}
       </Svg>
