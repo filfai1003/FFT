@@ -207,13 +207,6 @@ export function PrivacyScreen() {
               value: analytics != null,
               onChange: (v) => setConsent.mutate({ type: 'analytics', granted: v }),
             },
-            {
-              name: t('privacy.coach'),
-              detail: t('privacy.coachDetail'),
-              value: false,
-              onChange: () => undefined,
-              disabled: true,
-            },
           ])}
         </Card>
 

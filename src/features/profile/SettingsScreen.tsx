@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
-import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { useBackground } from '@/design/background-store';
 import { Segmented } from '@/components/ui/Segmented';
@@ -28,7 +27,7 @@ const notifications: { key: NotifKey; reminder?: 'workout' | 'checkin' | 'meals'
   { key: 'meals', reminder: 'meals' },
 ];
 
-/** Settings: units, accent colour, theme, language and notifications. */
+/** Settings: units, accent colour, background and notifications. */
 export function SettingsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -37,7 +36,6 @@ export function SettingsScreen() {
   const prefs = usePreferencesStore();
   const accent = useAppearanceStore((s) => s.accent);
   const setAppearance = useAppearanceStore((s) => s.set);
-  const [language, setLanguage] = useState(false);
   const [denied, setDenied] = useState(false);
 
   const toggleNotification = async (
@@ -174,22 +172,6 @@ export function SettingsScreen() {
           </View>
         </View>
         <View style={{ gap: 8 }}>
-          <Text>{t('settings.theme')}</Text>
-          <Segmented
-            accessibilityLabel={t('settings.theme')}
-            value="dark"
-            onChange={() => undefined}
-            options={[
-              { value: 'dark', label: t('settings.dark') },
-              { value: 'light', label: t('settings.light'), disabled: true },
-              { value: 'system', label: t('settings.system'), disabled: true },
-            ]}
-          />
-          <Text variant="bodyS" muted>
-            {t('settings.themeNote')}
-          </Text>
-        </View>
-        <View style={{ gap: 8 }}>
           <Text>{t('settings.background')}</Text>
           <Segmented
             accessibilityLabel={t('settings.background')}
@@ -205,25 +187,6 @@ export function SettingsScreen() {
             {t('settings.backgroundNote')}
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${t('settings.language')}, ${t('settings.english')}`}
-          onPress={() => setLanguage(true)}
-          style={{
-            minHeight: 52,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Text>{t('settings.language')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text variant="label" muted>
-              {t('settings.english')}
-            </Text>
-            <Icon name="chevronRight" size={16} color={colors.textMuted} />
-          </View>
-        </Pressable>
       </Card>
 
       <Card gap={0}>
@@ -260,18 +223,6 @@ export function SettingsScreen() {
           </View>
         ))}
       </Card>
-
-      <Sheet
-        visible={language}
-        onClose={() => setLanguage(false)}
-        title={t('settings.language')}
-        closeLabel={t('common.close')}
-      >
-        <OptionCard title={t('settings.english')} selected onPress={() => setLanguage(false)} />
-        <Text variant="bodyS" muted>
-          {t('settings.moreLanguages')}
-        </Text>
-      </Sheet>
 
       <Sheet
         visible={denied}

@@ -30,7 +30,6 @@ export function ProfileScreen() {
   const weight = useLatestWeight();
   const today = useToday();
   const prefs = usePreferencesStore();
-  const [premium, setPremium] = useState(false);
   const [help, setHelp] = useState(false);
   const [unsynced, setUnsynced] = useState(false);
 
@@ -163,45 +162,6 @@ export function ProfileScreen() {
           </View>
         </Pressable>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: 14,
-            paddingLeft: 16,
-            borderRadius: 22,
-            borderWidth: 1,
-            borderStyle: 'dashed',
-            borderColor: colors.borderControl,
-            backgroundColor: colors.surfaceAlt,
-          }}
-        >
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text variant="label" muted>
-              {t('profile.premium')}
-            </Text>
-            <Text variant="bodyS">{t('profile.premiumLine')}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('profile.seePlans')}
-            onPress={() => setPremium(true)}
-            style={({ pressed }) => ({
-              height: 44,
-              paddingHorizontal: 14,
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: colors.borderSelected,
-              justifyContent: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text variant="label">{t('profile.seePlans')}</Text>
-          </Pressable>
-        </View>
-
         {groups.map((rows, i) => (
           <View
             key={i}
@@ -253,26 +213,6 @@ export function ProfileScreen() {
           </Text>
         </Pressable>
       </Screen>
-
-      <Sheet
-        visible={premium}
-        onClose={() => setPremium(false)}
-        title={t('profile.premium')}
-        closeLabel={t('common.close')}
-      >
-        <Text muted>{t('profile.premiumBody')}</Text>
-        {(['widgets', 'sync', 'ai', 'coach'] as const).map((k) => (
-          <View key={k} style={{ minHeight: 52, justifyContent: 'center', opacity: 0.5 }}>
-            <Text>{t(`profile.premiumItem.${k}`)}</Text>
-            <Text variant="label" muted>
-              {t('profile.comingSoon')}
-            </Text>
-          </View>
-        ))}
-        <Text variant="bodyS" muted>
-          {t('profile.premiumFree')}
-        </Text>
-      </Sheet>
 
       <Sheet
         visible={help}
