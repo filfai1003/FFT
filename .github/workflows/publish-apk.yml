@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - run: npm ci
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
@@ -43,7 +44,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if grep -q "$BUILD_ID" site/config.js; then echo "Already published"; exit 0; fi
-          npm ci
           curl -fsSL -o fft.apk "$BUILD_URL"
           APK_BUILD_ID="$BUILD_ID" node supabase/scripts/publish-apk.mjs fft.apk
           git config user.name "github-actions"
