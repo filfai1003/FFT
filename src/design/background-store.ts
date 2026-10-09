@@ -12,7 +12,7 @@ export type BackgroundMode = 'black' | 'dots' | 'waves';
 export type WavesHealth = 'untested' | 'trying' | 'ok' | 'failed';
 
 const KEY = 'fft.background';
-const HEALTH_KEY = 'fft.waves-health';
+const HEALTH_KEY = 'fft.waves-health-2';
 const modes: readonly BackgroundMode[] = ['black', 'dots', 'waves'];
 
 type State = {

@@ -1,14 +1,12 @@
-import { Component, lazy, Suspense, useEffect, useId, useState, type ReactNode } from 'react';
+import { Component, useEffect, useId, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { useBackground } from '@/design/background-store';
 import { color } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import DriftingLight from './DriftingLight';
 
 const { dot, spacing } = color.dotGrid;
-
-// The waves need the animation library: it is loaded only when that mode is on.
-const WaveDots = lazy(() => import('./WaveDots'));
 
 /** The faint 1px dot grid behind every screen. Decorative: hidden from screen readers. */
 function StaticDots({ id }: { id: string }) {
@@ -55,9 +53,7 @@ function GuardedWaves({ width, height }: { width: number; height: number }) {
   }, [setHealth]);
   return (
     <WaveBoundary onFail={() => setHealth('failed')}>
-      <Suspense fallback={null}>
-        <WaveDots width={width} height={height} />
-      </Suspense>
+      <DriftingLight width={width} height={height} />
     </WaveBoundary>
   );
 }
@@ -82,6 +78,8 @@ export function DotGrid() {
       pointerEvents="none"
       onLayout={(e) => setSize(e.nativeEvent.layout)}
     >
+      {animate ? <GuardedWaves width={size.width} height={size.height} /> : null}
+      {/* The faint grid is on top, so it stays visible outside the light too. */}
       <Svg
         width="100%"
         height="100%"
@@ -91,7 +89,6 @@ export function DotGrid() {
       >
         <StaticDots id={id} />
       </Svg>
-      {animate ? <GuardedWaves width={size.width} height={size.height} /> : null}
     </View>
   );
 }
