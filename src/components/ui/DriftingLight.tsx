@@ -1,10 +1,13 @@
 import { useEffect, useId, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet } from 'react-native';
-import Svg, { Circle, Defs, Pattern, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { Animated, Easing, Image, Platform, StyleSheet } from 'react-native';
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { color } from '@/design/tokens';
 
 const { spacing } = color.dotGrid;
 const native = Platform.OS !== 'web';
+
+// Black, clear in the middle, opaque towards the edges (tools/make-veil.js): a small picture the GPU stretches.
+const veil = require('../../../assets/images/veil.png');
 
 // A cosine sampled at 9 points: the animation library draws a smooth curve through them.
 const COS = [1, 0.707, 0, -0.707, -1, -0.707, 0, 0.707, 1];
@@ -37,7 +40,6 @@ function useSway(durationMs: number, amount: number, phase: number) {
  */
 export default function DriftingLight({ width, height }: { width: number; height: number }) {
   const id = useId().replace(/:/g, '');
-  const open = Math.min(width, height) * 0.66; // radius where the light has faded out
   const half = Math.hypot(width, height); // the veil covers the screen from any place of the opening
   const x = useSway(26000, width * 0.32, 0);
   const y = useSway(37000, height * 0.3, 0.25);
@@ -64,19 +66,12 @@ export default function DriftingLight({ width, height }: { width: number; height
           transform: [{ translateX: x }, { translateY: y }, { scale: Animated.add(1, breathe) }],
         }}
       >
-        <Svg width={half * 2} height={half * 2} aria-hidden>
-          <Defs>
-            <RadialGradient id={`${id}v`} cx="50%" cy="50%" r="50%">
-              <Stop offset={0} stopColor="#000" stopOpacity={0} />
-              <Stop offset={(open * 0.12) / half} stopColor="#000" stopOpacity={0} />
-              <Stop offset={(open * 0.4) / half} stopColor="#000" stopOpacity={0.3} />
-              <Stop offset={(open * 0.7) / half} stopColor="#000" stopOpacity={0.75} />
-              <Stop offset={open / half} stopColor="#000" stopOpacity={1} />
-              <Stop offset={1} stopColor="#000" stopOpacity={1} />
-            </RadialGradient>
-          </Defs>
-          <Rect width={half * 2} height={half * 2} fill={`url(#${id}v)`} />
-        </Svg>
+        <Image
+          source={veil}
+          resizeMode="stretch"
+          style={{ width: half * 2, height: half * 2 }}
+          accessible={false}
+        />
       </Animated.View>
     </>
   );
