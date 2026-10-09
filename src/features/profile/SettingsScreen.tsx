@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { Linking, Pressable, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
@@ -14,7 +15,7 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { setReminder } from '@/lib/notifications';
+import { ensurePermission, setReminder } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
 import { usePreferencesStore, type NotificationPrefs } from '@/features/settings/preferences-store';
 
@@ -41,6 +42,11 @@ export function SettingsScreen() {
     reminder: 'workout' | 'checkin' | 'meals' | undefined,
     value: boolean,
   ) => {
+    // Switching any notification on asks the system first; without its permission nothing can be on.
+    if (value && !(await ensurePermission())) {
+      setDenied(true);
+      return;
+    }
     if (reminder) {
       const ok = await setReminder(reminder, value, {
         title: t(`settings.reminder.${reminder}.title`),
@@ -229,6 +235,13 @@ export function SettingsScreen() {
         closeLabel={t('common.close')}
       >
         <Text muted>{t('settings.deniedBody')}</Text>
+        <Button
+          label={t('settings.openDeviceSettings')}
+          onPress={() => {
+            setDenied(false);
+            void Linking.openSettings();
+          }}
+        />
       </Sheet>
     </Screen>
   );

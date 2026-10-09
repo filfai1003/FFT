@@ -18,6 +18,18 @@ if (supported) {
   });
 }
 
+/**
+ * Android 13+ shows the permission question only once a notification channel exists, so the channel
+ * is created before the first request (and before any reminder is scheduled).
+ */
+async function ensureChannel() {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync('default', {
+    name: 'Reminders',
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 /** Whether the system lets the app notify (never asks). */
 export async function notificationsAllowed(): Promise<boolean> {
   if (!supported) return false;
@@ -28,6 +40,7 @@ export async function ensurePermission(): Promise<boolean> {
   if (!supported) return false;
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
+  await ensureChannel();
   const asked = await Notifications.requestPermissionsAsync();
   return asked.granted;
 }

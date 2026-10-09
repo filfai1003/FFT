@@ -898,7 +898,8 @@
     "bgBlack": "Black",
     "bgDots": "Dots",
     "bgWaves": "Waves",
-    "backgroundNote": "Waves are still with Reduce motion on."
+    "backgroundNote": "Waves are still with Reduce motion on.",
+    "openDeviceSettings": "Open device settings"
   },
   "a11y": {
     "title": "Accessibility",

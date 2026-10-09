@@ -1,5 +1,5 @@
 import { memo, useEffect, useId, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { useBackground } from '@/design/background-store';
 import { color } from '@/design/tokens';
@@ -9,55 +9,53 @@ const { dot, spacing } = color.dotGrid;
 const WAVE_MS = 5600;
 const native = Platform.OS !== 'web';
 
-/** The faint 1px dot grid behind every screen. Decorative: hidden from screen readers. */
-function StaticDots({ id }: { id: string }) {
+const baseTile = require('../../../assets/images/grid-dot.png');
+const bigTile = require('../../../assets/images/grid-dot-big.png');
+
+/**
+ * The dot grid at a given size, faint (1px dots) or big and bright. On phones it is a tiny picture
+ * repeated by the GPU (an SVG pattern is far heavier to draw); on the web it stays an SVG pattern.
+ */
+const Grid = memo(function Grid({
+  id,
+  width,
+  height,
+  big,
+}: {
+  id: string;
+  width?: number;
+  height?: number;
+  big?: boolean;
+}) {
+  if (native) {
+    return (
+      <Image
+        source={big ? bigTile : baseTile}
+        resizeMode="repeat"
+        style={width != null && height != null ? { width, height } : StyleSheet.absoluteFill}
+        accessible={false}
+      />
+    );
+  }
   return (
-    <>
+    <Svg
+      width={width ?? '100%'}
+      height={height ?? '100%'}
+      style={width == null ? StyleSheet.absoluteFill : undefined}
+      pointerEvents="none"
+      aria-hidden
+    >
       <Defs>
         <Pattern id={id} width={spacing} height={spacing} patternUnits="userSpaceOnUse">
-          <Circle cx={spacing / 2} cy={spacing / 2} r={0.75} fill={dot} />
+          <Circle
+            cx={spacing / 2}
+            cy={spacing / 2}
+            r={big ? 2.4 : 0.75}
+            fill={big ? '#8C8C8C' : dot}
+          />
         </Pattern>
       </Defs>
       <Rect width="100%" height="100%" fill={`url(#${id})`} />
-    </>
-  );
-}
-
-/** The faint grid at a given size (the patch that keeps it visible in the middle of a ring). */
-const BaseDots = memo(function BaseDots({
-  id,
-  width,
-  height,
-}: {
-  id: string;
-  width: number;
-  height: number;
-}) {
-  return (
-    <Svg width={width} height={height} aria-hidden>
-      <StaticDots id={id} />
-    </Svg>
-  );
-});
-
-/** The same grid with bigger, brighter dots. Drawn once and never again: only masked while it moves. */
-const BigDots = memo(function BigDots({
-  id,
-  width,
-  height,
-}: {
-  id: string;
-  width: number;
-  height: number;
-}) {
-  return (
-    <Svg width={width} height={height} aria-hidden>
-      <Defs>
-        <Pattern id={id} width={spacing} height={spacing} patternUnits="userSpaceOnUse">
-          <Circle cx={spacing / 2} cy={spacing / 2} r={2.4} fill="#8C8C8C" />
-        </Pattern>
-      </Defs>
-      <Rect width={width} height={height} fill={`url(#${id})`} />
     </Svg>
   );
 });
@@ -117,7 +115,7 @@ function RingLayer({
           transform: [{ scale: counter as unknown as number }],
         }}
       >
-        <BigDots id={id} width={width} height={height} />
+        <Grid id={id} width={width} height={height} big />
       </Animated.View>
       <View
         style={{
@@ -142,7 +140,7 @@ function RingLayer({
             transform: [{ scale: counter as unknown as number }],
           }}
         >
-          <BaseDots id={`${id}-base`} width={width} height={height} />
+          <Grid id={`${id}-base`} width={width} height={height} />
         </Animated.View>
       </View>
     </Animated.View>
@@ -239,15 +237,7 @@ export function DotGrid() {
       pointerEvents="none"
       onLayout={(e) => setSize(e.nativeEvent.layout)}
     >
-      <Svg
-        width="100%"
-        height="100%"
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-        aria-hidden
-      >
-        <StaticDots id={id} />
-      </Svg>
+      <Grid id={id} />
       {animate ? (
         <>
           <Wave
