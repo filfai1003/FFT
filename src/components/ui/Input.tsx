@@ -1,4 +1,4 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef, useId, useState } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 import { fontFamily, inputFontSize, radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -20,12 +20,16 @@ export type InputProps = Omit<TextInputProps, 'style' | 'accessibilityLabel'> & 
   error?: string;
 };
 
+// react-native-web draws the browser's focus ring on the text field itself, inside our own border.
+const webNoOutline = { outlineStyle: 'none', outlineWidth: 0 } as object;
+
 export const Input = forwardRef<TextInput, InputProps>(function Input(
   { label, accessibilityLabel, variant = 'field', display = false, error, ...rest },
   ref,
 ) {
   const { colors, textScale } = useTheme();
   const id = useId();
+  const [focused, setFocused] = useState(false);
   const fontSize = Math.max(inputFontSize, Math.round(inputFontSize * textScale));
 
   const box = {
@@ -76,7 +80,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             alignItems: 'center',
             gap: 10,
             borderWidth: 1,
-            borderColor: error ? colors.danger : colors.borderControl,
+            // Focus = a white border (the browser's coloured outline is switched off below).
+            borderColor: error
+              ? colors.danger
+              : focused
+                ? colors.borderSelected
+                : colors.borderControl,
           },
         ]}
       >
@@ -90,7 +99,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           maxFontSizeMultiplier={1.5}
           returnKeyType={variant === 'search' ? 'search' : undefined}
           {...rest}
-          style={textStyle}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
+          style={[textStyle, webNoOutline]}
         />
       </View>
       {error ? (
