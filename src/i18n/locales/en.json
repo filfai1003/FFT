@@ -990,7 +990,12 @@
     "diet": "Diet",
     "noDiet": "Nothing logged this day.",
     "dietLine": "{{eaten}} of {{target}} kcal",
-    "future": "Nothing yet."
+    "future": "Nothing yet.",
+    "view": "View",
+    "week": "Week",
+    "month": "Month",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week"
   },
   "ai": {
     "title": "AI plans & import",

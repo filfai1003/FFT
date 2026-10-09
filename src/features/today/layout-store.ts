@@ -10,7 +10,7 @@ export const defaultWidgets: readonly WidgetItem[] = [
   { id: 'workout', size: 'large', visible: true },
   { id: 'water', size: 'small', visible: true },
   { id: 'creatine', size: 'small', visible: true },
-  { id: 'calendar', size: 'small', visible: false },
+  { id: 'calendar', size: 'large', visible: false },
 ];
 
 type HomeLayout = { widgets: readonly WidgetItem[]; aiDock: boolean };

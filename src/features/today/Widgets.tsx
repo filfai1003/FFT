@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -8,19 +8,22 @@ import { DotBar } from '@/components/ui/DotBar';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
+import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { addDays, deviceTimeZone, localDay, weekOf } from '@/domain/day';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { dotsOn } from '@/domain/dots';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
 import { useAddWater, useDayTotals, useRemoveWater, useWater } from '@/features/diet/log';
+import { CalendarGrid, CalendarLegend, useCalendarData } from '@/features/progress/CalendarGrid';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
+import { monthGrid } from '@/features/train/HistoryScreen';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
@@ -469,26 +472,65 @@ export function CreatineWidget({ size }: Props) {
   );
 }
 
+/** The calendar: this week or this month, with workouts and diet days. Tap a day to open it. */
 export function CalendarWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
+  const weekStart = usePreferencesStore((s) => s.weekStart);
+  const [mode, setMode] = useState<'week' | 'month'>('week');
+  const open = () => router.push({ pathname: '/progress/calendar', params: { from: '/(tabs)' } });
+
+  const cells: (string | null)[] =
+    mode === 'week' || size === 'small'
+      ? weekOf(today, weekStart)
+      : monthGrid(today.slice(0, 7), weekStart);
+  const days = cells.filter((d): d is string => d != null);
+  const data = useCalendarData([days[0]!.slice(0, 7), days[days.length - 1]!.slice(0, 7)]);
+  const past = days.filter((d) => d <= today);
+
+  if (size === 'small') {
+    return (
+      <Frame size="small" label={t('calendar.title')} onPress={open}>
+        <Icon name="calendar" size={24} color={colors.text} />
+        <Text variant="bodyS">
+          {t('calendar.summary', {
+            workouts: past.filter((d) => data.sessionsByDay.has(d)).length,
+            diet: past.filter((d) => data.statusOf(d) === 'onTarget').length,
+          })}
+        </Text>
+        <Text variant="label" muted>
+          {t('calendar.week')}
+        </Text>
+      </Frame>
+    );
+  }
+
   return (
     <Frame
-      size={size}
+      size="large"
       label={t('calendar.title')}
-      onPress={() => router.push('/progress/calendar')}
+      right={<IconButton icon="calendar" accessibilityLabel={t('calendar.open')} onPress={open} />}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Icon name="calendar" size={24} color={colors.text} />
-        <Text variant="bodyS" medium>
-          {shortDateLabel(today)}
-        </Text>
-      </View>
-      <Text variant="bodyS" muted>
-        {t('calendar.open')}
-      </Text>
+      <Segmented
+        accessibilityLabel={t('calendar.view')}
+        value={mode}
+        onChange={setMode}
+        options={[
+          { value: 'week', label: t('calendar.week') },
+          { value: 'month', label: t('calendar.month') },
+        ]}
+      />
+      <CalendarGrid
+        cells={cells}
+        today={today}
+        selected={today}
+        onSelect={open}
+        weekStart={weekStart}
+        data={data}
+      />
+      <CalendarLegend />
     </Frame>
   );
 }

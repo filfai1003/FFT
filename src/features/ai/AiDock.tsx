@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { useTheme } from '@/design/use-theme';
 import { useChatDraft } from './chat-draft';
 
@@ -16,7 +15,6 @@ export function AiDock() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const bottom = useTabBarHeight();
   const setDraft = useChatDraft((s) => s.set);
   const [text, setText] = useState('');
 
@@ -32,7 +30,7 @@ export function AiDock() {
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom,
+        bottom: 0,
         height: AI_DOCK_HEIGHT,
         paddingHorizontal: 16,
         flexDirection: 'row',
