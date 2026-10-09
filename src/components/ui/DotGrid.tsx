@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useId, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { useBackground } from '@/design/background-store';
@@ -24,13 +24,52 @@ function StaticDots({ id }: { id: string }) {
   );
 }
 
+/** If the waves fail to load or draw, the plain dots stay and the waves are marked as failed. */
+class WaveBoundary extends Component<
+  { children: ReactNode; onFail: () => void },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onFail();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+let trialStarted = false;
+
+/** The waves with their safety net: marked as being tried, and as fine a few seconds later. */
+function GuardedWaves({ width, height }: { width: number; height: number }) {
+  const setHealth = useBackground((s) => s.setHealth);
+  useEffect(() => {
+    if (trialStarted) return;
+    trialStarted = true;
+    setHealth('trying');
+    // Not cleared on purpose: the trial is about this whole run of the app, not this screen.
+    setTimeout(() => setHealth('ok'), 4000);
+  }, [setHealth]);
+  return (
+    <WaveBoundary onFail={() => setHealth('failed')}>
+      <Suspense fallback={null}>
+        <WaveDots width={width} height={height} />
+      </Suspense>
+    </WaveBoundary>
+  );
+}
+
 /** Background of every screen, in the mode chosen in Settings (black, dots, or dots with waves). */
 export function DotGrid() {
   const id = useId().replace(/:/g, '');
   const { reduceMotion } = useTheme();
-  const { mode, loaded, load } = useBackground();
+  const { mode, health, loaded, load } = useBackground();
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const animate = mode === 'waves' && !reduceMotion && size.width > 0;
+  const animate =
+    mode === 'waves' && health !== 'failed' && loaded && !reduceMotion && size.width > 0;
 
   useEffect(() => {
     if (!loaded) void load();
@@ -52,11 +91,7 @@ export function DotGrid() {
       >
         <StaticDots id={id} />
       </Svg>
-      {animate ? (
-        <Suspense fallback={null}>
-          <WaveDots width={size.width} height={size.height} />
-        </Suspense>
-      ) : null}
+      {animate ? <GuardedWaves width={size.width} height={size.height} /> : null}
     </View>
   );
 }
