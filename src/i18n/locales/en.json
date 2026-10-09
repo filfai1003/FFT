@@ -53,7 +53,7 @@
     "creatineTaken": "Creatine taken",
     "creatineRemoved": "Creatine unmarked",
     "customize": "Customize Today",
-    "customizeHint": "Choose what to show, the order and the size of each widget.",
+    "customizeHint": "Hold a widget and slide it to reorder. Choose what to show and how big.",
     "moveUp": "Move {{name}} up",
     "moveDown": "Move {{name}} down",
     "show": "Show {{name}}",
@@ -68,7 +68,8 @@
       "creatine": "Creatine",
       "calendar": "Calendar",
       "ai": "AI coach bar"
-    }
+    },
+    "reorderHint": "Hold and slide to reorder"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
