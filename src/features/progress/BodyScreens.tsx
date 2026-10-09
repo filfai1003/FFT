@@ -30,7 +30,6 @@ import {
   useBodyEntries,
   useBodyGoal,
   useDeleteEntry,
-  useSaveCheckIn,
   useSetBodyGoal,
   type BfMethod,
 } from './data';
@@ -103,7 +102,6 @@ export function BodyScreen() {
   const { period } = useProgressPeriod();
   const entries = useBodyEntries();
   const goal = useBodyGoal();
-  const save = useSaveCheckIn();
   const remove = useDeleteEntry();
   const setGoal = useSetBodyGoal();
   const method = usePrivacyStore((s) => s.bodyFatMethod);
@@ -131,9 +129,6 @@ export function BodyScreen() {
       : null;
   const fatChange = b.deltaPts != null ? t('progress.pts', { delta: signed(b.deltaPts) }) : null;
 
-  const [value, setValue] = useState<string | null>(null);
-  const input = value ?? (current != null ? String(shown(current)) : '');
-  const parsed = parseDecimal(input);
   const [goalSheet, setGoalSheet] = useState(false);
   const [goalInput, setGoalInput] = useState('');
 
@@ -151,13 +146,6 @@ export function BodyScreen() {
       : `${weekdayName(day).slice(0, 3)} ${shortDateLabel(day).split(' ')[1]} ${dayOfMonth(day)}`;
   };
   const since = shortDateLabel(p.from).split(' ').slice(1).join(' ');
-
-  const submit = async () => {
-    if (parsed == null || parsed <= 0) return;
-    await save.mutateAsync({ day: today, weightKg: storedWeight(parsed, unit) });
-    setValue(null);
-    showToast({ message: t('progress.weightSaved'), bottomOffset: barHeight });
-  };
 
   const divider = {
     borderTopWidth: 1,
@@ -201,31 +189,6 @@ export function BodyScreen() {
             change={fatChange}
           />
         </View>
-
-        <Card gap={12}>
-          <Text variant="label" muted>
-            {t('progress.logToday')}
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <View style={{ flex: 1 }}>
-              <Input
-                variant="compact"
-                accessibilityLabel={t('progress.todayWeight', { unit })}
-                value={input}
-                onChangeText={setValue}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
-                onSubmitEditing={() => void submit()}
-              />
-            </View>
-            <Button
-              label={t('common.save')}
-              block={false}
-              disabled={parsed == null || parsed <= 0 || save.isPending}
-              onPress={() => void submit()}
-            />
-          </View>
-        </Card>
 
         <BlockTitle title={t('progress.tabWeight')} hint={t('progress.weightExplain')} />
         <Card gap={14}>

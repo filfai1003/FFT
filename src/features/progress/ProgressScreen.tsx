@@ -2,9 +2,9 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
-import { Reveal } from '@/components/ui/motion';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
@@ -68,23 +68,12 @@ export function ProgressScreen() {
           </Text>
           <Text variant="screenTitle">{t('nav.progress')}</Text>
         </View>
+        <IconButton
+          icon="plus"
+          accessibilityLabel={t('progress.newCheckIn')}
+          onPress={() => router.push('/check-in')}
+        />
       </View>
-
-      <Reveal>
-        <Card gap={12}>
-          <View style={{ gap: 4 }}>
-            <Text variant="titleM">{t('progress.logTitle')}</Text>
-            <Text variant="bodyS" muted>
-              {t('progress.logInfo')}
-            </Text>
-          </View>
-          <Button
-            label={t('progress.newCheckIn')}
-            icon="plus"
-            onPress={() => router.push('/check-in')}
-          />
-        </Card>
-      </Reveal>
 
       <Segmented
         accessibilityLabel={t('progress.range')}
