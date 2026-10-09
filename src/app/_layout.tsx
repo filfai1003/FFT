@@ -17,6 +17,7 @@ import { useNotificationGuard } from '@/features/settings/use-notification-guard
 import { useSettingsSync } from '@/features/settings/use-settings-sync';
 import { useAppFonts } from '@/design/fonts';
 import { color } from '@/design/tokens';
+import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 
 void SplashScreen.preventAutoHideAsync();
@@ -32,6 +33,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     startAuthListener();
+    // A newer version of the app (over the air) is picked up as soon as the app starts.
+    void updateOnLaunch();
   }, []);
 
   if (!ready) return null;

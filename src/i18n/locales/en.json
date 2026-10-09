@@ -896,7 +896,20 @@
     "bgDots": "Dots",
     "bgWaves": "Waves",
     "backgroundNote": "Waves are still with Reduce motion on.",
-    "openDeviceSettings": "Open device settings"
+    "openDeviceSettings": "Open device settings",
+    "app": {
+      "title": "App",
+      "version": "Version {{version}}",
+      "builtIn": "Running the version it was installed with",
+      "update": "Running update {{id}} · {{date}}",
+      "runtime": "compatibility {{runtime}} · {{channel}}",
+      "noUpdates": "Updates over the internet are not available here.",
+      "check": "Check for updates",
+      "checking": "Checking…",
+      "restart": "Update ready: restart the app",
+      "upToDate": "You have the latest version.",
+      "error": "Could not check for updates. Check your connection and try again."
+    }
   },
   "a11y": {
     "title": "Accessibility",

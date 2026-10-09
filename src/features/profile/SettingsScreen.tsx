@@ -17,6 +17,7 @@ import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ensurePermission } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
+import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
 import { ReminderRow } from '@/features/settings/ReminderRow';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 
@@ -214,6 +215,8 @@ export function SettingsScreen() {
           </View>
         ))}
       </Card>
+
+      <AppUpdateCard />
 
       <Sheet
         visible={denied}
