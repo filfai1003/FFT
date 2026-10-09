@@ -759,7 +759,9 @@
     "compareNeedsTwo": "Add photos on two different days to compare them.",
     "bodyTitle": "Body",
     "tabWeight": "Weight",
-    "tabFat": "Body fat"
+    "tabFat": "Body fat",
+    "logToday": "Log today's weight",
+    "measurementsEmpty": "No measurements yet. Add waist, hips, chest, arm and thigh in a check-in."
   },
   "checkIn": {
     "title": "Check-in",
