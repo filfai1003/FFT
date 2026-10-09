@@ -911,7 +911,12 @@
       }
     },
     "deniedTitle": "Notifications are blocked",
-    "deniedBody": "Allow notifications for this app in your device settings, then turn this on again."
+    "deniedBody": "Allow notifications for this app in your device settings, then turn this on again.",
+    "background": "Background",
+    "bgBlack": "Black",
+    "bgDots": "Dots",
+    "bgWaves": "Waves",
+    "backgroundNote": "Waves are still with Reduce motion on."
   },
   "a11y": {
     "title": "Accessibility",

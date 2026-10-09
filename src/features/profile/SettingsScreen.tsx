@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
+import { useBackground } from '@/design/background-store';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
@@ -56,6 +57,8 @@ export function SettingsScreen() {
     }
     prefs.set('notifications', { ...prefs.notifications, [key]: value });
   };
+
+  const background = useBackground();
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
@@ -184,6 +187,22 @@ export function SettingsScreen() {
           />
           <Text variant="bodyS" muted>
             {t('settings.themeNote')}
+          </Text>
+        </View>
+        <View style={{ gap: 8 }}>
+          <Text>{t('settings.background')}</Text>
+          <Segmented
+            accessibilityLabel={t('settings.background')}
+            value={background.mode}
+            onChange={background.setMode}
+            options={[
+              { value: 'black', label: t('settings.bgBlack') },
+              { value: 'dots', label: t('settings.bgDots') },
+              { value: 'waves', label: t('settings.bgWaves') },
+            ]}
+          />
+          <Text variant="bodyS" muted>
+            {t('settings.backgroundNote')}
           </Text>
         </View>
         <Pressable
