@@ -1,7 +1,8 @@
-import { forwardRef, useId, useState } from 'react';
+import { forwardRef, useEffect, useId, useRef, useState } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 import { fontFamily, inputFontSize, radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { useFieldChain } from './field-chain';
 import { Icon } from './Icon';
 import { Text } from './Text';
 
@@ -30,9 +31,19 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const { colors, textScale } = useTheme();
   const id = useId();
   const [focused, setFocused] = useState(false);
+  const chain = useFieldChain();
+  const inner = useRef<TextInput | null>(null);
+  useEffect(() => chain?.register(inner), [chain]);
+  const setRef = (node: TextInput | null) => {
+    inner.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) ref.current = node;
+  };
   const fontSize = Math.max(inputFontSize, Math.round(inputFontSize * textScale));
 
   const multiline = rest.multiline === true;
+  // Enter goes to the next field, unless the field does something with Enter itself (search, send…).
+  const chained = chain != null && !multiline && !rest.onSubmitEditing && variant !== 'search';
   const box = {
     field: {
       ...(multiline
@@ -96,14 +107,17 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       >
         {variant === 'search' ? <Icon name="search" color={colors.textMuted} /> : null}
         <TextInput
-          ref={ref}
+          ref={setRef}
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityLabelledBy={label ? id : undefined}
           placeholderTextColor={colors.textMuted}
           selectionColor={colors.accent}
           maxFontSizeMultiplier={1.5}
-          returnKeyType={variant === 'search' ? 'search' : undefined}
+          returnKeyType={variant === 'search' ? 'search' : chained ? 'next' : undefined}
           {...rest}
+          onSubmitEditing={
+            chained && !rest.onSubmitEditing ? () => chain.next(inner) : rest.onSubmitEditing
+          }
           onFocus={(e) => {
             setFocused(true);
             rest.onFocus?.(e);

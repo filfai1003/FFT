@@ -11,7 +11,6 @@ const PAGES = new Set([
   '/diet',
   '/progress',
   '/progress/strength',
-  '/progress/weight',
   '/progress/body',
   '/progress/photos',
   '/profile',

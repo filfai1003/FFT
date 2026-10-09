@@ -4,7 +4,6 @@ import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { radius } from '@/design/tokens';
@@ -30,7 +29,6 @@ export function SessionDetailScreen({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const tz = useProfile().data?.timezone ?? deviceTimeZone();
   const session = useSessionDetail(sessionId);
@@ -63,7 +61,7 @@ export function SessionDetailScreen({
   ];
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar
         onBack={() =>
           goBack(router, exerciseRoute.startsWith('/progress') ? '/progress' : '/train/history')

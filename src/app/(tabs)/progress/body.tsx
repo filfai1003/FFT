@@ -1,5 +1,5 @@
-import { BodyFatScreen } from '@/features/progress/BodyScreens';
+import { BodyScreen } from '@/features/progress/BodyScreens';
 
 export default function Body() {
-  return <BodyFatScreen />;
+  return <BodyScreen />;
 }

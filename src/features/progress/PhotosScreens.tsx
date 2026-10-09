@@ -11,7 +11,6 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -48,7 +47,6 @@ export function PhotosScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const photos = usePhotos();
   const entries = useBodyEntries();
   const unit = usePreferencesStore((s) => s.weightUnit);
@@ -58,7 +56,7 @@ export function PhotosScreen() {
   const shown: Pose[] = pose === 'all' ? poses : [pose];
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar
         onBack={() => goBack(router, '/progress')}
         backLabel={t('common.back')}

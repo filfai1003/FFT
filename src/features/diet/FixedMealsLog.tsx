@@ -101,7 +101,7 @@ export function FixedMealsLog() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={12}>
+      <Screen scroll bottomBarHeight={24} gap={12}>
         <View
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >

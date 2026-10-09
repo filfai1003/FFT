@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, space } from '@/design/tokens';
+import { FieldChain } from './field-chain';
 import { DotGrid } from './DotGrid';
 
 export type ScreenProps = {
@@ -35,21 +36,23 @@ export function Screen({
   };
 
   return (
-    <View style={styles.root}>
-      <DotGrid />
-      {scroll ? (
-        <ScrollView
-          style={styles.fill}
-          contentContainerStyle={[padding, style]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.fill, padding, style]}>{children}</View>
-      )}
-    </View>
+    <FieldChain>
+      <View style={styles.root}>
+        <DotGrid />
+        {scroll ? (
+          <ScrollView
+            style={styles.fill}
+            contentContainerStyle={[padding, style]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.fill, padding, style]}>{children}</View>
+        )}
+      </View>
+    </FieldChain>
   );
 }
 

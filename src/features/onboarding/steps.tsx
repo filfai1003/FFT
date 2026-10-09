@@ -1,5 +1,6 @@
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { View, type TextInput } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { Input } from '@/components/ui/Input';
@@ -38,6 +39,11 @@ export function GoalStep({ draft, patch }: StepProps) {
 export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
   const { t } = useTranslation();
   const problems = bodyProblems(draft, today);
+  // Birth date: two digits in the day move to the month, two in the month to the year, four in the
+  // year to the height, so the date is typed in one go.
+  const monthRef = useRef<TextInput>(null);
+  const yearRef = useRef<TextInput>(null);
+  const heightRef = useRef<TextInput>(null);
   const touched = (field: string) => (field === 'name' ? draft.name !== '' : true);
   const birthEntered =
     draft.birthDay !== '' && draft.birthMonth !== '' && draft.birthYear.length === 4;
@@ -61,9 +67,11 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
               accessibilityLabel={t('onboarding.body.day')}
               placeholder={t('onboarding.body.dayPlaceholder')}
               value={draft.birthDay}
-              onChangeText={(birthDay) =>
-                patch({ birthDay: birthDay.replace(/\D/g, '').slice(0, 2) })
-              }
+              onChangeText={(birthDay) => {
+                const day = birthDay.replace(/\D/g, '').slice(0, 2);
+                patch({ birthDay: day });
+                if (day.length === 2) monthRef.current?.focus();
+              }}
               keyboardType="number-pad"
             />
           </View>
@@ -72,10 +80,13 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
               variant="compact"
               accessibilityLabel={t('onboarding.body.month')}
               placeholder={t('onboarding.body.monthPlaceholder')}
+              ref={monthRef}
               value={draft.birthMonth}
-              onChangeText={(birthMonth) =>
-                patch({ birthMonth: birthMonth.replace(/\D/g, '').slice(0, 2) })
-              }
+              onChangeText={(birthMonth) => {
+                const month = birthMonth.replace(/\D/g, '').slice(0, 2);
+                patch({ birthMonth: month });
+                if (month.length === 2) yearRef.current?.focus();
+              }}
               keyboardType="number-pad"
             />
           </View>
@@ -84,10 +95,13 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
               variant="compact"
               accessibilityLabel={t('onboarding.body.year')}
               placeholder={t('onboarding.body.yearPlaceholder')}
+              ref={yearRef}
               value={draft.birthYear}
-              onChangeText={(birthYear) =>
-                patch({ birthYear: birthYear.replace(/\D/g, '').slice(0, 4) })
-              }
+              onChangeText={(birthYear) => {
+                const year = birthYear.replace(/\D/g, '').slice(0, 4);
+                patch({ birthYear: year });
+                if (year.length === 4) heightRef.current?.focus();
+              }}
               keyboardType="number-pad"
             />
           </View>
@@ -115,6 +129,7 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Input
+            ref={heightRef}
             label={t('onboarding.body.height')}
             value={draft.heightCm}
             onChangeText={(heightCm) => patch({ heightCm })}

@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { addDays, monthYearLabel, shortDateLabel, weekOf } from '@/domain/day';
@@ -26,7 +25,6 @@ export function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const goBack = () => goBackTo(router, '/(tabs)');
-  const barHeight = useTabBarHeight();
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const [mode, setMode] = useState<CalendarMode>('month');
@@ -57,7 +55,7 @@ export function CalendarScreen() {
       : monthYearLabel(`${ym}-01`);
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('calendar.title')}</Text>
 

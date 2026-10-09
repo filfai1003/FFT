@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { useToday } from '@/features/profile/use-today';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { fontFamily } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -25,7 +24,6 @@ export function ProfileScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const barHeight = useTabBarHeight();
   const profile = useProfile();
   const weight = useLatestWeight();
   const today = useToday();
@@ -90,7 +88,7 @@ export function ProfileScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <View style={{ gap: 4 }}>
           <Text variant="label" muted>
             {t('profile.memberSince', { date: since })}

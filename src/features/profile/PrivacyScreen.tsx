@@ -11,7 +11,6 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { useTheme } from '@/design/use-theme';
 import { authenticate } from '@/lib/biometrics';
 import { goBack } from '@/lib/navigation';
@@ -26,7 +25,6 @@ export function PrivacyScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const barHeight = useTabBarHeight();
   const privacy = usePrivacyStore();
   const consents = useConsents();
   const setConsent = useSetConsent();
@@ -105,7 +103,7 @@ export function PrivacyScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
         <Text variant="screenTitle" style={{ fontSize: 28 }}>
           {t('privacy.title')}

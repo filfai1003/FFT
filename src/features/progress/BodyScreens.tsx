@@ -12,8 +12,8 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { Sheet } from '@/components/ui/Sheet';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
+import { useTabBarHeight } from '@/components/ui/TabBar';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { dotsOn } from '@/domain/dots';
@@ -38,14 +38,16 @@ import {
 import { chartValues, signed } from './ProgressScreen';
 import { bodyProgress, useProgressPeriod } from './series';
 
+const methods: BfMethod[] = ['scale', 'calipers', 'tape'];
+
 const fmt = (n: number, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toFixed(d);
 
-/** Body weight: weekly averages, goal progress, entries and a quick "log today". */
-export function WeightScreen() {
+/** Body: weight (average, goal, entries), body fat and measurements, all on one page. */
+export function BodyScreen() {
   const { t } = useTranslation();
+  const barHeight = useTabBarHeight();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const { period } = useProgressPeriod();
@@ -55,7 +57,19 @@ export function WeightScreen() {
   const remove = useDeleteEntry();
   const setGoal = useSetBodyGoal();
   const showToast = useToastStore((s) => s.show);
+  const lengthUnit = usePreferencesStore((s) => s.lengthUnit);
+  const method = usePrivacyStore((s) => s.bodyFatMethod);
+  const setMethod = usePrivacyStore((s) => s.set);
   const p = bodyProgress(entries.data ?? [], period, today);
+
+  const b = p.bodyFat;
+  const len = (cm: number) =>
+    lengthUnit === 'cm'
+      ? `${fmt(cm)} cm`
+      : (() => {
+          const x = cmToFeetInches(cm);
+          return `${x.feet}′ ${x.inches}″`;
+        })();
 
   const weights = (entries.data ?? []).filter((e) => e.weightKg != null);
   const latest = weights[weights.length - 1];
@@ -91,18 +105,23 @@ export function WeightScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 96} gap={14}>
+      <Screen scroll bottomBarHeight={96} gap={14}>
         <TopBar
           onBack={() => goBack(router, '/progress')}
           backLabel={t('common.back')}
           right={
-            <Text variant="label" muted>
-              {t(`progress.periodLong.${period}`)}
-            </Text>
+            <IconButton
+              icon="plus"
+              accessibilityLabel={t('progress.logMeasurements')}
+              onPress={() => router.push('/check-in')}
+            />
           }
         />
-        <Text variant="screenTitle">{t('progress.bodyWeightTitle')}</Text>
+        <Text variant="screenTitle">{t('progress.bodyTitle')}</Text>
 
+        <Text variant="label" muted>
+          {t('progress.tabWeight')}
+        </Text>
         <Card gap={12}>
           <View
             style={{
@@ -223,6 +242,141 @@ export function WeightScreen() {
             );
           })}
         </Section>
+
+        <Text variant="label" muted>
+          {t('progress.tabFat')}
+        </Text>
+        <Card gap={12}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              <Text variant="displayL" numeric>
+                {b.latestPct ?? '—'}
+              </Text>
+              <Text variant="label" muted>
+                {'%'}
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end', gap: 2 }}>
+              {b.deltaPts != null ? (
+                <Text variant="label">{t('progress.pts', { delta: signed(b.deltaPts) })}</Text>
+              ) : null}
+              <Text variant="label" muted>
+                {t('progress.sinceDate', {
+                  date: shortDateLabel(p.from).split(' ').slice(1).join(' '),
+                })}
+              </Text>
+            </View>
+          </View>
+          {b.buckets.some((v) => v != null) ? (
+            <DotColumnChart
+              values={chartValues(b.buckets)}
+              rows={8}
+              stretch
+              accessibilityLabel={t('progress.bodyFatChart')}
+            />
+          ) : (
+            <Text variant="bodyS" muted>
+              {t('progress.bodyFatEmpty')}
+            </Text>
+          )}
+          {b.leanKg != null && b.fatKg != null ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                borderTopWidth: 1,
+                borderStyle: 'dashed',
+                borderColor: colors.borderDecorative,
+                paddingTop: 12,
+              }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text
+                  variant="displayS"
+                  numeric
+                >{`${displayWeight(b.leanKg, unit)} ${unit.toUpperCase()}`}</Text>
+                <Text variant="label" muted>
+                  {t('progress.lean', {
+                    delta: b.leanDelta != null ? ` · ${signed(b.leanDelta)}` : '',
+                  })}
+                </Text>
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text
+                  variant="displayS"
+                  numeric
+                >{`${displayWeight(b.fatKg, unit)} ${unit.toUpperCase()}`}</Text>
+                <Text variant="label" muted>
+                  {t('progress.fat', {
+                    delta: b.fatDelta != null ? ` · ${signed(b.fatDelta)}` : '',
+                  })}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </Card>
+
+        <View style={{ gap: 10 }}>
+          <Text variant="label" muted>
+            {t('progress.measuredWith')}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {methods.map((m) => (
+              <Chip
+                key={m}
+                role="radio"
+                label={t(`progress.method.${m}`)}
+                selected={method === m}
+                onPress={() => setMethod('bodyFatMethod', m as 'scale' | 'calipers' | 'tape')}
+              />
+            ))}
+          </View>
+        </View>
+
+        <Section
+          title={t('progress.measurements', {
+            date: shortDateLabel(p.from).split(' ').slice(1).join(' '),
+          })}
+        >
+          {measureKeys.map((k) => {
+            const m = p.measures[k];
+            return (
+              <View
+                key={k}
+                style={{
+                  minHeight: 44,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottomWidth: 1,
+                  borderStyle: 'dashed',
+                  borderColor: colors.borderDecorative,
+                }}
+              >
+                <Text variant="bodyS">{t(`progress.measure.${k}`)}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                  {m ? (
+                    <>
+                      <Text variant="label" muted>
+                        {m.delta === 0 ? '0.0' : signed(m.delta)}
+                      </Text>
+                      <Text variant="label">{len(m.value)}</Text>
+                    </>
+                  ) : (
+                    <Text variant="label" muted>
+                      —
+                    </Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </Section>
       </Screen>
 
       <View
@@ -230,7 +384,7 @@ export function WeightScreen() {
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: barHeight,
+          bottom: 0,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 10,
@@ -289,174 +443,5 @@ export function WeightScreen() {
         />
       </Sheet>
     </>
-  );
-}
-
-const methods: BfMethod[] = ['scale', 'calipers', 'tape'];
-
-/** Body fat & measurements. */
-export function BodyFatScreen() {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const router = useRouter();
-  const barHeight = useTabBarHeight();
-  const today = useToday();
-  const unit = usePreferencesStore((s) => s.weightUnit);
-  const lengthUnit = usePreferencesStore((s) => s.lengthUnit);
-  const { period } = useProgressPeriod();
-  const entries = useBodyEntries();
-  const method = usePrivacyStore((s) => s.bodyFatMethod);
-  const setMethod = usePrivacyStore((s) => s.set);
-  const p = bodyProgress(entries.data ?? [], period, today);
-  const b = p.bodyFat;
-  const len = (cm: number) =>
-    lengthUnit === 'cm'
-      ? `${fmt(cm)} cm`
-      : (() => {
-          const x = cmToFeetInches(cm);
-          return `${x.feet}′ ${x.inches}″`;
-        })();
-
-  return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar
-        onBack={() => goBack(router, '/progress')}
-        backLabel={t('common.back')}
-        right={
-          <IconButton
-            icon="plus"
-            accessibilityLabel={t('progress.logMeasurements')}
-            onPress={() => router.push('/check-in')}
-          />
-        }
-      />
-      <Text variant="screenTitle">{t('progress.bodyFatTitle')}</Text>
-
-      <Card gap={12}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <Text variant="displayL" numeric>
-              {b.latestPct ?? '—'}
-            </Text>
-            <Text variant="label" muted>
-              {'%'}
-            </Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', gap: 2 }}>
-            {b.deltaPts != null ? (
-              <Text variant="label">{t('progress.pts', { delta: signed(b.deltaPts) })}</Text>
-            ) : null}
-            <Text variant="label" muted>
-              {t('progress.sinceDate', {
-                date: shortDateLabel(p.from).split(' ').slice(1).join(' '),
-              })}
-            </Text>
-          </View>
-        </View>
-        {b.buckets.some((v) => v != null) ? (
-          <DotColumnChart
-            values={chartValues(b.buckets)}
-            rows={8}
-            stretch
-            accessibilityLabel={t('progress.bodyFatChart')}
-          />
-        ) : (
-          <Text variant="bodyS" muted>
-            {t('progress.bodyFatEmpty')}
-          </Text>
-        )}
-        {b.leanKg != null && b.fatKg != null ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              borderTopWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: colors.borderDecorative,
-              paddingTop: 12,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text
-                variant="displayS"
-                numeric
-              >{`${displayWeight(b.leanKg, unit)} ${unit.toUpperCase()}`}</Text>
-              <Text variant="label" muted>
-                {t('progress.lean', {
-                  delta: b.leanDelta != null ? ` · ${signed(b.leanDelta)}` : '',
-                })}
-              </Text>
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text
-                variant="displayS"
-                numeric
-              >{`${displayWeight(b.fatKg, unit)} ${unit.toUpperCase()}`}</Text>
-              <Text variant="label" muted>
-                {t('progress.fat', { delta: b.fatDelta != null ? ` · ${signed(b.fatDelta)}` : '' })}
-              </Text>
-            </View>
-          </View>
-        ) : null}
-      </Card>
-
-      <View style={{ gap: 10 }}>
-        <Text variant="label" muted>
-          {t('progress.measuredWith')}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {methods.map((m) => (
-            <Chip
-              key={m}
-              role="radio"
-              label={t(`progress.method.${m}`)}
-              selected={method === m}
-              onPress={() => setMethod('bodyFatMethod', m as 'scale' | 'calipers' | 'tape')}
-            />
-          ))}
-        </View>
-      </View>
-
-      <Section
-        title={t('progress.measurements', {
-          date: shortDateLabel(p.from).split(' ').slice(1).join(' '),
-        })}
-      >
-        {measureKeys.map((k) => {
-          const m = p.measures[k];
-          return (
-            <View
-              key={k}
-              style={{
-                minHeight: 44,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                borderBottomWidth: 1,
-                borderStyle: 'dashed',
-                borderColor: colors.borderDecorative,
-              }}
-            >
-              <Text variant="bodyS">{t(`progress.measure.${k}`)}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                {m ? (
-                  <>
-                    <Text variant="label" muted>
-                      {m.delta === 0 ? '0.0' : signed(m.delta)}
-                    </Text>
-                    <Text variant="label">{len(m.value)}</Text>
-                  </>
-                ) : (
-                  <Text variant="label" muted>
-                    —
-                  </Text>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </Section>
-    </Screen>
   );
 }

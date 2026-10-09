@@ -11,7 +11,6 @@ import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -43,7 +42,6 @@ export function ExerciseDetailScreen({
   const { colors } = useTheme();
   const router = useRouter();
   const navigation = useNavigation();
-  const barHeight = useTabBarHeight();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const exercises = useExercises();
   const records = useRecords();
@@ -71,7 +69,7 @@ export function ExerciseDetailScreen({
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <TopBar
           onBack={() => {
             if (fromSession)

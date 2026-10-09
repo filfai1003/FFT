@@ -8,7 +8,6 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { radius } from '@/design/tokens';
@@ -37,7 +36,6 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
   const { colors } = useTheme();
   const router = useRouter();
   const back = useBack('/train');
-  const barHeight = useTabBarHeight();
   const plan = usePlan(planId);
   const rotation = useRotation(plan.data);
   const { startDay, startEmpty } = useStartWorkout();
@@ -62,7 +60,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <TopBar
           onBack={back}
           backLabel={t('common.back')}

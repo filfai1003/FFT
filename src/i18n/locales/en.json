@@ -756,7 +756,10 @@
     "logInfo": "Weight, body fat, measurements and photos, in one quick check-in.",
     "compare": "Compare two photo dates",
     "compareInfo": "Put two dates side by side, or slide between them.",
-    "compareNeedsTwo": "Add photos on two different days to compare them."
+    "compareNeedsTwo": "Add photos on two different days to compare them.",
+    "bodyTitle": "Body",
+    "tabWeight": "Weight",
+    "tabFat": "Body fat"
   },
   "checkIn": {
     "title": "Check-in",

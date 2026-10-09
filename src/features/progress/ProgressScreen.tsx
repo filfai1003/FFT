@@ -8,7 +8,6 @@ import { Reveal } from '@/components/ui/motion';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
@@ -36,7 +35,6 @@ export function ProgressScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const { period, setPeriod } = useProgressPeriod();
@@ -58,7 +56,7 @@ export function ProgressScreen() {
       : null;
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <View
         style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
       >
@@ -128,72 +126,78 @@ export function ProgressScreen() {
         )}
       </Card>
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <Card
-          size="small"
-          style={{ flex: 1 }}
-          gap={8}
-          onPress={() => router.push('/progress/weight')}
-          accessibilityLabel={t('progress.bodyWeight')}
-        >
-          <CardHead label={t('progress.bodyWeight')} />
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <Text variant="displayM" numeric>
-              {weightValue ?? '—'}
-            </Text>
+      <Card
+        onPress={() => router.push('/progress/body')}
+        accessibilityLabel={t('progress.bodyTitle')}
+        gap={12}
+      >
+        <CardHead label={t('progress.bodyTitle')} />
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <View style={{ flex: 1, gap: 8 }}>
             <Text variant="label" muted>
-              {unit.toUpperCase()}
+              {t('progress.tabWeight')}
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              <Text variant="displayM" numeric>
+                {weightValue ?? '—'}
+              </Text>
+              <Text variant="label" muted>
+                {unit.toUpperCase()}
+              </Text>
+            </View>
+            {body.weight.buckets.some((v) => v != null) ? (
+              <DotColumnChart
+                values={chartValues(body.weight.buckets)}
+                rows={5}
+                dotSize={6}
+                columnGap={3}
+                stretch
+                accessibilityLabel={t('progress.weightChart')}
+              />
+            ) : null}
+            {weightDelta != null ? (
+              <Text variant="label" muted>
+                {`${signed(weightDelta)} ${unit.toUpperCase()}`}
+              </Text>
+            ) : null}
           </View>
-          {body.weight.buckets.some((v) => v != null) ? (
-            <DotColumnChart
-              values={chartValues(body.weight.buckets)}
-              rows={5}
-              dotSize={6}
-              columnGap={3}
-              stretch
-              accessibilityLabel={t('progress.weightChart')}
-            />
-          ) : null}
-          {weightDelta != null ? (
+          <View
+            style={{
+              width: 1,
+              alignSelf: 'stretch',
+              backgroundColor: colors.borderDecorative,
+            }}
+          />
+          <View style={{ flex: 1, gap: 8 }}>
             <Text variant="label" muted>
-              {`${signed(weightDelta)} ${unit.toUpperCase()}`}
+              {t('progress.tabFat')}
             </Text>
-          ) : null}
-        </Card>
-        <Card
-          size="small"
-          style={{ flex: 1 }}
-          gap={8}
-          onPress={() => router.push('/progress/body')}
-          accessibilityLabel={t('progress.bodyFat')}
-        >
-          <CardHead label={t('progress.bodyFat')} />
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <Text variant="displayM" numeric>
-              {body.bodyFat.latestPct ?? '—'}
-            </Text>
-            <Text variant="label" muted>
-              {'%'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              <Text variant="displayM" numeric>
+                {body.bodyFat.latestPct ?? '—'}
+              </Text>
+              <Text variant="label" muted>
+                {'%'}
+              </Text>
+            </View>
+            {body.bodyFat.buckets.some((v) => v != null) ? (
+              <DotColumnChart
+                values={chartValues(body.bodyFat.buckets)}
+                rows={5}
+                dotSize={6}
+                columnGap={3}
+                stretch
+                accessibilityLabel={t('progress.bodyFatChart')}
+              />
+            ) : null}
+            {body.bodyFat.deltaPts != null ? (
+              <Text variant="label" muted>
+                {t('progress.pts', { delta: signed(body.bodyFat.deltaPts) })}
+              </Text>
+            ) : null}
           </View>
-          {body.bodyFat.buckets.some((v) => v != null) ? (
-            <DotColumnChart
-              values={chartValues(body.bodyFat.buckets)}
-              rows={5}
-              dotSize={6}
-              columnGap={3}
-              stretch
-              accessibilityLabel={t('progress.bodyFatChart')}
-            />
-          ) : null}
-          {body.bodyFat.deltaPts != null ? (
-            <Text variant="label" muted>
-              {t('progress.pts', { delta: signed(body.bodyFat.deltaPts) })}
-            </Text>
-          ) : null}
-        </Card>
-      </View>
+        </View>
+      </Card>
 
       <Card
         onPress={() => router.push('/progress/photos')}

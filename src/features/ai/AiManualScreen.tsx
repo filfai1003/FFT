@@ -57,7 +57,7 @@ export function AiManualScreen() {
   };
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.manualTitle')}</Text>
       <Text muted>{t('ai.manualIntro')}</Text>

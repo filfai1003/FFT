@@ -9,7 +9,6 @@ import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { Segmented } from '@/components/ui/Segmented';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -27,7 +26,6 @@ import { groupDetail, useStrength } from './strength';
 export function StrengthScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const { period } = useProgressPeriod();
   const s = useStrength(period);
   const [tab, setTab] = useState<'groups' | 'exercises'>('groups');
@@ -37,7 +35,7 @@ export function StrengthScreen() {
   const maxPct = Math.max(1, ...s.groups.map((g) => Math.abs(g.pctChange)));
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar
         onBack={() => goBack(router, '/progress')}
         backLabel={t('common.back')}
@@ -195,7 +193,6 @@ export function MuscleGroupScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const unit = usePreferencesStore((st) => st.weightUnit);
   const { period } = useProgressPeriod();
   const { group } = useLocalSearchParams<{ group: string }>();
@@ -215,7 +212,7 @@ export function MuscleGroupScreen() {
   ];
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar
         onBack={() => goBack(router, '/progress/strength')}
         backLabel={t('common.back')}

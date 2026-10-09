@@ -75,7 +75,14 @@ function AppNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: color.bg },
+        animation: 'fade',
+        animationDuration: 160,
+      }}
+    >
       <Stack.Protected guard={status === 'unconfigured'}>
         <Stack.Screen name="setup" />
       </Stack.Protected>
@@ -87,7 +94,14 @@ function AppNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={signedIn && onboarded}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="(modals)"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 220,
+          }}
+        />
         <Stack.Screen name="session" options={{ gestureEnabled: false }} />
       </Stack.Protected>
     </Stack>

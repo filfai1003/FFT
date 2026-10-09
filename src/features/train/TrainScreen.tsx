@@ -10,7 +10,6 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -28,7 +27,6 @@ export function TrainScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const { plan, data: plans, isPending } = useActivePlan();
   const [menuPlan, setMenuPlan] = useState<PlanView | null>(null);
   const [sheet, setSheet] = useState<PlanSheetKind>(null);
@@ -54,7 +52,7 @@ export function TrainScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <View
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >

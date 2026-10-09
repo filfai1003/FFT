@@ -11,7 +11,6 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -32,7 +31,6 @@ export function SettingsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const prefs = usePreferencesStore();
   const accent = useAppearanceStore((s) => s.accent);
   const setAppearance = useAppearanceStore((s) => s.set);
@@ -59,7 +57,7 @@ export function SettingsScreen() {
   const background = useBackground();
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('settings.title')}</Text>
 

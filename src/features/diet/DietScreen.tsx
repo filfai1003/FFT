@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -30,7 +29,6 @@ export function DietScreen() {
 function FoodLog() {
   const { t } = useTranslation();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const { day, today, setDay } = useDietDay();
   const [calendar, setCalendar] = useState(false);
@@ -44,7 +42,7 @@ function FoodLog() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen scroll bottomBarHeight={24} gap={14}>
         <View
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >

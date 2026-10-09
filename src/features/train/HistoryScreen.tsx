@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -52,7 +51,6 @@ export function HistoryScreen({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const unit = usePreferencesStore((s) => s.weightUnit);
@@ -70,7 +68,7 @@ export function HistoryScreen({
   const isCurrent = ym === today.slice(0, 7);
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar
         onBack={() => goBack(router, sessionRoute.startsWith('/progress') ? '/progress' : '/train')}
         backLabel={t('common.back')}

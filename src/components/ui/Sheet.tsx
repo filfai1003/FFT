@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { FieldChain } from './field-chain';
 import { IconButton } from './IconButton';
 import { Text } from './Text';
 
@@ -70,17 +71,19 @@ export function Sheet({ visible, onClose, title, closeLabel, children, footer }:
             </Text>
             <IconButton icon="close" accessibilityLabel={closeLabel} onPress={onClose} />
           </View>
-          <ScrollView
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={{
-              paddingHorizontal: space.screenX,
-              paddingVertical: space.gapL,
-              gap: space.gapL,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {children}
-          </ScrollView>
+          <FieldChain>
+            <ScrollView
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{
+                paddingHorizontal: space.screenX,
+                paddingVertical: space.gapL,
+                gap: space.gapL,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {children}
+            </ScrollView>
+          </FieldChain>
           {footer ? <View style={{ paddingHorizontal: space.screenX }}>{footer}</View> : null}
         </View>
       </View>

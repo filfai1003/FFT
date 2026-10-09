@@ -6,7 +6,6 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { useAppearanceStore, type AppearanceState } from '@/design/appearance-store';
 import { textScaleSteps } from '@/design/theme';
 import { useTheme } from '@/design/use-theme';
@@ -27,7 +26,6 @@ export function AccessibilityScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const barHeight = useTabBarHeight();
   const a = useAppearanceStore();
 
   const sections: { title: string; rows: Row[]; size?: boolean }[] = [
@@ -60,7 +58,7 @@ export function AccessibilityScreen() {
     a.set('textScaleStep', Math.min(5, Math.max(1, a.textScaleStep + delta)));
 
   return (
-    <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+    <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('a11y.title')}</Text>
 

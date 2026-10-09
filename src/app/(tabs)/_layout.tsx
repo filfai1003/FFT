@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabBar, type TabBarItem } from '@/components/ui/TabBar';
+import { color } from '@/design/tokens';
 import type { IconName } from '@/components/ui/Icon';
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
@@ -49,7 +50,11 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{ headerShown: false, animation: 'fade' }}
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+        sceneStyle: { backgroundColor: color.bg },
+      }}
     >
       {tabs.map((tab) => (
         // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page

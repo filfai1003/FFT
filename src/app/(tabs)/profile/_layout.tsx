@@ -6,6 +6,14 @@ export const unstable_settings = { initialRouteName: 'index' };
 
 export default function Layout() {
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: color.bg } }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: color.bg },
+        // A short fade on the app's black: no sliding white-ish panels between pages.
+        animation: 'fade',
+        animationDuration: 160,
+      }}
+    />
   );
 }
