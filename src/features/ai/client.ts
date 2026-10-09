@@ -2,7 +2,23 @@ import type { AiSettings } from './settings-store';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-export class AiError extends Error {}
+export class AiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+
+  /** The provider refused the key (missing, wrong, revoked or without access to the model). */
+  get isKeyProblem(): boolean {
+    return (
+      this.status === 401 ||
+      this.status === 403 ||
+      /api[_ -]?key|authenticat|unauthori|permission|access/i.test(this.message)
+    );
+  }
+}
 
 async function readError(res: Response): Promise<string> {
   try {
@@ -38,7 +54,7 @@ export async function chatComplete(
       },
       body: JSON.stringify({ model: settings.model.trim(), max_tokens: 4096, system, messages }),
     });
-    if (!res.ok) throw new AiError(await readError(res));
+    if (!res.ok) throw new AiError(await readError(res), res.status);
     const data = (await res.json()) as { content?: { type: string; text?: string }[] };
     const text = (data.content ?? [])
       .filter((b) => b.type === 'text')
@@ -57,7 +73,7 @@ export async function chatComplete(
       messages: [{ role: 'system', content: system }, ...messages],
     }),
   });
-  if (!res.ok) throw new AiError(await readError(res));
+  if (!res.ok) throw new AiError(await readError(res), res.status);
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content;
   if (!text) throw new AiError('Empty reply');

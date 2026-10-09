@@ -13,9 +13,11 @@ import { TopBar } from '@/components/ui/TopBar';
 import { buildChatSystemPrompt, extractJson, parseBundle } from '@/domain/plan-import';
 import { useTheme } from '@/design/use-theme';
 import { goBack } from '@/lib/navigation';
+import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { useApplyImport, type ApplyResult } from './apply';
-import { chatComplete, type ChatMessage } from './client';
+import * as Clipboard from 'expo-clipboard';
+import { AiError, chatComplete, type ChatMessage } from './client';
 import { useAiContext } from './context';
 import { ImportPreview } from './ImportPreview';
 import { ResultNote } from './ResultNote';
@@ -44,10 +46,11 @@ export function AiChatScreen() {
   const { messages, add, clear } = useChat();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; key: boolean } | null>(null);
   const [results, setResults] = useState<Record<string, ApplyResult>>({});
   const [applyError, setApplyError] = useState<string | null>(null);
   const abort = useRef<AbortController | null>(null);
+  const showToast = useToastStore((s) => s.show);
 
   useEffect(() => {
     if (!settings.loaded) void settings.load();
@@ -75,10 +78,32 @@ export function AiChatScreen() {
       const reply = await chatComplete(settings, system, history, abort.current.signal);
       add({ id: newId(), role: 'assistant', content: reply });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError({
+        message: e instanceof Error ? e.message : String(e),
+        key: e instanceof AiError && e.isKeyProblem,
+      });
     } finally {
       setSending(false);
     }
+  };
+
+  /** The system prompt plus what the user asked, to paste into any AI app (then import the answer). */
+  const copyForOwnApp = async () => {
+    const system = buildChatSystemPrompt({
+      profile: ctx.profileText,
+      current: ctx.current,
+      exercises: ctx.exerciseNames,
+    });
+    const users = messages.filter((m) => m.role === 'user');
+    const request =
+      messages.length <= 1
+        ? `MY REQUEST: ${users[0]?.content ?? ''}`
+        : 'CONVERSATION SO FAR (answer the last message):\n' +
+          messages
+            .map((m) => `${m.role === 'user' ? 'USER' : 'ASSISTANT'}: ${m.content}`)
+            .join('\n');
+    await Clipboard.setStringAsync(`${system}\n\n${request}`);
+    showToast({ message: t('ai.copiedForApp'), bottomOffset: barHeight });
   };
 
   const applyMessage = async (id: string, content: string) => {
@@ -162,9 +187,25 @@ export function AiChatScreen() {
             {t('ai.thinking')}
           </Text>
         ) : null}
-        {error ? (
+        {error?.key ? (
+          <Card gap={10}>
+            <Text variant="body" accessibilityRole="alert">
+              {t('ai.keyProblem')}
+            </Text>
+            <Text variant="bodyS" muted>
+              {t('ai.keyProblemBody')}
+            </Text>
+            <Button label={t('ai.openSettings')} onPress={() => router.push('/profile/ai')} />
+            <Button label={t('ai.copyForOwnApp')} variant="secondary" onPress={copyForOwnApp} />
+            <Button
+              label={t('ai.importAnswer')}
+              variant="ghost"
+              onPress={() => router.push('/profile/ai-manual')}
+            />
+          </Card>
+        ) : error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
-            {error}
+            {error.message}
           </Text>
         ) : null}
         {applyError ? (
