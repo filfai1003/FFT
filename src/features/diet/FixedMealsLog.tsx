@@ -128,48 +128,6 @@ export function FixedMealsLog() {
 
         <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
 
-        {plan.data ? (
-          <View
-            style={{
-              minHeight: touch.minTarget,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: colors.borderDecorative,
-              backgroundColor: colors.surfaceAlt,
-              paddingLeft: 16,
-              paddingRight: 4,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-              <View
-                style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.text }}
-              />
-              <Text variant="label" muted numberOfLines={1} style={{ flex: 1 }}>
-                {t('diet.plan', { name: plan.data.name })}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('diet.editPlan')}
-              onPress={() => router.push('/fixed-meals')}
-              style={({ pressed }) => ({
-                height: touch.minTarget,
-                paddingHorizontal: 14,
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: colors.borderControl,
-                justifyContent: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text variant="label">{t('diet.edit')}</Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         {target ? (
           <DaySummaryCard
             eaten={eaten}

@@ -474,9 +474,6 @@
       "fiber": "Fiber",
       "salt": "Salt"
     },
-    "plan": "Plan: {{name}}",
-    "editPlan": "Edit fixed meals plan",
-    "edit": "Edit",
     "mealsCount": "Meals {{done}}/{{total}}",
     "mealLine": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
     "adjust": "Adjust {{name}}",
@@ -592,10 +589,10 @@
     "problem": {
       "below_minimum": "Targets below 1,500 kcal are blocked.",
       "deficit_too_large": "A deficit over 25% of maintenance is blocked."
-    }
+    },
+    "mealsTitle": "Your meals"
   },
   "fixed": {
-    "title": "Fixed meals",
     "planName": "Plan name",
     "matches": "Matches your daily target",
     "differs": "Differs from your daily target by {{kcal}} kcal",
@@ -607,7 +604,6 @@
     "done": "Done",
     "addMeal": "+ Add meal",
     "newMealName": "Meal {{n}}",
-    "save": "Save plan",
     "autoSplitNote": "Auto-split shares the day evenly, gives more to main meals, carbs before the workout and protein after it. You can still edit every meal.",
     "mainMeal": "Main meal",
     "mainMealDetail": "Gets more calories in auto-split",

@@ -6,6 +6,7 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormHeader } from '@/components/ui/FormHeader';
+import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Stepper';
@@ -17,6 +18,7 @@ import {
   defaultMacros,
   macroPercents,
   macrosFromPercents,
+  rebalanceMeals,
   maintenanceKcal,
   minimumAllowedKcal,
   suggestedKcal,
@@ -28,6 +30,7 @@ import { useToday } from '@/features/profile/use-today';
 import { starterMeals } from '@/features/onboarding/logic';
 import { useFixedPlan, useSaveFixedPlan } from './fixed';
 import { MacroSplitCard } from './MacroSplitCard';
+import { MealPlanEditor, type MealDraft } from './MealPlanEditor';
 import { useGoalForDay, useSaveGoal } from './log';
 import { newId } from '@/lib/uuid';
 import { goBack } from '@/lib/navigation';
@@ -56,6 +59,11 @@ export function DietGoalsScreen() {
   } | null>(null);
   const [bonusDraft, setBonus] = useState<boolean | null>(null);
   const [maintenanceDraft, setMaintenance] = useState<number | null>(null);
+  // Ids of the suggested meals (used when there is no plan yet): stable between renders.
+  const [starterIds] = useState(() => Array.from({ length: 8 }, () => newId()));
+  const [mealsDraft, setMealsDraft] = useState<MealDraft[] | null>(null);
+  const [workoutDraft, setWorkoutDraft] = useState<string | null | undefined>(undefined);
+  const [planName, setPlanName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!goal || !profile.data) return <Screen>{null}</Screen>;
@@ -77,6 +85,24 @@ export function DietGoalsScreen() {
     : kcal < 1500
       ? 'below_minimum'
       : null;
+  // Meals of the plan (fixed meals mode), always kept on the target set above.
+  const target = { kcal, ...macros };
+  const baseMeals: MealDraft[] =
+    mealsDraft ??
+    (plan.data
+      ? plan.data.meals.map(({ position: _p, ...m }) => m)
+      : starterMeals(target).map((m, i) => ({ ...m, id: starterIds[i] })));
+  const balanced = rebalanceMeals(
+    target,
+    baseMeals.map((m) => ({ kcal: m.kcal, proteinG: m.proteinG, carbsG: m.carbsG, fatG: m.fatG })),
+    -1,
+  );
+  const meals: MealDraft[] = baseMeals.map((m, i) => ({ ...m, ...balanced[i] }));
+  const requestedWorkout =
+    workoutDraft === undefined ? (plan.data?.workoutAfterMealId ?? null) : workoutDraft;
+  const workoutAfter = meals.some((m) => m.id === requestedWorkout) ? requestedWorkout : null;
+  const mealsValid = chosenMode !== 'fixed_meals' || meals.every((m) => m.name.trim() !== '');
+
   const changeKcal = (next: number) => {
     // Keep the percentages (grams follow the new target).
     setPercents(percents);
@@ -124,21 +150,17 @@ export function DietGoalsScreen() {
         maintenanceKcal: maintenance,
         waterMl: goal.waterMl,
       });
-      if (chosenMode === 'fixed_meals' && !plan.data) {
+      if (chosenMode === 'fixed_meals') {
         await savePlan.mutateAsync({
-          planId: null,
-          name: t('onboarding.meals.planName'),
-          removedIds: [],
-          meals: starterMeals({ kcal, ...macros }).map((m) => ({
-            id: newId(),
-            name: m.name,
-            kcal: m.kcal,
-            proteinG: m.proteinG,
-            carbsG: m.carbsG,
-            fatG: m.fatG,
-            description: '',
-            isMain: m.isMain,
-          })),
+          planId: plan.data?.id ?? null,
+          name:
+            (planName ?? plan.data?.name ?? t('onboarding.meals.planName')).trim() ||
+            t('onboarding.meals.planName'),
+          meals,
+          workoutAfterMealId: workoutAfter,
+          removedIds: (plan.data?.meals ?? [])
+            .map((m) => m.id)
+            .filter((id) => !meals.some((m) => m.id === id)),
         });
       }
       if (chosenMode !== profile.data.diet_mode)
@@ -262,6 +284,26 @@ export function DietGoalsScreen() {
           />
         </View>
 
+        {chosenMode === 'fixed_meals' ? (
+          <View style={{ gap: 12 }}>
+            <Text variant="label" muted>
+              {t('goals.mealsTitle')}
+            </Text>
+            <Input
+              label={t('fixed.planName')}
+              value={planName ?? plan.data?.name ?? t('onboarding.meals.planName')}
+              onChangeText={setPlanName}
+            />
+            <MealPlanEditor
+              meals={meals}
+              onMealsChange={setMealsDraft}
+              goal={target}
+              workoutAfter={workoutAfter}
+              onWorkoutAfterChange={setWorkoutDraft}
+            />
+          </View>
+        ) : null}
+
         <Text variant="bodyS" muted>
           {t('onboarding.target.safety')}
         </Text>
@@ -275,7 +317,13 @@ export function DietGoalsScreen() {
         <Button
           size="large"
           label={t('goals.save')}
-          disabled={!!problem || saveGoal.isPending || saveProfile.isPending}
+          disabled={
+            !!problem ||
+            !mealsValid ||
+            saveGoal.isPending ||
+            saveProfile.isPending ||
+            savePlan.isPending
+          }
           onPress={submit}
         />
       </BottomActionBar>
