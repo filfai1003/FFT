@@ -32,9 +32,12 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const [focused, setFocused] = useState(false);
   const fontSize = Math.max(inputFontSize, Math.round(inputFontSize * textScale));
 
+  const multiline = rest.multiline === true;
   const box = {
     field: {
-      height: touch.primaryButtonHeight - 4,
+      ...(multiline
+        ? { minHeight: 140, paddingVertical: 12 }
+        : { height: touch.primaryButtonHeight - 4 }),
       borderRadius: radius.row,
       backgroundColor: colors.surface,
       paddingHorizontal: 16,
@@ -62,7 +65,9 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     flex: 1,
     minWidth: 0,
     padding: 0,
-    height: '100%' as const,
+    ...(multiline
+      ? { alignSelf: 'stretch' as const, textAlignVertical: 'top' as const }
+      : { height: '100%' as const }),
   };
 
   return (
@@ -77,7 +82,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           box,
           {
             flexDirection: 'row',
-            alignItems: 'center',
+            alignItems: multiline ? 'flex-start' : 'center',
             gap: 10,
             borderWidth: 1,
             // Focus = a white border (the browser's coloured outline is switched off below).

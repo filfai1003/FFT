@@ -76,6 +76,7 @@ export function ProfileScreen() {
       { name: t('profile.accessibility'), onPress: () => router.push('/profile/accessibility') },
     ],
     [
+      { name: t('profile.ai'), onPress: () => router.push('/profile/ai') },
       { name: t('profile.privacy'), onPress: () => router.push('/profile/privacy') },
       { name: t('profile.help'), onPress: () => setHelp(true) },
     ],
