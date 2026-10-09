@@ -18,16 +18,16 @@ describe('background store', () => {
 
   it('keeps the chosen mode and a healthy result', async () => {
     await AsyncStorage.setItem('fft.background', 'waves');
-    await AsyncStorage.setItem('fft.waves-health', 'ok');
+    await AsyncStorage.setItem('fft.waves-health-2', 'ok');
     await useBackground.getState().load();
     expect(useBackground.getState()).toMatchObject({ mode: 'waves', health: 'ok' });
   });
 
   it('switches the waves off when the last start with them never got to ok', async () => {
     await AsyncStorage.setItem('fft.background', 'waves');
-    await AsyncStorage.setItem('fft.waves-health', 'trying');
+    await AsyncStorage.setItem('fft.waves-health-2', 'trying');
     await useBackground.getState().load();
     expect(useBackground.getState().health).toBe('failed');
-    expect(await AsyncStorage.getItem('fft.waves-health')).toBe('failed');
+    expect(await AsyncStorage.getItem('fft.waves-health-2')).toBe('failed');
   });
 });
