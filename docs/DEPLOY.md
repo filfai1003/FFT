@@ -55,3 +55,13 @@ Package name: `com.filfai1003.fft`.
 - Not covered: someone can still extract the anon key from the APK and sign up for accounts (that
   is all it allows: they only ever see their own data). Stronger app-only checks (Play Integrity)
   and email verification (needs an SMTP service) are possible later.
+
+## What happens on a push to `main`
+| Changed files                                         | Result                                                        |
+|-------------------------------------------------------|---------------------------------------------------------------|
+| `server/`, `supabase/migrations/`, `supabase/functions/` | Railway rebuilds and restarts `api`, applying new migrations |
+| `src/`, `assets/` (and the files below)               | `app-update.yml`: lint + typecheck + tests, then an over-the-air update to installed apps |
+| `package.json`, `package-lock.json`, `app.json`, `eas.json` | `app-build.yml`: a new APK on EAS Build (also runnable by hand) |
+
+A new APK is only needed when the native part changes; every other change reaches the installed app
+as an update the next time it is opened. Both workflows need the `EXPO_TOKEN` repository secret.

@@ -1,0 +1,31 @@
+# Builds a new installable Android APK (EAS Build, profile "preview") when something changes that an
+# over-the-air update cannot carry: native packages, the Expo SDK, the app version or the app config.
+# Also runnable by hand (Actions -> "App build" -> Run workflow) for a fresh APK at any time.
+# Needs the repository secret EXPO_TOKEN. The finished APK is on https://expo.dev/accounts/filfai/projects/fft/builds
+name: App build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app.json'
+      - 'eas.json'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: eas build --platform android --profile preview --non-interactive --no-wait
