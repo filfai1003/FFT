@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { cancelRestEnd, notificationsAllowed, setReminder } from '@/lib/notifications';
+import { defaultReminderTimes } from '@/lib/reminder-times';
 import { usePreferencesStore } from './preferences-store';
 
 const none = { rest_timer: false, workout_reminder: false, weekly_check_in: false, meals: false };
@@ -22,9 +23,9 @@ export function useNotificationGuard(active: boolean) {
       if (cancelled) return;
       usePreferencesStore.getState().set('notifications', none);
       await Promise.all([
-        setReminder('workout', false, empty),
-        setReminder('checkin', false, empty),
-        setReminder('meals', false, empty),
+        setReminder('workout', false, empty, defaultReminderTimes),
+        setReminder('checkin', false, empty, defaultReminderTimes),
+        setReminder('meals', false, empty, defaultReminderTimes),
         cancelRestEnd(),
       ]);
     };

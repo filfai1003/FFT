@@ -15,17 +15,10 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { ensurePermission, setReminder } from '@/lib/notifications';
+import { ensurePermission } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
-import { usePreferencesStore, type NotificationPrefs } from '@/features/settings/preferences-store';
-
-type NotifKey = keyof NotificationPrefs;
-const notifications: { key: NotifKey; reminder?: 'workout' | 'checkin' | 'meals' }[] = [
-  { key: 'rest_timer' },
-  { key: 'workout_reminder', reminder: 'workout' },
-  { key: 'weekly_check_in', reminder: 'checkin' },
-  { key: 'meals', reminder: 'meals' },
-];
+import { ReminderRow } from '@/features/settings/ReminderRow';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
 
 /** Settings: units, accent colour, background and notifications. */
 export function SettingsScreen() {
@@ -37,27 +30,13 @@ export function SettingsScreen() {
   const setAppearance = useAppearanceStore((s) => s.set);
   const [denied, setDenied] = useState(false);
 
-  const toggleNotification = async (
-    key: NotifKey,
-    reminder: 'workout' | 'checkin' | 'meals' | undefined,
-    value: boolean,
-  ) => {
-    // Switching any notification on asks the system first; without its permission nothing can be on.
+  const toggleRestTimer = async (value: boolean) => {
+    // Switching it on asks the system first; without its permission nothing can be on.
     if (value && !(await ensurePermission())) {
       setDenied(true);
       return;
     }
-    if (reminder) {
-      const ok = await setReminder(reminder, value, {
-        title: t(`settings.reminder.${reminder}.title`),
-        body: t(`settings.reminder.${reminder}.body`),
-      });
-      if (!ok && value) {
-        setDenied(true);
-        return;
-      }
-    }
-    prefs.set('notifications', { ...prefs.notifications, [key]: value });
+    prefs.set('notifications', { ...prefs.notifications, rest_timer: value });
   };
 
   const background = useBackground();
@@ -197,33 +176,41 @@ export function SettingsScreen() {
         <Text variant="label" muted style={{ paddingBottom: 4 }}>
           {t('settings.notifications')}
         </Text>
-        {notifications.map((n, i) => (
+        <View
+          style={{
+            minHeight: 56,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="bodyS" medium>
+              {t('settings.notification.rest_timer.name')}
+            </Text>
+            <Text variant="label" muted>
+              {prefs.notifications.rest_timer
+                ? t('settings.notification.rest_timer.detail')
+                : t('settings.off')}
+            </Text>
+          </View>
+          <Toggle
+            value={prefs.notifications.rest_timer}
+            onValueChange={(v) => void toggleRestTimer(v)}
+            accessibilityLabel={t('settings.notification.rest_timer.name')}
+          />
+        </View>
+        {(['workout', 'checkin', 'meals'] as const).map((kind) => (
           <View
-            key={n.key}
+            key={kind}
             style={{
-              minHeight: 56,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              borderTopWidth: i === 0 ? 0 : 1,
+              borderTopWidth: 1,
               borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
             }}
           >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text>{t(`settings.notification.${n.key}.name`)}</Text>
-              <Text variant="label" muted>
-                {prefs.notifications[n.key]
-                  ? t(`settings.notification.${n.key}.detail`)
-                  : t('settings.off')}
-              </Text>
-            </View>
-            <Toggle
-              value={prefs.notifications[n.key]}
-              onValueChange={(v) => void toggleNotification(n.key, n.reminder, v)}
-              accessibilityLabel={t(`settings.notification.${n.key}.name`)}
-            />
+            <ReminderRow kind={kind} bare />
           </View>
         ))}
       </Card>

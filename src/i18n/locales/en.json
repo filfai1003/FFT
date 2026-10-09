@@ -866,16 +866,13 @@
         "detail": "Sound + vibration"
       },
       "workout_reminder": {
-        "name": "Workout reminder",
-        "detail": "Every day · 18:00"
+        "name": "Workout reminder"
       },
       "weekly_check_in": {
-        "name": "Weekly check-in",
-        "detail": "Thursday · 08:00"
+        "name": "Weekly check-in"
       },
       "meals": {
-        "name": "Meal reminders",
-        "detail": "08:00 · 13:00 · 20:00"
+        "name": "Meal reminders"
       }
     },
     "reminder": {
@@ -1089,5 +1086,42 @@
     "currentLine": "{{mode}} · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
     "noCurrentDiet": "No diet set yet.",
     "dockPlaceholder": "Ask your AI coach…"
+  },
+  "reminders": {
+    "dailyAt": "Every day at {{time}}",
+    "weeklyAt": "{{day}} at {{time}}",
+    "changeTime": "Change the time",
+    "hour": "Hour",
+    "minute": "Minute",
+    "hourLess": "Earlier hour",
+    "hourMore": "Later hour",
+    "minuteLess": "Earlier minutes",
+    "minuteMore": "Later minutes",
+    "day": "Day",
+    "localNote": "Reminders are set on this phone and go off even when the app is closed.",
+    "weekday": {
+      "1": "Sunday",
+      "2": "Monday",
+      "3": "Tuesday",
+      "4": "Wednesday",
+      "5": "Thursday",
+      "6": "Friday",
+      "7": "Saturday"
+    },
+    "weekdayShort": {
+      "1": "Sun",
+      "2": "Mon",
+      "3": "Tue",
+      "4": "Wed",
+      "5": "Thu",
+      "6": "Fri",
+      "7": "Sat"
+    },
+    "meal": {
+      "0": "Breakfast",
+      "1": "Lunch",
+      "2": "Dinner"
+    },
+    "section": "Reminders"
   }
 }

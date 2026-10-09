@@ -15,6 +15,7 @@ import { periods, type Period } from '@/domain/progress';
 import { displayWeight } from '@/domain/units';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { ReminderRow } from '@/features/settings/ReminderRow';
 import { poses, useBodyEntries, usePhotos } from './data';
 import { PhotoTile } from './PhotoTile';
 import { bodyProgress, useProgressPeriod } from './series';
@@ -225,6 +226,7 @@ export function ProgressScreen() {
       <Text variant="bodyS" muted>
         {photoDays < 2 ? t('progress.compareNeedsTwo') : t('progress.compareInfo')}
       </Text>
+      <ReminderRow kind="checkin" />
       <Text variant="label" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
         {t('progress.today', { date: shortDateLabel(today) })}
       </Text>

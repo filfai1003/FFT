@@ -1,5 +1,5 @@
 import { memo, useEffect, useId, useState } from 'react';
-import { Animated, Easing, Image, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { useBackground } from '@/design/background-store';
 import { color } from '@/design/tokens';
@@ -9,12 +9,8 @@ const { dot, spacing } = color.dotGrid;
 const WAVE_MS = 5600;
 const native = Platform.OS !== 'web';
 
-const baseTile = require('../../../assets/images/grid-dot.png');
-const bigTile = require('../../../assets/images/grid-dot-big.png');
-
 /**
- * The dot grid at a given size, faint (1px dots) or big and bright. On phones it is a tiny picture
- * repeated by the GPU (an SVG pattern is far heavier to draw); on the web it stays an SVG pattern.
+ * The dot grid at a given size, faint (1px dots) or big and bright: an SVG pattern, drawn once.
  */
 const Grid = memo(function Grid({
   id,
@@ -27,16 +23,6 @@ const Grid = memo(function Grid({
   height?: number;
   big?: boolean;
 }) {
-  if (native) {
-    return (
-      <Image
-        source={big ? bigTile : baseTile}
-        resizeMode="repeat"
-        style={width != null && height != null ? { width, height } : StyleSheet.absoluteFill}
-        accessible={false}
-      />
-    );
-  }
   return (
     <Svg
       width={width ?? '100%'}
@@ -125,24 +111,9 @@ function RingLayer({
           width: R0 * inner * 2,
           height: R0 * inner * 2,
           borderRadius: R0 * inner,
-          overflow: 'hidden',
           backgroundColor: color.bg,
         }}
-      >
-        <Animated.View
-          style={{
-            position: 'absolute',
-            left: R0 * inner - x,
-            top: R0 * inner - y,
-            width,
-            height,
-            transformOrigin: `${x}px ${y}px`,
-            transform: [{ scale: counter as unknown as number }],
-          }}
-        >
-          <Grid id={`${id}-base`} width={width} height={height} />
-        </Animated.View>
-      </View>
+      />
     </Animated.View>
   );
 }
@@ -190,30 +161,21 @@ function Wave({
       outputRange: [0, peak, peak * 0.55, peak * 0.18, 0],
     });
   return (
-    <>
-      <RingLayer
-        id={`${id}-a`}
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        scale={scale}
-        counter={counter}
-        opacity={fade(0.45)}
-        inner={0.58}
-      />
-      <RingLayer
-        id={`${id}-b`}
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        scale={scale}
-        counter={counter}
-        opacity={fade(1)}
-        inner={0.74}
-      />
-    </>
+    <RingLayer
+      id={id}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      scale={scale}
+      counter={counter}
+      opacity={fade(0.9)}
+      inner={0.68}
+    />
+  );
+}
+
+/** Background of every screen    </>
   );
 }
 
@@ -237,7 +199,6 @@ export function DotGrid() {
       pointerEvents="none"
       onLayout={(e) => setSize(e.nativeEvent.layout)}
     >
-      <Grid id={id} />
       {animate ? (
         <>
           <Wave
@@ -258,6 +219,7 @@ export function DotGrid() {
           />
         </>
       ) : null}
+      <Grid id={id} />
     </View>
   );
 }

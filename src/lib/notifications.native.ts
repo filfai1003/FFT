@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import type { ReminderTimes } from './reminder-times';
 
 /**
  * Local reminders (no server involved). On the web there are no scheduled notifications, so
@@ -64,6 +65,7 @@ export async function setReminder(
   kind: ReminderKind,
   enabled: boolean,
   copy: { title: string; body: string },
+  times: ReminderTimes,
 ): Promise<boolean> {
   if (!supported) return false;
   await cancelKind(kind);
@@ -72,28 +74,28 @@ export async function setReminder(
 
   const content = { title: copy.title, body: copy.body, data: { kind } };
   if (kind === 'workout') {
-    // Every day at 18:00: tapping it opens the app on Today.
+    // Every day at the chosen time: tapping it opens the app on Today.
     await Notifications.scheduleNotificationAsync({
       content,
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 18, minute: 0 },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: times.workout.hour,
+        minute: times.workout.minute,
+      },
     });
   } else if (kind === 'checkin') {
-    // Thursday 08:00 (weekday 5 = Thursday, Sunday is 1).
+    // Once a week (weekday 1 = Sunday … 7 = Saturday).
     await Notifications.scheduleNotificationAsync({
       content,
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-        weekday: 5,
-        hour: 8,
-        minute: 0,
+        weekday: times.checkin.weekday,
+        hour: times.checkin.hour,
+        minute: times.checkin.minute,
       },
     });
   } else {
-    for (const [hour, minute] of [
-      [8, 0],
-      [13, 0],
-      [20, 0],
-    ] as const) {
+    for (const { hour, minute } of times.meals) {
       await Notifications.scheduleNotificationAsync({
         content,
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
