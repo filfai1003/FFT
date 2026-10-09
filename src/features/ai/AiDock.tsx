@@ -36,8 +36,8 @@ export function AiDock() {
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 10,
-        backgroundColor: colors.bg,
       }}
+      pointerEvents="box-none"
     >
       <View
         style={{

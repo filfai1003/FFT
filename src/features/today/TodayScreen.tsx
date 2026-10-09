@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
-import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { shortDateLabel } from '@/domain/day';
 import { AI_DOCK_HEIGHT, AiDock } from '@/features/ai/AiDock';
@@ -21,7 +20,6 @@ const WIDGET_GAP = 10;
 /** Today: the widgets you chose (calories and meals, workout, water, creatine, calendar) and the AI bar. */
 export function TodayScreen() {
   const { t } = useTranslation();
-  const barHeight = useTabBarHeight();
   const today = useToday();
   const { widgets, aiDock, loaded, load } = useHomeLayout();
   const creatineLoaded = useCreatine((s) => s.loaded);
@@ -40,7 +38,7 @@ export function TodayScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24 + (aiDock ? AI_DOCK_HEIGHT : 0)} gap={16}>
+      <Screen scroll bottomBarHeight={aiDock ? AI_DOCK_HEIGHT + 8 : 24} gap={16}>
         <View
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
@@ -73,7 +71,7 @@ export function TodayScreen() {
                 key={w.id}
                 style={{ width: w.size === 'large' ? '100%' : half, flexDirection: 'column' }}
               >
-                <Reveal index={n + 1}>
+                <Reveal index={n + 1} style={{ flexGrow: 1 }}>
                   <Widget size={w.size} />
                 </Reveal>
               </View>
