@@ -23,36 +23,148 @@ function StaticDots({ id }: { id: string }) {
   );
 }
 
-// One ring of bigger dots, drawn once (a few hundred circles) and then only scaled and faded by the
-// GPU: nothing is redrawn per frame, so it stays smooth on phones.
-const REF = 320; // size of the ring picture
-const RING_R = 118; // middle of the ring in the picture
-const RING_HALF = 30; // half of its thickness
-const GRID = 7;
-const ringDots = (() => {
-  const dots: { x: number; y: number; o: number }[] = [];
-  for (let y = GRID / 2; y < REF; y += GRID) {
-    for (let x = GRID / 2; x < REF; x += GRID) {
-      const d = Math.hypot(x - REF / 2, y - REF / 2);
-      const k = 1 - Math.abs(d - RING_R) / RING_HALF;
-      if (k > 0.05) dots.push({ x, y, o: Math.min(1, k * 1.2) });
-    }
-  }
-  return dots;
-})();
-
-const RingPicture = memo(function RingPicture() {
+/** The faint grid at a given size (the patch that keeps it visible in the middle of a ring). */
+const BaseDots = memo(function BaseDots({
+  id,
+  width,
+  height,
+}: {
+  id: string;
+  width: number;
+  height: number;
+}) {
   return (
-    <Svg width={REF} height={REF} aria-hidden>
-      {ringDots.map((d, i) => (
-        <Circle key={i} cx={d.x} cy={d.y} r={1.15} fill="#8C8C8C" opacity={d.o} />
-      ))}
+    <Svg width={width} height={height} aria-hidden>
+      <StaticDots id={id} />
     </Svg>
   );
 });
 
-/** A ripple: the ring grows from a point to the screen edge, fading out, and starts again. */
-function Ripple({ x, y, reach, delay }: { x: number; y: number; reach: number; delay: number }) {
+/** The same grid with bigger, brighter dots. Drawn once and never again: only masked while it moves. */
+const BigDots = memo(function BigDots({
+  id,
+  width,
+  height,
+}: {
+  id: string;
+  width: number;
+  height: number;
+}) {
+  return (
+    <Svg width={width} height={height} aria-hidden>
+      <Defs>
+        <Pattern id={id} width={spacing} height={spacing} patternUnits="userSpaceOnUse">
+          <Circle cx={spacing / 2} cy={spacing / 2} r={2.4} fill="#8C8C8C" />
+        </Pattern>
+      </Defs>
+      <Rect width={width} height={height} fill={`url(#${id})`} />
+    </Svg>
+  );
+});
+
+const R0 = 100; // radius of the round window at scale 1
+
+/**
+ * One ring of a wave: a round window that grows (scale) showing the big dots of the grid, with a black
+ * disc in its middle hiding them, so only a ring of dots shows. The dots stay on the grid (the picture
+ * inside is scaled back by the inverse), the GPU only moves the window: no redraw, smooth on phones.
+ */
+function RingLayer({
+  id,
+  x,
+  y,
+  width,
+  height,
+  scale,
+  counter,
+  opacity,
+  inner,
+}: {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scale: Animated.AnimatedNode;
+  counter: Animated.AnimatedNode;
+  opacity: Animated.AnimatedNode;
+  /** Radius of the hidden middle, as a part of the window's radius. */
+  inner: number;
+}) {
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left: x - R0,
+        top: y - R0,
+        width: R0 * 2,
+        height: R0 * 2,
+        borderRadius: R0,
+        overflow: 'hidden',
+        opacity: opacity as unknown as number,
+        transform: [{ scale: scale as unknown as number }],
+      }}
+    >
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: R0 - x,
+          top: R0 - y,
+          width,
+          height,
+          transformOrigin: `${x}px ${y}px`,
+          transform: [{ scale: counter as unknown as number }],
+        }}
+      >
+        <BigDots id={id} width={width} height={height} />
+      </Animated.View>
+      <View
+        style={{
+          position: 'absolute',
+          left: R0 - R0 * inner,
+          top: R0 - R0 * inner,
+          width: R0 * inner * 2,
+          height: R0 * inner * 2,
+          borderRadius: R0 * inner,
+          overflow: 'hidden',
+          backgroundColor: color.bg,
+        }}
+      >
+        <Animated.View
+          style={{
+            position: 'absolute',
+            left: R0 * inner - x,
+            top: R0 * inner - y,
+            width,
+            height,
+            transformOrigin: `${x}px ${y}px`,
+            transform: [{ scale: counter as unknown as number }],
+          }}
+        >
+          <BaseDots id={`${id}-base`} width={width} height={height} />
+        </Animated.View>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** A wave from one point: the ring grows to the screen edge while it fades, then starts again. */
+function Wave({
+  id,
+  x,
+  y,
+  width,
+  height,
+  delay,
+}: {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  delay: number;
+}) {
   const [progress] = useState(() => new Animated.Value(0));
   useEffect(() => {
     const loop = Animated.loop(
@@ -71,27 +183,39 @@ function Ripple({ x, y, reach, delay }: { x: number; y: number; reach: number; d
     return () => loop.stop();
   }, [progress, delay]);
 
-  const maxScale = reach / RING_R;
+  const reach = Math.max(width, height) * 0.95;
+  const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.12, reach / R0] });
+  const counter = Animated.divide(1, scale);
+  const fade = (peak: number) =>
+    progress.interpolate({
+      inputRange: [0, 0.04, 0.3, 0.6, 1],
+      outputRange: [0, peak, peak * 0.55, peak * 0.18, 0],
+    });
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: x - REF / 2,
-        top: y - REF / 2,
-        width: REF,
-        height: REF,
-        opacity: progress.interpolate({
-          inputRange: [0, 0.04, 0.3, 0.6, 1],
-          outputRange: [0, 1, 0.55, 0.18, 0],
-        }),
-        transform: [
-          { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.12, maxScale] }) },
-        ],
-      }}
-    >
-      <RingPicture />
-    </Animated.View>
+    <>
+      <RingLayer
+        id={`${id}-a`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        scale={scale}
+        counter={counter}
+        opacity={fade(0.45)}
+        inner={0.58}
+      />
+      <RingLayer
+        id={`${id}-b`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        scale={scale}
+        counter={counter}
+        opacity={fade(1)}
+        inner={0.74}
+      />
+    </>
   );
 }
 
@@ -108,7 +232,7 @@ export function DotGrid() {
   }, [loaded, load]);
 
   if (mode === 'black') return null;
-  const reach = Math.max(size.width, size.height) * 0.95;
+  const { width, height } = size;
   return (
     <View
       style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}
@@ -126,8 +250,22 @@ export function DotGrid() {
       </Svg>
       {animate ? (
         <>
-          <Ripple x={size.width * 0.3} y={size.height * 0.22} reach={reach} delay={0} />
-          <Ripple x={size.width * 0.78} y={size.height * 0.7} reach={reach} delay={WAVE_MS / 2} />
+          <Wave
+            id={`${id}1`}
+            x={width * 0.3}
+            y={height * 0.22}
+            width={width}
+            height={height}
+            delay={0}
+          />
+          <Wave
+            id={`${id}2`}
+            x={width * 0.78}
+            y={height * 0.7}
+            width={width}
+            height={height}
+            delay={WAVE_MS / 2}
+          />
         </>
       ) : null}
     </View>
