@@ -17,6 +17,7 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { getMode } from '@/lib/mode';
 import { logOut, logOutAnyway } from './account';
 import { useLatestWeight, useProfile } from './api';
+import { useIsVip } from './vip';
 
 /** Profile: who you are, premium showcase, and the settings sections. */
 export function ProfileScreen() {
@@ -25,6 +26,7 @@ export function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const profile = useProfile();
+  const vip = useIsVip();
   const weight = useLatestWeight();
   const today = useToday();
   const prefs = usePreferencesStore();
@@ -150,7 +152,7 @@ export function ProfileScreen() {
                 }}
               >
                 <Text variant="label" style={{ letterSpacing: 1 }}>
-                  {t('profile.free')}
+                  {vip ? t('profile.vip') : t('profile.free')}
                 </Text>
               </View>
             </View>

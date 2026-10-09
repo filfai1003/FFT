@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>FFT Admin</title>
+    <link rel="icon" href="favicon.png" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <section id="login" hidden>
+      <form id="loginForm" class="login-card">
+        <h1>FFT ADMIN</h1>
+        <p class="muted">Restricted area.</p>
+        <label>
+          <span class="label">Password</span>
+          <input id="loginPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="loginError" class="error" role="alert"></p>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <div id="app" hidden>
+      <header class="top">
+        <span class="brand">FFT ADMIN</span>
+        <span id="modePill" class="pill">READ ONLY</span>
+        <span class="spacer"></span>
+        <button id="sudoButton" class="btn">Enter sudo mode</button>
+        <button id="logout" class="btn ghost">Sign out</button>
+      </header>
+      <div id="banner" class="banner" hidden>
+        SUDO MODE: changes are real and cannot be undone. Everything you change is logged.
+        <span id="sudoLeft"></span>
+      </div>
+      <nav class="tabs" id="tabs">
+        <button data-tab="data" class="tab active">Data</button>
+        <button data-tab="sql" class="tab">SQL</button>
+        <button data-tab="users" class="tab">Users</button>
+        <button data-tab="audit" class="tab">Audit</button>
+      </nav>
+
+      <main>
+        <section id="tab-data" class="panel">
+          <div class="split">
+            <aside class="sidebar">
+              <input id="tableFilter" placeholder="Filter tables" />
+              <div id="tableList"></div>
+            </aside>
+            <div class="content">
+              <div class="toolbar">
+                <strong id="tableTitle">Choose a table</strong>
+                <span id="tableMeta" class="muted"></span>
+                <span class="spacer"></span>
+                <input id="rowSearch" placeholder="Search in rows" />
+                <select id="rowLimit">
+                  <option>25</option>
+                  <option selected>50</option>
+                  <option>100</option>
+                  <option>200</option>
+                </select>
+                <button id="addRow" class="btn" hidden>+ Row</button>
+              </div>
+              <div id="dataGrid" class="grid-wrap"></div>
+              <div class="pager">
+                <button id="prevPage" class="btn">Previous</button>
+                <span id="pageInfo" class="muted"></span>
+                <button id="nextPage" class="btn">Next</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-sql" class="panel" hidden>
+          <textarea
+            id="sqlText"
+            spellcheck="false"
+            placeholder="select * from public.profiles limit 20;"
+          ></textarea>
+          <div class="toolbar">
+            <button id="runSql" class="btn primary">Run (read only)</button>
+            <button id="runRollback" class="btn" hidden>Run and roll back</button>
+            <button id="runCommit" class="btn danger" hidden>Run and keep changes</button>
+            <span id="sqlStatus" class="muted"></span>
+            <span class="spacer"></span>
+            <select id="sqlHistory">
+              <option value="">History</option>
+            </select>
+          </div>
+          <p class="muted hint">
+            Ctrl+Enter runs. Without sudo mode nothing can be changed, whatever you write.
+          </p>
+          <div id="sqlGrid" class="grid-wrap"></div>
+        </section>
+
+        <section id="tab-users" class="panel" hidden>
+          <div class="toolbar">
+            <input id="userSearch" placeholder="Search by email" />
+            <span id="userCount" class="muted"></span>
+          </div>
+          <div id="userGrid" class="grid-wrap"></div>
+        </section>
+
+        <section id="tab-audit" class="panel" hidden>
+          <div class="toolbar">
+            <strong>Sudo log</strong>
+            <span class="muted">Every change made in sudo mode.</span>
+            <span class="spacer"></span>
+            <button id="refreshAudit" class="btn">Refresh</button>
+          </div>
+          <div id="auditGrid" class="grid-wrap"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="sudoDialog">
+      <form id="sudoForm" method="dialog" class="dialog-card">
+        <h2>Enter sudo mode</h2>
+        <p>
+          In sudo mode you can change and delete real data. Take your time and read before you
+          confirm. It ends by itself after 10 minutes.
+        </p>
+        <label>
+          <span class="label">Password again</span>
+          <input id="sudoPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="sudoError" class="error" role="alert"></p>
+        <div class="row">
+          <button type="button" id="sudoCancel" class="btn ghost">Cancel</button>
+          <button type="submit" class="btn danger">Enter sudo mode</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="detailDialog">
+      <div class="dialog-card wide">
+        <div class="row between">
+          <h2 id="detailTitle">Row</h2>
+          <button id="detailClose" class="btn ghost">Close</button>
+        </div>
+        <div id="detailBody"></div>
+      </div>
+    </dialog>
+
+    <dialog id="formDialog">
+      <form id="formForm" method="dialog" class="dialog-card wide">
+        <h2 id="formTitle">New row</h2>
+        <div id="formFields"></div>
+        <p id="formError" class="error" role="alert"></p>
+        <div class="row">
+          <button type="button" id="formCancel" class="btn ghost">Cancel</button>
+          <button type="submit" class="btn danger">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

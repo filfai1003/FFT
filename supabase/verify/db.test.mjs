@@ -345,3 +345,36 @@ describe('domain rules', () => {
     assert.ok(new Date(after.updated_at) > new Date(before.updated_at));
   });
 });
+
+describe('vip users and admin audit', () => {
+  before(async () => {
+    await admin();
+    await db.exec(`insert into public.vip_users (user_id, note) values ('${A}', 'friend')`);
+    await db.exec(`insert into public.admin_audit (action) values ('test')`);
+  });
+
+  it('a user sees only their own vip row', async () => {
+    await as(A);
+    assert.equal(await count('select count(*) as n from public.vip_users'), 1);
+    await as(B);
+    assert.equal(await count('select count(*) as n from public.vip_users'), 0);
+  });
+
+  it('a user cannot make themselves vip, change it or remove it', async () => {
+    await as(B);
+    await rejects(`insert into public.vip_users (user_id) values ('${B}')`, '42501');
+    await as(A);
+    const changed = await db.query(`update public.vip_users set note = 'hacked' returning user_id`);
+    assert.equal(changed.rows.length, 0);
+    const removed = await db.query(`delete from public.vip_users returning user_id`);
+    assert.equal(removed.rows.length, 0);
+    await admin();
+    assert.equal(await count('select count(*) as n from public.vip_users'), 1);
+  });
+
+  it('the admin audit is closed to every user', async () => {
+    await as(A);
+    assert.equal(await count('select count(*) as n from public.admin_audit'), 0);
+    await rejects(`insert into public.admin_audit (action) values ('forged')`, '42501');
+  });
+});

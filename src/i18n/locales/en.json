@@ -839,7 +839,8 @@
     "offlineBadge": "Offline mode · data stays on this device",
     "leaveOffline": "Leave offline mode",
     "localBadge": "Free account · data stays on this device",
-    "ai": "AI plans & import"
+    "ai": "AI plans & import",
+    "vip": "VIP"
   },
   "settings": {
     "title": "Settings",
