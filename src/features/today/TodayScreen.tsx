@@ -26,6 +26,7 @@ import { useProfile, useLatestWeight } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { useSaveCheckIn } from '@/features/progress/data';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
+import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
@@ -139,6 +140,7 @@ export function TodayScreen() {
             <Text variant="displayL">{t('today.title')}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 4 }}>
+            <AiChatButton />
             <IconButton
               icon="calendar"
               accessibilityLabel={t('calendar.open')}

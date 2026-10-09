@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -54,6 +55,7 @@ function FoodLog() {
             <Text variant="screenTitle">{t('diet.title')}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <AiChatButton />
             <IconButton
               icon="more"
               accessibilityLabel={t('diet.goalsAndMode')}

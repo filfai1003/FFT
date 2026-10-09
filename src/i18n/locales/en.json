@@ -1037,6 +1037,7 @@
     "doneDiet": "Your calorie target and meals were updated; the diet is now in fixed meals mode.",
     "openPlan": "Open the plan",
     "openDiet": "Open the diet",
-    "workoutSummary": "{{days}} days · {{exercises}} exercises"
+    "workoutSummary": "{{days}} days · {{exercises}} exercises",
+    "openCoach": "Ask the AI coach"
   }
 }

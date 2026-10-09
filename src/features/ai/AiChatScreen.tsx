@@ -95,7 +95,7 @@ export function AiChatScreen() {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={12}>
         <TopBar
-          onBack={() => goBack(router, '/profile/ai')}
+          onBack={() => goBack(router)}
           backLabel={t('common.back')}
           right={
             messages.length > 0 ? (
@@ -108,7 +108,12 @@ export function AiChatScreen() {
         {!ready ? (
           <Card gap={10}>
             <Text muted>{t('ai.chatNeedsKey')}</Text>
-            <Button label={t('ai.keyTitle')} onPress={() => router.replace('/profile/ai')} />
+            <Button label={t('ai.keyTitle')} onPress={() => router.push('/profile/ai')} />
+            <Button
+              label={t('ai.openManual')}
+              variant="secondary"
+              onPress={() => router.push('/profile/ai-manual')}
+            />
           </Card>
         ) : messages.length === 0 ? (
           <Text muted>{t('ai.chatEmpty')}</Text>

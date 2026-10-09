@@ -11,13 +11,7 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { goBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
-import {
-  defaultAiSettings,
-  hasAiKey,
-  useAiSettings,
-  type AiProvider,
-  type AiSettings,
-} from './settings-store';
+import { hasAiKey, useAiSettings, type AiProvider, type AiSettings } from './settings-store';
 
 /** AI plans: the chat with your own AI key, the manual copy-and-paste mode, and the key settings. */
 export function AiHubScreen() {
@@ -45,8 +39,7 @@ export function AiHubScreen() {
     value.model.trim() !== '' &&
     (value.provider === 'anthropic' || /^https?:\/\//.test(value.baseUrl.trim()));
 
-  const switchProvider = (provider: AiProvider) =>
-    patch({ provider, model: provider === 'anthropic' ? defaultAiSettings.model : '' });
+  const switchProvider = (provider: AiProvider) => patch({ provider, model: '' });
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
@@ -64,7 +57,7 @@ export function AiHubScreen() {
         <Button
           label={t('ai.openChat')}
           disabled={!ready}
-          onPress={() => router.push('/profile/ai-chat')}
+          onPress={() => router.push('/ai-chat')}
         />
       </Card>
 

@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { AiChatButton } from '@/features/ai/AiChatButton';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -61,11 +62,14 @@ export function TrainScreen() {
             ) : null}
             <Text variant="screenTitle">{t('nav.train')}</Text>
           </View>
-          <IconButton
-            icon="plus"
-            accessibilityLabel={t('train.newPlan')}
-            onPress={() => setCreating(true)}
-          />
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <AiChatButton />
+            <IconButton
+              icon="plus"
+              accessibilityLabel={t('train.newPlan')}
+              onPress={() => setCreating(true)}
+            />
+          </View>
         </View>
 
         <ActiveSessionBanner />

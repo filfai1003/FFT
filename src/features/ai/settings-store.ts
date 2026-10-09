@@ -15,7 +15,7 @@ export type AiSettings = {
 export const defaultAiSettings: AiSettings = {
   provider: 'anthropic',
   apiKey: '',
-  model: 'claude-sonnet-5-5',
+  model: '',
   baseUrl: 'https://api.openai.com/v1',
 };
 
