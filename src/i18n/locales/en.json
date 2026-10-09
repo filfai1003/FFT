@@ -24,18 +24,14 @@
   "today": {
     "title": "Today",
     "caloriesLeft": "Calories left",
-    "notifications": "Notifications and reminders",
     "live": "Live",
     "ofKcal": "/ {{kcal}} kcal",
     "workout": "Today's workout",
     "cycleProgress": "Cycle {{n}} · {{done}}/{{total}}",
     "noPlan": "No plan yet. Create one to see your next workout here.",
     "goTrain": "Go to Train",
-    "meal": "Meal",
     "nextMeal": "Next meal",
     "logMeal": "Log a meal",
-    "weight": "Weight {{unit}}",
-    "logWeight": "Log your weight",
     "water": "Water {{n}}/{{total}}",
     "addWater": "Add a glass of water",
     "waterAdded": "Glass of water added",
@@ -46,7 +42,33 @@
     "waterRemoved": "Glass of water removed",
     "workoutDone": "Workout done today",
     "workoutDoneInfo": "{{names}} · {{sets}} sets",
-    "trainAgain": "Train another day"
+    "trainAgain": "Train another day",
+    "waterLabel": "Water",
+    "creatine": "Creatine",
+    "creatineYes": "Taken today",
+    "creatineNo": "Not yet today",
+    "creatineWeek": "Taken {{n}} of the last 7 days",
+    "creatineMark": "Mark creatine as taken",
+    "creatineUndo": "Mark creatine as not taken",
+    "creatineTaken": "Creatine taken",
+    "creatineRemoved": "Creatine unmarked",
+    "customize": "Customize Today",
+    "customizeHint": "Choose what to show, the order and the size of each widget.",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "show": "Show {{name}}",
+    "size": "Size of {{name}}",
+    "sizeSmall": "Small",
+    "sizeLarge": "Large",
+    "empty": "Nothing to show. Open Customize to add widgets.",
+    "widget": {
+      "nutrition": "Calories and meals",
+      "workout": "Workout",
+      "water": "Water",
+      "creatine": "Creatine",
+      "calendar": "Calendar",
+      "ai": "AI coach bar"
+    }
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -1054,6 +1076,7 @@
     "currentDiet": "Now",
     "newDiet": "New diet",
     "currentLine": "{{mode}} · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
-    "noCurrentDiet": "No diet set yet."
+    "noCurrentDiet": "No diet set yet.",
+    "dockPlaceholder": "Ask the AI coach…"
   }
 }

@@ -17,6 +17,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { useApplyImport, type ApplyResult } from './apply';
 import * as Clipboard from 'expo-clipboard';
+import { useChatDraft } from './chat-draft';
 import { AiError, chatComplete, type ChatMessage } from './client';
 import { useAiContext } from './context';
 import { ImportPreview } from './ImportPreview';
@@ -59,10 +60,10 @@ export function AiChatScreen() {
 
   const ready = hasAiKey(settings) && settings.model.trim() !== '';
 
-  const send = async () => {
-    const content = text.trim();
+  const send = async (draft?: string) => {
+    const content = (draft ?? text).trim();
     if (!content || sending || !ctx.ready) return;
-    setText('');
+    if (draft === undefined) setText('');
     setError(null);
     const user: Message = { id: newId(), role: 'user', content };
     add(user);
@@ -86,6 +87,14 @@ export function AiChatScreen() {
       setSending(false);
     }
   };
+
+  // A message typed in the Today bar is sent as soon as the chat can answer.
+  useEffect(() => {
+    if (ready && ctx.ready && !sending) {
+      const draft = useChatDraft.getState().take();
+      if (draft) void Promise.resolve().then(() => send(draft));
+    }
+  });
 
   /** The system prompt plus what the user asked, to paste into any AI app (then import the answer). */
   const copyForOwnApp = async () => {
@@ -240,7 +249,7 @@ export function AiChatScreen() {
               placeholder={t('ai.messagePlaceholder')}
               value={text}
               onChangeText={setText}
-              onSubmitEditing={send}
+              onSubmitEditing={() => void send()}
               editable={ready}
             />
           </View>
@@ -248,7 +257,7 @@ export function AiChatScreen() {
             label={t('ai.send')}
             block={false}
             disabled={!ready || sending || !text.trim() || !ctx.ready}
-            onPress={send}
+            onPress={() => void send()}
           />
         </View>
       </BottomActionBar>

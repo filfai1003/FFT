@@ -23,6 +23,7 @@ const shapes = {
   info: [[12, 12, 9], 'M12 11v5M12 8h.01'],
   calendar: ['M4 6h16v14H4zM4 10h16M8 3v4M16 3v4'],
   chat: ['M4 5h16v11H10l-4 4v-4H4z'],
+  sliders: ['M4 7h9M19 7h1M4 17h1M11 17h9', [16, 7, 2.5], [8, 17, 2.5]],
   camera: ['M4 8h4l2-3h4l2 3h4v11H4z', [12, 13, 3.5]],
   scan: ['M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M8 8v8M12 8v8M16 8v8'],
   copy: ['M9 9h11v11H9z', 'M15 9V4H4v11h5'],
