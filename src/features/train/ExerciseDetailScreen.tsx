@@ -32,9 +32,12 @@ const POINTS = 8;
 export function ExerciseDetailScreen({
   exerciseId,
   sessionRoute,
+  fromSession,
 }: {
   exerciseId: string;
   sessionRoute: '/train/history/[sessionId]' | '/progress/history/[sessionId]';
+  /** Id of the workout in progress this page was opened from: back returns to it. */
+  fromSession?: string;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -69,7 +72,17 @@ export function ExerciseDetailScreen({
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() => goBack(router)}
+          onBack={() =>
+            fromSession
+              ? router.dismissTo({
+                  pathname: '/session/[sessionId]',
+                  params: { sessionId: fromSession },
+                })
+              : goBack(
+                  router,
+                  sessionRoute.startsWith('/progress') ? '/progress' : '/train/library',
+                )
+          }
           backLabel={t('common.back')}
           right={
             exercise.ownerId ? (
@@ -254,7 +267,7 @@ export function ExerciseDetailScreen({
             onPress={async () => {
               await remove.mutateAsync(exerciseId);
               setConfirmDelete(false);
-              goBack(router);
+              goBack(router, sessionRoute.startsWith('/progress') ? '/progress' : '/train/library');
             }}
           />
         }

@@ -19,7 +19,9 @@ export function LibraryScreen({
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
       <TopBar
-        onBack={() => goBack(router)}
+        onBack={() =>
+          goBack(router, exerciseRoute.startsWith('/progress') ? '/progress' : '/train')
+        }
         backLabel={t('common.back')}
         right={
           <IconButton

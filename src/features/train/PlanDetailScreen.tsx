@@ -62,7 +62,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() => goBack(router)}
+          onBack={() => goBack(router, '/train')}
           backLabel={t('common.back')}
           right={
             <IconButton
@@ -316,7 +316,7 @@ function PlanSheets({
             onPress={async () => {
               await deletePlan.mutateAsync(plan.id);
               close();
-              goBack(router);
+              goBack(router, '/train');
             }}
           />
         }

@@ -64,7 +64,12 @@ export function SessionDetailScreen({
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => goBack(router)} backLabel={t('common.back')} />
+      <TopBar
+        onBack={() =>
+          goBack(router, exerciseRoute.startsWith('/progress') ? '/progress' : '/train/history')
+        }
+        backLabel={t('common.back')}
+      />
 
       <View style={{ gap: 6 }}>
         <Text variant="label" muted>

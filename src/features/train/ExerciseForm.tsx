@@ -70,7 +70,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
         logType,
         imagePath,
       });
-      goBack(router);
+      goBack(router, '/train');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -80,7 +80,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={22}>
         <FormHeader
-          left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
+          left={{ label: t('common.cancel'), onPress: () => goBack(router, '/train') }}
           title={editing ? t('exerciseForm.editTitle') : t('exerciseForm.newTitle')}
         />
 

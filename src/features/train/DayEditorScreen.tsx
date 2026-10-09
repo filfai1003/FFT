@@ -88,7 +88,7 @@ export function DayEditorScreen() {
         exercises: state.exercises,
         removedIds: state.removedIds,
       });
-      goBack(router);
+      goBack(router, '/train');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -98,7 +98,7 @@ export function DayEditorScreen() {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={16}>
         <FormHeader
-          left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
+          left={{ label: t('common.cancel'), onPress: () => goBack(router, '/train') }}
           title={subtitle}
         />
 
@@ -197,7 +197,7 @@ export function DayEditorScreen() {
             onPress={async () => {
               await deleteDay.mutateAsync(state.dayId);
               setConfirmDelete(false);
-              goBack(router);
+              goBack(router, '/train');
             }}
           />
         }

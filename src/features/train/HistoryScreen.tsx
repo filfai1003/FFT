@@ -71,7 +71,10 @@ export function HistoryScreen({
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => goBack(router)} backLabel={t('common.back')} />
+      <TopBar
+        onBack={() => goBack(router, sessionRoute.startsWith('/progress') ? '/progress' : '/train')}
+        backLabel={t('common.back')}
+      />
       <Text variant="screenTitle">{t('history.title')}</Text>
 
       <Card size="small" gap={10}>
