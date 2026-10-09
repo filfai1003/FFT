@@ -27,7 +27,8 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const padding = {
-    paddingTop: noTopInset ? 0 : insets.top,
+    // Never flush with the edge: a little air above the first element, on top of the safe area.
+    paddingTop: (noTopInset ? 0 : insets.top) + space.gapXL,
     paddingBottom: bottomBarHeight > 0 ? bottomBarHeight : insets.bottom,
     paddingHorizontal: space.screenX,
     gap,
