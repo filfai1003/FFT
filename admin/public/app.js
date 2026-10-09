@@ -59,6 +59,9 @@ function renderMode() {
   $('runRollback').hidden = !on;
   $('runCommit').hidden = !on;
   $('addRow').hidden = !on || !current;
+  $('resetButton').textContent = on
+    ? 'Reset the database…'
+    : 'Reset the database… (needs sudo mode)';
   if (on) {
     const s = Math.max(0, Math.round((sudoUntil - Date.now()) / 1000));
     $('sudoLeft').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`;
@@ -519,6 +522,30 @@ async function loadAudit() {
   }
 }
 $('refreshAudit').addEventListener('click', loadAudit);
+
+// ---------------------------------------------------------------- backup tab
+$('resetButton').addEventListener('click', () => {
+  if (!inSudo()) return openSudo();
+  $('resetError').textContent = '';
+  $('resetWord').value = '';
+  $('resetPassword').value = '';
+  $('resetDialog').showModal();
+});
+$('resetCancel').addEventListener('click', () => $('resetDialog').close());
+$('resetForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/reset', {
+      confirm: $('resetWord').value,
+      password: $('resetPassword').value,
+    });
+    $('resetDialog').close();
+    alert(`Done: ${r.accounts} accounts deleted.`);
+    if (current) loadRows();
+  } catch (err) {
+    $('resetError').textContent = err.message;
+  }
+});
 
 // ---------------------------------------------------------------- start
 renderHistory();

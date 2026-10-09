@@ -82,5 +82,5 @@ export function createDb({ databaseUrl, roPassword }) {
     }
   }
 
-  return { setup, run, rw, ro, shape };
+  return { setup, run, rw, ro, shape, roUrl: roUrl.toString() };
 }

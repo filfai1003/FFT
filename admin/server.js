@@ -1,7 +1,9 @@
 // FFT admin panel: browse the data, run SQL, edit in sudo mode, make accounts VIP.
+import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
+import { createGzip } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createAuth, createLimiter, SUDO_MS } from './auth.js';
 import { createDb } from './db.js';
@@ -318,6 +320,82 @@ async function api(req, res, url) {
           audit: { action: 'vip.revoke', detail: { userId } },
         });
     return send(res, 200, out);
+  }
+
+  if (route === 'GET /api/backup') {
+    // A full copy of the data (public, auth, storage) as compressed SQL, made with the read-only role.
+    const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
+    const child = spawn(
+      'pg_dump',
+      [
+        '--no-owner',
+        '--no-privileges',
+        '--schema=public',
+        '--schema=auth',
+        '--schema=storage',
+        db.roUrl,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    let stderr = '';
+    child.stderr.on('data', (d) => (stderr += d));
+    await new Promise((resolve) => {
+      let started = false;
+      const gzip = createGzip();
+      child.stdout.on('data', (chunk) => {
+        if (!started) {
+          started = true;
+          res.writeHead(200, {
+            'Content-Type': 'application/gzip',
+            'Content-Disposition': `attachment; filename="fft-backup-${stamp}.sql.gz"`,
+            'Cache-Control': 'no-store',
+          });
+          gzip.pipe(res);
+        }
+        gzip.write(chunk);
+      });
+      child.on('error', (e) => {
+        if (!started) send(res, 500, { error: `pg_dump is not available: ${e.message}` });
+        resolve();
+      });
+      child.on('close', (code) => {
+        if (code !== 0) {
+          if (started) res.destroy();
+          else send(res, 500, { error: `Backup failed: ${stderr.slice(0, 300)}` });
+        } else gzip.end();
+        resolve();
+      });
+    });
+    await db
+      .run('select 1', {
+        sudo: true,
+        commit: true,
+        audit: { action: 'backup.download', detail: { ip: clientIp(req) } },
+      })
+      .catch(() => undefined);
+    return;
+  }
+
+  if (route === 'POST /api/reset') {
+    // Deletes every account and, through the cascades, everything that belongs to them. Keeps the tables
+    // and the catalogue (exercises, foods). Needs sudo mode, the password again and the word RESET.
+    needSudo();
+    const { confirm, password } = await readBody(req);
+    const key = `sudo:${clientIp(req)}`;
+    if (limiter.locked(key)) throw new HttpError(429, 'Too many attempts');
+    if (confirm !== 'RESET') throw new HttpError(400, 'Type RESET to confirm');
+    if (!auth.checkPassword(password ?? '')) {
+      limiter.fail(key);
+      await sleep(700);
+      throw new HttpError(401, 'Wrong password');
+    }
+    const before = Number((await db.rw.query('select count(*) as n from auth.users')).rows[0].n);
+    const out = await db.run('delete from auth.users', {
+      sudo: true,
+      commit: true,
+      audit: { action: 'db.reset', detail: { accounts: before } },
+    });
+    return send(res, 200, { accounts: before, ms: out.ms });
   }
 
   if (route === 'GET /api/audit') {

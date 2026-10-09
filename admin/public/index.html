@@ -39,6 +39,7 @@
         <button data-tab="sql" class="tab">SQL</button>
         <button data-tab="users" class="tab">Users</button>
         <button data-tab="audit" class="tab">Audit</button>
+        <button data-tab="backup" class="tab">Backup</button>
       </nav>
 
       <main>
@@ -111,6 +112,26 @@
           </div>
           <div id="auditGrid" class="grid-wrap"></div>
         </section>
+        <section id="tab-backup" class="panel" hidden>
+          <div class="card">
+            <h3>Backup</h3>
+            <p class="muted">
+              A copy of all the data (accounts, profiles, VIP, catalogue, everything in the
+              database) as a compressed SQL file. It contains private data, including password
+              hashes: keep it safe. To restore it, run it with psql on an empty database.
+            </p>
+            <a class="btn primary" href="/api/backup" download>Download backup</a>
+          </div>
+          <div class="card danger-zone">
+            <h3>Reset the database</h3>
+            <p class="muted">
+              Deletes <strong>every account and everything that belongs to it</strong> (profiles,
+              VIP, and the data the server holds for them). The tables and the catalogue (exercises,
+              foods) stay. This cannot be undone: download a backup first.
+            </p>
+            <button id="resetButton" class="btn danger">Reset the database…</button>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -129,6 +150,29 @@
         <div class="row">
           <button type="button" id="sudoCancel" class="btn ghost">Cancel</button>
           <button type="submit" class="btn danger">Enter sudo mode</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="resetDialog">
+      <form id="resetForm" method="dialog" class="dialog-card">
+        <h2>Reset the database</h2>
+        <p>
+          This deletes every account and everything that belongs to it. It cannot be undone.
+          <a href="/api/backup" download>Download a backup first.</a>
+        </p>
+        <label>
+          <span class="label">Type RESET</span>
+          <input id="resetWord" autocomplete="off" required />
+        </label>
+        <label>
+          <span class="label">Password again</span>
+          <input id="resetPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="resetError" class="error" role="alert"></p>
+        <div class="row">
+          <button type="button" id="resetCancel" class="btn ghost">Cancel</button>
+          <button type="submit" class="btn danger">Delete everything</button>
         </div>
       </form>
     </dialog>

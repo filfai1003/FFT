@@ -8,6 +8,8 @@ variables of the service (`ADMIN_PASSWORD`).
 - **Data**: every table of `public`, `auth` and `storage`: search, sort, pages, row detail.
 - **SQL**: write a query and run it (Ctrl+Enter). History of the last 20 queries.
 - **Users**: all accounts, with the VIP switch.
+- **Backup**: downloads a compressed SQL copy of everything (`public`, `auth`, `storage`) made with `pg_dump`
+  and the read-only role; and **Reset the database** (see below).
 - **Audit**: every change made in sudo mode (who entered sudo, each SQL kept, each row edited or deleted,
   each VIP granted or removed).
 
@@ -17,6 +19,13 @@ variables of the service (`ADMIN_PASSWORD`).
 - **Sudo mode** (button at the top, asks the password again) lasts 10 minutes. The page turns red. In sudo mode:
   double-click a cell to edit it, delete rows, add rows, make accounts VIP, run SQL that changes data.
   SQL runs and **rolls back** unless you press "Run and keep changes".
+
+## Backup and reset
+- **Download backup** gives `fft-backup-<date>.sql.gz`: schema and data of `public`, `auth` and `storage`. It holds private
+  data (password hashes included): keep it safe. Restore on an empty database: `gunzip -c file.sql.gz | psql <url>`.
+- **Reset the database** (sudo mode + the password again + typing `RESET`) deletes every account and, through the
+  cascades, everything that belongs to it (profiles, VIP, server-side data). The tables and the catalogue
+  (exercises, foods) stay. It is logged in the audit. Download a backup first: it cannot be undone.
 
 ## VIP
 Table `vip_users` (one row per VIP account). The app reads its own row and shows "VIP" instead of "FREE"

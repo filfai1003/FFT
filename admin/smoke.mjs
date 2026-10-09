@@ -90,6 +90,10 @@ check(
   (await call('/api/table?schema=public&name=nope%22%3B')).status === 404,
 );
 
+check(
+  'reset refused without sudo',
+  (await call('/api/reset', { confirm: 'RESET', password })).status === 403,
+);
 check('sudo works', (await call('/api/sudo', { password })).status === 200);
 const rollback = await call('/api/sql', {
   sql: 'create table public.zz_test (a int); insert into public.zz_test values (1); select * from public.zz_test',
@@ -101,6 +105,15 @@ check(
 );
 const gone = await call('/api/sql', { sql: "select to_regclass('public.zz_test') as t" });
 check('rolled back for real', gone.data.rows?.[0]?.[0] === null, JSON.stringify(gone.data));
+
+check(
+  'reset needs the word RESET',
+  (await call('/api/reset', { confirm: 'yes', password })).status === 400,
+);
+check(
+  'reset needs the password',
+  (await call('/api/reset', { confirm: 'RESET', password: 'nope' })).status === 401,
+);
 
 const users = await call('/api/users');
 check('users list', users.status === 200, JSON.stringify(users.data));
