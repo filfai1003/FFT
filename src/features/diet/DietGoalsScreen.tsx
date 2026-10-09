@@ -6,18 +6,15 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormHeader } from '@/components/ui/FormHeader';
-import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
-import { parseDecimal } from '@/domain/numbers';
 import {
   ageInYears,
   defaultMacros,
-  macroKcal,
   macroPercents,
   macrosFromPercents,
   maintenanceKcal,
@@ -30,6 +27,7 @@ import { useLatestWeight, useProfile, useUpdateProfile } from '@/features/profil
 import { useToday } from '@/features/profile/use-today';
 import { starterMeals } from '@/features/onboarding/logic';
 import { useFixedPlan, useSaveFixedPlan } from './fixed';
+import { MacroSplitCard } from './MacroSplitCard';
 import { useGoalForDay, useSaveGoal } from './log';
 import { newId } from '@/lib/uuid';
 import { goBack } from '@/lib/navigation';
@@ -131,7 +129,7 @@ export function DietGoalsScreen() {
           planId: null,
           name: t('onboarding.meals.planName'),
           removedIds: [],
-          meals: starterMeals(kcal, macros).map((m) => ({
+          meals: starterMeals({ kcal, ...macros }).map((m) => ({
             id: newId(),
             name: m.name,
             kcal: m.kcal,
@@ -139,7 +137,7 @@ export function DietGoalsScreen() {
             carbsG: m.carbsG,
             fatG: m.fatG,
             description: '',
-            isMain: false,
+            isMain: m.isMain,
           })),
         });
       }
@@ -150,15 +148,6 @@ export function DietGoalsScreen() {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
-
-  const rows = [
-    ['protein', macros.proteinG, colors.macroSplit.protein, percents.protein],
-    ['carbs', macros.carbsG, colors.macroSplit.carbs, percents.carbs],
-    ['fat', macros.fatG, colors.macroSplit.fat, percents.fat],
-  ] as const;
-  const percentTotal = percents.protein + percents.carbs + percents.fat;
-  // The dot bar always shows the split relative to the total, whatever the total is.
-  const dots = (pct: number) => (percentTotal > 0 ? Math.round((pct / percentTotal) * 30) : 0);
 
   return (
     <>
@@ -243,86 +232,7 @@ export function DietGoalsScreen() {
           ) : null}
         </Card>
 
-        <Card gap={12}>
-          <Text variant="label" muted>
-            {t('goals.macroSplit')}
-          </Text>
-          <View
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel={t('goals.splitLabel', {
-              p: percents.protein,
-              c: percents.carbs,
-              f: percents.fat,
-            })}
-            style={{ flexDirection: 'row', gap: 3 }}
-          >
-            {Array.from({ length: 30 }, (_, i) => {
-              const a = dots(percents.protein);
-              const b = a + dots(percents.carbs);
-              return (
-                <View
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor:
-                      i < a
-                        ? colors.macroSplit.protein
-                        : i < b
-                          ? colors.macroSplit.carbs
-                          : colors.macroSplit.fat,
-                  }}
-                />
-              );
-            })}
-          </View>
-          {rows.map(([key, grams, color, pct]) => (
-            <View
-              key={key}
-              style={{
-                minHeight: 44,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                borderTopWidth: 1,
-                borderStyle: 'dashed',
-                borderColor: colors.borderDecorative,
-              }}
-            >
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
-              <Text style={{ flex: 1 }}>{t(`diet.macro.${key}`)}</Text>
-              <Text variant="label" muted style={{ width: 52, textAlign: 'right' }}>
-                {t('goals.gramsValue', { g: grams })}
-              </Text>
-              <View style={{ width: 84 }}>
-                <Input
-                  variant="compact"
-                  accessibilityLabel={t('goals.percentOf', { name: t(`diet.macro.${key}`) })}
-                  value={String(pct)}
-                  onChangeText={(v) =>
-                    // Each percentage is independent: the others never move.
-                    setPercents({
-                      ...percents,
-                      [key]: Math.min(100, Math.max(0, Math.round(parseDecimal(v) ?? 0))),
-                    })
-                  }
-                  keyboardType="number-pad"
-                  selectTextOnFocus
-                />
-              </View>
-              <Text variant="label" muted>
-                {t('goals.percentSign')}
-              </Text>
-            </View>
-          ))}
-          <Text variant="bodyS" muted={percentTotal === 100} danger={percentTotal !== 100}>
-            {percentTotal === 100
-              ? t('goals.totalOk')
-              : t('goals.totalOff', { pct: percentTotal, kcal: Math.round(macroKcal(macros)) })}
-          </Text>
-        </Card>
+        <MacroSplitCard kcal={kcal} percents={percents} onChange={setPercents} />
 
         <View
           style={{

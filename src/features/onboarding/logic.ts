@@ -1,17 +1,34 @@
 import {
   ageInYears,
-  autoSplit,
   defaultMacros,
-  defaultMealShares,
+  defaultMeals,
+  macroPercents,
+  macrosFromPercents,
   maintenanceKcal,
   minimumAllowedKcal,
+  splitDay,
   suggestedKcal,
   type ActivityLevel,
   type Goal,
   type Sex,
+  type Totals,
 } from '@/domain/nutrition';
 
 export const MIN_AGE = 18;
+
+export type MacroSplit = { protein: number; carbs: number; fat: number };
+
+/** A meal of the first fixed-meals plan, as edited during the onboarding. */
+export type OnboardingMeal = {
+  id: string;
+  name: string;
+  kcal: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  description: string;
+  isMain: boolean;
+};
 export const POLICY_VERSION = 'v1-2026-10';
 
 export type OnboardingDraft = {
@@ -28,7 +45,13 @@ export type OnboardingDraft = {
   location: 'gym' | 'home' | 'bodyweight' | null;
   /** The calorie target the user settled on; null = still the suggestion. */
   targetKcal: number | null;
+  /** Macro split as % of the calories; null = the suggested split. */
+  macroSplit: MacroSplit | null;
   dietMode: 'tracking' | 'fixed_meals' | null;
+  /** The meals the user set up; null = the suggested ones. Reset when the target changes. */
+  meals: OnboardingMeal[] | null;
+  /** The workout sits right after this meal (a meal id of `meals`). */
+  workoutAfterId: string | null;
   consentHealth: boolean;
   consentAnalytics: boolean;
 };
@@ -46,7 +69,10 @@ export const emptyDraft: OnboardingDraft = {
   experience: null,
   location: null,
   targetKcal: null,
+  macroSplit: null,
   dietMode: null,
+  meals: null,
+  workoutAfterId: null,
   consentHealth: false,
   consentAnalytics: false,
 };
@@ -96,24 +122,34 @@ export function targetsFor(d: OnboardingDraft, today: Date) {
   });
   const suggested = suggestedKcal(maintenance, d.goal!);
   const kcal = d.targetKcal ?? suggested;
+  const macros = d.macroSplit
+    ? macrosFromPercents(kcal, d.macroSplit)
+    : defaultMacros(kcal, weightKg);
   return {
     weightKg,
     maintenance,
     suggested,
     minimum: minimumAllowedKcal(maintenance),
     kcal,
-    macros: defaultMacros(kcal, weightKg),
+    macros,
+    split: d.macroSplit ?? macroPercents(macros),
   };
 }
 
-/** The 4 starter meals of the fixed-meals mode, adding up to the daily target. */
-export function starterMeals(
-  kcal: number,
-  macros: { proteinG: number; carbsG: number; fatG: number },
-) {
-  const parts = autoSplit(
-    { kcal, ...macros },
-    defaultMealShares.map((m) => m.share),
+/**
+ * The 4 starter meals of the fixed-meals mode: same base calories, lunch and dinner bigger, adding
+ * up to the daily target.
+ */
+export function starterMeals(goal: Totals): OnboardingMeal[] {
+  const parts = splitDay(
+    goal,
+    defaultMeals.map((m) => ({ isMain: m.isMain, workout: null })),
   );
-  return defaultMealShares.map((m, position) => ({ position, name: m.name, ...parts[position] }));
+  return defaultMeals.map((m, i) => ({
+    id: `starter-${i}`,
+    name: m.name,
+    isMain: m.isMain,
+    description: '',
+    ...parts[i],
+  }));
 }

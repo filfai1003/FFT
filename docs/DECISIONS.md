@@ -50,6 +50,10 @@ before the phase that depends on it.
 26. **Photos**: private bucket + signed URLs; blur-until-tapped and device lock are client settings in `privacy-store`.
 27. **Withdrawing health consent** pauses the app behind `ConsentGate` (give consent again, export or delete).
 28. **Fixed-meals auto-split** (only the Auto-split button; every value stays editable): same base calories per meal, a main meal gets 1.4x, the meal right before the workout shifts 12% of its calories from fat to carbs, the one right after shifts 8% from fat to protein; the other meals absorb the difference so the day keeps its macro totals. Stored as `fixed_meals.is_main` and `fixed_meal_plans.workout_after_meal_id`.
+29. **Recipes removed** from the product (screens, routes, tables `recipes`/`recipe_items`, view `recipe_nutrition`, `food_logs.recipe_id/servings`): migration `20261009100000_remove_recipes.sql`.
+30. **Meals stay on target**: editing a meal in the fixed-meals plan re-shares the rest between the other meals (`rebalanceMeals`); one meal can never take more than the whole day. Auto-split works from the macro targets (calories = 4/4/9 of those macros).
+31. **Onboarding** lets you set the macro split (independent percentages) and set up your meals, main meals and workout position with the same editor as the plan (`MealPlanEditor`).
+32. **First workout plan** becomes active right away; a workout with nothing logged is replaced (with UNDO) when you start another one.
 
 ## Still open
 

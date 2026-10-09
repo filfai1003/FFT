@@ -15,6 +15,7 @@ import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import {
   moveInDay,
+  nextPosition,
   openDay,
   openNewDay,
   removeFromDay,
@@ -51,24 +52,27 @@ export function DayEditorScreen() {
   useEffect(() => {
     if (!plan.data) return;
     const current = useDayEditorStore.getState().state;
-    if (current?.dayId === dayId) return;
     if (isNew === '1') {
+      // A new day has no id in the URL: it is "the new day of this plan being edited".
+      if (current?.isNew && current.planId === plan.data.id) return;
       setState(
         openNewDay(
           plan.data.id,
-          plan.data.days.length,
+          nextPosition(plan.data.days),
           t('plan.newDayName', { n: plan.data.days.length + 1 }),
         ),
       );
       return;
     }
+    if (current?.dayId === dayId) return;
     const day = plan.data.days.find((d) => d.id === dayId);
     if (day) setState(openDay(plan.data.id, day, day.position));
   }, [plan.data, dayId, isNew, setState, t]);
 
   useEffect(() => () => setState(null), [setState]);
 
-  if (!state || state.dayId !== dayId || !plan.data) return <Screen>{null}</Screen>;
+  const showing = isNew === '1' ? state?.isNew === true : state?.dayId === dayId;
+  if (!state || !showing || !plan.data) return <Screen>{null}</Screen>;
 
   const valid = state.name.trim().length > 0;
   const subtitle = `${plan.data.name} · ${t('plan.dayN', { n: state.position + 1 })}`.toUpperCase();

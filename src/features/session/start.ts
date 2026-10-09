@@ -3,7 +3,9 @@ import { isOutOfOrder } from '@/domain/rotation';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import type { Exercise } from '@/features/train/exercises';
 import type { PlanDayView, PlanView, Rotation } from '@/features/train/plans';
+import i18n from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
+import { useToastStore } from '@/lib/toast-store';
 import { buildSession, type NewExercise, type PreviousSet } from './logic';
 import { useSessionStore } from './store';
 
@@ -57,10 +59,27 @@ export function useStartWorkout() {
   const router = useRouter();
   const start = useSessionStore((s) => s.start);
 
+  /**
+   * A workout already in progress is resumed instead of starting another one — unless nothing was
+   * logged in it yet (no set done): then it is replaced by the new one, with an UNDO.
+   */
   const openActive = () => {
-    const active = useSessionStore.getState().active;
-    if (active) router.push({ pathname: '/session/[sessionId]', params: { sessionId: active.id } });
-    return active != null;
+    const { active, discard, start: restore } = useSessionStore.getState();
+    if (!active) return false;
+    if (!active.exercises.some((e) => e.sets.some((set) => set.done))) {
+      discard();
+      useToastStore.getState().show({
+        message: i18n.t('session.replacedEmpty', { name: active.dayName }),
+        actionLabel: i18n.t('common.undo'),
+        onAction: () => {
+          restore(active);
+          router.replace({ pathname: '/session/[sessionId]', params: { sessionId: active.id } });
+        },
+      });
+      return false;
+    }
+    router.push({ pathname: '/session/[sessionId]', params: { sessionId: active.id } });
+    return true;
   };
 
   /** Starts a plan day (or resumes the workout already in progress). */

@@ -63,12 +63,13 @@ export function SummaryScreen() {
     { label: t('summary.records'), value: String(records.length), unit: t('summary.new') },
   ];
 
-  const close = async () => {
+  // Leave right away: the upload goes on in the background (and is retried when back online).
+  const close = () => {
     patch(finished.session.id, { feeling, notes });
-    await syncPendingSessions(
+    router.replace('/(tabs)');
+    void syncPendingSessions(
       () => void queryClient.invalidateQueries({ queryKey: historyKeys.all }),
     );
-    router.replace('/');
   };
 
   return (

@@ -104,6 +104,20 @@ export function TodayScreen() {
     });
   };
 
+  // Takes back the last glass; UNDO puts the same entry back.
+  const onWaterLess = () => {
+    const last = water.data?.rows.at(-1);
+    if (!last) return;
+    removeWater.mutate(last.id);
+    confirm();
+    showToast({
+      message: t('today.waterRemoved'),
+      actionLabel: t('common.undo'),
+      bottomOffset: barHeight,
+      onAction: () => addWater.mutate({ day: today, ml: last.ml, id: last.id }),
+    });
+  };
+
   const macroRows = target
     ? ([
         ['protein', eaten.protein, target.protein],
@@ -266,15 +280,42 @@ export function TodayScreen() {
           )}
         </Card>
 
+        {fixed ? (
+          <Card gap={10}>
+            <Text variant="label" muted>
+              {t('today.nextMeal')}
+            </Text>
+            {nextMeal ? (
+              <>
+                <Text variant="displayM">{nextMeal.name}</Text>
+                {nextMeal.description ? <Text>{nextMeal.description}</Text> : null}
+                <Text variant="label" muted>
+                  {t('diet.mealLine', {
+                    kcal: nextMeal.kcal,
+                    p: Math.round(nextMeal.proteinG),
+                    c: Math.round(nextMeal.carbsG),
+                    f: Math.round(nextMeal.fatG),
+                  })}
+                </Text>
+                <Button
+                  label={t('today.markEaten', { name: nextMeal.name })}
+                  icon="check"
+                  variant="secondary"
+                  onPress={onMeal}
+                />
+              </>
+            ) : (
+              <Text muted>{t('today.allMealsDone')}</Text>
+            )}
+          </Card>
+        ) : null}
+
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Tile
-            onPress={onMeal}
-            label={fixed ? t('today.nextMeal') : t('today.meal')}
-            disabled={fixed && !nextMeal}
-            accessibilityLabel={fixed ? t('today.markNextMeal') : t('today.logMeal')}
-          >
-            <Icon name={fixed ? 'check' : 'plus'} size={22} color={colors.text} />
-          </Tile>
+          {fixed ? null : (
+            <Tile onPress={onMeal} label={t('today.meal')} accessibilityLabel={t('today.logMeal')}>
+              <Icon name="plus" size={22} color={colors.text} />
+            </Tile>
+          )}
           <Tile
             onPress={() => {
               setWeightInput(weight.data ? String(displayWeight(weight.data.weightKg, unit)) : '');
@@ -287,10 +328,17 @@ export function TodayScreen() {
               {weight.data ? displayWeight(weight.data.weightKg, unit) : '—'}
             </Text>
           </Tile>
-          <Tile
-            onPress={onWater}
-            label={t('today.water', { n: glasses, total: goalGlasses })}
-            accessibilityLabel={t('today.addWater')}
+          <View
+            style={{
+              flex: 1,
+              minHeight: 88,
+              borderRadius: radius.cardSmall,
+              borderWidth: 1,
+              borderColor: colors.borderDecorative,
+              backgroundColor: colors.surface,
+              padding: 14,
+              gap: 10,
+            }}
           >
             <View style={{ width: 60 }}>
               <DotBar
@@ -302,7 +350,19 @@ export function TodayScreen() {
                 accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
               />
             </View>
-          </Tile>
+            <Text variant="bodyS" medium>
+              {t('today.water', { n: glasses, total: goalGlasses })}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              <IconButton
+                icon="minus"
+                accessibilityLabel={t('today.removeWater')}
+                disabled={!water.data || water.data.rows.length === 0}
+                onPress={onWaterLess}
+              />
+              <IconButton icon="plus" accessibilityLabel={t('today.addWater')} onPress={onWater} />
+            </View>
+          </View>
         </View>
       </Screen>
 

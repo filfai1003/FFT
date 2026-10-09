@@ -367,8 +367,6 @@ export type Database = {
           name: string;
           protein_g: number;
           quantity_label: string | null;
-          recipe_id: string | null;
-          servings: number | null;
           updated_at: string;
           user_id: string;
         };
@@ -387,8 +385,6 @@ export type Database = {
           name: string;
           protein_g?: number;
           quantity_label?: string | null;
-          recipe_id?: string | null;
-          servings?: number | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -406,8 +402,6 @@ export type Database = {
           name?: string;
           protein_g?: number;
           quantity_label?: string | null;
-          recipe_id?: string | null;
-          servings?: number | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -417,20 +411,6 @@ export type Database = {
             columns: ['food_id'];
             isOneToOne: false;
             referencedRelation: 'foods';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'food_logs_recipe_id_fkey';
-            columns: ['recipe_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipe_nutrition';
-            referencedColumns: ['recipe_id'];
-          },
-          {
-            foreignKeyName: 'food_logs_recipe_id_fkey';
-            columns: ['recipe_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipes';
             referencedColumns: ['id'];
           },
         ];
@@ -774,93 +754,6 @@ export type Database = {
           id?: string;
           pose?: string;
           storage_path?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-      recipe_items: {
-        Row: {
-          created_at: string;
-          deleted_at: string | null;
-          food_id: string;
-          grams: number;
-          id: string;
-          recipe_id: string;
-          updated_at: string;
-          user_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          created_at?: string;
-          deleted_at?: string | null;
-          food_id: string;
-          grams: number;
-          id?: string;
-          recipe_id: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Update: {
-          created_at?: string;
-          deleted_at?: string | null;
-          food_id?: string;
-          grams?: number;
-          id?: string;
-          recipe_id?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'recipe_items_food_id_fkey';
-            columns: ['food_id'];
-            isOneToOne: false;
-            referencedRelation: 'foods';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'recipe_items_recipe_id_fkey';
-            columns: ['recipe_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipe_nutrition';
-            referencedColumns: ['recipe_id'];
-          },
-          {
-            foreignKeyName: 'recipe_items_recipe_id_fkey';
-            columns: ['recipe_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipes';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      recipes: {
-        Row: {
-          created_at: string;
-          deleted_at: string | null;
-          id: string;
-          name: string;
-          servings: number;
-          updated_at: string;
-          user_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          created_at?: string;
-          deleted_at?: string | null;
-          id?: string;
-          name: string;
-          servings?: number;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Update: {
-          created_at?: string;
-          deleted_at?: string | null;
-          id?: string;
-          name?: string;
-          servings?: number;
           updated_at?: string;
           user_id?: string;
         };
@@ -1251,19 +1144,6 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
-      };
-      recipe_nutrition: {
-        Row: {
-          carbs_g_per_serving: number | null;
-          fat_g_per_serving: number | null;
-          kcal_per_serving: number | null;
-          protein_g_per_serving: number | null;
-          recipe_id: string | null;
-          servings: number | null;
-          user_id: string | null;
-        };
-        ComputedFields: never;
-        Relationships: [];
       };
     };
     Functions: {

@@ -78,20 +78,29 @@ describe('targets', () => {
 });
 
 describe('meal split', () => {
-  it('adds up exactly to the target, for any total', () => {
-    for (const kcal of [1500, 2000, 2350, 2777]) {
-      const meals = starterMeals(kcal, { proteinG: 160, carbsG: 263, fatG: 73 });
-      expect(meals).toHaveLength(4);
-      expect(meals.reduce((a, m) => a + m.kcal, 0)).toBe(kcal);
-      expect(meals.reduce((a, m) => a + m.proteinG, 0)).toBe(160);
-      expect(meals.reduce((a, m) => a + m.carbsG, 0)).toBe(263);
-      expect(meals.reduce((a, m) => a + m.fatG, 0)).toBe(73);
-    }
+  it('adds up exactly to the macro targets, lunch and dinner being bigger', () => {
+    const meals = starterMeals({ kcal: 2349, proteinG: 160, carbsG: 263, fatG: 73 });
+    expect(meals).toHaveLength(4);
+    expect(meals[1].kcal).toBeGreaterThan(meals[0].kcal);
+    expect(meals[3].kcal).toBeGreaterThan(meals[2].kcal);
+    expect(meals.reduce((a, m) => a + m.proteinG, 0)).toBe(160);
+    expect(meals.reduce((a, m) => a + m.carbsG, 0)).toBe(263);
+    expect(meals.reduce((a, m) => a + m.fatG, 0)).toBe(73);
+    expect(Math.abs(meals.reduce((a, m) => a + m.kcal, 0) - 2349)).toBeLessThan(10);
   });
 
   it('autoSplit follows the shares', () => {
     const parts = autoSplit({ kcal: 1000, proteinG: 100, carbsG: 100, fatG: 100 }, [1, 1]);
     expect(parts.map((p) => p.kcal)).toEqual([500, 500]);
+  });
+
+  it('a custom macro split sets the grams of the target', () => {
+    const t = targetsFor(
+      { ...valid, targetKcal: 2000, macroSplit: { protein: 30, carbs: 40, fat: 30 } },
+      today,
+    );
+    expect(t.macros).toEqual({ proteinG: 150, carbsG: 200, fatG: 67 });
+    expect(t.split).toEqual({ protein: 30, carbs: 40, fat: 30 });
   });
 });
 

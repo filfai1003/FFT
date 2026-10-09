@@ -113,15 +113,13 @@ export function portion(per100g: number, grams: number): number {
   return Math.round(((per100g * grams) / 100) * 10) / 10;
 }
 
-export type MealShare = { name: string; share: number };
-
-/** Default meals of the fixed-meals mode and how the daily target is split between them. */
-export const defaultMealShares = [
-  { name: 'Breakfast', share: 0.25 },
-  { name: 'Lunch', share: 0.3 },
-  { name: 'Snack', share: 0.15 },
-  { name: 'Dinner', share: 0.3 },
-] as const satisfies readonly MealShare[];
+/** Default meals of the fixed-meals mode; lunch and dinner are the main meals. */
+export const defaultMeals = [
+  { name: 'Breakfast', isMain: false },
+  { name: 'Lunch', isMain: true },
+  { name: 'Snack', isMain: false },
+  { name: 'Dinner', isMain: true },
+] as const;
 
 export type Totals = { kcal: number; proteinG: number; carbsG: number; fatG: number };
 
@@ -164,7 +162,6 @@ export type MealRole = { isMain: boolean; workout: 'pre' | 'post' | null };
 export function splitDay(goal: Totals, roles: readonly MealRole[]): Totals[] {
   const weights = roles.map((r) => (r.isMain ? MAIN_MEAL_FACTOR : 1));
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const mealKcal = weights.map((w) => (goal.kcal * w) / weightSum);
 
   const goalKcal = {
     protein: goal.proteinG * kcalPerGram.protein,
@@ -172,6 +169,8 @@ export function splitDay(goal: Totals, roles: readonly MealRole[]): Totals[] {
     fat: goal.fatG * kcalPerGram.fat,
   };
   const goalTotal = goalKcal.protein + goalKcal.carbs + goalKcal.fat || 1;
+  // The macros are the target: the day's calories are the calories of those macros.
+  const mealKcal = weights.map((w) => (goalTotal * w) / weightSum);
   const base = {
     protein: goalKcal.protein / goalTotal,
     carbs: goalKcal.carbs / goalTotal,
@@ -223,6 +222,43 @@ export function splitDay(goal: Totals, roles: readonly MealRole[]): Totals[] {
     grams[biggest][k] = Math.max(0, grams[biggest][k] + Math.round(goal[k]) - assigned);
   }
   return grams.map((g) => ({ ...g, kcal: Math.round(macroKcal(g)) }));
+}
+
+/**
+ * Keeps the day on target after one meal changed: the edited meal is capped at the daily target
+ * of each macro and the other meals share what is left, in proportion to what they had (or evenly
+ * if they were empty). `editedIndex` -1 = no meal was edited (e.g. one was deleted): all scale.
+ */
+export function rebalanceMeals(
+  goal: Totals,
+  meals: readonly Totals[],
+  editedIndex: number,
+): Totals[] {
+  const keys = ['proteinG', 'carbsG', 'fatG'] as const;
+  const result = meals.map((m) => ({ ...m }));
+  const others = result.map((_, i) => i).filter((i) => i !== editedIndex);
+  if (editedIndex >= 0)
+    for (const k of keys)
+      result[editedIndex][k] = Math.min(result[editedIndex][k], Math.round(goal[k]));
+  if (others.length > 0) {
+    const biggest = others.reduce((b, i) => (meals[i].kcal > meals[b].kcal ? i : b), others[0]);
+    for (const k of keys) {
+      const remaining = Math.max(
+        0,
+        Math.round(goal[k]) - (editedIndex >= 0 ? result[editedIndex][k] : 0),
+      );
+      const sum = others.reduce((a, i) => a + meals[i][k], 0);
+      for (const i of others) {
+        result[i][k] =
+          sum > 0
+            ? Math.round((meals[i][k] * remaining) / sum)
+            : Math.floor(remaining / others.length);
+      }
+      const assigned = others.reduce((a, i) => a + result[i][k], 0);
+      result[biggest][k] = Math.max(0, result[biggest][k] + remaining - assigned);
+    }
+  }
+  return result.map((m) => ({ ...m, kcal: Math.round(macroKcal(m)) }));
 }
 
 /** Scales grams of each macro by a ratio (when the calorie target changes, the split stays). */

@@ -241,9 +241,21 @@ export function useCreatePlan() {
   return useMutation({
     mutationFn: async (name: string) => {
       const id = newId();
-      const { error } = await getSupabase()
+      const supabase = getSupabase();
+      // The first plan is the one you train with: it becomes active right away.
+      const active = await supabase
         .from('workout_plans')
-        .insert({ id, user_id: userId!, name: name.trim(), status: 'draft' });
+        .select('id')
+        .eq('status', 'active')
+        .is('deleted_at', null)
+        .limit(1);
+      if (active.error) throw active.error;
+      const { error } = await supabase.from('workout_plans').insert({
+        id,
+        user_id: userId!,
+        name: name.trim(),
+        status: active.data.length === 0 ? 'active' : 'draft',
+      });
       if (error) throw error;
       return id;
     },

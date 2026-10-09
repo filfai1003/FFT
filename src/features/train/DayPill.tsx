@@ -46,7 +46,10 @@ export function DayPill({ label, state }: { label: string; state: DayPillState }
   );
 }
 
-/** "Pull A" -> "PULL": first word, at most 6 letters. */
+/** "Pull" -> "PULL", "Push A" -> "PUSH A", "Day 2" -> "DAY 2": at most 6 characters. */
 export function shortDayLabel(name: string): string {
-  return name.trim().split(/\s+/)[0].slice(0, 6).toUpperCase();
+  const words = name.trim().split(/\s+/);
+  // A short suffix (A, B, 2) keeps the days of a plan tell-apart-able.
+  const label = words[1] && words[1].length <= 2 ? `${words[0]} ${words[1]}` : words[0];
+  return label.slice(0, 6).toUpperCase();
 }

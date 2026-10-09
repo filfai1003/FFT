@@ -68,6 +68,9 @@ export function SessionScreen() {
   const elapsed = Math.max(0, Math.round((now - new Date(active.startedAt).getTime()) / 1000));
   const index = Math.min(active.index, Math.max(active.exercises.length - 1, 0));
   const exercise = active.exercises[index];
+  // An empty workout has no exercise: never read through `exercise` unguarded (the compiler may hoist it).
+  const sets = exercise?.sets ?? [];
+  const exerciseName = exercise?.name ?? '';
   const previousEx = active.exercises[index - 1];
   const nextEx = active.exercises[index + 1];
 
@@ -80,7 +83,9 @@ export function SessionScreen() {
     const before = useSessionStore.getState().active!;
     const setId = before.exercises[index].sets[setIndex].id;
     const { session, completed } = toggleSet(before, index, setIndex, new Date());
-    const withRest = completed ? startRest(session, exercise.restS, Date.now()) : session;
+    const withRest = completed
+      ? startRest(session, before.exercises[index].restS, Date.now())
+      : session;
     update(() => withRest);
     if (completed) {
       confirm();
@@ -217,7 +222,7 @@ export function SessionScreen() {
                 ))}
                 <View style={{ width: oneHand ? 56 : 44 }} />
               </View>
-              {exercise.sets.map((set, i) => (
+              {sets.map((set, i) => (
                 <SetRow
                   key={set.id}
                   index={i}
@@ -299,15 +304,15 @@ export function SessionScreen() {
       <Sheet
         visible={menu}
         onClose={() => setMenu(false)}
-        title={exercise?.name ?? ''}
+        title={exerciseName}
         closeLabel={t('common.close')}
       >
         <Button
           label={t('session.removeLastSet')}
           variant="secondary"
-          disabled={!exercise || exercise.sets.length <= 1}
+          disabled={sets.length <= 1}
           onPress={() => {
-            update((s) => removeSet(s, index, exercise.sets.length - 1));
+            update((s) => removeSet(s, index, sets.length - 1));
             setMenu(false);
           }}
         />
@@ -334,13 +339,14 @@ export function SessionScreen() {
         <Button
           label={t('session.removeExercise')}
           variant="danger"
+          disabled={!exercise}
           onPress={() => {
             const removed = exercise;
             const position = index;
             update((s) => removeExercise(s, index));
             setMenu(false);
             showToast({
-              message: t('session.exerciseRemoved', { name: exercise.name }),
+              message: t('session.exerciseRemoved', { name: exerciseName }),
               actionLabel: t('common.undo'),
               bottomOffset: BOTTOM_NAV_HEIGHT,
               onAction: () => update((s) => restoreExercise(s, removed, position)),

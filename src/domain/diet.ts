@@ -92,25 +92,6 @@ export function kcalLeft(target: number, eaten: number): number {
   return Math.max(0, Math.round(target - eaten));
 }
 
-// --- recipes ---------------------------------------------------------------------------------
-
-export type Ingredient = { per100: Per100; grams: number };
-
-/** Total of a whole recipe and what one serving gives. */
-export function recipeNutrition(items: readonly Ingredient[], servings: number) {
-  const total = sumMacros(items.map((i) => scaleNutrition(i.per100, i.grams)));
-  const s = Math.max(servings, 0.01);
-  return {
-    total,
-    perServing: {
-      kcal: Math.round(total.kcal / s),
-      protein: Math.round(total.protein / s),
-      carbs: Math.round(total.carbs / s),
-      fat: Math.round(total.fat / s),
-    },
-  };
-}
-
 // --- fixed meals -----------------------------------------------------------------------------
 
 export type FixedMealPlanned = {

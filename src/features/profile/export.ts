@@ -36,8 +36,6 @@ const TABLES = [
   'session_sets',
   'foods',
   'food_servings',
-  'recipes',
-  'recipe_items',
   'food_logs',
   'nutrition_goals',
   'fixed_meal_plans',

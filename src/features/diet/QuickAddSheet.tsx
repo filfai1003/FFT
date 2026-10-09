@@ -10,40 +10,28 @@ import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import type { Food } from './foods';
 import { useLogFood, useSetLogDeleted } from './log';
-import { addIngredient, useRecipeDraftStore } from './recipe-draft';
 
 type Props = {
   food: Food | null;
   meal: Meal;
   day: string;
-  /** `ingredient`: the food goes into the recipe being edited instead of the log. */
-  mode: 'log' | 'ingredient';
   onClose: () => void;
 };
 
 /** The "+" of a search result: pick the grams and add, without leaving the search. */
-export function QuickAddSheet({ food, meal, day, mode, onClose }: Props) {
-  return food ? (
-    <Body key={food.id} food={food} meal={meal} day={day} mode={mode} onClose={onClose} />
-  ) : null;
+export function QuickAddSheet({ food, meal, day, onClose }: Props) {
+  return food ? <Body key={food.id} food={food} meal={meal} day={day} onClose={onClose} /> : null;
 }
 
-function Body({ food, meal, day, mode, onClose }: Props & { food: Food }) {
+function Body({ food, meal, day, onClose }: Props & { food: Food }) {
   const { t } = useTranslation();
   const [grams, setGrams] = useState(food.servings[0]?.grams ?? 100);
   const log = useLogFood();
   const setDeleted = useSetLogDeleted();
   const showToast = useToastStore((s) => s.show);
-  const patchRecipe = useRecipeDraftStore((s) => s.patch);
   const values = scaleNutrition(food.per100, grams);
 
   const add = async () => {
-    if (mode === 'ingredient') {
-      patchRecipe((d) => addIngredient(d, food, grams));
-      onClose();
-      showToast({ message: t('diet.addedToRecipe', { name: food.name }) });
-      return;
-    }
     const id = newId();
     await log.mutateAsync({
       id,
@@ -72,11 +60,7 @@ function Body({ food, meal, day, mode, onClose }: Props & { food: Food }) {
       footer={
         <Button
           size="large"
-          label={
-            mode === 'ingredient'
-              ? t('diet.addToRecipe')
-              : t('diet.addToMeal', { meal: t(`diet.meal.${meal}`).toLowerCase() })
-          }
+          label={t('diet.addToMeal', { meal: t(`diet.meal.${meal}`).toLowerCase() })}
           disabled={log.isPending}
           onPress={add}
         />

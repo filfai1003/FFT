@@ -88,8 +88,7 @@ function FoodLog() {
                 router.push({
                   pathname: '/food/[foodId]',
                   params: {
-                    foodId: e.foodId ?? e.recipeId ?? 'none',
-                    kind: e.recipeId ? 'recipe' : 'food',
+                    foodId: e.foodId ?? 'none',
                     logId: e.id,
                     meal: e.meal,
                     day: e.day,
@@ -166,7 +165,7 @@ function MealSection({
           key={e.id}
           accessibilityRole="button"
           accessibilityLabel={`${e.name}, ${e.quantityLabel ?? ''} ${Math.round(e.macros.kcal)} ${t('common.kcal')}`}
-          disabled={!e.foodId && !e.recipeId}
+          disabled={!e.foodId}
           onPress={() => onOpen(e)}
           style={({ pressed }) => ({
             minHeight: 44,

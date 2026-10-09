@@ -53,6 +53,11 @@ export function openDay(planId: string, day: PlanDayView, position: number): Day
   };
 }
 
+/** Position of a day added at the end (after deletions the count is not the next free slot). */
+export function nextPosition(days: readonly { position: number }[]): number {
+  return days.reduce((max, d) => Math.max(max, d.position + 1), 0);
+}
+
 export function openNewDay(planId: string, position: number, name: string): DayEditorState {
   return {
     planId,

@@ -9,6 +9,7 @@ import {
   maintenanceKcal,
   minimumAllowedKcal,
   portion,
+  rebalanceMeals,
   splitDay,
   suggestedKcal,
   targetProblem,
@@ -175,6 +176,27 @@ describe('calories and macros', () => {
     expect(sum('carbsG')).toBe(250);
     expect(sum('fatG')).toBe(76);
     expect(Math.abs(day.reduce((a, m) => a + m.kcal, 0) - 2400)).toBeLessThan(40);
+  });
+
+  it('rebalanceMeals keeps the day on target after an edit', () => {
+    const goal = { kcal: 2000, proteinG: 150, carbsG: 200, fatG: 67 };
+    const meals = splitDay(goal, [
+      { isMain: false, workout: null },
+      { isMain: true, workout: null },
+      { isMain: false, workout: null },
+    ]);
+    const edited = [{ ...meals[0], proteinG: 60 }, meals[1], meals[2]];
+    const next = rebalanceMeals(goal, edited, 0);
+    expect(next[0].proteinG).toBe(60);
+    expect(next.reduce((a, m) => a + m.proteinG, 0)).toBe(150);
+    expect(next.reduce((a, m) => a + m.carbsG, 0)).toBe(200);
+    // one meal cannot take more than the whole day
+    const greedy = rebalanceMeals(goal, [{ ...meals[0], fatG: 500 }, meals[1], meals[2]], 0);
+    expect(greedy[0].fatG).toBe(67);
+    expect(greedy[1].fatG + greedy[2].fatG).toBe(0);
+    // a deleted meal: the rest scale up to the target
+    const rest = rebalanceMeals(goal, [meals[1], meals[2]], -1);
+    expect(rest.reduce((a, m) => a + m.carbsG, 0)).toBe(200);
   });
 
   it('portion values come from per-100 g values', () => {

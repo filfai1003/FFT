@@ -27,6 +27,7 @@ export async function completeOnboarding(
   const timezone = deviceTimeZone();
   const day = localDay(now, timezone);
   const t = targetsFor(draft, now);
+  const goal = { kcal: t.kcal, ...t.macros };
   const birth = parseBirthDate(draft.birthDay, draft.birthMonth, draft.birthYear)!;
 
   const id = (purpose: string) => stableId(userId, purpose);
@@ -36,7 +37,6 @@ export async function completeOnboarding(
     plan: await id('first-meal-plan'),
     health: await id('consent-health_data'),
     analytics: await id('consent-analytics'),
-    meals: await Promise.all([0, 1, 2, 3].map((i) => id(`first-meal-${i}`))),
   };
 
   const steps: (() => PromiseLike<{ error: { message: string } | null }>)[] = [
@@ -63,21 +63,34 @@ export async function completeOnboarding(
 
   if (draft.dietMode === 'fixed_meals') {
     const planId = ids.plan;
+    const meals = draft.meals ?? starterMeals(goal);
+    // Suggested meals have placeholder ids: give them stable UUIDs so a retry never duplicates.
+    const mealId = (m: { id: string }) =>
+      m.id.startsWith('starter-') ? id(`first-meal-${m.id}`) : Promise.resolve(m.id);
+    const mealIds = await Promise.all(meals.map(mealId));
+    const workoutIndex = meals.findIndex((m) => m.id === draft.workoutAfterId);
     steps.push(
       () =>
-        supabase.from('fixed_meal_plans').upsert({ id: planId, user_id: userId, name: planName }),
+        supabase.from('fixed_meal_plans').upsert({
+          id: planId,
+          user_id: userId,
+          name: planName,
+          workout_after_meal_id: workoutIndex >= 0 ? mealIds[workoutIndex] : null,
+        }),
       () =>
         supabase.from('fixed_meals').upsert(
-          starterMeals(t.kcal, t.macros).map((m) => ({
-            id: ids.meals[m.position],
+          meals.map((m, position) => ({
+            id: mealIds[position],
             user_id: userId,
             plan_id: planId,
-            position: m.position,
-            name: m.name,
+            position,
+            name: m.name.trim(),
             kcal: m.kcal,
             protein_g: m.proteinG,
             carbs_g: m.carbsG,
             fat_g: m.fatG,
+            description: m.description.trim() || null,
+            is_main: m.isMain,
           })),
         ),
     );

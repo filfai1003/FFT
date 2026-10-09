@@ -27,14 +27,13 @@ export function FoodSearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
-  const params = useLocalSearchParams<{ meal?: string; day?: string; mode?: string }>();
+  const params = useLocalSearchParams<{ meal?: string; day?: string }>();
   const [meal, setMeal] = useState<Meal>(
     meals.includes(params.meal as Meal)
       ? (params.meal as Meal)
       : mealForHour(new Date().getHours()),
   );
   const day = params.day ?? today;
-  const mode = params.mode === 'ingredient' ? 'ingredient' : 'log';
 
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<Tab>('results');
@@ -62,7 +61,7 @@ export function FoodSearchScreen() {
   const open = (food: Food) =>
     router.push({
       pathname: '/food/[foodId]',
-      params: { foodId: food.id, kind: 'food', meal, day, mode },
+      params: { foodId: food.id, meal, day },
     });
 
   return (
@@ -78,18 +77,15 @@ export function FoodSearchScreen() {
             accessibilityRole="button"
             accessibilityLabel={`${t('diet.addToLabel')} ${t(`diet.meal.${meal}`)}. ${t('diet.changeMeal')}`}
             onPress={() => setMealSheet(true)}
-            disabled={mode === 'ingredient'}
             style={{ gap: 2, minHeight: touch.minTarget, justifyContent: 'center' }}
           >
             <Text variant="label" muted>
-              {mode === 'ingredient' ? t('diet.ingredient') : t('diet.addToLabel')}
+              {t('diet.addToLabel')}
             </Text>
-            {mode === 'log' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text variant="displayS">{t(`diet.meal.${meal}`)}</Text>
-                <Icon name="chevronDown" size={16} color={colors.textMuted} />
-              </View>
-            ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="displayS">{t(`diet.meal.${meal}`)}</Text>
+              <Icon name="chevronDown" size={16} color={colors.textMuted} />
+            </View>
           </Pressable>
         </View>
 
@@ -111,7 +107,7 @@ export function FoodSearchScreen() {
             icon="scan"
             size={52}
             accessibilityLabel={t('diet.scan')}
-            onPress={() => router.push({ pathname: '/scanner', params: { meal, day, mode } })}
+            onPress={() => router.push({ pathname: '/scanner', params: { meal, day } })}
           />
         </View>
 
@@ -128,12 +124,6 @@ export function FoodSearchScreen() {
               onPress={() => setTab(k)}
             />
           ))}
-          <Chip
-            label={t('diet.tab.recipes')}
-            selected={false}
-            role="radio"
-            onPress={() => router.push({ pathname: '/recipes', params: { meal, day, mode } })}
-          />
         </View>
 
         <View>
@@ -196,7 +186,7 @@ export function FoodSearchScreen() {
         <Button
           label={t('diet.createFood')}
           variant="ghost"
-          onPress={() => router.push({ pathname: '/food/new', params: { meal, day, mode } })}
+          onPress={() => router.push({ pathname: '/food/new', params: { meal, day } })}
         />
         <View style={{ height: 24 }} />
       </Screen>
@@ -207,13 +197,7 @@ export function FoodSearchScreen() {
         onClose={() => setMealSheet(false)}
         onChange={setMeal}
       />
-      <QuickAddSheet
-        food={quick}
-        meal={meal}
-        day={day}
-        mode={mode}
-        onClose={() => setQuick(null)}
-      />
+      <QuickAddSheet food={quick} meal={meal} day={day} onClose={() => setQuick(null)} />
     </>
   );
 }

@@ -8,7 +8,6 @@ import {
   mealsDone,
   nextFixedMeal,
   portionOptions,
-  recipeNutrition,
   scaleNutrition,
   shareOfGoal,
   sumMacros,
@@ -97,27 +96,6 @@ describe('goals', () => {
       carbs: 310,
       fat: 75,
     });
-  });
-});
-
-describe('recipes', () => {
-  it('chicken rice bowl of the mockup: whole recipe 2135 kcal, 534 per serving (4)', () => {
-    const items = [
-      { per100: { kcal: 350, protein: 7, carbs: 78, fat: 0.6 }, grams: 300 },
-      { per100: { kcal: 110, protein: 23, carbs: 0, fat: 1.5 }, grams: 600 },
-      { per100: { kcal: 34, protein: 2.8, carbs: 7, fat: 0.4 }, grams: 400 },
-      { per100: { kcal: 884, protein: 0, carbs: 0, fat: 100 }, grams: 30 },
-      { per100: { kcal: 60, protein: 8, carbs: 5, fat: 0 }, grams: 40 },
-    ];
-    const r = recipeNutrition(items, 4);
-    expect(r.total.kcal).toBeCloseTo(2135.2, 1);
-    expect(r.perServing.kcal).toBe(534);
-  });
-
-  it('a recipe with no servings does not divide by zero', () => {
-    expect(recipeNutrition([{ per100: chicken, grams: 100 }], 0).perServing.kcal).toBeGreaterThan(
-      0,
-    );
   });
 });
 

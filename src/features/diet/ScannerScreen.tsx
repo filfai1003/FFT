@@ -26,7 +26,7 @@ export function ScannerScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ meal?: string; day?: string; mode?: string }>();
+  const params = useLocalSearchParams<{ meal?: string; day?: string }>();
   const [permission, requestPermission] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [state, setState] = useState<State>({ kind: 'scanning' });
@@ -44,7 +44,7 @@ export function ScannerScreen() {
     busy.current = false;
   };
 
-  const next = { meal: params.meal, day: params.day, mode: params.mode };
+  const next = { meal: params.meal, day: params.day };
 
   return (
     <>
@@ -148,7 +148,7 @@ export function ScannerScreen() {
                 setState({ kind: 'scanning' });
                 router.replace({
                   pathname: '/food/[foodId]',
-                  params: { foodId: food.id, kind: 'food', ...next },
+                  params: { foodId: food.id, ...next },
                 });
               }}
             />

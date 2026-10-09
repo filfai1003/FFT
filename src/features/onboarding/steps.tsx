@@ -2,14 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
-import { DotBar } from '@/components/ui/DotBar';
 import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
-import { dotsOn } from '@/domain/dots';
-import { macroPercents } from '@/domain/nutrition';
+import { MacroSplitCard } from '@/features/diet/MacroSplitCard';
+import { MealPlanEditor } from '@/features/diet/MealPlanEditor';
 import { bodyProblems, starterMeals, targetsFor, type OnboardingDraft } from './logic';
 
 type StepProps = { draft: OnboardingDraft; patch: (p: Partial<OnboardingDraft>) => void };
@@ -187,12 +186,6 @@ export function LifestyleStep({ draft, patch }: StepProps) {
 export function TargetStep({ draft, patch, today }: StepProps & { today: Date }) {
   const { t } = useTranslation();
   const target = targetsFor(draft, today);
-  const percents = macroPercents(target.macros);
-  const rows = [
-    ['protein', target.macros.proteinG, percents.protein],
-    ['carbs', target.macros.carbsG, percents.carbs],
-    ['fat', target.macros.fatG, percents.fat],
-  ] as const;
   const deltaPct = Math.round(((target.suggested - target.maintenance) / target.maintenance) * 100);
   const suggestion =
     deltaPct === 0
@@ -225,7 +218,7 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           min={target.minimum}
           max={6000}
           step={50}
-          onChange={(targetKcal) => patch({ targetKcal })}
+          onChange={(targetKcal) => patch({ targetKcal, meals: null })}
           format={(v) => `${v} ${t('common.kcal')}`}
           decreaseLabel={t('onboarding.target.lower')}
           increaseLabel={t('onboarding.target.raise')}
@@ -234,26 +227,11 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           {suggestion}
         </Text>
       </Card>
-      <Card gap={12}>
-        <Text variant="label" muted>
-          {t('onboarding.target.macroSplit')}
-        </Text>
-        {rows.map(([key, grams, pct]) => (
-          <View key={key} style={{ gap: 6 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="body">{t(`onboarding.target.${key}`)}</Text>
-              <Text variant="label" muted>
-                {`${grams} g · ${pct}%`}
-              </Text>
-            </View>
-            <DotBar
-              total={20}
-              on={dotsOn(pct, 100, 20)}
-              accessibilityLabel={t(`onboarding.target.${key}`)}
-            />
-          </View>
-        ))}
-      </Card>
+      <MacroSplitCard
+        kcal={target.kcal}
+        percents={target.split}
+        onChange={(macroSplit) => patch({ macroSplit, meals: null })}
+      />
       <Text variant="bodyS" muted>
         {t('onboarding.target.safety')}
       </Text>
@@ -281,26 +259,21 @@ export function ModeStep({ draft, patch }: StepProps) {
   );
 }
 
-export function MealsStep({ draft, today }: StepProps & { today: Date }) {
-  const { t } = useTranslation();
+export function MealsStep({ draft, patch, today }: StepProps & { today: Date }) {
   const target = targetsFor(draft, today);
-  const meals = starterMeals(target.kcal, target.macros);
+  const goal = { kcal: target.kcal, ...target.macros };
+  const meals = draft.meals ?? starterMeals(goal);
+  const workoutAfter = meals.some((m) => m.id === draft.workoutAfterId)
+    ? draft.workoutAfterId
+    : null;
   return (
-    <View style={{ gap: 12 }}>
-      {meals.map((m) => (
-        <Card key={m.position} size="small" gap={4}>
-          <Text variant="titleM">{m.name}</Text>
-          <Text variant="label" muted>
-            {t('onboarding.meals.line', {
-              kcal: m.kcal,
-              p: m.proteinG,
-              c: m.carbsG,
-              f: m.fatG,
-            })}
-          </Text>
-        </Card>
-      ))}
-    </View>
+    <MealPlanEditor
+      meals={meals}
+      onMealsChange={(next) => patch({ meals: next })}
+      goal={goal}
+      workoutAfter={workoutAfter}
+      onWorkoutAfterChange={(workoutAfterId) => patch({ workoutAfterId })}
+    />
   );
 }
 

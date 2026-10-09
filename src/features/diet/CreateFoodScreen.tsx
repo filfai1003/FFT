@@ -34,7 +34,6 @@ export function CreateFoodScreen() {
   const params = useLocalSearchParams<{
     meal?: string;
     day?: string;
-    mode?: string;
     barcode?: string;
   }>();
   const save = useSaveFood();
@@ -83,7 +82,7 @@ export function CreateFoodScreen() {
       });
       router.replace({
         pathname: '/food/[foodId]',
-        params: { foodId: id, kind: 'food', meal: params.meal, day: params.day, mode: params.mode },
+        params: { foodId: id, meal: params.meal, day: params.day },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

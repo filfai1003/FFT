@@ -1,7 +1,7 @@
 -- Domain rules in SQL: Epley, records, strength score, nutrition totals, safety limits.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(16);
 
 create function pg_temp.as_user(uid uuid) returns void language plpgsql as $$
 begin
@@ -96,19 +96,6 @@ select is(
   (select kcal from public.daily_nutrition_totals where day = '2026-10-08'),
   850::numeric,
   'daily totals = food logs + done meals (skipped and deleted excluded)'
-);
-
--- Recipe per-serving nutrition ---------------------------------------------------------------------
-insert into public.foods (id, owner_id, name, kcal_100g, protein_100g, source)
-values ('44444444-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Test food', 100, 10, 'custom');
-insert into public.recipes (id, name, servings) values ('55555555-0000-0000-0000-000000000001', 'Test recipe', 2);
-insert into public.recipe_items (recipe_id, food_id, grams)
-values ('55555555-0000-0000-0000-000000000001', '44444444-0000-0000-0000-000000000001', 400);
-
-select is(
-  (select kcal_per_serving from public.recipe_nutrition where recipe_id = '55555555-0000-0000-0000-000000000001'),
-  200.0::numeric,
-  'recipe: 400 g at 100 kcal/100 g over 2 servings = 200 kcal per serving'
 );
 
 -- Safety limits --------------------------------------------------------------------------------------

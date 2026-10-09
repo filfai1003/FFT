@@ -305,23 +305,6 @@ describe('domain rules', () => {
     );
   });
 
-  it('recipe nutrition per serving comes from the ingredients', async () => {
-    await as(A);
-    await db.exec(`
-      insert into public.foods (id, owner_id, name, kcal_100g, protein_100g, source)
-        values ('44444444-0000-0000-0000-000000000001', '${A}', 'Test food', 100, 10, 'custom');
-      insert into public.recipes (id, name, servings) values ('55555555-0000-0000-0000-000000000001', 'Test recipe', 2);
-      insert into public.recipe_items (recipe_id, food_id, grams)
-        values ('55555555-0000-0000-0000-000000000001', '44444444-0000-0000-0000-000000000001', 400);
-    `);
-    const r = await one(
-      `select kcal_per_serving, protein_g_per_serving from public.recipe_nutrition
-       where recipe_id = '55555555-0000-0000-0000-000000000001'`,
-    );
-    assert.equal(Number(r.kcal_per_serving), 200);
-    assert.equal(Number(r.protein_g_per_serving), 20);
-  });
-
   it('safety: targets under 1500 kcal and deficits over 25% are rejected', async () => {
     await as(A);
     await rejects(

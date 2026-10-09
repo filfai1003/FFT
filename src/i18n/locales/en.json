@@ -33,13 +33,16 @@
     "meal": "Meal",
     "nextMeal": "Next meal",
     "logMeal": "Log a meal",
-    "markNextMeal": "Mark the next meal as done",
     "weight": "Weight {{unit}}",
     "logWeight": "Log your weight",
     "water": "Water {{n}}/{{total}}",
     "addWater": "Add a glass of water",
     "waterAdded": "Glass of water added",
-    "waterBar": "{{n}} of {{total}} glasses"
+    "waterBar": "{{n}} of {{total}} glasses",
+    "markEaten": "Mark {{name}} as eaten",
+    "allMealsDone": "All meals done for today.",
+    "removeWater": "Remove a glass of water",
+    "waterRemoved": "Glass of water removed"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -125,10 +128,6 @@
       "raise": "Raise calories by 50",
       "suggested": "Suggested: {{kcal}} · maintenance {{maintenance}} {{pct}}",
       "suggestedSame": "Suggested: {{kcal}} · same as maintenance",
-      "macroSplit": "Macro split",
-      "protein": "Protein",
-      "carbs": "Carbs",
-      "fat": "Fat",
       "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional."
     },
     "mode": {
@@ -141,9 +140,8 @@
     },
     "meals": {
       "title": "Your meals",
-      "subtitle": "We split your target into four meals. You can edit them any time in Diet.",
-      "planName": "My meals",
-      "line": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}"
+      "subtitle": "We split your target into meals. Set them up the way you eat: names, main meals, where your workout goes. You can edit them any time in Diet.",
+      "planName": "My meals"
     },
     "consent": {
       "title": "Your health data",
@@ -384,7 +382,8 @@
     "discardBody": "Everything you logged in this workout is lost. This cannot be undone.",
     "discardConfirm": "Discard workout",
     "restDoneTitle": "Rest is over",
-    "restDoneBody": "Time for your next set."
+    "restDoneBody": "Time for your next set.",
+    "replacedEmpty": "{{name}} was empty, so it was replaced"
   },
   "summary": {
     "done": "Done",
@@ -497,14 +496,12 @@
     "backToLog": "Back to food log",
     "backToSearch": "Back to food search",
     "addToLabel": "Add to",
-    "ingredient": "Add ingredient",
     "searchFood": "Search food",
     "scan": "Scan barcode",
     "tab": {
       "results": "Results",
       "recent": "Recent",
-      "mine": "Mine",
-      "recipes": "Recipes"
+      "mine": "Mine"
     },
     "searching": "Searching…",
     "typeToSearch": "Type at least 2 letters, or pick a recent food.",
@@ -520,27 +517,19 @@
     "addedTo": "{{name}} added to {{meal}}",
     "removedFrom": "{{name}} removed from {{meal}}",
     "addToMeal": "Add to {{meal}}",
-    "addToRecipe": "Add to recipe",
     "saveChanges": "Save changes",
     "removeEntry": "Remove from food log",
-    "yourRecipe": "Your recipe",
     "yourFood": "Your food",
     "verifiedOff": "Verified · Open Food Facts",
     "fromOff": "Open Food Facts",
-    "forServings_one": "For {{count}} serving",
-    "forServings_other": "For {{count}} servings",
     "forGrams": "For {{g}} g",
     "ofGoal": "{{pct}}% of goal",
     "amount": "Amount",
     "custom": "Custom",
-    "servingsUnit": "serv.",
-    "servingsLabel_one": "{{count}} serving",
-    "servingsLabel_other": "{{count}} servings",
     "decreaseAmount": "Decrease amount",
     "increaseAmount": "Increase amount",
     "nutrition": "Nutrition",
-    "perGrams": "Per {{g}} g",
-    "addedToRecipe": "{{name}} added to the recipe"
+    "perGrams": "Per {{g}} g"
   },
   "createFood": {
     "title": "New food",
@@ -575,38 +564,6 @@
     "chooseAmount": "Choose amount",
     "createFood": "Create this food",
     "search": "Look up"
-  },
-  "recipes": {
-    "title": "Recipes",
-    "new": "New recipe",
-    "search": "Search recipes",
-    "searchPlaceholder": "Search your recipes",
-    "empty": "No recipes yet. Tap + to create one.",
-    "line": "{{servings}} servings · P {{p}} · C {{c}} · F {{f}}",
-    "kcalServing": "kcal/serv.",
-    "logServing": "Log a serving of {{name}}",
-    "recipe": "Recipe",
-    "name": "Name",
-    "perServing": "Per serving",
-    "servings": "Servings",
-    "fewerServings": "Fewer servings",
-    "moreServings": "More servings",
-    "short": {
-      "protein": "P",
-      "carbs": "C",
-      "fat": "F"
-    },
-    "ingredients": "Ingredients · whole recipe",
-    "totalKcal": "{{kcal}} kcal",
-    "gramsOf": "{{name}} grams",
-    "removeIngredient": "Remove {{name}}",
-    "addIngredient": "+ Add ingredient",
-    "logServingButton": "Log a serving",
-    "save": "Save recipe",
-    "delete": "Delete recipe",
-    "deleteTitle": "Delete this recipe?",
-    "deleteBody": "Entries already logged keep their values.",
-    "deleteConfirm": "Delete recipe"
   },
   "goals": {
     "title": "Diet goals",

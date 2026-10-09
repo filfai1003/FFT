@@ -34,6 +34,8 @@ function canContinue(step: StepId, d: OnboardingDraft, today: Date): boolean {
       return d.activity != null && d.experience != null && d.location != null;
     case 'mode':
       return d.dietMode != null;
+    case 'meals':
+      return d.meals == null || d.meals.every((m) => m.name.trim() !== '');
     case 'consent':
       return d.consentHealth;
     default:

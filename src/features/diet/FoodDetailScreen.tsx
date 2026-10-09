@@ -25,14 +25,12 @@ import { useToday } from '@/features/profile/use-today';
 import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { useDayTarget } from './day-hooks';
-import { useFood, type Food } from './foods';
+import { useFood } from './foods';
 import { useDayLog, useLogFood, useSetLogDeleted } from './log';
 import { MealSheet } from './MealSheet';
-import { addIngredient, useRecipeDraftStore } from './recipe-draft';
-import { useRecipe } from './recipes';
 import { goBack } from '@/lib/navigation';
 
-/** One food or recipe: amount, nutrition, and add / save / remove. */
+/** One food: amount, nutrition, and add / save / remove. */
 export function FoodDetailScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -41,25 +39,19 @@ export function FoodDetailScreen() {
   const today = useToday();
   const p = useLocalSearchParams<{
     foodId: string;
-    kind?: string;
     logId?: string;
     meal?: string;
     day?: string;
-    mode?: string;
   }>();
-  const isRecipe = p.kind === 'recipe';
-  const mode = p.mode === 'ingredient' ? 'ingredient' : 'log';
   const day = p.day ?? today;
   const editing = !!p.logId;
 
-  const food = useFood(isRecipe ? undefined : p.foodId);
-  const recipe = useRecipe(isRecipe ? p.foodId : undefined);
+  const food = useFood(p.foodId);
   const dayLog = useDayLog(day);
   const entry = editing ? dayLog.data?.find((e) => e.id === p.logId) : undefined;
   const target = useDayTarget(day);
   const logFood = useLogFood();
   const setDeleted = useSetLogDeleted();
-  const patchRecipe = useRecipeDraftStore((s) => s.patch);
   const showToast = useToastStore((s) => s.show);
 
   const [meal, setMeal] = useState<Meal>(
@@ -70,53 +62,27 @@ export function FoodDetailScreen() {
   const [mealSheet, setMealSheet] = useState(false);
   const [amount, setAmount] = useState<number | null>(null);
 
-  const per100: Per100 | null = food.data?.per100 ?? null;
-  const recipeServing = recipe.data?.perServing;
-  const loaded = isRecipe ? !!recipe.data : !!food.data;
+  if (!food.data) return <Screen>{null}</Screen>;
+  const per100: Per100 = food.data.per100;
 
-  if (!loaded) return <Screen>{null}</Screen>;
-
-  // Default amount: the saved entry, else the first named portion, else 100 g (1 serving of a recipe).
-  const defaultAmount = isRecipe
-    ? (entry?.servings ?? 1)
-    : (entry?.grams ?? food.data!.servings[0]?.grams ?? 100);
-  const value = amount ?? defaultAmount;
-
-  const values = isRecipe
-    ? {
-        kcal: Math.round(recipeServing!.kcal * value),
-        protein: Math.round(recipeServing!.protein * value),
-        carbs: Math.round(recipeServing!.carbs * value),
-        fat: Math.round(recipeServing!.fat * value),
-      }
-    : scaleNutrition(per100!, value);
-
-  const name = isRecipe ? recipe.data!.name : food.data!.name;
+  // Default amount: the saved entry, else the first named portion, else 100 g.
+  const value = amount ?? entry?.grams ?? food.data.servings[0]?.grams ?? 100;
+  const values = scaleNutrition(per100, value);
+  const name = food.data.name;
   const mealName = t(`diet.meal.${meal}`).toLowerCase();
-  const portions = isRecipe ? [] : portionOptions(food.data!.servings);
+  const portions = portionOptions(food.data.servings);
   const selectedPortion = portions.find((x) => x.grams === value);
 
   const save = async () => {
-    if (mode === 'ingredient' && !isRecipe) {
-      patchRecipe((d) => addIngredient(d, food.data as Food, value));
-      const d = useRecipeDraftStore.getState().draft;
-      router.dismissTo({
-        pathname: '/recipe/[recipeId]',
-        params: { recipeId: d && !d.isNew ? d.id : 'new' },
-      });
-      return;
-    }
     const id = entry?.id ?? newId();
     await logFood.mutateAsync({
       id,
       day,
       meal,
-      foodId: isRecipe ? null : food.data!.id,
-      recipeId: isRecipe ? recipe.data!.id : null,
+      foodId: food.data.id,
       name,
-      quantityLabel: isRecipe ? t('diet.servingsLabel', { count: value }) : `${value} g`,
-      grams: isRecipe ? null : value,
-      servings: isRecipe ? value : null,
+      quantityLabel: `${value} g`,
+      grams: value,
       macros: values,
     });
     if (editing) {
@@ -159,29 +125,25 @@ export function FoodDetailScreen() {
             accessibilityLabel={t('common.back')}
             onPress={() => goBack(router)}
           />
-          {mode === 'log' ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('diet.toMeal', { meal: t(`diet.meal.${meal}`) })}. ${t('diet.changeMeal')}`}
-              onPress={() => setMealSheet(true)}
-              style={({ pressed }) => ({
-                height: 44,
-                paddingHorizontal: 14,
-                borderRadius: 22,
-                borderWidth: 1,
-                borderColor: colors.borderControl,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text variant="label">{t('diet.toMeal', { meal: t(`diet.meal.${meal}`) })}</Text>
-              <Icon name="chevronDown" size={14} color={colors.text} />
-            </Pressable>
-          ) : (
-            <View />
-          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${t('diet.toMeal', { meal: t(`diet.meal.${meal}`) })}. ${t('diet.changeMeal')}`}
+            onPress={() => setMealSheet(true)}
+            style={({ pressed }) => ({
+              height: 44,
+              paddingHorizontal: 14,
+              borderRadius: 22,
+              borderWidth: 1,
+              borderColor: colors.borderControl,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text variant="label">{t('diet.toMeal', { meal: t(`diet.meal.${meal}`) })}</Text>
+            <Icon name="chevronDown" size={14} color={colors.text} />
+          </Pressable>
           <View style={{ width: 44 }} />
         </View>
 
@@ -190,20 +152,18 @@ export function FoodDetailScreen() {
             {name}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {!isRecipe && food.data!.verified ? (
+            {food.data.verified ? (
               <View
                 style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.text }}
               />
             ) : null}
             <Text variant="label" muted>
-              {isRecipe
-                ? t('diet.yourRecipe')
-                : food.data!.source === 'custom'
-                  ? t('diet.yourFood')
-                  : food.data!.verified
-                    ? t('diet.verifiedOff')
-                    : t('diet.fromOff')}
-              {!isRecipe && food.data!.brand ? ` · ${food.data!.brand}` : ''}
+              {food.data.source === 'custom'
+                ? t('diet.yourFood')
+                : food.data.verified
+                  ? t('diet.verifiedOff')
+                  : t('diet.fromOff')}
+              {food.data.brand ? ` · ${food.data.brand}` : ''}
             </Text>
           </View>
         </View>
@@ -225,9 +185,7 @@ export function FoodDetailScreen() {
               </Text>
             </View>
             <Text variant="label" muted>
-              {isRecipe
-                ? t('diet.forServings', { count: value })
-                : t('diet.forGrams', { g: value })}
+              {t('diet.forGrams', { g: value })}
             </Text>
           </View>
           <View
@@ -290,17 +248,17 @@ export function FoodDetailScreen() {
             variant="amount"
             value={value}
             onChange={setAmount}
-            min={isRecipe ? 0.5 : 1}
-            max={isRecipe ? 50 : 5000}
-            step={isRecipe ? 0.5 : 10}
-            unit={isRecipe ? t('diet.servingsUnit') : 'g'}
+            min={1}
+            max={5000}
+            step={10}
+            unit="g"
             valueLabel={t('diet.amountGrams')}
             decreaseLabel={t('diet.decreaseAmount')}
             increaseLabel={t('diet.increaseAmount')}
           />
         </View>
 
-        {!isRecipe ? <NutritionTable per100={per100!} grams={value} /> : null}
+        <NutritionTable per100={per100} grams={value} />
 
         {editing && entry ? (
           <Button label={t('diet.removeEntry')} variant="danger" onPress={remove} />
@@ -310,13 +268,7 @@ export function FoodDetailScreen() {
       <BottomActionBar>
         <Button
           size="large"
-          label={
-            mode === 'ingredient'
-              ? t('diet.addToRecipe')
-              : editing
-                ? t('diet.saveChanges')
-                : t('diet.addToMeal', { meal: mealName })
-          }
+          label={editing ? t('diet.saveChanges') : t('diet.addToMeal', { meal: mealName })}
           disabled={logFood.isPending}
           onPress={save}
         />

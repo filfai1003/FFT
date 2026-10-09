@@ -20,11 +20,9 @@ export type LogEntry = {
   day: string;
   meal: Meal;
   foodId: string | null;
-  recipeId: string | null;
   name: string;
   quantityLabel: string | null;
   grams: number | null;
-  servings: number | null;
   macros: Macros;
 };
 
@@ -33,11 +31,9 @@ type LogRow = {
   day: string;
   meal: string;
   food_id: string | null;
-  recipe_id: string | null;
   name: string;
   quantity_label: string | null;
   grams: number | string | null;
-  servings: number | string | null;
   kcal: number | string;
   protein_g: number | string;
   carbs_g: number | string;
@@ -50,11 +46,9 @@ export function toLogEntry(r: LogRow): LogEntry {
     day: r.day,
     meal: r.meal as Meal,
     foodId: r.food_id,
-    recipeId: r.recipe_id,
     name: r.name,
     quantityLabel: r.quantity_label,
     grams: r.grams != null ? Number(r.grams) : null,
-    servings: r.servings != null ? Number(r.servings) : null,
     macros: {
       kcal: Number(r.kcal),
       protein: Number(r.protein_g),
@@ -183,11 +177,9 @@ export type NewLog = {
   day: string;
   meal: Meal;
   foodId?: string | null;
-  recipeId?: string | null;
   name: string;
   quantityLabel?: string | null;
   grams?: number | null;
-  servings?: number | null;
   macros: Macros;
 };
 
@@ -205,11 +197,9 @@ export function useLogFood() {
           day: e.day,
           meal: e.meal,
           food_id: e.foodId ?? null,
-          recipe_id: e.recipeId ?? null,
           name: e.name,
           quantity_label: e.quantityLabel ?? null,
           grams: e.grams ?? null,
-          servings: e.servings ?? null,
           kcal: e.macros.kcal,
           protein_g: e.macros.protein,
           carbs_g: e.macros.carbs,
