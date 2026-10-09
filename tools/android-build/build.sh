@@ -6,6 +6,7 @@ mkdir -p /work/app && cd /work/app
 tar -C /src --exclude=./node_modules --exclude=./android --exclude=./dist --exclude=./.git \
   --exclude=./.secrets --exclude=./build --exclude=./server/node_modules -cf - . | tar -xf -
 npm ci --no-audit --no-fund
+export FFT_UPDATES=1
 npx expo prebuild --platform android --no-install
 cd android
 ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a \

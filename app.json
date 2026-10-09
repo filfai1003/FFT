@@ -49,12 +49,6 @@
         "projectId": "8a17cd65-5196-4180-afc7-fc70847de542"
       }
     },
-    "owner": "filfai",
-    "runtimeVersion": {
-      "policy": "fingerprint"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/8a17cd65-5196-4180-afc7-fc70847de542"
-    }
+    "owner": "filfai"
   }
 }

@@ -62,3 +62,15 @@ Package name: `com.filfai1003.fft`.
 - `server/`, `supabase/migrations/`, `supabase/functions/`: Railway rebuilds `api`, which applies new migrations.
 - Anything in the app: `app-deploy.yml` runs lint, typecheck and tests, then either builds a new APK (native
   change) or publishes an over-the-air update (everything else).
+
+## Install page and APK download
+- Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
+  Address: `https://site-production-b946.up.railway.app`. It shows the download button, the install
+  steps, screenshots (`site/screens/`) and the same wave background as the app.
+- The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit). Publish a new
+  one with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
+  (it also updates `site/config.js`: address, version, size; commit and push that file).
+- Local APK without the Expo queue: build the image once (`docker build -t fft-android tools/android-build`),
+  then `docker run` it with `tools/android-build/build.sh` (see the script header); the APK lands in `build/`.
+- `app.config.js` turns on over-the-air updates (`runtimeVersion` fingerprint, `updates.url`) only when
+  `EAS_BUILD`, `CI` or `FFT_UPDATES` is set, so the local web dev server is not affected.

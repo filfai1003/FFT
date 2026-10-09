@@ -10,18 +10,27 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "FFT_UPDATES": "1"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "FFT_UPDATES": "1"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "FFT_UPDATES": "1"
+      }
     }
   }
 }
