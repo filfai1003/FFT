@@ -1,0 +1,11 @@
+# Built from the repository root (Railway: no root directory, dockerfilePath = server/Dockerfile).
+FROM node:24-slim
+WORKDIR /app
+COPY server/package.json server/package-lock.json ./
+RUN npm ci --omit=dev
+COPY server/index.js server/migrate.js ./
+COPY supabase/functions ./fn
+COPY supabase/migrations ./migrations
+# The Edge Functions are written for Deno ("npm:" imports): Node needs the plain package name.
+RUN sed -i "s#npm:@supabase/supabase-js@2#@supabase/supabase-js#" fn/*/index.ts
+CMD ["node", "index.js"]

@@ -1,0 +1,9 @@
+{
+  "name": "fft-server",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "pg": "^8.13.0"
+  }
+}
