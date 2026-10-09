@@ -27,7 +27,7 @@ import {
   type PlanView,
   type Rotation,
 } from './plans';
-import { goBack } from '@/lib/navigation';
+import { goBack, useBack } from '@/lib/navigation';
 
 export type PlanSheetKind = null | 'menu' | 'rename' | 'deletePlan';
 type SheetKind = PlanSheetKind;
@@ -36,6 +36,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
+  const back = useBack('/train');
   const barHeight = useTabBarHeight();
   const plan = usePlan(planId);
   const rotation = useRotation(plan.data);
@@ -63,7 +64,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar
-          onBack={() => goBack(router, '/train')}
+          onBack={back}
           backLabel={t('common.back')}
           right={
             <IconButton

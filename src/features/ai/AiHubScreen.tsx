@@ -9,7 +9,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
-import { goBack } from '@/lib/navigation';
+import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { hasAiKey, useAiSettings, type AiProvider, type AiSettings } from './settings-store';
 
@@ -17,6 +17,7 @@ import { hasAiKey, useAiSettings, type AiProvider, type AiSettings } from './set
 export function AiHubScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const goBack = useBack('/profile');
   const barHeight = useTabBarHeight();
   const stored = useAiSettings();
   const showToast = useToastStore((s) => s.show);
@@ -43,7 +44,7 @@ export function AiHubScreen() {
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+      <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.title')}</Text>
       <Text muted>{t('ai.intro')}</Text>
 
@@ -57,7 +58,7 @@ export function AiHubScreen() {
         <Button
           label={t('ai.openChat')}
           disabled={!ready}
-          onPress={() => router.push('/ai-chat')}
+          onPress={() => router.push({ pathname: '/ai-chat' })}
         />
       </Card>
 

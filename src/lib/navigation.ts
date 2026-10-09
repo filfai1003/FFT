@@ -1,4 +1,4 @@
-import { useNavigation, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 
 type Router = ReturnType<typeof useRouter>;
@@ -63,4 +63,15 @@ export function useGoUp(parent: Href, parentRoute = 'index') {
     if (routes.length > 1 && routes[routes.length - 2].name === parentRoute) router.back();
     else router.replace(parent);
   };
+}
+
+/**
+ * Back for a page that can be opened from anywhere (even from another navigator, like the AI chat
+ * or a workout in progress): the opener passes `from` (its own address) and back returns to it.
+ * Without `from` it is the normal back.
+ */
+export function useBack(fallback?: Href) {
+  const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  return () => (from ? router.dismissTo(from as Href) : goBack(router, fallback));
 }

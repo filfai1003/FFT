@@ -133,11 +133,16 @@ export function AiChatScreen() {
         {!ready ? (
           <Card gap={10}>
             <Text muted>{t('ai.chatNeedsKey')}</Text>
-            <Button label={t('ai.keyTitle')} onPress={() => router.push('/profile/ai')} />
+            <Button
+              label={t('ai.keyTitle')}
+              onPress={() => router.push({ pathname: '/profile/ai', params: { from: '/ai-chat' } })}
+            />
             <Button
               label={t('ai.openManual')}
               variant="secondary"
-              onPress={() => router.push('/profile/ai-manual')}
+              onPress={() =>
+                router.push({ pathname: '/profile/ai-manual', params: { from: '/ai-chat' } })
+              }
             />
           </Card>
         ) : messages.length === 0 ? (
@@ -174,7 +179,11 @@ export function AiChatScreen() {
                     bundle={bundle}
                     busy={apply.isPending}
                     onApply={() => applyMessage(m.id, m.content)}
-                    done={results[m.id] ? <ResultNote result={results[m.id]} /> : undefined}
+                    done={
+                      results[m.id] ? (
+                        <ResultNote result={results[m.id]} from="/ai-chat" />
+                      ) : undefined
+                    }
                   />
                 </View>
               ) : null}
@@ -195,12 +204,17 @@ export function AiChatScreen() {
             <Text variant="bodyS" muted>
               {t('ai.keyProblemBody')}
             </Text>
-            <Button label={t('ai.openSettings')} onPress={() => router.push('/profile/ai')} />
+            <Button
+              label={t('ai.openSettings')}
+              onPress={() => router.push({ pathname: '/profile/ai', params: { from: '/ai-chat' } })}
+            />
             <Button label={t('ai.copyForOwnApp')} variant="secondary" onPress={copyForOwnApp} />
             <Button
               label={t('ai.importAnswer')}
               variant="ghost"
-              onPress={() => router.push('/profile/ai-manual')}
+              onPress={() =>
+                router.push({ pathname: '/profile/ai-manual', params: { from: '/ai-chat' } })
+              }
             />
           </Card>
         ) : error ? (

@@ -1,5 +1,4 @@
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -11,7 +10,7 @@ import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { buildImportPrompt, parseBundle } from '@/domain/plan-import';
-import { goBack } from '@/lib/navigation';
+import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { useApplyImport, type ApplyResult } from './apply';
 import { useAiContext } from './context';
@@ -21,7 +20,7 @@ import { ResultNote } from './ResultNote';
 /** Manual mode: copy a prompt into any AI chat, paste its JSON answer back and import it. */
 export function AiManualScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const goBack = useBack('/profile/ai');
   const barHeight = useTabBarHeight();
   const ctx = useAiContext();
   const apply = useApplyImport();
@@ -59,7 +58,7 @@ export function AiManualScreen() {
 
   return (
     <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/profile/ai')} backLabel={t('common.back')} />
+      <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.manualTitle')}</Text>
       <Text muted>{t('ai.manualIntro')}</Text>
 
@@ -123,7 +122,7 @@ export function AiManualScreen() {
           bundle={bundle}
           busy={apply.isPending}
           onApply={run}
-          done={result ? <ResultNote result={result} /> : undefined}
+          done={result ? <ResultNote result={result} from="/profile/ai-manual" /> : undefined}
         />
       ) : null}
       {error ? (

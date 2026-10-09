@@ -6,7 +6,7 @@ import { Text } from '@/components/ui/Text';
 import type { ApplyResult } from './apply';
 
 /** After an import: what was done, and where to find it. */
-export function ResultNote({ result }: { result: ApplyResult }) {
+export function ResultNote({ result, from }: { result: ApplyResult; from: string }) {
   const { t } = useTranslation();
   const router = useRouter();
   return (
@@ -46,7 +46,7 @@ export function ResultNote({ result }: { result: ApplyResult }) {
             onPress={() =>
               router.push({
                 pathname: '/train/plan/[planId]',
-                params: { planId: result.workoutPlanId! },
+                params: { planId: result.workoutPlanId!, from },
               })
             }
           />
