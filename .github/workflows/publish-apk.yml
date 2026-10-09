@@ -1,0 +1,53 @@
+# Puts the newest finished Android build (EAS, profile "preview") on the install page: copies the APK to
+# the public `downloads` bucket and updates site/config.js. Runs every 3 hours and by hand
+# (Actions -> "Publish APK" -> Run workflow); does nothing when the page already has that build.
+# Needs the repository secrets EXPO_TOKEN, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
+name: Publish APK
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-apk
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Find the newest finished build
+        id: build
+        run: |
+          eas build:list --platform android --build-profile preview --status finished --limit 1 --json --non-interactive > build.json
+          echo "id=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.id ?? ''")" >> "$GITHUB_OUTPUT"
+          echo "url=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.artifacts?.buildUrl ?? ''")" >> "$GITHUB_OUTPUT"
+      - name: Publish when it is new
+        if: steps.build.outputs.id != ''
+        env:
+          BUILD_ID: ${{ steps.build.outputs.id }}
+          BUILD_URL: ${{ steps.build.outputs.url }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if grep -q "$BUILD_ID" site/config.js; then echo "Already published"; exit 0; fi
+          npm ci
+          curl -fsSL -o fft.apk "$BUILD_URL"
+          APK_BUILD_ID="$BUILD_ID" node supabase/scripts/publish-apk.mjs fft.apk
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add site/config.js
+          git commit -m "Install page: new APK (build $BUILD_ID)"
+          git push

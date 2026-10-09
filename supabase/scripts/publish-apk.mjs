@@ -1,6 +1,6 @@
 // Publishes an APK as the public download of the install page: uploads it to the public `downloads`
 // bucket (service role) and writes its address, version and size in site/config.js.
-// Usage: SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs path/to/fft.apk
+// Usage: SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… [APK_BUILD_ID=…] node supabase/scripts/publish-apk.mjs path/to/fft.apk
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +32,6 @@ const size = `${Math.round(body.length / 1024 / 1024)} MB`;
 const publicUrl = `${url}/storage/v1/object/public/${bucket}/fft.apk`;
 fs.writeFileSync(
   path.join(root, 'site', 'config.js'),
-  `// Updated each time a new APK is published (supabase/scripts/publish-apk.mjs).\nwindow.FFT_APK = ${JSON.stringify({ url: publicUrl, version, size })};\n`,
+  `// Updated each time a new APK is published (supabase/scripts/publish-apk.mjs).\nwindow.FFT_APK = ${JSON.stringify({ url: publicUrl, version, size, build: process.env.APK_BUILD_ID ?? '' })};\n`,
 );
 console.log(`published ${publicUrl} (${size})`);

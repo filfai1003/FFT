@@ -16,6 +16,7 @@ on:
       - 'supabase/**'
       - 'docs/**'
       - 'tools/**'
+      - '.github/**'
       - '*.md'
   workflow_dispatch:
 
