@@ -4,14 +4,35 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>FFT — Install</title>
-    <meta name="description" content="Install FFT on your Android phone: workouts, diet and progress in one place." />
+    <meta
+      name="description"
+      content="Install FFT on your Android phone: workouts, diet and progress in one place."
+    />
     <meta name="theme-color" content="#000000" />
     <link rel="icon" href="favicon.png" />
     <style>
-      @font-face { font-family: 'Doto'; src: url('fonts/Doto_800ExtraBold.ttf'); font-display: swap; }
-      @font-face { font-family: 'Space Mono'; src: url('fonts/SpaceMono_400Regular.ttf'); font-display: swap; }
-      @font-face { font-family: 'Space Grotesk'; font-weight: 400; src: url('fonts/SpaceGrotesk_400Regular.ttf'); font-display: swap; }
-      @font-face { font-family: 'Space Grotesk'; font-weight: 500; src: url('fonts/SpaceGrotesk_500Medium.ttf'); font-display: swap; }
+      @font-face {
+        font-family: 'Doto';
+        src: url('fonts/Doto_800ExtraBold.ttf');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Space Mono';
+        src: url('fonts/SpaceMono_400Regular.ttf');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Space Grotesk';
+        font-weight: 400;
+        src: url('fonts/SpaceGrotesk_400Regular.ttf');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Space Grotesk';
+        font-weight: 500;
+        src: url('fonts/SpaceGrotesk_500Medium.ttf');
+        font-display: swap;
+      }
 
       :root {
         --bg: #000;
@@ -22,8 +43,15 @@
         --muted: #8e8e8e;
         --accent: #d71921;
       }
-      * { box-sizing: border-box; }
-      html, body { margin: 0; background: var(--bg); color: var(--text); }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
       body {
         min-height: 100vh;
         font-family: 'Space Grotesk', system-ui, sans-serif;
@@ -31,38 +59,154 @@
         line-height: 1.45;
         -webkit-font-smoothing: antialiased;
       }
-      #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-      main { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 56px 20px 72px; display: flex; flex-direction: column; gap: 48px; }
+      #bg {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 56px 20px 72px;
+        display: flex;
+        flex-direction: column;
+        gap: 48px;
+      }
 
-      .label { font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-      .hero { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; }
-      h1 { margin: 0; font-family: 'Doto', monospace; font-weight: 800; text-transform: uppercase; font-size: clamp(88px, 22vw, 176px); line-height: 0.9; letter-spacing: 0.02em; }
-      .tagline { margin: 0; max-width: 28ch; font-size: clamp(19px, 3.2vw, 24px); }
+      .label {
+        font-family: 'Space Mono', monospace;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+      }
+      h1 {
+        margin: 0;
+        font-family: 'Doto', monospace;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: clamp(88px, 22vw, 176px);
+        line-height: 0.9;
+        letter-spacing: 0.02em;
+      }
+      .tagline {
+        margin: 0;
+        max-width: 28ch;
+        font-size: clamp(19px, 3.2vw, 24px);
+      }
 
       .download {
-        display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-        height: 56px; padding: 0 30px; border-radius: 28px;
-        background: var(--accent); color: #fff; text-decoration: none;
-        font-weight: 500; font-size: 17px;
-        transition: transform 120ms ease-out, opacity 120ms ease-out;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        height: 56px;
+        padding: 0 30px;
+        border-radius: 28px;
+        background: var(--accent);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 17px;
+        transition:
+          transform 120ms ease-out,
+          opacity 120ms ease-out;
       }
-      .download:active { transform: scale(0.97); opacity: 0.9; }
-      .download:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
-      .download svg { width: 20px; height: 20px; }
-      .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+      .download:active {
+        transform: scale(0.97);
+        opacity: 0.9;
+      }
+      .download:focus-visible {
+        outline: 2px solid var(--text);
+        outline-offset: 3px;
+      }
+      .download svg {
+        width: 20px;
+        height: 20px;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+      }
 
-      .steps { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 0; padding: 0; list-style: none; }
-      .steps li { border: 1px solid var(--border); background: rgba(17, 17, 17, 0.85); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
-      .steps b { font-family: 'Doto', monospace; font-size: 30px; font-weight: 800; line-height: 1; }
-      .steps span { color: var(--text); }
+      .steps {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .steps li {
+        border: 1px solid var(--border);
+        background: rgba(17, 17, 17, 0.85);
+        border-radius: 20px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .steps b {
+        font-family: 'Doto', monospace;
+        font-size: 30px;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .steps span {
+        color: var(--text);
+      }
 
-      .shots { display: flex; gap: 16px; overflow-x: auto; padding: 4px 2px 16px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
-      .shots figure { margin: 0; flex: 0 0 auto; width: min(240px, 62vw); scroll-snap-align: start; display: flex; flex-direction: column; gap: 10px; }
-      .shots img { width: 100%; display: block; border-radius: 28px; border: 1px solid var(--control); background: var(--surface); aspect-ratio: 375 / 812; object-fit: cover; }
-      .shots figcaption { text-align: center; }
+      .shots {
+        display: flex;
+        gap: 16px;
+        overflow-x: auto;
+        padding: 4px 2px 16px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+      .shots figure {
+        margin: 0;
+        flex: 0 0 auto;
+        width: min(240px, 62vw);
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .shots img {
+        width: 100%;
+        display: block;
+        border-radius: 28px;
+        border: 1px solid var(--control);
+        background: var(--surface);
+        aspect-ratio: 375 / 812;
+        object-fit: cover;
+      }
+      .shots figcaption {
+        text-align: center;
+      }
 
-      footer { color: var(--muted); font-size: 13px; }
-      @media (prefers-reduced-motion: reduce) { .download { transition: none; } }
+      footer {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .download {
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -74,7 +218,17 @@
         <h1>FFT</h1>
         <p class="tagline">Train, eat and track your progress in one place.</p>
         <a id="download" class="download" href="#" download>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
+          </svg>
           Download for Android
         </a>
         <div class="meta">
@@ -91,10 +245,30 @@
 
       <section aria-label="Screenshots">
         <div class="shots">
-          <figure><img src="screens/today.jpg" alt="Today: your next workout, calories and water" loading="lazy" /><figcaption class="label">Today</figcaption></figure>
-          <figure><img src="screens/train.jpg" alt="Train: your plan and next workout" loading="lazy" /><figcaption class="label">Train</figcaption></figure>
-          <figure><img src="screens/diet.jpg" alt="Diet: meals and macros" loading="lazy" /><figcaption class="label">Diet</figcaption></figure>
-          <figure><img src="screens/progress.jpg" alt="Progress: strength, weight and photos" loading="lazy" /><figcaption class="label">Progress</figcaption></figure>
+          <figure>
+            <img
+              src="screens/today.jpg"
+              alt="Today: your next workout, calories and water"
+              loading="lazy"
+            />
+            <figcaption class="label">Today</figcaption>
+          </figure>
+          <figure>
+            <img src="screens/train.jpg" alt="Train: your plan and next workout" loading="lazy" />
+            <figcaption class="label">Train</figcaption>
+          </figure>
+          <figure>
+            <img src="screens/diet.jpg" alt="Diet: meals and macros" loading="lazy" />
+            <figcaption class="label">Diet</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="screens/progress.jpg"
+              alt="Progress: strength, weight and photos"
+              loading="lazy"
+            />
+            <figcaption class="label">Progress</figcaption>
+          </figure>
         </div>
       </section>
 
@@ -108,13 +282,17 @@
         var cfg = window.FFT_APK || {};
         var a = document.getElementById('download');
         if (cfg.url) a.href = cfg.url;
-        if (cfg.version) document.getElementById('version').textContent = 'v' + cfg.version + (cfg.size ? ' · ' + cfg.size : '');
+        if (cfg.version)
+          document.getElementById('version').textContent =
+            'v' + cfg.version + (cfg.size ? ' · ' + cfg.size : '');
       })();
 
       // Background: the same as the app's "waves" mode (dot grid + rings of bigger dots spreading out).
       (function () {
         var NS = 'http://www.w3.org/2000/svg';
-        var SPACING = 14, WAVE_MS = 5600, RING = 96;
+        var SPACING = 14,
+          WAVE_MS = 5600,
+          RING = 96;
         var svg = document.getElementById('bg');
         var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         function el(name, attrs, parent) {
@@ -124,47 +302,76 @@
           return e;
         }
         var defs = el('defs', {}, svg);
-        var base = el('pattern', { id: 'dots', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' }, defs);
+        var base = el(
+          'pattern',
+          { id: 'dots', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' },
+          defs,
+        );
         el('circle', { cx: SPACING / 2, cy: SPACING / 2, r: 0.75, fill: '#1C1C1C' }, base);
-        var big = el('pattern', { id: 'big', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' }, defs);
+        var big = el(
+          'pattern',
+          { id: 'big', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' },
+          defs,
+        );
         el('circle', { cx: SPACING / 2, cy: SPACING / 2, r: 2.4, fill: '#8C8C8C' }, big);
-        var mask = el('mask', { id: 'waves', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: 1, height: 1 }, defs);
+        var mask = el(
+          'mask',
+          { id: 'waves', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: 1, height: 1 },
+          defs,
+        );
         var rings = [0, 1].map(function () {
           return {
             soft: el('circle', { fill: 'none', stroke: '#fff', 'stroke-width': RING }, mask),
-            core: el('circle', { fill: 'none', stroke: '#fff', 'stroke-width': RING * 0.4 }, mask)
+            core: el('circle', { fill: 'none', stroke: '#fff', 'stroke-width': RING * 0.4 }, mask),
           };
         });
         el('rect', { width: '100%', height: '100%', fill: 'url(#dots)' }, svg);
         var bigRect = el('rect', { fill: 'url(#big)', mask: 'url(#waves)' }, svg);
 
-        var w = 0, h = 0;
+        var w = 0,
+          h = 0;
         function size() {
-          w = window.innerWidth; h = window.innerHeight;
-          mask.setAttribute('width', w); mask.setAttribute('height', h);
-          bigRect.setAttribute('width', w); bigRect.setAttribute('height', h);
+          w = window.innerWidth;
+          h = window.innerHeight;
+          mask.setAttribute('width', w);
+          mask.setAttribute('height', h);
+          bigRect.setAttribute('width', w);
+          bigRect.setAttribute('height', h);
         }
         size();
         window.addEventListener('resize', size);
-        if (reduce) { bigRect.setAttribute('display', 'none'); return; }
+        if (reduce) {
+          bigRect.setAttribute('display', 'none');
+          return;
+        }
 
         function draw(now) {
           var reach = Math.max(w, h) * 0.95;
-          var origins = [{ x: w * 0.3, y: h * 0.22, off: 0 }, { x: w * 0.78, y: h * 0.7, off: WAVE_MS / 2 }];
+          var origins = [
+            { x: w * 0.3, y: h * 0.22, off: 0 },
+            { x: w * 0.78, y: h * 0.7, off: WAVE_MS / 2 },
+          ];
           origins.forEach(function (o, i) {
             var p = ((now + o.off) % WAVE_MS) / WAVE_MS;
             var fade = Math.pow(1 - p, 1.4);
             var r = Math.max(1, p * reach);
             var ring = rings[i];
-            ring.soft.setAttribute('cx', o.x); ring.soft.setAttribute('cy', o.y); ring.soft.setAttribute('r', r);
+            ring.soft.setAttribute('cx', o.x);
+            ring.soft.setAttribute('cy', o.y);
+            ring.soft.setAttribute('r', r);
             ring.soft.setAttribute('stroke-opacity', 0.45 * fade);
-            ring.core.setAttribute('cx', o.x); ring.core.setAttribute('cy', o.y); ring.core.setAttribute('r', r);
+            ring.core.setAttribute('cx', o.x);
+            ring.core.setAttribute('cy', o.y);
+            ring.core.setAttribute('r', r);
             ring.core.setAttribute('stroke-opacity', fade);
           });
         }
         var last = 0;
         (function frame(t) {
-          if (t - last > 33) { last = t; draw(t); }
+          if (t - last > 33) {
+            last = t;
+            draw(t);
+          }
           requestAnimationFrame(frame);
         })(0);
       })();
