@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'server/**'
+      - 'site/**'
       - 'supabase/**'
       - 'docs/**'
       - 'tools/**'
