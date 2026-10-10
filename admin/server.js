@@ -1,5 +1,6 @@
 // FFT admin panel: browse the data, run SQL, edit in sudo mode, make accounts VIP.
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
@@ -8,21 +9,18 @@ import { fileURLToPath } from 'node:url';
 import { createAuth, createLimiter, SUDO_MS } from './auth.js';
 import { createDb } from './db.js';
 
-const {
-  DATABASE_URL,
-  ADMIN_PASSWORD,
-  SESSION_SECRET,
-  ADMIN_RO_PASSWORD,
-  PORT = '3000',
-} = process.env;
-if (!DATABASE_URL || !ADMIN_PASSWORD || !SESSION_SECRET || !ADMIN_RO_PASSWORD) {
-  console.error('Missing DATABASE_URL, ADMIN_PASSWORD, SESSION_SECRET or ADMIN_RO_PASSWORD');
+const { DATABASE_URL, ADMIN_RO_PASSWORD, PORT = '3000' } = process.env;
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD ?? '').trim();
+if (!DATABASE_URL || !ADMIN_PASSWORD || !ADMIN_RO_PASSWORD) {
+  console.error('Missing DATABASE_URL, ADMIN_PASSWORD or ADMIN_RO_PASSWORD');
   process.exit(1);
 }
-if (ADMIN_PASSWORD.length < 16 || SESSION_SECRET.length < 32) {
-  console.error('ADMIN_PASSWORD needs 16+ characters and SESSION_SECRET 32+');
+if (ADMIN_PASSWORD.length < 16) {
+  console.error('ADMIN_PASSWORD needs 16+ characters');
   process.exit(1);
 }
+// The cookie-signing key is made at every start: nothing to configure, and a restart signs everyone out.
+const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const auth = createAuth({ password: ADMIN_PASSWORD, secret: SESSION_SECRET });
