@@ -21,11 +21,12 @@ import {
   type Meal,
   type Per100,
 } from '@/domain/diet';
+import { useSessionStore } from '@/features/auth/session-store';
 import { useToday } from '@/features/profile/use-today';
 import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { useDayTarget } from './day-hooks';
-import { useFood } from './foods';
+import { useFood, useSetFoodDeleted } from './foods';
 import { useDayLog, useLogFood, useSetLogDeleted } from './log';
 import { MealSheet } from './MealSheet';
 import { goBack } from '@/lib/navigation';
@@ -53,6 +54,8 @@ export function FoodDetailScreen() {
   const logFood = useLogFood();
   const setDeleted = useSetLogDeleted();
   const showToast = useToastStore((s) => s.show);
+  const setFoodDeleted = useSetFoodDeleted();
+  const userId = useSessionStore((s) => s.userId);
 
   const [meal, setMeal] = useState<Meal>(
     meals.includes((entry?.meal ?? p.meal) as Meal)
@@ -105,6 +108,18 @@ export function FoodDetailScreen() {
       message: t('diet.removedFrom', { name, meal: mealName }),
       actionLabel: t('common.undo'),
       onAction: () => setDeleted.mutate({ id: entry.id, deleted: false }),
+    });
+  };
+
+  const isMine = food.data.source === 'custom' && food.data.ownerId === userId;
+  const deleteFood = () => {
+    const id = food.data.id;
+    setFoodDeleted.mutate({ id, deleted: true });
+    goBack(router);
+    showToast({
+      message: t('diet.foodDeleted', { name }),
+      actionLabel: t('common.undo'),
+      onAction: () => setFoodDeleted.mutate({ id, deleted: false }),
     });
   };
 
@@ -262,6 +277,18 @@ export function FoodDetailScreen() {
 
         {editing && entry ? (
           <Button label={t('diet.removeEntry')} variant="danger" onPress={remove} />
+        ) : null}
+        {isMine ? (
+          <View style={{ gap: 10 }}>
+            <Button
+              label={t('diet.editFood')}
+              variant="secondary"
+              onPress={() =>
+                router.push({ pathname: '/food/new', params: { editId: food.data.id } })
+              }
+            />
+            <Button label={t('diet.deleteFood')} variant="danger" onPress={deleteFood} />
+          </View>
         ) : null}
       </Screen>
 

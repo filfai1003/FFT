@@ -267,6 +267,39 @@ describe('offline database', () => {
     expect(((await bob.from('water_logs').select('id')).data as unknown[]).length).toBe(1);
   });
 
+  it('a custom food can be edited, have its portions replaced, be deleted and restored', async () => {
+    const { c } = setup();
+    const food = { id: id(40), owner_id: LOCAL_USER_ID, source: 'custom', kcal_100g: 100 };
+    await c.from('foods').upsert({ ...food, name: 'Bar' });
+    await c
+      .from('food_servings')
+      .insert({ id: id(41), food_id: id(40), label: '1 bar', grams: 40 });
+    // edit: same id, new values, old portions soft-deleted
+    expect(
+      (await c.from('foods').upsert({ ...food, name: 'Big bar', kcal_100g: 120 })).error,
+    ).toBeNull();
+    await c
+      .from('food_servings')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('food_id', id(40))
+      .is('deleted_at', null);
+    const edited = await c.from('foods').select('name, kcal_100g').eq('id', id(40)).single();
+    expect(edited.data).toEqual({ name: 'Big bar', kcal_100g: 120 });
+    const live = await c
+      .from('food_servings')
+      .select('id')
+      .eq('food_id', id(40))
+      .is('deleted_at', null);
+    expect((live.data as unknown[]).length).toBe(0);
+    // delete and undo
+    await c.from('foods').update({ deleted_at: new Date().toISOString() }).eq('id', id(40));
+    const mine = () =>
+      c.from('foods').select('id').eq('owner_id', LOCAL_USER_ID).is('deleted_at', null);
+    expect(((await mine()).data as unknown[]).length).toBe(0);
+    await c.from('foods').update({ deleted_at: null }).eq('id', id(40));
+    expect(((await mine()).data as unknown[]).length).toBe(1);
+  });
+
   it('online-only helpers say so instead of failing silently', async () => {
     const { c } = setup();
     const res = await c.functions.invoke('off');

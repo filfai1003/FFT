@@ -563,6 +563,9 @@
     "saveChanges": "Save changes",
     "removeEntry": "Remove from food log",
     "yourFood": "Your food",
+    "editFood": "Edit food",
+    "deleteFood": "Delete food",
+    "foodDeleted": "{{name}} deleted",
     "verifiedOff": "Verified · Open Food Facts",
     "fromOff": "Open Food Facts",
     "forGrams": "For {{g}} g",
@@ -576,6 +579,7 @@
   },
   "createFood": {
     "title": "New food",
+    "editTitle": "Edit food",
     "name": "Name",
     "brand": "Brand · optional",
     "barcode": "Barcode",
@@ -587,7 +591,8 @@
     "removePortion": "Remove portion",
     "addPortion": "+ Add portion",
     "privacy": "Only visible to you. You'll find it under Mine.",
-    "save": "Save food"
+    "save": "Save food",
+    "saveChanges": "Save changes"
   },
   "scanner": {
     "close": "Close scanner",

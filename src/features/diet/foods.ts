@@ -197,12 +197,15 @@ export function useSaveFood() {
         verified: false,
       });
       if (error) throw error;
-      if (input.portions.length > 0) {
+      if (input.id || input.portions.length > 0) {
         // Replace the portions: soft-delete the old ones, insert the new ones.
         await supabase
           .from('food_servings')
           .update({ deleted_at: new Date().toISOString() })
-          .eq('food_id', id);
+          .eq('food_id', id)
+          .is('deleted_at', null);
+      }
+      if (input.portions.length > 0) {
         const res = await supabase.from('food_servings').insert(
           input.portions.map((p) => ({
             id: newId(),
@@ -214,6 +217,21 @@ export function useSaveFood() {
         if (res.error) throw res.error;
       }
       return id;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: foodKeys.all }),
+  });
+}
+
+/** Deletes (or restores, for UNDO) one of your own foods. Entries already logged keep their values. */
+export function useSetFoodDeleted() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, deleted }: { id: string; deleted: boolean }) => {
+      const { error } = await getSupabase()
+        .from('foods')
+        .update({ deleted_at: deleted ? new Date().toISOString() : null })
+        .eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: foodKeys.all }),
   });

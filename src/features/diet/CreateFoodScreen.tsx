@@ -11,7 +11,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { parseDecimal } from '@/domain/numbers';
 import type { Portion } from '@/domain/diet';
-import { useSaveFood } from './foods';
+import { useFood, useSaveFood, type Food } from './foods';
 import { goBack } from '@/lib/navigation';
 
 type FieldKey = 'kcal' | 'protein' | 'carbs' | 'sugars' | 'fat' | 'saturates' | 'fiber' | 'salt';
@@ -26,8 +26,18 @@ const fields: { key: FieldKey; unit: string; sub?: boolean; required?: boolean }
   { key: 'salt', unit: 'g' },
 ];
 
-/** Create your own food ("Mine"): per 100 g from the label, optional portions and barcode. */
+const text = (n: number | null | undefined) => (n == null ? '' : String(n));
+
+/** Create your own food ("Mine"), or edit one when opened with `editId`. */
 export function CreateFoodScreen() {
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const food = useFood(editId);
+  if (editId && !food.data) return <Screen>{null}</Screen>;
+  return <FoodForm key={editId ?? 'new'} initial={editId ? food.data : undefined} />;
+}
+
+/** Per 100 g from the label, optional portions and barcode. */
+function FoodForm({ initial }: { initial?: Food }) {
   const { t } = useTranslation();
   const router = useRouter();
   const barHeight = useActionBarHeight();
@@ -37,20 +47,23 @@ export function CreateFoodScreen() {
     barcode?: string;
   }>();
   const save = useSaveFood();
-  const [name, setName] = useState('');
-  const [brand, setBrand] = useState('');
-  const [barcode, setBarcode] = useState(params.barcode ?? '');
+  const editing = !!initial;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [brand, setBrand] = useState(initial?.brand ?? '');
+  const [barcode, setBarcode] = useState(initial?.barcode ?? params.barcode ?? '');
   const [values, setValues] = useState<Record<FieldKey, string>>({
-    kcal: '',
-    protein: '',
-    carbs: '',
-    sugars: '',
-    fat: '',
-    saturates: '',
-    fiber: '',
-    salt: '',
+    kcal: text(initial?.per100.kcal),
+    protein: text(initial?.per100.protein),
+    carbs: text(initial?.per100.carbs),
+    sugars: text(initial?.per100.sugars),
+    fat: text(initial?.per100.fat),
+    saturates: text(initial?.per100.saturates),
+    fiber: text(initial?.per100.fiber),
+    salt: text(initial?.per100.salt),
   });
-  const [portions, setPortions] = useState<{ label: string; grams: string }[]>([]);
+  const [portions, setPortions] = useState<{ label: string; grams: string }[]>(
+    (initial?.servings ?? []).map((p) => ({ label: p.label, grams: String(p.grams) })),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const num = (k: FieldKey) => parseDecimal(values[k]);
@@ -62,6 +75,7 @@ export function CreateFoodScreen() {
     setError(null);
     try {
       const id = await save.mutateAsync({
+        id: initial?.id,
         name,
         brand,
         barcode,
@@ -80,6 +94,10 @@ export function CreateFoodScreen() {
           return p.label.trim() && g ? [{ label: p.label.trim(), grams: g }] : [];
         }),
       });
+      if (editing) {
+        goBack(router);
+        return;
+      }
       router.replace({
         pathname: '/food/[foodId]',
         params: { foodId: id, meal: params.meal, day: params.day },
@@ -94,7 +112,7 @@ export function CreateFoodScreen() {
       <Screen scroll bottomBarHeight={barHeight + 24} gap={16}>
         <FormHeader
           left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
-          title={t('createFood.title')}
+          title={editing ? t('createFood.editTitle') : t('createFood.title')}
         />
         <Input
           label={t('createFood.name')}
@@ -194,7 +212,7 @@ export function CreateFoodScreen() {
       <BottomActionBar>
         <Button
           size="large"
-          label={t('createFood.save')}
+          label={editing ? t('createFood.saveChanges') : t('createFood.save')}
           disabled={!valid || save.isPending}
           onPress={submit}
         />
