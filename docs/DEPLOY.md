@@ -65,11 +65,14 @@ Package name: `com.filfai1003.fft`.
 
 ## Install page and APK download
 - Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
-  Address: `https://your-backend.example.com`. It shows the download button, the install
-  steps, screenshots (`site/screens/`) and an animated dot-grid background.
-- The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit). Publish a new
-  one with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
-  (it also updates `site/config.js`: address, version, size; commit and push that file).
+  It shows the download button, the install steps, screenshots (`site/screens/`) and an animated
+  dot-grid background.
+- The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit), next to
+  `config.js` (version, size, build). nginx (`site/nginx.conf`) serves both from the page's own
+  address (`/fft.apk`, `/config.js`), reading the backend address from the service variable
+  `BACKEND_URL` on the `site` service, so no hosted address is stored in the repository. Publish a
+  new APK with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
+  (nothing to commit; the `Publish APK` workflow does it automatically).
 - Local APK without the Expo queue: build the image once (`docker build -t fft-android tools/android-build`),
   then `docker run` it with `tools/android-build/build.sh` (see the script header); the APK lands in `build/`.
 - `app.config.js` turns on over-the-air updates (`runtimeVersion` fingerprint, `updates.url`) only when

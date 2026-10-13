@@ -1,5 +1,5 @@
 # Puts the newest finished Android build (EAS, profile "preview") on the install page: copies the APK to
-# the public `downloads` bucket and updates site/config.js. Runs every 3 hours and by hand
+# the public `downloads` bucket and publishes its description (config.js) there. Runs every 3 hours and by hand
 # (Actions -> "Publish APK" -> Run workflow); does nothing when the page already has that build.
 # Needs the repository secrets EXPO_TOKEN, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
 name: Publish APK
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: publish-apk
@@ -43,11 +43,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if grep -q "$BUILD_ID" site/config.js; then echo "Already published"; exit 0; fi
+          if curl -fsSL "$SUPABASE_URL/storage/v1/object/public/downloads/config.js" | grep -q "$BUILD_ID"; then echo "Already published"; exit 0; fi
           curl -fsSL -o fft.apk "$BUILD_URL"
           APK_BUILD_ID="$BUILD_ID" node supabase/scripts/publish-apk.mjs fft.apk
-          git config user.name "github-actions"
-          git config user.email "github-actions@users.noreply.github.com"
-          git add site/config.js
-          git commit -m "Install page: new APK (build $BUILD_ID)"
-          git push
