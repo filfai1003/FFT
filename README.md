@@ -1,6 +1,6 @@
 # FFT
 
-A freemium mobile app for training, diet and progress tracking: log workouts offline, plan meals, and see your strength and body trends over time.
+A working mobile app for training, diet and progress tracking: log workouts offline, plan meals, and see your strength and body trends over time. Free to use; the architecture is ready for a future premium tier.
 
 📱 Try it on Android: [fft.up.railway.app](https://fft.up.railway.app/)
 
