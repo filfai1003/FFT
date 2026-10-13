@@ -384,6 +384,7 @@
     "minimize": "Minimize session (keeps running)",
     "finish": "Finish",
     "progress": "Exercise {{current}} of {{total}}",
+    "targetReps": "Target · {{reps}} reps",
     "exerciseOf": "Exercise {{current}}/{{total}}",
     "details": "Exercise details",
     "exerciseMenu": "Exercise options",

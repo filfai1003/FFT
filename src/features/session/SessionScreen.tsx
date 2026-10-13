@@ -181,6 +181,11 @@ export function SessionScreen() {
                 <Text variant="titleM" accessibilityRole="header">
                   {exercise.name}
                 </Text>
+                {exercise.targetReps ? (
+                  <Text variant="label" muted>
+                    {t('session.targetReps', { reps: exercise.targetReps.replace('-', '–') })}
+                  </Text>
+                ) : null}
               </View>
               <IconButton
                 icon="info"

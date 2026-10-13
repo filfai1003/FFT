@@ -42,7 +42,7 @@ export async function fetchPrevious(exerciseIds: string[]): Promise<Record<strin
 export function newExerciseFromCatalogue(
   exercise: Exercise,
   previous: PreviousSet[],
-  defaults: { targetSets?: number; restS?: number } = {},
+  defaults: { targetSets?: number; targetReps?: string; restS?: number } = {},
 ): NewExercise {
   return {
     exerciseId: exercise.id,
@@ -51,6 +51,7 @@ export function newExerciseFromCatalogue(
     imagePath: exercise.imagePath,
     restS: defaults.restS ?? (exercise.logType === 'weight_reps' ? 90 : 60),
     targetSets: defaults.targetSets ?? 3,
+    targetReps: defaults.targetReps,
     previous,
   };
 }
@@ -97,6 +98,7 @@ export function useStartWorkout() {
       exercises: day.exercises.map((e) =>
         newExerciseFromCatalogue(e.exercise, previous[e.exerciseId] ?? [], {
           targetSets: e.targetSets,
+          targetReps: e.targetReps,
           restS: e.restS,
         }),
       ),

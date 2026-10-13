@@ -34,6 +34,8 @@ export type SessionExercise = {
   logType: LogType;
   imagePath: string | null;
   restS: number;
+  /** Reps planned for each set ("8-12"), from the plan day; absent for exercises added on the go. */
+  targetReps?: string;
   sets: SessionSet[];
 };
 
@@ -116,6 +118,7 @@ export type NewExercise = {
   imagePath: string | null;
   restS: number;
   targetSets: number;
+  targetReps?: string;
   previous: PreviousSet[];
 };
 
@@ -127,6 +130,7 @@ export function buildExercise(e: NewExercise, unit: WeightUnit): SessionExercise
     logType: e.logType,
     imagePath: e.imagePath,
     restS: e.restS,
+    targetReps: e.targetReps?.trim() || undefined,
     sets: Array.from({ length: e.targetSets }, (_, i) =>
       emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit),
     ),

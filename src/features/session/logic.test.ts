@@ -74,6 +74,13 @@ describe('building a session', () => {
     expect(sets.map((x) => x.previous)).toEqual(['24 × 10', '24 × 9', '24 × 8', '22 × 8']);
   });
 
+  it('keeps the planned reps of the exercise, and none for one without a target', () => {
+    const planned = { ...incline, targetReps: ' 6-8 ' };
+    const s = session('kg', [planned, { ...plank, targetReps: '' }]);
+    expect(s.exercises[0].targetReps).toBe('6-8');
+    expect(s.exercises[1].targetReps).toBeUndefined();
+  });
+
   it('with no history the load is empty and there is no previous', () => {
     const sets = session().exercises[1].sets;
     expect(sets.map((x) => x.weight)).toEqual(['', '']);
