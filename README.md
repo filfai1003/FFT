@@ -46,15 +46,13 @@ Local backend (needs Docker): `npm run db:start`, then copy the URL and anon key
 
 ## How I built it
 
-I designed this app and built it with an AI pair programmer (Claude Code), which is why most commits are co-authored.
-The workflow is mine, and it repeats for every feature:
+I designed this app and directed its development. Most of the code was written by an AI pair programmer (Claude Code), which is why most commits are co-authored.
 
-1. **Analysis and data model.** I analyse the feature, design the database and normalise it, then review and correct the schema with Claude.
-2. **Kick-off prompt.** I write a precise prompt with the spec, the constraints and the rules in `CLAUDE.md`.
-3. **Read and correct.** I read every change, fix what is wrong, and nothing is committed unless `npm run check` passes.
-4. **Plan the next step.** I define the structure of the next step, then start again from step 2.
-
-The product spec (`docs/PROJECT.md`), the design (`docs/design/`), the architecture decisions (`docs/DECISIONS.md`) and the engineering rules (`CLAUDE.md`) are where I steer the work.
+My part:
+1. **Product and data model.** I defined the features, designed and normalised the database, and corrected the schema together with Claude.
+2. **Rules.** I wrote the specification (`docs/PROJECT.md`), the design decisions (`docs/DECISIONS.md`) and the engineering rules in `CLAUDE.md` that every change must follow.
+3. **Direction.** For each step I wrote the prompt, tested the result in the app, asked for corrections, and planned the next step.
+4. **Quality gates.** Nothing is committed unless `npm run check` passes (lint, typecheck, 200+ tests, database verification), and CI checks it again on every push.
 
 ---
 
