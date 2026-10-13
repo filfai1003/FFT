@@ -429,8 +429,7 @@
     "discardBody": "Everything you logged in this workout is lost. This cannot be undone.",
     "discardConfirm": "Discard workout",
     "restDoneTitle": "Rest is over",
-    "restDoneBody": "Time for your next set.",
-    "replacedEmpty": "{{name}} was empty, so it was replaced"
+    "restDoneBody": "Time for your next set."
   },
   "summary": {
     "done": "Done",

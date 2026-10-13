@@ -3,9 +3,7 @@ import { isOutOfOrder } from '@/domain/rotation';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import type { Exercise } from '@/features/train/exercises';
 import type { PlanDayView, PlanView, Rotation } from '@/features/train/plans';
-import i18n from '@/i18n';
 import { getSupabase } from '@/lib/supabase';
-import { useToastStore } from '@/lib/toast-store';
 import { buildSession, type NewExercise, type PreviousSet } from './logic';
 import { useSessionStore } from './store';
 
@@ -60,25 +58,10 @@ export function useStartWorkout() {
   const router = useRouter();
   const start = useSessionStore((s) => s.start);
 
-  /**
-   * A workout already in progress is resumed instead of starting another one — unless nothing was
-   * logged in it yet (no set done): then it is replaced by the new one, with an UNDO.
-   */
+  /** A workout already in progress is always resumed: starting another one never replaces it. */
   const openActive = () => {
-    const { active, discard, start: restore } = useSessionStore.getState();
+    const { active } = useSessionStore.getState();
     if (!active) return false;
-    if (!active.exercises.some((e) => e.sets.some((set) => set.done))) {
-      discard();
-      useToastStore.getState().show({
-        message: i18n.t('session.replacedEmpty', { name: active.dayName }),
-        actionLabel: i18n.t('common.undo'),
-        onAction: () => {
-          restore(active);
-          router.replace({ pathname: '/session/[sessionId]', params: { sessionId: active.id } });
-        },
-      });
-      return false;
-    }
     router.push({ pathname: '/session/[sessionId]', params: { sessionId: active.id } });
     return true;
   };
@@ -87,6 +70,7 @@ export function useStartWorkout() {
   const startDay = async (plan: PlanView, day: PlanDayView, rotation: Rotation | null) => {
     if (openActive()) return;
     const previous = await fetchPrevious(day.exercises.map((e) => e.exerciseId));
+    if (openActive()) return;
     const session = buildSession({
       planId: plan.id,
       planDayId: day.id,
@@ -131,6 +115,7 @@ export function useStartWorkout() {
   ) => {
     if (openActive()) return;
     const previous = await fetchPrevious(exercises.map((e) => e.exercise.id));
+    if (openActive()) return;
     const session = buildSession({
       planId: null,
       planDayId: null,
