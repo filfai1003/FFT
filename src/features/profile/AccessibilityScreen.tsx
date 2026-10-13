@@ -32,9 +32,7 @@ export function AccessibilityScreen() {
     {
       title: t('a11y.text'),
       size: true,
-      rows: [
-        { key: 'boldText', name: 'boldText' },
-      ],
+      rows: [{ key: 'boldText', name: 'boldText' }],
     },
     {
       title: t('a11y.vision'),

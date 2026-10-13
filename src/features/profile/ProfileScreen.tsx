@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
 import { goBack } from '@/lib/navigation';
@@ -161,6 +162,19 @@ export function ProfileScreen() {
             </Text>
           </View>
         </Pressable>
+
+        {offline ? (
+          <Card gap={10}>
+            <Text variant="titleM">{t('link.cardTitle')}</Text>
+            <Text variant="bodyS" muted>
+              {t('link.cardBody')}
+            </Text>
+            <Button
+              label={t('link.cardButton')}
+              onPress={() => router.push('/profile/link-account')}
+            />
+          </Card>
+        ) : null}
 
         {groups.map((rows, i) => (
           <View

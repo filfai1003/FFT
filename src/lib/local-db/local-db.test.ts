@@ -1,6 +1,7 @@
 import { createLocalClient } from './client';
 import { LocalDb, type Kv } from './engine';
 import { LOCAL_USER_ID } from './schema';
+import { moveLocalData } from './index';
 
 function memoryKv(): Kv & { texts: Map<string, string> } {
   const texts = new Map<string, string>();
@@ -304,5 +305,29 @@ describe('offline database', () => {
     const { c } = setup();
     const res = await c.functions.invoke('off');
     expect(res.error?.message).toMatch(/offline/i);
+  });
+
+  it('moving the account-less data to a new account: same rows, new owner, old database empty', async () => {
+    const { kv, db, c } = setup();
+    const NEW = 'bbbbbbbb-0000-4000-8000-000000000009';
+    await c.from('water_logs').insert({ id: id(70), day: '2026-10-14', ml: 500 });
+    await c.from('body_metrics').insert({ id: id(71), day: '2026-10-14', weight_kg: 81 });
+    await c.from('profiles').update({ name: 'Test' }).eq('id', LOCAL_USER_ID);
+    await db.save();
+
+    const moved = await moveLocalData(LOCAL_USER_ID, NEW, kv);
+    expect(moved).toBeGreaterThan(2);
+
+    const next = createLocalClient(new LocalDb(kv, NEW));
+    const water = await next.from('water_logs').select('id, user_id, ml');
+    expect(water.data).toEqual([{ id: id(70), user_id: NEW, ml: 500 }]);
+    const profile = await next.from('profiles').select('id, name').single();
+    expect(profile.data).toEqual({ id: NEW, name: 'Test' });
+    const catalogueLeft = await next.from('exercises').select('id').is('owner_id', null);
+    expect((catalogueLeft.data as unknown[]).length).toBeGreaterThan(10);
+
+    const old = createLocalClient(new LocalDb(kv, LOCAL_USER_ID));
+    expect((await old.from('water_logs').select('id')).data).toEqual([]);
+    expect((await old.from('profiles').select('name').single()).data).toEqual({ name: null });
   });
 });

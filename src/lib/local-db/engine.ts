@@ -120,6 +120,14 @@ export class LocalDb {
     );
   }
 
+  /** Empties the tables but keeps the files (they now belong to another user, see moveLocalData). */
+  async wipeTables() {
+    await this.ready;
+    for (const name of tableNames) this.tables[name] = [];
+    this.seed();
+    await this.save();
+  }
+
   /** Erases this user's data on the device (delete account) and starts again empty. */
   async wipe() {
     await this.ready;

@@ -1254,5 +1254,19 @@
     "againFood": "Log {{name}} again",
     "per100": "{{kcal}} kcal · P {{p}} g per 100 g",
     "coach": "Tell the coach what you ate"
+  },
+  "link": {
+    "cardTitle": "Keep your data with an account",
+    "cardBody": "Add an email and a password. Everything you logged on this phone moves to the account, nothing is lost.",
+    "cardButton": "Create an account",
+    "title": "Create an account",
+    "intro": "Your workouts, food, weight, photos and settings move to the new account. You can then sign in with this email.",
+    "dataNote": "Free accounts keep only your email and password online. Your data stays on this phone.",
+    "submit": "Create account and move my data",
+    "working": "Creating…",
+    "taken": "This email already has an account. Use another one.",
+    "failed": "The account could not be created. Check your connection and try again.",
+    "confirm": "Confirm your email, then sign in with it: your data is waiting in the account.",
+    "done": "Account created. Your data is in it."
   }
 }
