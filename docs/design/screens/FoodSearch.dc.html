@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Food search</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@600;800&amp;family=Space+Grotesk:wght@400;500&amp;family=Space+Mono&amp;display=swap">
+<style>
+body{margin:0;background:#000}
+a{color:#fff}a:hover{color:#bbb}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; box-sizing: border-box; background-color: #000; background-image: radial-gradient(#1c1c1c 1px, transparent 1px); background-size: 14px 14px; color: #f2f2f2; font-family: 'Space Grotesk', sans-serif; display: flex; flex-direction: column; padding: 59px 20px 250px; gap: 14px; overflow: hidden">
+
+<div style="display: flex; align-items: center; gap: 12px">
+<a href="FoodLog.dc.html" aria-label="Back to food log" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 22px; border: 1px solid #6e6e6e; background: #0d0d0d; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.12em; color: #8e8e8e">ADD TO</span>
+<span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 26px; line-height: 1">LUNCH</span>
+</div>
+</div>
+
+<div style="display: flex; gap: 10px">
+<label style="flex: 1; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 26px; background: #111; border: 1px solid #6e6e6e">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e8e" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search food</span>
+<input type="search" value="chicken" placeholder="Search food" style="flex: 1; min-width: 0; border: none; background: transparent; color: #f2f2f2; font-family: inherit; font-size: 16px; outline: none">
+</label>
+<a href="Scanner.dc.html" aria-label="Scan barcode" style="width: 52px; height: 52px; flex-shrink: 0; border-radius: 26px; border: 1px solid #6e6e6e; background: #111; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>
+</a>
+</div>
+
+<div role="tablist" aria-label="Filter results" style="display: flex; gap: 8px">
+<button role="tab" aria-selected="true" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #fff; background: #161616; color: #f2f2f2; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.06em">RESULTS</button>
+<button role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #6e6e6e; background: transparent; color: #ccc; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.06em">RECENT</button>
+<button role="tab" aria-selected="false" style="height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid #6e6e6e; background: transparent; color: #ccc; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.06em">MINE</button>
+<a href="Recipes.dc.html" style="text-decoration: none; height: 44px; padding: 0 14px; box-sizing: border-box; border-radius: 22px; border: 1px solid #6e6e6e; color: #ccc; display: flex; align-items: center; font-family: 'Space Mono', monospace; font-size: 12px; letter-spacing: 0.06em">RECIPES</a>
+</div>
+
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{foods}}" as="f" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 64px; border-bottom: 1px dashed #262626">
+<div style="flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 15px">{{f.name}}<sc-if value="{{f.verified}}" hint-placeholder-val="{{ false }}"><span aria-label="Verified" style="width: 6px; height: 6px; border-radius: 3px; background: #fff"></span></sc-if></span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">{{f.per}} · P {{f.p}} · C {{f.c}} · F {{f.g}}</span>
+</div>
+<span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 20px">{{f.kcal}}</span>
+<a href="FoodDetail.dc.html" aria-label="Choose amount of {{f.name}}" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 22px; border: 1px solid #6e6e6e; color: #f2f2f2; display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</a>
+</div>
+</sc-for>
+</div>
+
+<a href="CreateFood.dc.html" style="text-decoration: none; color: #ccc; display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 0.08em">CAN'T FIND IT? CREATE A FOOD<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8e8e8e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></a>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; background: #111; color: #f2f2f2; border-top: 1px solid #6e6e6e; border-radius: 28px 28px 0 0; padding: 12px 20px 34px; display: flex; flex-direction: column; gap: 16px">
+<span style="align-self: center; width: 36px; height: 4px; border-radius: 2px; background: #444"></span>
+<div style="display: flex; justify-content: space-between; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 17px; font-weight: 500">Chicken breast</span>
+<span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">P 35 · C 0 · F 2</span>
+</div>
+<span style="display: flex; align-items: baseline; gap: 4px"><span style="font-family: 'Doto', monospace; font-weight: 800; font-size: 34px; line-height: 1">165</span><span style="font-family: 'Space Mono', monospace; font-size: 11px; color: #8e8e8e">KCAL</span></span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button aria-label="Decrease portion" style="width: 48px; height: 48px; border-radius: 24px; border: 1px solid #6e6e6e; background: transparent; color: #f2f2f2; font-size: 20px">−</button>
+<label style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 24px; background: #000; border: 1px solid #6e6e6e">
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Amount in grams</span>
+<input type="text" inputmode="numeric" value="150" style="width: 60px; border: none; background: transparent; text-align: right; font-family: 'Space Mono', monospace; font-size: 18px; color: #f2f2f2">
+<span style="font-family: 'Space Mono', monospace; font-size: 14px; color: #8e8e8e">g</span>
+</label>
+<button aria-label="Increase portion" style="width: 48px; height: 48px; border-radius: 24px; border: 1px solid #6e6e6e; background: transparent; color: #f2f2f2; font-size: 20px">+</button>
+</div>
+<a href="FoodLog.dc.html" style="text-decoration: none; height: 54px; border-radius: 27px; background: {{accent}}; color: #f2f2f2; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 16px">Add to lunch</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#D71921","options":["#D71921","#FF5A1F","#FFFFFF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const f = (name, per, kcal, p, c, g, verified) => ({ name, per, kcal, p, c, g, verified });
+return {
+accent: this.props.accent ?? '#D71921',
+foods: [
+f('Chicken breast', '100 g', '110', 23, 0, 1.5, true),
+f('Chicken thighs', '100 g', '170', 18, 0, 11, true),
+f('Roast chicken', '100 g', '190', 27, 0, 9, false),
+f('Sliced chicken deli', '100 g', '95', 21, 1, 1, false)
+]
+};
+}
+}
+</script>
+</body>
+</html>

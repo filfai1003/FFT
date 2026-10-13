@@ -1,203 +1,203 @@
-# Progetto: app di allenamento e dieta (SaaS freemium)
+# Project: training and diet app (freemium SaaS)
 
-Documento di riferimento completo. Tutte le decisioni di prodotto, design e dati prese in fase di progettazione. Il design approvato è in `docs/design/` e ha la precedenza su qualsiasi interpretazione personale.
+Complete reference document. All the product, design and data decisions made during the design phase. The approved design is in `docs/design/` and takes precedence over any personal interpretation.
 
 ---
 
-## 1. Prodotto
+## 1. Product
 
-App per gestire **allenamento, dieta e progressi**, modello **freemium**.
+An app to manage **training, diet and progress**, with a **freemium** model.
 
-- **Gratuito (lo costruiamo ora, deve essere completo):** schede e sessioni di allenamento, dieta in due modalità, progressi (forza, peso, body fat, misure, foto), profilo e impostazioni.
-- **Premium (NON ora, ma l'architettura deve prevederlo):** widget, integrazioni (Apple Health, Health Connect, Garmin, Strava), piani generati con IA, marketplace di trainer e nutrizionisti verificati (condivisione di schede, dieta, dati, foto check, chat).
+- **Free (built now, must be complete):** workout plans and sessions, diet in two modes, progress (strength, weight, body fat, measurements, photos), profile and settings.
+- **Premium (NOT now, but the architecture must allow for it):** widgets, integrations (Apple Health, Health Connect, Garmin, Strava), AI-generated plans, a marketplace of verified trainers and nutritionists (sharing of plans, diet, data, photo check-ins, chat).
 
-Vincoli da non dimenticare:
-- In Italia i personal trainer non possono prescrivere diete: nel marketplace futuro servono ruoli distinti (trainer / nutrizionista) con verifica dei titoli.
-- Peso, dieta e foto sono **dati sanitari (GDPR art. 9)**: consenso esplicito e revocabile, crittografia, esportazione e cancellazione completa.
-- Limiti di sicurezza sulla dieta: niente target sotto 1500 kcal né deficit oltre il 25% (vale anche per i futuri piani IA).
+Constraints to keep in mind:
+- In Italy personal trainers cannot prescribe diets: the future marketplace needs distinct roles (trainer / nutritionist) with credential verification.
+- Weight, diet and photos are **health data (GDPR art. 9)**: explicit and revocable consent, encryption, full export and deletion.
+- Diet safety limits: no target below 1500 kcal and no deficit above 25% (this also applies to future AI plans).
 
-**Lingua dell'interfaccia: inglese.** Tutti i testi passano da un sistema i18n (niente stringhe hardcoded) per aggiungere altre lingue. Codice, tabelle e variabili in inglese.
+**Interface language: English.** All text goes through an i18n system (no hardcoded strings) so other languages can be added. Code, tables and variables in English.
 
 ---
 
 ## 2. Stack
 
-- **App:** Expo (React Native) + TypeScript strict + Expo Router. iOS e Android prima, web dalla stessa base.
-- **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security). Migrazioni SQL versionate in `supabase/migrations`, sviluppo locale con Supabase CLI.
-- **Dati client:** TanStack Query con aggiornamenti ottimistici. **La sessione di allenamento funziona offline**: salvataggio locale a ogni modifica e sync al ritorno della rete. Per la Fase 1 basta una coda locale persistente; proponi tu se e quando passare a una soluzione local-first (PowerSync, expo-sqlite + sync).
-- **Alimenti:** Open Food Facts come sorgente esterna. Ciò che non è nel nostro DB si cerca lì e si salva in `foods` con `source = 'off'`; le ricerche successive restano interne.
-- **Font:** Doto, Space Grotesk, Space Mono (Google Fonts, licenza OFL). Usa i pacchetti `@expo-google-fonts/*` se esistono per tutti e tre, altrimenti includi i TTF nel repo.
-- **Qualità:** ESLint + Prettier; test per la logica di dominio (calorie e macro, fabbisogno, massimali, punteggio forza, rotazione schede, conversioni di unità).
+- **App:** Expo (React Native) + strict TypeScript + Expo Router. iOS and Android first, web from the same codebase.
+- **Backend:** Supabase (Postgres, Auth, Storage, Row Level Security). Versioned SQL migrations in `supabase/migrations`, local development with the Supabase CLI.
+- **Client data:** TanStack Query with optimistic updates. **The workout session works offline**: local save on every change and sync when the network returns. For Phase 1 a persistent local queue is enough; propose if and when to move to a local-first solution (PowerSync, expo-sqlite + sync).
+- **Foods:** Open Food Facts as the external source. What is not in our DB is searched there and saved in `foods` with `source = 'off'`; later searches stay internal.
+- **Fonts:** Doto, Space Grotesk, Space Mono (Google Fonts, OFL licence). Use the `@expo-google-fonts/*` packages if they exist for all three, otherwise include the TTFs in the repo.
+- **Quality:** ESLint + Prettier; tests for the domain logic (calories and macros, energy needs, maxes, strength score, plan rotation, unit conversions).
 
-Se una scelta ti sembra sbagliata, dimmelo e spiega perché **prima** di cambiarla.
-
----
-
-## 3. Design: dove guardare
-
-- `docs/design/screens/*.dc.html`: **un file per schermata**, telefono 390×844. È HTML con stili inline: colori, dimensioni, testi e struttura sono **la fonte di verità**. I tag `<sc-for>`, `<sc-if>` e `{{segnaposto}}` sono template: i dati di esempio stanno nella funzione `renderVals()` dello script in fondo al file. `<dc-import name="ExerciseIcon">` è il componente immagine esercizio (`ExerciseIcon.dc.html`). **Non copiare l'HTML**: ricostruisci in React Native usando i token.
-- `docs/design/SCREENS.md`: indice delle schermate con nome inglese, route Expo Router proposta e tipo di presentazione (tab, push, modal, sheet).
-- `docs/design/NAVIGATION.md`: grafo di navigazione (quale controllo porta a quale schermata).
-- `docs/design/tokens.json`: colori, font, scala tipografica, raggi, spaziature, misure di tocco, aree sicure e componenti base.
-- `docs/design/screenshots/` (se presente): PNG esportati dal canvas per un riferimento visivo rapido.
-- Le tre mappe (`Mappa*.dc.html`) sono diagrammi di riferimento, non schermate.
-
-### Linguaggio visivo (ispirato a Nothing)
-Monocromatico, nero puro con una griglia di puntini appena visibile, caratteri a matrice di punti per numeri e titoli, **un solo accento** (rosso #D71921 di default, sceglibile dall'utente). Il componente distintivo è la **barra a puntini**, usata per calorie, macro, acqua, recupero e progressione della sessione, più i grafici a colonne di puntini. **Niente blocchi bianchi pieni**: la selezione si indica con il bordo bianco.
-
-### Regole di ergonomia e accessibilità (obbligatorie)
-1. **Target di tocco ≥ 44×44** su ogni controllo (Apple 44 pt, Android 48 dp; WCAG 2.2 minimo 24 px). Pulsanti primari alti 56, righe di elenco ≥ 52.
-2. **Aree sicure** sempre rispettate (`react-native-safe-area-context`). Niente finta status bar.
-3. **Zona del pollice:** l'azione principale di form ed editor è un pulsante grande fissato in basso con un'etichetta precisa ("Save day", "Save check-in"…). "Cancel"/chiudi stanno in alto a sinistra. Le azioni rischiose (es. "Finish" della sessione) restano volutamente in alto; le distruttive sono in fondo alla pagina, mai fissate e sempre con conferma.
-4. **Contrasto:** testo ≥ 4.5:1; bordi e stati dei controlli ≥ 3:1 (bordo controlli #6E6E6E). Testo principale #F2F2F2 su nero.
-5. **Tipografia:** minimo 11 px; campi di input a 16 px; maiuscolo solo per etichette brevi; supporto alle dimensioni di testo di sistema (Dynamic Type / font scale) senza rompere i layout.
-6. **Barra di navigazione e barre d'azione fisse in basso**: il contenuto scorre sotto.
-7. **Anti-errore:** ogni azione importante si può annullare (toast con UNDO per ~5 s: serie spuntata, pasto spuntato, elemento eliminato). Spostarsi tra esercizi non perde mai dati. "Finish" chiede conferma.
-8. **Impostazioni di accessibilità rispettate in tutta l'app** (vedi §5.5): testo più grande e in grassetto, numeri senza matrice di punti, contrasto alto, meno movimento, vibrazione, modalità una mano, conto alla rovescia vocale.
-9. Ogni controllo con sola icona ha un'etichetta per screen reader. Mai usare solo il colore per comunicare uno stato.
+If a choice looks wrong to you, tell me and explain why **before** changing it.
 
 ---
 
-## 4. Navigazione
+## 3. Design: where to look
 
-Barra in basso con 5 tab: **Today · Train · Diet · Progress · Profile** (etichette Space Mono maiuscole; la tab attiva è bianca con un puntino accento sotto).
+- `docs/design/screens/*.dc.html`: **one file per screen**, 390×844 phone. It is HTML with inline styles: colours, sizes, texts and structure are **the source of truth**. The `<sc-for>`, `<sc-if>` tags and `{{placeholders}}` are templates: the sample data lives in the `renderVals()` function of the script at the bottom of the file. `<dc-import name="ExerciseIcon">` is the exercise image component (`ExerciseIcon.dc.html`). **Do not copy the HTML**: rebuild it in React Native using the tokens.
+- `docs/design/SCREENS.md`: index of the screens with the English name, the proposed Expo Router route and the presentation type (tab, push, modal, sheet).
+- `docs/design/NAVIGATION.md`: navigation graph (which control leads to which screen).
+- `docs/design/tokens.json`: colours, fonts, type scale, radii, spacing, touch sizes, safe areas and base components.
+- `docs/design/screenshots/` (if present): PNGs exported from the canvas for a quick visual reference.
+- The three maps (`*Map.dc.html`) are reference diagrams, not screens.
 
-- La barra è visibile nelle pagine di consultazione e nascosta in quelle di modifica o in corso (editor, picker, sessione attiva, riepilogo, check-in, scanner).
-- La sessione attiva si può ridurre (freccia giù): continua in background e si riprende da Today o Train.
-- Grafo completo in `docs/design/NAVIGATION.md`.
+### Visual language (Nothing-inspired)
+Monochrome, pure black with a barely visible dot grid, dot-matrix type for numbers and titles, **a single accent** (red #D71921 by default, user-selectable). The distinctive component is the **dot bar**, used for calories, macros, water, rest and session progress, plus the dot column charts. **No solid white blocks**: selection is shown with a white border.
+
+### Ergonomics and accessibility rules (mandatory)
+1. **Touch targets ≥ 44×44** on every control (Apple 44 pt, Android 48 dp; WCAG 2.2 minimum 24 px). Primary buttons 56 high, list rows ≥ 52.
+2. **Safe areas** always respected (`react-native-safe-area-context`). No fake status bar.
+3. **Thumb zone:** the main action of forms and editors is a large button pinned to the bottom with a precise label ("Save day", "Save check-in"…). "Cancel"/close sit at the top left. Risky actions (e.g. the session's "Finish") deliberately stay at the top; destructive ones are at the bottom of the page, never pinned and always with confirmation.
+4. **Contrast:** text ≥ 4.5:1; control borders and states ≥ 3:1 (control border #6E6E6E). Main text #F2F2F2 on black.
+5. **Typography:** minimum 11 px; input fields at 16 px; uppercase only for short labels; support for the system text size (Dynamic Type / font scale) without breaking layouts.
+6. **Navigation bar and action bars fixed at the bottom**: content scrolls underneath.
+7. **Error prevention:** every important action can be undone (toast with UNDO for ~5 s: set ticked, meal ticked, item deleted). Moving between exercises never loses data. "Finish" asks for confirmation.
+8. **Accessibility settings respected throughout the app** (see §5.5): larger and bold text, numbers without dot matrix, high contrast, reduced motion, haptics, one-hand mode, spoken countdown.
+9. Every icon-only control has a screen reader label. Never use colour alone to convey a state.
 
 ---
 
-## 5. Funzionalità e regole
+## 4. Navigation
+
+Bottom bar with 5 tabs: **Today · Train · Diet · Progress · Profile** (uppercase Space Mono labels; the active tab is white with an accent dot underneath).
+
+- The bar is visible on browsing pages and hidden on editing or in-progress ones (editor, picker, active session, summary, check-in, scanner).
+- The active session can be minimised (down arrow): it keeps running in the background and is resumed from Today or Train.
+- Full graph in `docs/design/NAVIGATION.md`.
+
+---
+
+## 5. Features and rules
 
 ### 5.1 Today (`Main`)
-Calorie rimanenti (barra a puntini) e macro; allenamento di oggi con "Start" e "Train a different day"; azioni rapide per pasto, peso e acqua.
+Remaining calories (dot bar) and macros; today's workout with "Start" and "Train a different day"; quick actions for meals, weight and water.
 
 ### 5.2 Train
-**Schermate:** My plans, Plan detail, Day editor, Pick exercises, Create exercise, Exercise library, Exercise detail, Active session, Finish confirmation, Session summary, History, Session detail.
+**Screens:** My plans, Plan detail, Day editor, Pick exercises, Create exercise, Exercise library, Exercise detail, Active session, Finish confirmation, Session summary, History, Session detail.
 
-**Rotazione della scheda e allenamenti fuori ordine**
-- Una scheda ha N giorni ordinati. Un **ciclo** è completo quando ogni giorno è stato fatto una volta.
-- Il giorno suggerito ("Up next") è **il primo giorno, nell'ordine della scheda, non ancora fatto nel ciclo corrente**.
-- L'utente può avviare **qualsiasi giorno in qualsiasi momento** (pulsante play su ogni giorno, "Train a different day") oppure un **Empty workout**. Un giorno fatto fuori ordine conta come fatto nel ciclo e viene segnato "Out of order" nello storico. Esempio: ciclo Pull, Push, Legs, Upper; fatti Pull e poi Legs, quindi "Up next" resta Push.
-- Quando tutti i giorni sono fatti, inizia il ciclo successivo.
+**Plan rotation and out-of-order workouts**
+- A plan has N ordered days. A **cycle** is complete when every day has been done once.
+- The suggested day ("Up next") is **the first day, in plan order, not yet done in the current cycle**.
+- The user can start **any day at any time** (play button on every day, "Train a different day") or an **Empty workout**. A day done out of order counts as done in the cycle and is marked "Out of order" in the history. Example: cycle Pull, Push, Legs, Upper; Pull and then Legs are done, so "Up next" stays Push.
+- When all days are done, the next cycle starts.
 
-**Sessione attiva:** carichi precompilati con la sessione precedente; il timer di recupero parte alla spunta di una serie; Previous/Next sempre in basso; salvataggio locale continuo; ripresa dopo crash o chiusura.
+**Active session:** loads prefilled from the previous session; the rest timer starts when a set is ticked; Previous/Next always at the bottom; continuous local saving; resume after a crash or closing the app.
 
-**Massimali (per esercizio)**
-- **Actual max:** il peso più alto mai registrato in una serie completata, a prescindere dalle ripetizioni.
-- **Estimated 1RM:** formula di Epley, `peso × (1 + reps / 30)`, calcolata per ogni serie completata con reps ≤ 12 (oltre è inaffidabile, quindi si ignora); si tiene il valore più alto. Con reps = 1 vale il peso stesso.
-- Nel dettaglio esercizio si vedono entrambi; il grafico passa da uno all'altro. I record del riepilogo distinguono "NEW MAX" da "NEW EST. 1RM".
+**Maxes (per exercise)**
+- **Actual max:** the heaviest weight ever logged in a completed set, regardless of reps.
+- **Estimated 1RM:** Epley formula, `weight × (1 + reps / 30)`, computed for every completed set with reps ≤ 12 (above that it is unreliable, so it is ignored); the highest value is kept. With reps = 1 it is the weight itself.
+- The exercise detail shows both; the chart switches between them. The summary's records distinguish "NEW MAX" from "NEW EST. 1RM".
 
-**Immagini esercizi:** ogni esercizio ha un campo immagine (quadrata). Le immagini degli esercizi principali le fornisce il proprietario del progetto (elenco e nomi file in `ExerciseIcons.dc.html`, formato 512×512 PNG con sfondo scuro o trasparente). Senza immagine si mostra il riquadro tratteggiato. Anche gli esercizi creati dall'utente possono avere un'immagine.
+**Exercise images:** every exercise has an (square) image field. The images of the main exercises are provided by the project owner (list and file names in `ExerciseIcons.dc.html`, 512×512 PNG with a dark or transparent background). Without an image the dashed placeholder tile is shown. Exercises created by the user can also have an image.
 
 ### 5.3 Diet
-**Due modalità**, scelte in onboarding e modificabili da "Goals & mode":
-1. **Count foods** (`Diario`): diario per pasto; ricerca, barcode, porzioni, ricette, alimenti personalizzati.
-2. **Fixed meals** (`DiarioPiano`): pasti preimpostati con kcal/macro e descrizione; ogni giorno si spunta il pasto fatto. Toccando il pasto si apre **Adjust a meal**: mangiato come previsto / quantità diversa (valori reali) / registra gli alimenti per quel pasto / saltato. Vale solo per quel giorno.
+**Two modes**, chosen in onboarding and changeable from "Goals & mode":
+1. **Count foods** (`FoodLog`): log per meal; search, barcode, servings, recipes, custom foods.
+2. **Fixed meals** (`FoodLogFixed`): preset meals with kcal/macros and a description; each day you tick the meal you ate. Tapping the meal opens **Adjust a meal**: eaten as planned / different amount (actual values) / log the foods for that meal / skipped. It applies to that day only.
 
-Le due modalità condividono obiettivi, totali, grafici e Today.
+The two modes share goals, totals, charts and Today.
 
-**Schermate:** Food log ×2, Food search (Results / Recent / Mine / Recipes), Barcode scanner, Food detail, Create food, Recipes, Recipe editor, Goals & mode, Fixed meals editor, Adjust a meal.
+**Screens:** Food log ×2, Food search (Results / Recent / Mine / Recipes), Barcode scanner, Food detail, Create food, Recipes, Recipe editor, Goals & mode, Fixed meals editor, Adjust a meal.
 
-**Regole:**
-- Ogni voce registrata **copia** i valori nutrizionali al momento dell'inserimento.
-- Le ricette calcolano kcal e macro per porzione dagli ingredienti.
-- Il fabbisogno è calcolato con Mifflin-St Jeor × fattore di attività; l'utente lo può modificare entro i limiti di sicurezza; opzione "Higher target on training days" (+ carboidrati quando c'è una sessione registrata).
-- "Auto-split" ripartisce il target sui pasti fissi.
+**Rules:**
+- Every logged entry **copies** the nutritional values at insertion time.
+- Recipes compute kcal and macros per serving from their ingredients.
+- Energy needs are computed with Mifflin-St Jeor × activity factor; the user can change them within the safety limits; option "Higher target on training days" (+ carbohydrates when a session is logged).
+- "Auto-split" distributes the target across the fixed meals.
 
 ### 5.4 Progress
-**Schermate:** Progress (panoramica con periodo 4 WK / 12 WK / 1 YR / ALL), Strength, Muscle group detail, Body weight, Body fat & measurements, Photos, Compare photos, Check-in.
+**Screens:** Progress (overview with period 4 WK / 12 WK / 1 YR / ALL), Strength, Muscle group detail, Body weight, Body fat & measurements, Photos, Compare photos, Check-in.
 
-- **Strength score (generale):** media della variazione % dell'Estimated 1RM di ogni esercizio allenato nel periodo (ultimo valore rispetto al primo del periodo), **pesata per il numero di serie** di quell'esercizio.
-- **Per gruppo muscolare:** stessa formula sugli esercizi il cui *muscolo principale* è quel gruppo. Gruppi: Chest, Back, Shoulders, Legs, Arms, Core.
-- **Per esercizio:** variazione dell'Estimated 1RM (prima → ora).
-- **Peso:** grafico delle medie settimanali, media mobile di 7 giorni, obiettivo con barra a puntini.
-- **Body fat:** percentuale, massa magra e grassa calcolate dal peso, metodo di misura salvato (bilancia, plicometro, stima con metro). Misure: vita, fianchi, petto, braccio, coscia.
-- **Foto:** pose front / side / back per check-in; confronto affiancato o a scorrimento; private (bucket privato con URL firmati), sfocate finché non le si tocca e bloccabili con Face ID o codice. La fotocamera mostra il contorno della foto precedente.
-- **Check-in:** peso, body fat, misure, 3 foto e note; tutto facoltativo.
+- **Strength score (overall):** average of the % change in Estimated 1RM of every exercise trained in the period (latest value versus the first of the period), **weighted by the number of sets** of that exercise.
+- **Per muscle group:** same formula over the exercises whose *primary muscle* is that group. Groups: Chest, Back, Shoulders, Legs, Arms, Core.
+- **Per exercise:** change in Estimated 1RM (before → now).
+- **Weight:** chart of weekly averages, 7-day moving average, goal with a dot bar.
+- **Body fat:** percentage, lean and fat mass computed from the weight, saved measurement method (scale, calipers, tape estimate). Measurements: waist, hips, chest, arm, thigh.
+- **Photos:** front / side / back poses per check-in; side-by-side or slider comparison; private (private bucket with signed URLs), blurred until tapped and lockable with Face ID or a passcode. The camera shows the outline of the previous photo.
+- **Check-in:** weight, body fat, measurements, 3 photos and notes; everything optional.
 
 ### 5.5 Profile
-**Schermate:** Profile, Personal info, Settings, Accessibility, Privacy & data. "Diet goals & mode" riusa la schermata della sezione Diet.
+**Screens:** Profile, Personal info, Settings, Accessibility, Privacy & data. "Diet goals & mode" reuses the screen from the Diet section.
 
-- **Personal info:** nome, data di nascita, altezza, sesso (per la formula), attività quotidiana, esperienza, dove ti alleni. Se cambiano, si **propongono** nuovi target ma non si applicano senza conferma.
-- **Settings:** unità (kg/lb, cm/ft·in, kcal/kJ, inizio settimana), colore d'accento (6 opzioni), tema (Dark; Light e System previsti ma il tema chiaro non è ancora disegnato), lingua, notifiche (fine recupero, promemoria allenamento, check-in settimanale, pasti).
-- **Accessibility:** dimensione del testo, testo in grassetto, numeri a matrice di punti on/off, contrasto alto, riduzione movimento, vibrazione, one-hand mode in palestra, conto alla rovescia vocale del recupero.
-- **Privacy & data:** esportazione completa (ZIP: JSON + CSV + foto) e dei soli allenamenti in CSV; sfocatura e blocco delle foto; statistiche anonime (off di default); condivisione con un coach (premium, off); revoca del consenso ai dati sanitari; eliminazione dell'account (tutto rimosso entro 30 giorni, con conferma forte).
+- **Personal info:** name, date of birth, height, sex (for the formula), daily activity, experience, where you train. If they change, new targets are **proposed** but not applied without confirmation.
+- **Settings:** units (kg/lb, cm/ft·in, kcal/kJ, week start), accent colour (6 options), theme (Dark; Light and System planned but the light theme is not designed yet), language, notifications (end of rest, workout reminder, weekly check-in, meals).
+- **Accessibility:** text size, bold text, dot-matrix numbers on/off, high contrast, reduced motion, haptics, one-hand mode in the gym, spoken rest countdown.
+- **Privacy & data:** full export (ZIP: JSON + CSV + photos) and workouts-only CSV; photo blur and lock; anonymous statistics (off by default); sharing with a coach (premium, off); withdrawal of consent to health data; account deletion (everything removed within 30 days, with strong confirmation).
 
-### 5.6 Onboarding (non ancora disegnato)
-Registrazione (email, Apple, Google), obiettivo, dati fisici, attività ed esperienza, calcolo del fabbisogno, scelta della modalità dieta (nel caso dei pasti fissi, impostazione dei pasti con ripartizione proposta), consenso esplicito ai dati sanitari. **Proponi tu le schermate seguendo lo stesso design system e mostrale prima di implementarle.**
+### 5.6 Onboarding (not designed yet)
+Sign-up (email, Apple, Google), goal, body data, activity and experience, energy needs calculation, choice of diet mode (for fixed meals, setting up the meals with a proposed split), explicit consent to health data. **Propose the screens yourself following the same design system and show them before implementing.**
 
-### 5.7 Premium (solo vetrina ora)
-Card "Premium" nel profilo e righe premium disattivate. Nessuna funzione bloccata nel gratuito.
+### 5.7 Premium (showcase only for now)
+"Premium" card in the profile and disabled premium rows. No feature is locked in the free version.
 
 ---
 
-## 6. Base dati (Postgres / Supabase)
+## 6. Database (Postgres / Supabase)
 
-### Utente e impostazioni
+### User and settings
 - `profiles` (id = auth user id, name, birth_date, sex, height_cm, activity_level, experience, training_location, timezone, diet_mode `'tracking'|'fixed_meals'`, created_at)
 - `user_settings` (user_id, weight_unit, length_unit, energy_unit, week_start, accent, theme, language, text_scale, bold_text, dot_numbers, high_contrast, reduce_motion, haptics, one_hand_mode, spoken_countdown, notifications jsonb)
 - `consents` (id, user_id, type `'health_data'|'analytics'`, granted_at, withdrawn_at)
 
-### Allenamento
-- `exercises` (id, owner_id null = catalogo, name, primary_muscle, secondary_muscles text[], equipment, log_type `'weight_reps'|'reps'|'time'|'distance_time'`, image_path)
+### Training
+- `exercises` (id, owner_id null = catalogue, name, primary_muscle, secondary_muscles text[], equipment, log_type `'weight_reps'|'reps'|'time'|'distance_time'`, image_path)
 - `workout_plans` (id, user_id, name, goal, active, source `'manual'|'ai'|'trainer'`)
 - `plan_days` (id, plan_id, position, name)
 - `plan_exercises` (id, plan_day_id, exercise_id, position, target_sets, target_reps text, rest_s, notes)
 - `workout_sessions` (id, user_id, plan_id null, plan_day_id null, cycle_number null, out_of_order bool, started_at, ended_at, feeling 1–5, notes, status `'active'|'done'|'discarded'`)
 - `session_sets` (id, session_id, exercise_id, set_index, weight_kg, reps, duration_s, distance_m, completed_at)
-- Viste: `exercise_records` (actual max, best Epley per esercizio), `strength_by_period` (punteggio generale e per gruppo).
+- Views: `exercise_records` (actual max, best Epley per exercise), `strength_by_period` (overall and per-group score).
 
-### Alimentazione
-- `foods` (id, owner_id null = globale, barcode, name, brand, kcal_100g, protein_100g, carbs_100g, sugars_100g, fat_100g, saturates_100g, fiber_100g, salt_100g, source `'off'|'custom'`, verified)
+### Nutrition
+- `foods` (id, owner_id null = global, barcode, name, brand, kcal_100g, protein_100g, carbs_100g, sugars_100g, fat_100g, saturates_100g, fiber_100g, salt_100g, source `'off'|'custom'`, verified)
 - `food_servings` (id, food_id, label, grams)
-- `food_logs` (id, user_id, day, meal, food_id null, recipe_id null, grams | servings, kcal, protein_g, carbs_g, fat_g **copiati**)
+- `food_logs` (id, user_id, day, meal, food_id null, recipe_id null, grams | servings, kcal, protein_g, carbs_g, fat_g **copied**)
 - `recipes` (id, user_id, name, servings) + `recipe_items` (recipe_id, food_id, grams)
 - `nutrition_goals` (id, user_id, valid_from, kcal, protein_g, carbs_g, fat_g, training_day_bonus_kcal)
 - `fixed_meal_plans` (id, user_id, name, active, source) + `fixed_meals` (id, plan_id, position, name, kcal, protein_g, carbs_g, fat_g, description)
-- `fixed_meal_checks` (id, user_id, day, fixed_meal_id, status `'done'|'adjusted'|'skipped'`, kcal, protein_g, carbs_g, fat_g **copiati**, checked_at)
+- `fixed_meal_checks` (id, user_id, day, fixed_meal_id, status `'done'|'adjusted'|'skipped'`, kcal, protein_g, carbs_g, fat_g **copied**, checked_at)
 - `water_logs` (id, user_id, day, ml)
-- Vista `daily_nutrition_totals` = `food_logs` + `fixed_meal_checks` (done/adjusted) per giorno: Today, diario e grafici leggono solo da qui.
+- View `daily_nutrition_totals` = `food_logs` + `fixed_meal_checks` (done/adjusted) per day: Today, the log and the charts read only from here.
 
-### Progressi
+### Progress
 - `body_metrics` (id, user_id, day, weight_kg, body_fat_pct, bf_method, waist_cm, hips_cm, chest_cm, arm_cm, thigh_cm, notes)
 - `progress_photos` (id, user_id, day, pose `'front'|'side'|'back'`, storage_path)
 
-### Regole valide per tutte le tabelle
-1. Catalogo e dati personali nella stessa tabella (`owner_id` null = pubblico). RLS: ognuno legge le righe pubbliche e le proprie, scrive solo le proprie.
-2. Unità sempre metriche nel DB; le conversioni avvengono solo nell'interfaccia.
-3. `day` è la data locale dell'utente, calcolata con il suo fuso orario al momento dell'inserimento.
-4. Obiettivi con storico (`valid_from`).
-5. Record e punteggi si calcolano con viste, non si salvano.
-6. Pronto per sync offline: UUID generati dal client, `created_at`, `updated_at`, `deleted_at` ovunque.
-7. Campo `source` su schede e piani (manual/ai/trainer). In futuro si aggiungono `coach_clients` e `messages` senza toccare le tabelle esistenti.
-8. Foto ed immagini in bucket Storage: foto progressi in un **bucket privato** con URL firmati; immagini degli esercizi del catalogo in un bucket pubblico.
-9. Indici sulle query frequenti: `food_logs(user_id, day)`, `session_sets(session_id)`, `session_sets(exercise_id)`, `foods(barcode)`, ricerca testuale su `foods.name` ed `exercises.name`.
+### Rules for all tables
+1. Catalogue and personal data in the same table (`owner_id` null = public). RLS: everyone reads the public rows and their own, and writes only their own.
+2. Units are always metric in the DB; conversions happen only in the interface.
+3. `day` is the user's local date, computed with their time zone at insertion time.
+4. Goals with history (`valid_from`).
+5. Records and scores are computed with views, not stored.
+6. Ready for offline sync: client-generated UUIDs, `created_at`, `updated_at`, `deleted_at` everywhere.
+7. `source` field on plans (manual/ai/trainer). `coach_clients` and `messages` can be added later without touching the existing tables.
+8. Photos and images in Storage buckets: progress photos in a **private bucket** with signed URLs; catalogue exercise images in a public bucket.
+9. Indexes on frequent queries: `food_logs(user_id, day)`, `session_sets(session_id)`, `session_sets(exercise_id)`, `foods(barcode)`, text search on `foods.name` and `exercises.name`.
 
 ---
 
-## 7. Piano di sviluppo
+## 7. Development plan
 
-- **Fase 0 – Fondamenta:** repo, Expo + TS + Expo Router, lint, Supabase locale, migrazione completa con RLS, seed degli esercizi (≥ 60 con muscoli e attrezzatura), **design system in codice** (token da `tokens.json`, font, componenti: Screen con safe area e sfondo a puntini, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar, DotColumnChart, TabBar, BottomActionBar, Sheet, Toast con Undo, ExerciseImage) e una pagina di catalogo dei componenti per verificarli.
-- **Fase 1 – Account e onboarding:** auth, proposta e implementazione dell'onboarding, calcolo del fabbisogno, consenso.
-- **Fase 2 – Allenamento:** libreria, schede, editor, **sessione attiva offline**, rotazione dei cicli, riepilogo, storico, massimali.
-- **Fase 3 – Dieta:** prima i pasti fissi (più semplici), poi conteggio alimenti, Open Food Facts e barcode, alimenti personalizzati, ricette, obiettivi.
-- **Fase 4 – Today e Progress:** home, forza (generale, per gruppo, per esercizio), peso, body fat e misure, foto e confronto, check-in.
-- **Fase 5 – Profilo e conformità:** impostazioni, accessibilità, esportazione, consensi, eliminazione dell'account.
-- **Dopo:** tema chiaro, premium (abbonamenti, widget, integrazioni, IA), marketplace.
+- **Phase 0 – Foundations:** repo, Expo + TS + Expo Router, lint, local Supabase, full migration with RLS, exercise seed (≥ 60 with muscles and equipment), **design system in code** (tokens from `tokens.json`, fonts, components: Screen with safe area and dot background, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar, DotColumnChart, TabBar, BottomActionBar, Sheet, Toast with Undo, ExerciseImage) and a component catalogue page to check them.
+- **Phase 1 – Account and onboarding:** auth, onboarding proposal and implementation, energy needs calculation, consent.
+- **Phase 2 – Training:** library, plans, editor, **offline active session**, cycle rotation, summary, history, maxes.
+- **Phase 3 – Diet:** fixed meals first (simpler), then food counting, Open Food Facts and barcode, custom foods, recipes, goals.
+- **Phase 4 – Today and Progress:** home, strength (overall, per group, per exercise), weight, body fat and measurements, photos and comparison, check-in.
+- **Phase 5 – Profile and compliance:** settings, accessibility, export, consents, account deletion.
+- **Later:** light theme, premium (subscriptions, widgets, integrations, AI), marketplace.
 
 ---
 
-## 8. Come lavorare
+## 8. How to work
 
-1. **Non scrivere codice subito.** Leggi questo documento e `docs/design/` (almeno SCREENS.md, NAVIGATION.md, tokens.json e una manciata di schermate), poi rispondi con:
-   - dubbi o punti da cambiare;
-   - la struttura delle cartelle;
-   - il piano dettagliato della **Fase 0** a passi piccoli e verificabili.
-2. Aspetta la mia conferma. Poi procedi un passo alla volta: alla fine di ogni passo dimmi cosa hai fatto, come verificarlo e fai un commit.
-3. Mantieni aggiornato `CLAUDE.md` con le regole essenziali (stack, comandi, convenzioni, token, regole DB, regole di ergonomia).
-4. Per le decisioni costose da cambiare (sync, navigazione, auth, struttura dati) chiedimi prima.
-5. Quando implementi una schermata, aprine il file `.dc.html` e rispetta testi, gerarchia, dimensioni e stati. Se qualcosa nel design è incoerente o impossibile, dimmelo invece di improvvisare.
-6. Niente premium, IA o trainer ora, ma niente scelte che li rendano difficili.
-7. Quando fai una scelta tecnica non ovvia, spiegala in due righe.
+1. **Do not write code right away.** Read this document and `docs/design/` (at least SCREENS.md, NAVIGATION.md, tokens.json and a handful of screens), then reply with:
+   - doubts or points to change;
+   - the folder structure;
+   - the detailed plan for **Phase 0** in small, verifiable steps.
+2. Wait for my confirmation. Then proceed one step at a time: at the end of each step tell me what you did, how to verify it, and make a commit.
+3. Keep `CLAUDE.md` up to date with the essential rules (stack, commands, conventions, tokens, DB rules, ergonomics rules).
+4. For decisions that are expensive to change (sync, navigation, auth, data structure), ask me first.
+5. When you implement a screen, open its `.dc.html` file and respect texts, hierarchy, sizes and states. If something in the design is inconsistent or impossible, tell me instead of improvising.
+6. No premium, AI or trainers now, but no choices that make them difficult.
+7. When you make a non-obvious technical choice, explain it in two lines.

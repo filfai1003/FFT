@@ -1,220 +1,220 @@
 # Navigation graph
 
 Generated from the links inside the mockups. "→ Target: label" means a control on that screen opens the target screen.
-Every tab-level screen also has the bottom bar: Today → Main, Train → Schede, Diet → Diario (or DiarioPiano in fixed-meals mode), Progress → Progressi, Profile → Profilo. Those links are omitted below.
+Every tab-level screen also has the bottom bar: Today → Main, Train → Plans, Diet → FoodLog (or FoodLogFixed in fixed-meals mode), Progress → Progress, Profile → Profile. Those links are omitted below.
 
-## Accessibility (`Accessibilita`)
+## Accessibility (`Accessibility`)
 
-- → Profile (`Profilo`): "Back"
+- → Profile (`Profile`): "Back"
 
-## Food detail / log entry (`AlimentoDettaglio`)
+## Food detail / log entry (`FoodDetail`)
 
-- → Food search (`Cerca`): "Back"
-- → Food log (count-foods mode) (`Diario`): "Add to lunch"
+- → Food search (`FoodSearch`): "Back"
+- → Food log (count-foods mode) (`FoodLog`): "Add to lunch"
 
-## Food search (`Cerca`)
+## Food search (`FoodSearch`)
 
-- → Food log (count-foods mode) (`Diario`): "Back to food log"
+- → Food log (count-foods mode) (`FoodLog`): "Back to food log"
 - → Barcode scanner (`Scanner`): "Scan barcode"
-- → Recipes (`Ricette`): "RECIPES"
-- → Food detail / log entry (`AlimentoDettaglio`): "Choose amount of {{f.name}}"
-- → Create food (`CreaAlimento`): "CAN'T FIND IT? CREATE A FOOD"
-- → Food log (count-foods mode) (`Diario`): "Add to lunch"
+- → Recipes (`Recipes`): "RECIPES"
+- → Food detail / log entry (`FoodDetail`): "Choose amount of {{f.name}}"
+- → Create food (`CreateFood`): "CAN'T FIND IT? CREATE A FOOD"
+- → Food log (count-foods mode) (`FoodLog`): "Add to lunch"
 
 ## Check-in (`CheckIn`)
 
-- → Progress (`Progressi`): "Cancel"
-- → Progress (`Progressi`): "Save check-in"
+- → Progress (`Progress`): "Cancel"
+- → Progress (`Progress`): "Save check-in"
 
-## Body fat & measurements (`Composizione`)
+## Body fat & measurements (`BodyComposition`)
 
-- → Progress (`Progressi`): "Back"
+- → Progress (`Progress`): "Back"
 - → Check-in (`CheckIn`): "Log measurements"
 
-## Create food (`CreaAlimento`)
+## Create food (`CreateFood`)
 
-- → Food search (`Cerca`): "Cancel"
+- → Food search (`FoodSearch`): "Cancel"
 - → Barcode scanner (`Scanner`): "Scan barcode"
-- → Food detail / log entry (`AlimentoDettaglio`): "Save food"
+- → Food detail / log entry (`FoodDetail`): "Save food"
 
-## Create exercise (`CreaEsercizio`)
+## Create exercise (`CreateExercise`)
 
-- → Pick exercises (`SelezionaEsercizi`): "Cancel"
-- → Pick exercises (`SelezionaEsercizi`): "Save exercise"
+- → Pick exercises (`ExercisePicker`): "Cancel"
+- → Pick exercises (`ExercisePicker`): "Save exercise"
 
-## Food log (count-foods mode) (`Diario`)
+## Food log (count-foods mode) (`FoodLog`)
 
-- → Goals & tracking mode (`ObiettiviDieta`): "Goals and tracking mode"
-- → Food search (`Cerca`): "Add to {{m.name}}"
-- → Food detail / log entry (`AlimentoDettaglio`): "… … …"
+- → Goals & tracking mode (`DietGoals`): "Goals and tracking mode"
+- → Food search (`FoodSearch`): "Add to {{m.name}}"
+- → Food detail / log entry (`FoodDetail`): "… … …"
 
-## Food log (fixed-meals mode) (`DiarioPiano`)
+## Food log (fixed-meals mode) (`FoodLogFixed`)
 
-- → Goals & tracking mode (`ObiettiviDieta`): "Goals and tracking mode"
-- → Fixed meals editor (`PianoPastiEditor`): "EDIT"
-- → Adjust a fixed meal (`PastoModifica`): "… UP NEXT DONE … KCAL · P … · C … · F … …"
+- → Goals & tracking mode (`DietGoals`): "Goals and tracking mode"
+- → Fixed meals editor (`FixedMealsEditor`): "EDIT"
+- → Adjust a fixed meal (`AdjustMeal`): "… UP NEXT DONE … KCAL · P … · C … · F … …"
 
-## Day editor (`EditorScheda`)
+## Day editor (`DayEditor`)
 
-- → Plan detail (`SchedaDettaglio`): "Cancel"
-- → Pick exercises (`SelezionaEsercizi`): "+ ADD EXERCISE"
-- → Plan detail (`SchedaDettaglio`): "Save day"
+- → Plan detail (`PlanDetail`): "Cancel"
+- → Pick exercises (`ExercisePicker`): "+ ADD EXERCISE"
+- → Plan detail (`PlanDetail`): "Save day"
 
-## Exercise detail (`EsercizioDettaglio`)
+## Exercise detail (`ExerciseDetail`)
 
-- → Exercise library (`Libreria`): "Back"
-- → Session detail (`SessioneDettaglio`): "… …"
+- → Exercise library (`ExerciseLibrary`): "Back"
+- → Session detail (`SessionDetail`): "… …"
 
-## Strength (`ForzaGruppi`)
+## Strength (`Strength`)
 
-- → Progress (`Progressi`): "Back"
-- → Muscle group detail (`ForzaGruppo`): "… … SETS …"
+- → Progress (`Progress`): "Back"
+- → Muscle group detail (`MuscleGroup`): "… … SETS …"
 
-## Muscle group detail (`ForzaGruppo`)
+## Muscle group detail (`MuscleGroup`)
 
-- → Strength (`ForzaGruppi`): "Back"
-- → Exercise detail (`EsercizioDettaglio`): "… … → … KG …"
+- → Strength (`Strength`): "Back"
+- → Exercise detail (`ExerciseDetail`): "… … → … KG …"
 
-## Progress photos (`Foto`)
+## Progress photos (`Photos`)
 
-- → Progress (`Progressi`): "Back"
+- → Progress (`Progress`): "Back"
 - → Check-in (`CheckIn`): "Add photos"
-- → Compare photos (`FotoConfronta`): "Compare two check-ins"
+- → Compare photos (`ComparePhotos`): "Compare two check-ins"
 
-## Compare photos (`FotoConfronta`)
+## Compare photos (`ComparePhotos`)
 
-- → Progress photos (`Foto`): "Back"
+- → Progress photos (`Photos`): "Back"
 
-## Settings (units, look, notifications) (`Impostazioni`)
+## Settings (units, look, notifications) (`Settings`)
 
-- → Profile (`Profilo`): "Back"
+- → Profile (`Profile`): "Back"
 
-## Exercise library (`Libreria`)
+## Exercise library (`ExerciseLibrary`)
 
-- → My plans (`Schede`): "Back"
-- → Create exercise (`CreaEsercizio`): "Create exercise"
-- → Exercise detail (`EsercizioDettaglio`): "… MINE …"
+- → My plans (`Plans`): "Back"
+- → Create exercise (`CreateExercise`): "Create exercise"
+- → Exercise detail (`ExerciseDetail`): "… MINE …"
 
 ## Today (`Main`)
 
-- → Active session (`Sessione`): "Start"
-- → Plan detail (`SchedaDettaglio`): "TRAIN A DIFFERENT DAY"
-- → Food search (`Cerca`): "Meal"
+- → Active session (`ActiveSession`): "Start"
+- → Plan detail (`PlanDetail`): "TRAIN A DIFFERENT DAY"
+- → Food search (`FoodSearch`): "Meal"
 
-## Goals & tracking mode (`ObiettiviDieta`)
+## Goals & tracking mode (`DietGoals`)
 
-- → Food log (count-foods mode) (`Diario`): "Cancel"
-- → Food log (count-foods mode) (`Diario`): "Count foods Log every food you eat, by search or barcode."
-- → Food log (fixed-meals mode) (`DiarioPiano`): "Fixed meals Set your meals once, then tick them off."
-- → Food log (count-foods mode) (`Diario`): "Save goals"
+- → Food log (count-foods mode) (`FoodLog`): "Cancel"
+- → Food log (count-foods mode) (`FoodLog`): "Count foods Log every food you eat, by search or barcode."
+- → Food log (fixed-meals mode) (`FoodLogFixed`): "Fixed meals Set your meals once, then tick them off."
+- → Food log (count-foods mode) (`FoodLog`): "Save goals"
 
-## Adjust a fixed meal (`PastoModifica`)
+## Adjust a fixed meal (`AdjustMeal`)
 
-- → Food search (`Cerca`): "Log the foods instead"
-- → Food log (fixed-meals mode) (`DiarioPiano`): "Save for today"
+- → Food search (`FoodSearch`): "Log the foods instead"
+- → Food log (fixed-meals mode) (`FoodLogFixed`): "Save for today"
 
-## Body weight (`Peso`)
+## Body weight (`BodyWeight`)
 
-- → Progress (`Progressi`): "Back"
+- → Progress (`Progress`): "Back"
 
-## Fixed meals editor (`PianoPastiEditor`)
+## Fixed meals editor (`FixedMealsEditor`)
 
-- → Food log (fixed-meals mode) (`DiarioPiano`): "Cancel"
-- → Food log (fixed-meals mode) (`DiarioPiano`): "Save plan"
+- → Food log (fixed-meals mode) (`FoodLogFixed`): "Cancel"
+- → Food log (fixed-meals mode) (`FoodLogFixed`): "Save plan"
 
-## Profile (`Profilo`)
+## Profile (`Profile`)
 
-- → Personal info (`ProfiloInfo`): "AM Alex Morgan FREE 31 Y · 180 CM · 78.4 KG"
+- → Personal info (`PersonalInfo`): "AM Alex Morgan FREE 31 Y · 180 CM · 78.4 KG"
 
-## Privacy & data (`ProfiloDati`)
+## Privacy & data (`PrivacyData`)
 
-- → Profile (`Profilo`): "Back"
+- → Profile (`Profile`): "Back"
 
-## Personal info (`ProfiloInfo`)
+## Personal info (`PersonalInfo`)
 
-- → Profile (`Profilo`): "Cancel"
-- → Profile (`Profilo`): "Save changes"
+- → Profile (`Profile`): "Cancel"
+- → Profile (`Profile`): "Save changes"
 
-## Progress (`Progressi`)
+## Progress (`Progress`)
 
 - → Check-in (`CheckIn`): "New check-in"
-- → Strength (`ForzaGruppi`): "STRENGTH +8.4% AVG CHANGE IN EST. 1RM TOP · BACK +11% · CHES"
-- → Progress photos (`Foto`): "PHOTOS · LAST CHECK-IN OCT 1 …"
+- → Strength (`Strength`): "STRENGTH +8.4% AVG CHANGE IN EST. 1RM TOP · BACK +11% · CHES"
+- → Progress photos (`Photos`): "PHOTOS · LAST CHECK-IN OCT 1 …"
 
-## Recipe editor (`RicettaDettaglio`)
+## Recipe editor (`RecipeEditor`)
 
-- → Recipes (`Ricette`): "Cancel"
-- → Food search (`Cerca`): "+ ADD INGREDIENT"
-- → Food detail / log entry (`AlimentoDettaglio`): "Log a serving"
-- → Recipes (`Ricette`): "Save recipe"
+- → Recipes (`Recipes`): "Cancel"
+- → Food search (`FoodSearch`): "+ ADD INGREDIENT"
+- → Food detail / log entry (`FoodDetail`): "Log a serving"
+- → Recipes (`Recipes`): "Save recipe"
 
-## Recipes (`Ricette`)
+## Recipes (`Recipes`)
 
-- → Food search (`Cerca`): "Back to food search"
-- → Recipe editor (`RicettaDettaglio`): "New recipe"
-- → Recipe editor (`RicettaDettaglio`): "… … SERVINGS · P … · C … · F …"
-- → Food detail / log entry (`AlimentoDettaglio`): "Log a serving of {{r.name}}"
+- → Food search (`FoodSearch`): "Back to food search"
+- → Recipe editor (`RecipeEditor`): "New recipe"
+- → Recipe editor (`RecipeEditor`): "… … SERVINGS · P … · C … · F …"
+- → Food detail / log entry (`FoodDetail`): "Log a serving of {{r.name}}"
 
-## Session summary (`Riepilogo`)
+## Session summary (`SessionSummary`)
 
 - → Today (`Main`): "Save and close"
-- → Session detail (`SessioneDettaglio`): "See all sets"
+- → Session detail (`SessionDetail`): "See all sets"
 
 ## Barcode scanner (`Scanner`)
 
-- → Food search (`Cerca`): "Close scanner"
-- → Food detail / log entry (`AlimentoDettaglio`): "Choose amount"
-- → Create food (`CreaAlimento`): "NOT FOUND? CREATE"
+- → Food search (`FoodSearch`): "Close scanner"
+- → Food detail / log entry (`FoodDetail`): "Choose amount"
+- → Create food (`CreateFood`): "NOT FOUND? CREATE"
 
-## Plan detail (`SchedaDettaglio`)
+## Plan detail (`PlanDetail`)
 
-- → My plans (`Schede`): "Back"
-- → Day editor (`EditorScheda`): "Edit {{d.name}}"
-- → Active session (`Sessione`): "Start {{d.name}} now"
-- → Active session (`Sessione`): "Start …"
-- → Day editor (`EditorScheda`): "+ ADD DAY"
-- → Active session (`Sessione`): "EMPTY WORKOUT"
+- → My plans (`Plans`): "Back"
+- → Day editor (`DayEditor`): "Edit {{d.name}}"
+- → Active session (`ActiveSession`): "Start {{d.name}} now"
+- → Active session (`ActiveSession`): "Start …"
+- → Day editor (`DayEditor`): "+ ADD DAY"
+- → Active session (`ActiveSession`): "EMPTY WORKOUT"
 
-## My plans (`Schede`)
+## My plans (`Plans`)
 
-- → Plan detail (`SchedaDettaglio`): "ACTIVE PLAN PPL 4-day"
-- → Active session (`Sessione`): "Start"
-- → Plan detail (`SchedaDettaglio`): "TRAIN A DIFFERENT DAY"
-- → Exercise library (`Libreria`): "Library EXERCISES"
-- → History (`Storico`): "History LAST: YESTERDAY"
-- → Plan detail (`SchedaDettaglio`): "… …"
+- → Plan detail (`PlanDetail`): "ACTIVE PLAN PPL 4-day"
+- → Active session (`ActiveSession`): "Start"
+- → Plan detail (`PlanDetail`): "TRAIN A DIFFERENT DAY"
+- → Exercise library (`ExerciseLibrary`): "Library EXERCISES"
+- → History (`History`): "History LAST: YESTERDAY"
+- → Plan detail (`PlanDetail`): "… …"
 
-## Pick exercises (`SelezionaEsercizi`)
+## Pick exercises (`ExercisePicker`)
 
-- → Day editor (`EditorScheda`): "Close"
-- → Create exercise (`CreaEsercizio`): "+ Create new"
-- → Day editor (`EditorScheda`): "Add 2 exercises"
+- → Day editor (`DayEditor`): "Close"
+- → Create exercise (`CreateExercise`): "+ Create new"
+- → Day editor (`DayEditor`): "Add 2 exercises"
 
-## Active session (`Sessione`)
+## Active session (`ActiveSession`)
 
-- → My plans (`Schede`): "Minimize session (keeps running)"
-- → Finish confirmation (`SessioneFine`): "Finish"
-- → Exercise detail (`EsercizioDettaglio`): "Exercise details"
+- → My plans (`Plans`): "Minimize session (keeps running)"
+- → Finish confirmation (`FinishConfirmation`): "Finish"
+- → Exercise detail (`ExerciseDetail`): "Exercise details"
 
-## Session detail (`SessioneDettaglio`)
+## Session detail (`SessionDetail`)
 
-- → History (`Storico`): "Back"
-- → Exercise detail (`EsercizioDettaglio`): "… …"
-- → Active session (`Sessione`): "Repeat this workout"
+- → History (`History`): "Back"
+- → Exercise detail (`ExerciseDetail`): "… …"
+- → Active session (`ActiveSession`): "Repeat this workout"
 
-## Finish confirmation (`SessioneFine`)
+## Finish confirmation (`FinishConfirmation`)
 
-- → Session summary (`Riepilogo`): "Finish and save"
-- → Active session (`Sessione`): "Keep training"
+- → Session summary (`SessionSummary`): "Finish and save"
+- → Active session (`ActiveSession`): "Keep training"
 
-## History (`Storico`)
+## History (`History`)
 
-- → My plans (`Schede`): "Back"
-- → Session detail (`SessioneDettaglio`): "… … … OUT OF ORDER …"
+- → My plans (`Plans`): "Back"
+- → Session detail (`SessionDetail`): "… … … OUT OF ORDER …"
 
 ## Links built from data (not caught by the generator)
 
-- Progress (`Progressi`): Body weight card → `Peso`; Body fat card → `Composizione`.
-- Profile (`Profilo`): Personal info → `ProfiloInfo`; Diet goals & mode → `ObiettiviDieta`; Units, look & alerts → `Impostazioni`; Accessibility → `Accessibilita`; Privacy & data → `ProfiloDati`.
-- Fixed-meals food log (`DiarioPiano`): tapping a meal's text opens `PastoModifica` (Adjust a meal); the check button only toggles done/undone.
-- Goals & mode (`ObiettiviDieta`): choosing a tracking mode switches which log the Diet tab shows (`Diario` or `DiarioPiano`).
+- Progress (`Progress`): Body weight card → `BodyWeight`; Body fat card → `BodyComposition`.
+- Profile (`Profile`): Personal info → `PersonalInfo`; Diet goals & mode → `DietGoals`; Units, look & alerts → `Settings`; Accessibility → `Accessibility`; Privacy & data → `PrivacyData`.
+- Fixed-meals food log (`FoodLogFixed`): tapping a meal's text opens `AdjustMeal` (Adjust a meal); the check button only toggles done/undone.
+- Goals & mode (`DietGoals`): choosing a tracking mode switches which log the Diet tab shows (`FoodLog` or `FoodLogFixed`).

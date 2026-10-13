@@ -63,4 +63,4 @@ before the phase that depends on it.
 
 - Exercise images: 3 of the 12 PNGs are in (deadlift, bench press, back squat). Missing: incline-db-press, overhead-press, lateral-raise, cable-fly, pushdown, pull-up, barbell-row, lat-pulldown, biceps-curl, romanian-deadlift. Drop them in `assets/exercise-images/<slug>.png`, then `npm run db:seed` and `npm run db:images`.
 - Apple / Google sign-in, light theme, "How to perform" section of exercise detail.
-- Not verified on a device: camera / photo capture, barcode scanner, biometrics, local notifications.
+- Verified on a device: local notifications, camera / photo capture, biometrics, barcode scanner. The scanner works, but no products are linked to scanned barcodes yet.
