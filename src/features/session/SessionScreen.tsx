@@ -13,6 +13,7 @@ import { useAppearanceStore } from '@/design/appearance-store';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ExerciseThumb } from '@/features/train/exercise-image';
+import { usePlan } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
@@ -52,6 +53,8 @@ export function SessionScreen() {
   const now = useNow(1000, active != null);
   const [finishing, setFinishing] = useState(false);
   const [menu, setMenu] = useState(false);
+  // Planned reps also for workouts started before they were saved in the session.
+  const plan = usePlan(active?.planId ?? undefined);
 
   if (!hydrated) return <Screen>{null}</Screen>;
   if (!active || active.id !== sessionId) {
@@ -71,6 +74,12 @@ export function SessionScreen() {
   // An empty workout has no exercise: never read through `exercise` unguarded (the compiler may hoist it).
   const sets = exercise?.sets ?? [];
   const exerciseName = exercise?.name ?? '';
+  const targetReps =
+    exercise?.targetReps ??
+    plan.data?.days
+      .find((d) => d.id === active.planDayId)
+      ?.exercises.find((e) => e.exerciseId === exercise?.exerciseId)
+      ?.targetReps.trim();
   const previousEx = active.exercises[index - 1];
   const nextEx = active.exercises[index + 1];
 
@@ -181,9 +190,9 @@ export function SessionScreen() {
                 <Text variant="titleM" accessibilityRole="header">
                   {exercise.name}
                 </Text>
-                {exercise.targetReps ? (
+                {targetReps ? (
                   <Text variant="label" muted>
-                    {t('session.targetReps', { reps: exercise.targetReps.replace('-', '–') })}
+                    {t('session.targetReps', { reps: targetReps.replace('-', '–') })}
                   </Text>
                 ) : null}
               </View>
