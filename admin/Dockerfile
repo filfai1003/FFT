@@ -1,5 +1,4 @@
 # Admin panel. Built from the repository root (Railway: dockerfilePath = admin/Dockerfile).
-# (Admin panel: see docs/ADMIN.md.)
 FROM node:24-slim
 # pg_dump, the same major version as the server (17), for the backups.
 RUN apt-get update \

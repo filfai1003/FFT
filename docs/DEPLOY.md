@@ -17,7 +17,7 @@ Services, all on Railway's private network, one public URL (Kong):
 | `kong`     | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1` |
 | `api`      | this repo (`server/Dockerfile`)    | **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
 
-Public URL: `https://kong-production-d2ca.up.railway.app`.
+Public URL: `https://your-backend.example.com`.
 
 `api` is the automatic part: at every start it applies the `supabase/migrations/*.sql` not applied yet
 (tracked in `public.app_migrations`) and serves `off` and `delete-account` (the Deno files in
@@ -65,7 +65,7 @@ Package name: `com.filfai1003.fft`.
 
 ## Install page and APK download
 - Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
-  Address: `https://site-production-b946.up.railway.app`. It shows the download button, the install
+  Address: `https://your-backend.example.com`. It shows the download button, the install
   steps, screenshots (`site/screens/`) and an animated dot-grid background.
 - The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit). Publish a new
   one with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
