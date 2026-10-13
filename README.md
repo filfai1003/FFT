@@ -2,6 +2,8 @@
 
 A freemium mobile app for training, diet and progress tracking: log workouts offline, plan meals, and see your strength and body trends over time.
 
+📱 Try it on Android: [fft.up.railway.app](https://fft.up.railway.app/)
+
 Spec in `docs/PROJECT.md`, design in `docs/design/`, working rules in `CLAUDE.md`.
 
 ## Highlights
