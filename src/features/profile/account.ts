@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { signOut } from '@/features/auth/api';
+import { useConversations } from '@/features/ai/agent/conversations';
 import { useSessionStore as useWorkout } from '@/features/session/store';
 import { syncPendingSessions } from '@/features/session/sync';
 import { getMode } from '@/lib/mode';
@@ -110,6 +111,8 @@ export async function deleteAccount(queryClient: { clear: () => void }): Promise
   }
   const { error } = await getSupabase().functions.invoke('delete-account');
   if (error) return error.message;
+  const userId = useAuth.getState().userId;
+  if (userId) useConversations.getState().clearUser(userId);
   await signOut().catch(() => undefined);
   clearLocalUserData(queryClient);
   return null;

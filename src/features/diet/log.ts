@@ -121,20 +121,19 @@ function toGoal(r: GoalRow): GoalWithMaintenance {
   };
 }
 
+export async function fetchGoals() {
+  const { data, error } = await getSupabase()
+    .from('nutrition_goals')
+    .select('*')
+    .is('deleted_at', null)
+    .order('valid_from', { ascending: false })
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data as unknown as GoalRow[]).map(toGoal);
+}
+
 export function useGoals() {
-  return useQuery({
-    queryKey: dietKeys.goals,
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('nutrition_goals')
-        .select('*')
-        .is('deleted_at', null)
-        .order('valid_from', { ascending: false })
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return (data as unknown as GoalRow[]).map(toGoal);
-    },
-  });
+  return useQuery({ queryKey: dietKeys.goals, queryFn: fetchGoals });
 }
 
 export function useGoalForDay(day: string): GoalWithMaintenance | null {

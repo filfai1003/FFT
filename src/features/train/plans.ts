@@ -117,19 +117,18 @@ export const planKeys = {
   sessions: (planId: string) => ['plan-sessions', planId] as const,
 };
 
+export async function fetchPlans() {
+  const { data, error } = await getSupabase()
+    .from('workout_plans')
+    .select(PLAN_SELECT)
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data as unknown as Raw[]).map(toPlan);
+}
+
 export function usePlans() {
-  return useQuery({
-    queryKey: planKeys.all,
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('workout_plans')
-        .select(PLAN_SELECT)
-        .is('deleted_at', null)
-        .order('updated_at', { ascending: false });
-      if (error) throw error;
-      return (data as unknown as Raw[]).map(toPlan);
-    },
-  });
+  return useQuery({ queryKey: planKeys.all, queryFn: fetchPlans });
 }
 
 export function usePlan(planId: string | undefined) {

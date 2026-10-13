@@ -43,40 +43,40 @@ export const fixedKeys = {
   checks: (day: string) => ['diet', 'fixed-checks', day] as const,
 };
 
+/** The active fixed-meals plan (or null). Also used outside React, by the AI assistant. */
+export async function fetchFixedPlan(): Promise<FixedPlan | null> {
+  const { data, error } = await getSupabase()
+    .from('fixed_meal_plans')
+    .select('id, name, workout_after_meal_id, fixed_meals(*)')
+    .eq('active', true)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const meals = ((data as unknown as { fixed_meals: MealRow[] }).fixed_meals ?? [])
+    .filter((m) => m.deleted_at == null)
+    .sort((a, b) => a.position - b.position)
+    .map<FixedMeal>((m) => ({
+      id: m.id,
+      position: m.position,
+      name: m.name,
+      kcal: m.kcal,
+      proteinG: Number(m.protein_g),
+      carbsG: Number(m.carbs_g),
+      fatG: Number(m.fat_g),
+      description: m.description ?? '',
+      isMain: m.is_main,
+    }));
+  return {
+    id: data.id,
+    name: data.name,
+    meals,
+    workoutAfterMealId: data.workout_after_meal_id,
+  };
+}
+
 export function useFixedPlan() {
-  return useQuery({
-    queryKey: fixedKeys.plan,
-    queryFn: async (): Promise<FixedPlan | null> => {
-      const { data, error } = await getSupabase()
-        .from('fixed_meal_plans')
-        .select('id, name, workout_after_meal_id, fixed_meals(*)')
-        .eq('active', true)
-        .is('deleted_at', null)
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) return null;
-      const meals = ((data as unknown as { fixed_meals: MealRow[] }).fixed_meals ?? [])
-        .filter((m) => m.deleted_at == null)
-        .sort((a, b) => a.position - b.position)
-        .map<FixedMeal>((m) => ({
-          id: m.id,
-          position: m.position,
-          name: m.name,
-          kcal: m.kcal,
-          proteinG: Number(m.protein_g),
-          carbsG: Number(m.carbs_g),
-          fatG: Number(m.fat_g),
-          description: m.description ?? '',
-          isMain: m.is_main,
-        }));
-      return {
-        id: data.id,
-        name: data.name,
-        meals,
-        workoutAfterMealId: data.workout_after_meal_id,
-      };
-    },
-  });
+  return useQuery({ queryKey: fixedKeys.plan, queryFn: fetchFixedPlan });
 }
 
 export type StoredCheck = FixedCheck & { id: string };

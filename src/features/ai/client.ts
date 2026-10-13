@@ -20,7 +20,7 @@ export class AiError extends Error {
   }
 }
 
-async function readError(res: Response): Promise<string> {
+export async function readError(res: Response): Promise<string> {
   try {
     const body = (await res.json()) as { error?: { message?: string } | string; message?: string };
     const e = body.error;

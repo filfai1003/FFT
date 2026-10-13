@@ -9,9 +9,13 @@ import { Screen } from '@/components/ui/Screen';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
-import { buildImportPrompt, parseBundle } from '@/domain/plan-import';
+import { parseBundle } from '@/domain/plan-import';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
+import { ActionsPreview } from './agent/ActionsPreview';
+import { buildManualPrompt, parseActions } from './agent/manual';
+import { buildSnapshot } from './agent/reads';
+import { useAgentTools, useReadContext } from './agent/use-tools';
 import { useApplyImport, type ApplyResult } from './apply';
 import { useAiContext } from './context';
 import { ImportPreview } from './ImportPreview';
@@ -23,6 +27,8 @@ export function AiManualScreen() {
   const goBack = useBack('/profile/ai');
   const barHeight = useTabBarHeight();
   const ctx = useAiContext();
+  const read = useReadContext();
+  const tools = useAgentTools();
   const apply = useApplyImport();
   const showToast = useToastStore((s) => s.show);
   const [request, setRequest] = useState('');
@@ -30,15 +36,24 @@ export function AiManualScreen() {
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const prompt = buildImportPrompt({
-    request,
-    profile: ctx.profileText,
-    exercises: ctx.exerciseNames,
-  });
   const bundle = pasted.trim() ? parseBundle(pasted) : null;
+  const found = pasted.trim() ? parseActions(pasted, tools) : null;
+  const hasActions = (found?.actions.length ?? 0) > 0;
+  // An answer with only "actions" is not a plan: do not complain that plans are missing.
+  const showBundle =
+    bundle != null && (bundle.workout != null || bundle.diet != null || !hasActions);
 
   const copy = async () => {
-    await Clipboard.setStringAsync(prompt);
+    const snapshot = await buildSnapshot(read.ctx, read.userId);
+    await Clipboard.setStringAsync(
+      buildManualPrompt({
+        request,
+        profile: ctx.profileText,
+        snapshot,
+        exercises: ctx.exerciseNames,
+        tools,
+      }),
+    );
     showToast({ message: t('ai.copied'), bottomOffset: barHeight });
   };
   const paste = async () => {
@@ -117,7 +132,13 @@ export function AiManualScreen() {
         </View>
       </Card>
 
-      {bundle ? (
+      {hasActions && found ? <ActionsPreview key={pasted} actions={found.actions} /> : null}
+      {found?.errors.map((e) => (
+        <Text key={e} variant="bodyS" danger accessibilityRole="alert">
+          {e}
+        </Text>
+      ))}
+      {showBundle && bundle ? (
         <ImportPreview
           bundle={bundle}
           busy={apply.isPending}
