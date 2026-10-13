@@ -364,10 +364,10 @@ function NutritionTable({ per100, grams }: { per100: Per100; grams: number }) {
           >
             {t(`diet.nutrient.${r.key}`)}
           </Text>
-          <Text variant="label" style={{ flex: 1, textAlign: 'right', letterSpacing: 0 }}>
+          <Text variant="label" style={{ flex: 1, textAlign: 'right' }}>
             {r.a}
           </Text>
-          <Text variant="label" style={{ flex: 1, textAlign: 'right', letterSpacing: 0 }}>
+          <Text variant="label" style={{ flex: 1, textAlign: 'right' }}>
             {r.b}
           </Text>
         </View>

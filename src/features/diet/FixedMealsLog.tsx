@@ -192,7 +192,7 @@ export function FixedMealsLog() {
                       </Text>
                     ) : null}
                   </View>
-                  <Text variant="label" muted style={{ letterSpacing: 0.3 }}>
+                  <Text variant="label" muted>
                     {t('diet.mealLine', {
                       kcal: 'kcal' in planned ? planned.kcal : 0,
                       p: Math.round(planned.proteinG),

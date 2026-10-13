@@ -92,7 +92,11 @@ export function ProgressScreen() {
         {strength.overall != null ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-              <Text variant="displayL" numeric>{`${signed(strength.overall)}%`}</Text>
+              <Text
+                variant="displayL"
+                numeric
+                style={{ color: strength.overall >= 0 ? colors.successText : colors.warningText }}
+              >{`${signed(strength.overall)}%`}</Text>
               <Text variant="label" muted style={{ flex: 1 }}>
                 {t('progress.avgChange')}
               </Text>
@@ -104,8 +108,8 @@ export function ProgressScreen() {
               accessibilityLabel={t('progress.strengthChart', { pct: signed(strength.overall) })}
             />
             {top.length > 0 ? (
-              <Text variant="label" muted style={{ letterSpacing: 0.4 }}>
-                {`${t('progress.top')} · ${top.map((g) => `${t(`progress.group.${g.group}`)} ${signed(g.pctChange, 0)}%`).join(' · ')}`.toUpperCase()}
+              <Text variant="bodyS" muted>
+                {`${t('progress.top')} · ${top.map((g) => `${t(`progress.group.${g.group}`)} ${signed(g.pctChange, 0)}%`).join(' · ')}`}
               </Text>
             ) : null}
           </>

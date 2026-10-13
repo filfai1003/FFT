@@ -83,7 +83,7 @@ export const SetRow = memo(function SetRow({
       <Text variant="displayS" numeric style={{ width: 30 }}>
         {n}
       </Text>
-      <Text variant="label" muted style={{ flex: 1, letterSpacing: 0 }} numberOfLines={1}>
+      <Text variant="label" muted style={{ flex: 1 }} numberOfLines={1}>
         {set.previous ?? '—'}
       </Text>
       {columns.map((c) => (

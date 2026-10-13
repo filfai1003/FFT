@@ -142,9 +142,7 @@ export function CalendarGrid({
                     opacity: future ? 0.35 : 1,
                   }}
                 >
-                  <Text variant="label" style={{ letterSpacing: 0 }}>
-                    {dayOfMonth(day)}
-                  </Text>
+                  <Text variant="label">{dayOfMonth(day)}</Text>
                   <View style={{ flexDirection: 'row', gap: 4 }}>
                     <View style={dot(trained, trained)} />
                     <View style={dot(status === 'onTarget', status === 'off')} />

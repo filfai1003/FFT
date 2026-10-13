@@ -214,14 +214,16 @@ export function AiChatScreen() {
                 <View
                   style={{
                     maxWidth: '92%',
-                    padding: 12,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: colors.borderSelected,
-                    backgroundColor: colors.surfaceSelected,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    borderRadius: 20,
+                    borderBottomRightRadius: 6,
+                    backgroundColor: colors.text,
                   }}
                 >
-                  <Text selectable>{m.text}</Text>
+                  <Text selectable style={{ color: colors.bg }}>
+                    {m.text}
+                  </Text>
                 </View>
               </View>
             );
@@ -231,11 +233,13 @@ export function AiChatScreen() {
                 <View
                   style={{
                     maxWidth: '92%',
-                    padding: 12,
-                    borderRadius: 16,
+                    paddingVertical: 10,
+                    paddingHorizontal: 14,
+                    borderRadius: 20,
+                    borderBottomLeftRadius: 6,
                     borderWidth: 1,
                     borderColor: colors.borderDecorative,
-                    backgroundColor: colors.surfaceAlt,
+                    backgroundColor: colors.surface,
                   }}
                 >
                   <Text selectable>{m.text}</Text>

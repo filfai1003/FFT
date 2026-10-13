@@ -7,8 +7,8 @@ import { useTheme } from '@/design/use-theme';
 export type DayPillState = 'done' | 'doneOutOfOrder' | 'next' | 'todo';
 
 /**
- * One day of the plan in the cycle strip. The state is shown with border style AND a check mark,
- * not with colour alone.
+ * One day of the plan in the cycle strip: done = green with a check, next = dark border,
+ * to do = plain. The state is never shown with colour alone (check mark, border weight).
  */
 export function DayPill({ label, state }: { label: string; state: DayPillState }) {
   const { colors } = useTheme();
@@ -18,15 +18,14 @@ export function DayPill({ label, state }: { label: string; state: DayPillState }
       style={{
         height: 40,
         borderRadius: radius.tile,
-        borderWidth: 1,
-        borderStyle: state === 'doneOutOfOrder' || state === 'todo' ? 'dashed' : 'solid',
+        borderWidth: state === 'next' ? 2 : 1,
         borderColor:
           state === 'next'
             ? colors.borderSelected
-            : state === 'doneOutOfOrder'
-              ? colors.textPlaceholderIcon
-              : colors.borderControl,
-        backgroundColor: done ? colors.surfaceRaised : 'transparent',
+            : done
+              ? colors.success
+              : colors.borderDecorative,
+        backgroundColor: done ? colors.successSoft : colors.surface,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -34,11 +33,13 @@ export function DayPill({ label, state }: { label: string; state: DayPillState }
         paddingHorizontal: 4,
       }}
     >
-      {done ? <Icon name="check" size={14} color={colors.text} /> : null}
+      {done ? <Icon name="check" size={14} color={colors.successText} /> : null}
       <Text
         variant="label"
         numberOfLines={1}
-        style={{ color: state === 'todo' ? colors.textMuted : colors.text, letterSpacing: 0.4 }}
+        style={{
+          color: done ? colors.successText : state === 'todo' ? colors.textMuted : colors.text,
+        }}
       >
         {label}
       </Text>
@@ -46,7 +47,7 @@ export function DayPill({ label, state }: { label: string; state: DayPillState }
   );
 }
 
-/** "Pull" -> "PULL", "Push A" -> "PUSH A", "Day 2" -> "DAY 2": at most 6 characters. */
+/** "Pull" -> "Pull", "Push A" -> "Push A", "Day 2" -> "Day 2": at most 6 characters. */
 export function shortDayLabel(name: string): string {
   const words = name.trim().split(/\s+/);
   // A short suffix (A, B, 2) keeps the days of a plan tell-apart-able.

@@ -162,7 +162,7 @@ export function FoodSearchScreen() {
                     />
                   ) : null}
                 </View>
-                <Text variant="label" muted style={{ letterSpacing: 0.3 }}>
+                <Text variant="label" muted>
                   {t('diet.per100', {
                     p: round(f.per100.protein),
                     c: round(f.per100.carbs),

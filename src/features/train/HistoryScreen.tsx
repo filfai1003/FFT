@@ -136,7 +136,6 @@ export function HistoryScreen({
                           : isToday
                             ? colors.text
                             : colors.textMuted,
-                        letterSpacing: 0,
                       }}
                     >
                       {dayOfMonth(day)}
@@ -236,13 +235,11 @@ function SessionRow({
                 borderColor: colors.textPlaceholderIcon,
               }}
             >
-              <Text variant="label" style={{ letterSpacing: 0.6 }}>
-                {t('history.outOfOrder')}
-              </Text>
+              <Text variant="label">{t('history.outOfOrder')}</Text>
             </View>
           ) : null}
         </View>
-        <Text variant="label" muted style={{ letterSpacing: 0.3 }}>
+        <Text variant="label" muted>
           {t('history.info', {
             min: s.stats.minutes,
             tonnes: tonnes.toFixed(1),

@@ -10,7 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { useAppearanceStore } from '@/design/appearance-store';
-import { radius, touch } from '@/design/tokens';
+import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ExerciseThumb } from '@/features/train/exercise-image';
 import { usePlan } from '@/features/train/plans';
@@ -38,7 +38,7 @@ import {
 import { useSessionHydrated, useSessionStore } from './store';
 import { goBack } from '@/lib/navigation';
 
-const BOTTOM_NAV_HEIGHT = 60 + 34 + 12;
+const BOTTOM_NAV_HEIGHT = 56 + 34 + 24;
 
 export function SessionScreen() {
   const { t } = useTranslation();
@@ -108,6 +108,36 @@ export function SessionScreen() {
   };
 
   const columns = columnsFor(exercise?.logType ?? 'weight_reps', active.weightUnit);
+  const openPicker = () =>
+    router.push({ pathname: '/exercise-picker', params: { target: 'session' } });
+  // The big button: tick the next set, then move on, then finish.
+  const nextSet = sets.findIndex((x) => !x.done);
+  const primaryKind = !exercise ? 'add' : nextSet >= 0 ? 'set' : nextEx ? 'next' : 'finish';
+  const primary = {
+    label:
+      primaryKind === 'add'
+        ? t('session.addExercise')
+        : primaryKind === 'set'
+          ? t('session.doneSet', { n: nextSet + 1 })
+          : primaryKind === 'next'
+            ? t('session.nextExercise')
+            : t('session.finish'),
+    info:
+      primaryKind === 'set'
+        ? columns
+            .map((c) => sets[nextSet]![c.field])
+            .filter(Boolean)
+            .join(' × ')
+        : primaryKind === 'next'
+          ? (nextEx?.name ?? '')
+          : '',
+  };
+  function runPrimary() {
+    if (primaryKind === 'add') openPicker();
+    else if (primaryKind === 'set') onToggle(nextSet);
+    else if (primaryKind === 'next') update((x) => goTo(x, index + 1));
+    else setFinishing(true);
+  }
 
   return (
     <>
@@ -136,12 +166,13 @@ export function SessionScreen() {
               height: touch.minTarget,
               paddingHorizontal: 16,
               borderRadius: 22,
-              backgroundColor: colors.accent,
+              borderWidth: 1,
+              borderColor: colors.borderControl,
               justifyContent: 'center',
               opacity: pressed ? 0.8 : 1,
             })}
           >
-            <Text variant="bodyS" medium style={{ color: colors.onAccent }}>
+            <Text variant="bodyS" medium>
               {t('session.finish')}
             </Text>
           </Pressable>
@@ -285,31 +316,62 @@ export function SessionScreen() {
         accessibilityLabel={t('session.switch')}
         style={{
           position: 'absolute',
-          left: 20,
-          right: 20,
-          bottom: 34,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 34,
           flexDirection: 'row',
-          gap: 10,
+          gap: 8,
+          borderTopWidth: 1,
+          borderTopColor: colors.borderDecorative,
+          backgroundColor: colors.bg,
         }}
       >
         <NavButton
-          kicker={t('session.previous')}
-          name={previousEx?.name}
+          label={
+            previousEx
+              ? t('session.previousNamed', { name: previousEx.name })
+              : t('session.previous')
+          }
           icon="chevronLeft"
           disabled={!previousEx}
           onPress={() => update((s) => goTo(s, index - 1))}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={primary.info ? `${primary.label}, ${primary.info}` : primary.label}
+          onPress={runPrimary}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 56,
+            borderRadius: 16,
+            backgroundColor: colors.accent,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 8,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text variant="bodyL" style={{ color: colors.onAccent, fontWeight: '700' }}>
+            {primary.label}
+          </Text>
+          {primary.info ? (
+            <Text
+              variant="bodyS"
+              numberOfLines={1}
+              style={{ color: colors.onAccent, opacity: 0.9 }}
+            >
+              {primary.info}
+            </Text>
+          ) : null}
+        </Pressable>
         <NavButton
-          kicker={nextEx || !exercise ? t('session.next') : t('session.add')}
-          name={nextEx?.name ?? (exercise ? t('session.addExercise') : undefined)}
-          icon="chevronRight"
-          right
+          label={nextEx ? t('session.nextNamed', { name: nextEx.name }) : t('session.addExercise')}
+          icon={nextEx ? 'chevronRight' : 'plus'}
           disabled={!exercise}
-          onPress={() =>
-            nextEx
-              ? update((s) => goTo(s, index + 1))
-              : router.push({ pathname: '/exercise-picker', params: { target: 'session' } })
-          }
+          onPress={() => (nextEx ? update((s) => goTo(s, index + 1)) : openPicker())}
         />
       </View>
 
@@ -372,18 +434,15 @@ export function SessionScreen() {
   );
 }
 
+/** A square side button of the bottom bar (previous / next exercise). */
 function NavButton({
-  kicker,
-  name,
+  label,
   icon,
-  right,
   disabled,
   onPress,
 }: {
-  kicker: string;
-  name?: string;
-  icon: 'chevronLeft' | 'chevronRight';
-  right?: boolean;
+  label: string;
+  icon: 'chevronLeft' | 'chevronRight' | 'plus';
   disabled: boolean;
   onPress: () => void;
 }) {
@@ -391,33 +450,23 @@ function NavButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={name ? `${kicker}: ${name}` : kicker}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => ({
-        flex: 1,
-        minHeight: 60,
-        flexDirection: right ? 'row-reverse' : 'row',
+        width: 56,
+        minHeight: 56,
         alignItems: 'center',
-        gap: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: radius.cardSmall,
+        justifyContent: 'center',
+        borderRadius: 16,
         borderWidth: 1,
         borderColor: colors.borderDecorative,
-        backgroundColor: colors.surfaceAlt,
+        backgroundColor: colors.surface,
         opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
       })}
     >
-      <Icon name={icon} color={colors.text} />
-      <View style={{ flex: 1, gap: 2, alignItems: right ? 'flex-end' : 'flex-start' }}>
-        <Text variant="label" muted>
-          {kicker}
-        </Text>
-        <Text variant="bodyS" medium numberOfLines={1}>
-          {name ?? ' '}
-        </Text>
-      </View>
+      <Icon name={icon} size={22} color={colors.text} />
     </Pressable>
   );
 }

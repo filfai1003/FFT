@@ -141,9 +141,7 @@ export function SessionDetailScreen({
                         justifyContent: 'center',
                       }}
                     >
-                      <Text variant="label" style={{ letterSpacing: 0 }}>
-                        {setLabel(ex, set, unit)}
-                      </Text>
+                      <Text variant="label">{setLabel(ex, set, unit)}</Text>
                     </View>
                   ))}
                 </View>

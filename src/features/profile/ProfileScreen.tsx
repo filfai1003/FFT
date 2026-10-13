@@ -5,7 +5,10 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
+import { goBack } from '@/lib/navigation';
+import { TopBar } from '@/components/ui/TopBar';
 import { Sheet } from '@/components/ui/Sheet';
 import { useToday } from '@/features/profile/use-today';
 import { Text } from '@/components/ui/Text';
@@ -91,6 +94,7 @@ export function ProfileScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
+        <TopBar onBack={() => goBack(router, '/')} backLabel={t('common.close')} backIcon="close" />
         <View style={{ gap: 4 }}>
           <Text variant="label" muted>
             {t('profile.memberSince', { date: since })}
@@ -123,15 +127,13 @@ export function ProfileScreen() {
               width: 56,
               height: 56,
               borderRadius: 28,
-              borderWidth: 1,
-              borderColor: colors.borderControl,
-              backgroundColor: colors.surfaceSelected,
+              backgroundColor: colors.dotOff,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
             <Text
-              style={{ fontFamily: fontFamily.display, fontSize: 22 }}
+              style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 20 }}
               accessibilityElementsHidden
             >
               {initials}
@@ -151,9 +153,7 @@ export function ProfileScreen() {
                   borderColor: colors.borderControl,
                 }}
               >
-                <Text variant="label" style={{ letterSpacing: 1 }}>
-                  {vip ? t('profile.vip') : t('profile.free')}
-                </Text>
+                <Text variant="label">{vip ? t('profile.vip') : t('profile.free')}</Text>
               </View>
             </View>
             <Text variant="label" muted>
@@ -169,7 +169,7 @@ export function ProfileScreen() {
               borderRadius: 20,
               borderWidth: 1,
               borderColor: colors.borderDecorative,
-              backgroundColor: colors.surfaceAlt,
+              backgroundColor: colors.surface,
               paddingLeft: 16,
               paddingRight: 14,
             }}
@@ -186,16 +186,17 @@ export function ProfileScreen() {
                   alignItems: 'center',
                   gap: 12,
                   borderTopWidth: j === 0 ? 0 : 1,
-                  borderColor: colors.borderDecorative,
+                  borderColor: colors.divider,
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
                 <Text style={{ flex: 1 }}>{r.name}</Text>
                 {r.value ? (
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {r.value}
                   </Text>
                 ) : null}
+                <Icon name="chevronRight" size={18} color={colors.textMuted} />
               </Pressable>
             ))}
           </View>

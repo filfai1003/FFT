@@ -256,9 +256,7 @@ function PhotoButton({ pose, uri, onPress }: { pose: Pose; uri?: string; onPress
       ) : (
         <Icon name="camera" size={22} color={colors.textMuted} />
       )}
-      <Text variant="label" style={{ letterSpacing: 1 }}>
-        {t(`photos.pose.${pose}`)}
-      </Text>
+      <Text variant="label">{t(`photos.pose.${pose}`)}</Text>
     </Pressable>
   );
 }

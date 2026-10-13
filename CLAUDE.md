@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Full spec: `docs/PROJECT.md`. Design source of truth: `docs/design/` (screens, SCREENS.md, NAVIGATION.md, tokens.json). Read them before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
+Full spec: `docs/PROJECT.md`. Design source of truth: `docs/design/tokens.json` and the 2026-10 redesign canvas (Artifact "FFT redesign"); the older screens in `docs/design/screens` show content and flows, not the look. Read them before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
 
 ## Stack
 Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/app`, alias `@/*` → `src/*`) · Supabase (Postgres, Auth, Storage, RLS) · TanStack Query (server state) · Zustand (UI state) · i18next · offline-first active session · Open Food Facts.
@@ -16,9 +16,9 @@ Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/a
 
 ## Structure
 ```
-src/app/            routing only (thin screens). (tabs)/ = Today, train, diet, progress, profile (each tab folder has its own _layout Stack). dev/ = dev-only pages
-src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar, DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, ExerciseImage, Icon, Text)
-src/design/         tokens.ts (mirror of tokens.json, tested), theme, appearance-store (a11y settings), fonts, text-style
+src/app/            routing only (thin screens). (tabs)/ = Home (index), diet, train, progress (each tab folder has its own _layout Stack) + the "+" Add sheet; profile/, ai-chat, ai-chats are root pages (no tab bar). dev/ = dev-only pages
+src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar (filled bar), Gauge (arc/ring), DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, ExerciseImage, Icon, Text)
+src/design/         tokens.ts (light + dark palettes, mirror of tokens.json, tested), theme, use-theme (app/workout scope), appearance-store (a11y settings), fonts, text-style
 src/domain/         pure logic with tests: strength (Epley), nutrition (Mifflin, safety), rotation, units, dots, numbers
 src/features/       per-area queries and screens
 src/lib/            supabase client, query client, toast store, haptics
@@ -31,13 +31,13 @@ Free accounts and the account-less mode keep ALL user data on the device: `getSu
 
 ## Non-negotiables
 - UI copy in English, always through i18n (`t('…')`). Code, tables, variables in English. ESLint forbids literal JSX text.
-- Dark Nothing-inspired look: black + dot grid, Doto for big numbers/titles (uppercase), Space Mono for short uppercase labels, Space Grotesk for everything else, ONE accent element per screen. No solid white blocks (selection = white border).
+- Clean, light-first look (redesign 2026-10): warm off-white ground, white cards with 1px borders, Figtree everywhere (big numbers semibold, tabular digits), sentence case (no uppercase labels), progress shown with fills (arcs, rings, filled bars), ONE accent element per screen (the main action). Two theme settings: app theme and workout theme (light / dark / phone), both light by default; the workout in progress is wrapped in `WorkoutThemeScope`. Selection = 2px border in the text colour.
 - Colours/sizes come from `src/design/tokens.ts` / `useTheme()`, never hard-coded in components. Text on the accent uses `colors.onAccent`.
-- Use `<Text variant=… numeric>` (never raw RN Text): it applies text scale, bold, dot-matrix-off and the 11 px minimum.
-- Touch targets ≥ 44 (primary buttons 56, list rows ≥ 52), primary action in `BottomActionBar`, safe areas via `Screen`, text ≥ 11 px, inputs 16 px, control borders ≥ 3:1 (#6E6E6E), text #F2F2F2.
+- Use `<Text variant=… numeric>` (never raw RN Text): it applies text scale, bold, tabular digits and the 12 px minimum.
+- Touch targets ≥ 44 (primary buttons 52, list rows ≥ 52), primary action in `BottomActionBar`, safe areas via `Screen`, text ≥ 12 px, inputs 16 px, control borders ≥ 3:1 and text ≥ 4.5:1 in both themes (tested in `tokens.test.ts`).
 - Icon-only controls need `accessibilityLabel`. Never use colour alone for state.
 - Every important action can be undone (toast with UNDO, 5 s: `useToastStore().show`). Moving between exercises never loses data. Finish asks for confirmation.
-- Respect accessibility settings everywhere (text scale, bold, dot-matrix numbers off, high contrast, reduce motion, haptics, one-hand mode).
+- Respect accessibility settings everywhere (text scale, bold, high contrast, reduce motion, haptics, one-hand mode).
 
 ## Domain rules
 - Rotation: "Up next" = first plan day not done in the current cycle; any day can be trained any time (out of order counts for the cycle). See `src/domain/rotation.ts`.

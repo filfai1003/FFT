@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Card } from '@/components/ui/Card';
-import { DotBar } from '@/components/ui/DotBar';
+import { Gauge } from '@/components/ui/Gauge';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useAppearanceStore } from '@/design/appearance-store';
@@ -14,8 +14,6 @@ import { useNow } from '@/lib/use-now';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { adjustRest, formatClock, restRemainingS } from './logic';
 import { useSessionStore } from './store';
-
-const BAR_DOTS = 24;
 
 /** Rest timer after a set: counts down, ±15 s, skip; vibrates (and speaks 10…1) when done. */
 export function RestCard() {
@@ -60,7 +58,6 @@ export function RestCard() {
   }, [remaining, rest, spoken, update]);
 
   if (!rest) return null;
-  const lit = Math.round((remaining / rest.totalS) * BAR_DOTS);
 
   const adjust = (delta: number) => update((s) => adjustRest(s, delta, Date.now()));
 
@@ -70,9 +67,9 @@ export function RestCard() {
       accessibilityLabel={name}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         borderWidth: 1,
         borderColor: colors.borderControl,
         alignItems: 'center',
@@ -80,7 +77,9 @@ export function RestCard() {
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Text variant="bodyS">{label}</Text>
+      <Text variant="body" medium>
+        {label}
+      </Text>
     </Pressable>
   );
 
@@ -111,24 +110,27 @@ export function RestCard() {
         </Pressable>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {roundButton('-15', t('session.minus15'), () => adjust(-15))}
-        <Text
-          variant="displayXL"
-          numeric
-          style={{ fontSize: 60, lineHeight: 60 }}
-          accessibilityLiveRegion="none"
+        {roundButton('−15', t('session.minus15'), () => adjust(-15))}
+        <Gauge
+          value={rest.totalS > 0 ? remaining / rest.totalS : 0}
+          size={180}
+          stroke={12}
+          accessibilityLabel={t('session.restProgress')}
         >
-          {formatClock(remaining)}
-        </Text>
+          <Text
+            variant="displayXL"
+            numeric
+            style={{ fontSize: 52, lineHeight: 56 }}
+            accessibilityLiveRegion="none"
+          >
+            {formatClock(remaining)}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('session.restOf', { time: formatClock(rest.totalS) })}
+          </Text>
+        </Gauge>
         {roundButton('+15', t('session.plus15'), () => adjust(15))}
       </View>
-      <DotBar
-        shape="segment"
-        total={BAR_DOTS}
-        on={lit}
-        size={5}
-        accessibilityLabel={t('session.restProgress')}
-      />
     </Card>
   );
 }

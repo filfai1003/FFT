@@ -52,14 +52,14 @@ export function ListRow({
                 borderColor: colors.borderControl,
               }}
             >
-              <Text variant="label" style={{ color: colors.text, letterSpacing: 1 }}>
+              <Text variant="label" style={{ color: colors.text }}>
                 {badge}
               </Text>
             </View>
           ) : null}
         </View>
         {info ? (
-          <Text variant="label" muted style={{ letterSpacing: 0.4 }}>
+          <Text variant="label" muted>
             {info}
           </Text>
         ) : null}

@@ -34,7 +34,6 @@ export function AccessibilityScreen() {
       size: true,
       rows: [
         { key: 'boldText', name: 'boldText' },
-        { key: 'dotNumbers', name: 'dotNumbers' },
       ],
     },
     {

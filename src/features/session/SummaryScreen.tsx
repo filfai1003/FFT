@@ -144,7 +144,7 @@ export function SummaryScreen() {
                         })}
                   </Text>
                 </View>
-                <Text variant="label" style={{ letterSpacing: 1 }}>
+                <Text variant="label">
                   {r.kind === 'max' ? t('summary.newMax') : t('summary.newEst')}
                 </Text>
               </View>
@@ -186,7 +186,7 @@ export function SummaryScreen() {
                   <Text variant="displayS" numeric>
                     {n}
                   </Text>
-                  <Text variant="label" muted={!selected} style={{ letterSpacing: 0.3 }}>
+                  <Text variant="label" muted={!selected}>
                     {t(`summary.feeling.${n}`)}
                   </Text>
                 </Pressable>
@@ -211,7 +211,7 @@ export function SummaryScreen() {
                   <Text variant="bodyS" medium>
                     {e.name}
                   </Text>
-                  <Text variant="label" muted style={{ letterSpacing: 0.2 }}>
+                  <Text variant="label" muted>
                     {e.sets
                       .filter((s) => s.done)
                       .map((s) =>

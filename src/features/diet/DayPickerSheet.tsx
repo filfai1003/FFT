@@ -92,9 +92,7 @@ export function DayPickerSheet({
                     opacity: future ? 0.3 : 1,
                   }}
                 >
-                  <Text variant="label" style={{ letterSpacing: 0 }}>
-                    {dayOfMonth(day)}
-                  </Text>
+                  <Text variant="label">{dayOfMonth(day)}</Text>
                 </Pressable>
               ) : null}
             </View>

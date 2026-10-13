@@ -440,7 +440,12 @@
     "discardBody": "Everything you logged in this workout is lost. This cannot be undone.",
     "discardConfirm": "Discard workout",
     "restDoneTitle": "Rest is over",
-    "restDoneBody": "Time for your next set."
+    "restDoneBody": "Time for your next set.",
+    "doneSet": "Done set {{n}}",
+    "nextExercise": "Next exercise",
+    "previousNamed": "Previous: {{name}}",
+    "nextNamed": "Next: {{name}}",
+    "restOf": "of {{time}}"
   },
   "summary": {
     "done": "Done",
