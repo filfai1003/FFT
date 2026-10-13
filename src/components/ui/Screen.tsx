@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, space } from '@/design/tokens';
+import { space } from '@/design/tokens';
+import { useTheme } from '@/design/use-theme';
 import { FieldChain } from './field-chain';
-import { DotGrid } from './DotGrid';
 
 export type ScreenProps = {
   children: ReactNode;
@@ -17,7 +17,7 @@ export type ScreenProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Black screen with the dot grid, safe areas and the 20px side padding of the design. */
+/** A page: theme background, safe areas and the side padding of the design. */
 export function Screen({
   children,
   scroll = false,
@@ -27,6 +27,7 @@ export function Screen({
   style,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const padding = {
     // Never flush with the edge: a little air above the first element, on top of the safe area.
     paddingTop: (noTopInset ? 0 : insets.top) + space.gapXL,
@@ -37,8 +38,7 @@ export function Screen({
 
   return (
     <FieldChain>
-      <View style={styles.root}>
-        <DotGrid />
+      <View style={[styles.root, { backgroundColor: colors.bg }]}>
         {scroll ? (
           <ScrollView
             style={styles.fill}
@@ -57,6 +57,6 @@ export function Screen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.bg },
+  root: { flex: 1 },
   fill: { flex: 1 },
 });

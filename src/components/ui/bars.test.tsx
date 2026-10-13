@@ -32,7 +32,8 @@ describe('TabBar', () => {
     const onPress = jest.fn();
     await renderUI(<TabBar items={items('today', onPress)} />);
     for (const tab of screen.getAllByRole('tab')) {
-      expect(flat(tab.props.style).minHeight).toBeGreaterThanOrEqual(52);
+      const st = flat(tab.props.style);
+      expect((st.height ?? st.minHeight) as number).toBeGreaterThanOrEqual(52);
     }
     await fireEvent.press(screen.getByRole('tab', { name: 'PROGRESS' }));
     expect(onPress).toHaveBeenCalledWith('progress');

@@ -6,22 +6,29 @@ import { DotColumnChart } from './DotColumnChart';
 const flat = (style: unknown): Record<string, unknown> =>
   Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
 
+type Node = { props: { style: unknown }; children: unknown[] };
+
 describe('DotBar', () => {
   it('exposes progress to screen readers', async () => {
     await renderUI(<DotBar total={40} on={17} accessibilityLabel="Calories" />);
     const bar = screen.getByRole('progressbar', { name: 'Calories' });
     expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 40, now: 17 });
-    expect(bar.children).toHaveLength(40);
   });
 
-  it('lights exactly `on` dots, in order', async () => {
+  it('fills the bar in proportion, from the left', async () => {
     await renderUI(<DotBar total={10} on={6} accessibilityLabel="Protein" />);
-    const dots = screen.getByRole('progressbar').children as unknown as {
-      props: { style: unknown };
-    }[];
-    const colors = dots.map((d) => flat(d.props.style).backgroundColor);
-    expect(colors.filter((c) => c === '#F2F2F2')).toHaveLength(6);
-    expect(colors.slice(0, 6).every((c) => c === '#F2F2F2')).toBe(true);
+    const track = screen.getByRole('progressbar').children[0] as unknown as Node;
+    const fill = track.children[0] as unknown as Node;
+    expect(flat(fill.props.style).width).toBe('60%');
+  });
+
+  it('segments: lights exactly `on` steps, in order', async () => {
+    await renderUI(<DotBar shape="segment" total={6} on={2} accessibilityLabel="Exercises" />);
+    const steps = screen.getByRole('progressbar').children as unknown as Node[];
+    expect(steps).toHaveLength(6);
+    const colors = steps.map((d) => flat(d.props.style).backgroundColor);
+    expect(colors[0]).toBe(colors[1]);
+    expect(colors[1]).not.toBe(colors[2]);
   });
 
   it('clamps out-of-range values', async () => {
@@ -31,13 +38,11 @@ describe('DotBar', () => {
 });
 
 describe('DotColumnChart', () => {
-  it('renders one column per value with the given rows and a text alternative', async () => {
+  it('renders one column per value and a text alternative', async () => {
     await renderUI(
       <DotColumnChart values={[1, 2, 3]} rows={8} accessibilityLabel="Strength over 3 weeks" />,
     );
     const chart = screen.getByRole('image', { name: 'Strength over 3 weeks' });
     expect(chart.children).toHaveLength(3);
-    const column = chart.children[0] as unknown as { children: unknown[] };
-    expect(column.children).toHaveLength(8);
   });
 });

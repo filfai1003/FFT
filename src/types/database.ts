@@ -896,6 +896,7 @@ export type Database = {
           spoken_countdown: boolean;
           text_scale: number;
           theme: string;
+          workout_theme: string;
           updated_at: string;
           user_id: string;
           water_glass_ml: number;
@@ -920,6 +921,7 @@ export type Database = {
           spoken_countdown?: boolean;
           text_scale?: number;
           theme?: string;
+          workout_theme?: string;
           updated_at?: string;
           user_id: string;
           water_glass_ml?: number;
@@ -948,6 +950,7 @@ export type Database = {
           water_glass_ml?: number;
           week_start?: string;
           weight_unit?: string;
+          workout_theme?: string;
         };
         Relationships: [];
       };

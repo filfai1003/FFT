@@ -9,7 +9,7 @@ export type CardProps = {
   /** `small` = tighter radius/padding for list rows; `alt` = the darker surface. */
   size?: 'default' | 'small';
   tone?: 'default' | 'alt';
-  /** Selection is shown with a white border, never with a filled block. */
+  /** Selection is shown with a 2px dark (light theme) / light (dark theme) border. */
   selected?: boolean;
   gap?: number;
   onPress?: () => void;
@@ -35,10 +35,10 @@ export function Card({
       : tone === 'alt'
         ? colors.surfaceAlt
         : colors.surface,
-    borderWidth: 1,
+    borderWidth: selected ? 2 : 1,
     borderColor: selected ? colors.borderSelected : colors.borderDecorative,
     borderRadius: size === 'small' ? radius.cardSmall : radius.card,
-    padding: size === 'small' ? 16 : 20,
+    padding: size === 'small' ? 14 : 16,
     gap,
   };
 

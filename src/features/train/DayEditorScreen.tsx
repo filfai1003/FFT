@@ -75,7 +75,7 @@ export function DayEditorScreen() {
   if (!state || !showing || !plan.data) return <Screen>{null}</Screen>;
 
   const valid = state.name.trim().length > 0;
-  const subtitle = `${plan.data.name} · ${t('plan.dayN', { n: state.position + 1 })}`.toUpperCase();
+  const subtitle = `${plan.data.name} · ${t('plan.dayN', { n: state.position + 1 })}`;
 
   const submit = async () => {
     setError(null);

@@ -2,35 +2,32 @@ import { fontAssets } from './fonts';
 import { resolveTextStyle } from './text-style';
 import { fontFamily } from './tokens';
 
-const base = { scale: 1, boldText: false, dotNumbers: true };
+const base = { scale: 1, boldText: false };
 
 describe('resolveTextStyle', () => {
-  it('titles and numbers use Doto', () => {
-    expect(resolveTextStyle({ ...base, variant: 'displayL' }).fontFamily).toBe(fontFamily.display);
-  });
-
-  it('display text is uppercase', () => {
-    expect(resolveTextStyle({ ...base, variant: 'screenTitle' }).textTransform).toBe('uppercase');
-  });
-
-  it('numbers fall back to Space Grotesk when dot-matrix is off, titles do not', () => {
-    const off = { ...base, dotNumbers: false };
-    expect(resolveTextStyle({ ...off, variant: 'displayL', numeric: true }).fontFamily).toBe(
-      fontFamily.bodyMedium,
+  it('big numbers are semibold with tabular digits; page titles are bold', () => {
+    const n = resolveTextStyle({ ...base, variant: 'displayL' });
+    expect(n.fontFamily).toBe(fontFamily.display);
+    expect(n.fontVariant).toEqual(['tabular-nums']);
+    expect(resolveTextStyle({ ...base, variant: 'screenTitle' }).fontFamily).toBe(
+      fontFamily.bodyBold,
     );
-    expect(resolveTextStyle({ ...off, variant: 'displayL' }).fontFamily).toBe(fontFamily.display);
   });
 
-  it('labels are mono, uppercase and spaced', () => {
+  it('nothing is uppercased by the style: the copy decides', () => {
+    for (const variant of ['screenTitle', 'label', 'displayM'] as const)
+      expect(resolveTextStyle({ ...base, variant }).textTransform).toBeUndefined();
+  });
+
+  it('labels are short semibold text', () => {
     const s = resolveTextStyle({ ...base, variant: 'label' });
     expect(s.fontFamily).toBe(fontFamily.label);
-    expect(s.textTransform).toBe('uppercase');
-    expect(s.letterSpacing).toBeCloseTo(11 * 0.12);
+    expect(s.fontSize).toBe(12);
   });
 
-  it('never goes below 11px, even at the smallest text size', () => {
-    expect(resolveTextStyle({ ...base, scale: 0.85, variant: 'label' }).fontSize).toBe(11);
-    expect(resolveTextStyle({ ...base, scale: 0.85, variant: 'bodyS' }).fontSize).toBe(11);
+  it('never goes below 12px, even at the smallest text size', () => {
+    expect(resolveTextStyle({ ...base, scale: 0.85, variant: 'label' }).fontSize).toBe(12);
+    expect(resolveTextStyle({ ...base, scale: 0.85, variant: 'bodyS' }).fontSize).toBe(12);
   });
 
   it('scales sizes with the text-size setting', () => {
@@ -44,6 +41,12 @@ describe('resolveTextStyle', () => {
     expect(resolveTextStyle({ ...base, boldText: true, variant: 'titleM' }).fontFamily).toBe(
       fontFamily.bodyBold,
     );
+  });
+
+  it('numbers in body text get tabular digits too', () => {
+    expect(resolveTextStyle({ ...base, variant: 'body', numeric: true }).fontVariant).toEqual([
+      'tabular-nums',
+    ]);
   });
 
   it('every font family in the tokens is loaded', () => {

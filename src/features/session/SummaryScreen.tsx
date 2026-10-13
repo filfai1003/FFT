@@ -58,7 +58,7 @@ export function SummaryScreen() {
       value: formatClock(sum.durationS),
       unit: t('summary.min'),
     },
-    { label: t('summary.volume'), value: String(Math.round(volume)), unit: unit.toUpperCase() },
+    { label: t('summary.volume'), value: String(Math.round(volume)), unit: unit },
     { label: t('summary.sets'), value: String(sum.setsDone), unit: `/ ${sum.setsTotal}` },
     { label: t('summary.records'), value: String(records.length), unit: t('summary.new') },
   ];
@@ -133,13 +133,13 @@ export function SummaryScreen() {
                     {r.kind === 'max'
                       ? t('summary.maxDetail', {
                           value: trimNumber(displayWeight(r.value, unit)),
-                          unit: unit.toUpperCase(),
+                          unit: unit,
                           reps: r.reps,
                           was: trimNumber(displayWeight(r.was, unit)),
                         })
                       : t('summary.estDetail', {
                           value: Math.round(displayWeight(r.value, unit)),
-                          unit: unit.toUpperCase(),
+                          unit: unit,
                           was: Math.round(displayWeight(r.was, unit)),
                         })}
                   </Text>

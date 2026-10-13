@@ -132,7 +132,7 @@ export function ProgressScreen() {
                 {weightValue ?? '—'}
               </Text>
               <Text variant="label" muted>
-                {unit.toUpperCase()}
+                {unit}
               </Text>
             </View>
             {body.weight.buckets.some((v) => v != null) ? (
@@ -147,7 +147,7 @@ export function ProgressScreen() {
             ) : null}
             {weightDelta != null ? (
               <Text variant="label" muted>
-                {`${signed(weightDelta)} ${unit.toUpperCase()}`}
+                {`${signed(weightDelta)} ${unit}`}
               </Text>
             ) : null}
           </View>

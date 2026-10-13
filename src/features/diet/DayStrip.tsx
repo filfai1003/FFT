@@ -3,7 +3,7 @@ import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { dayOfMonth, weekdayLetter, weekdayName } from '@/domain/day';
 
-/** The 7 days of the week: tap one to see its food log. The selected day gets a white border. */
+/** The 7 days of the week: tap one to see its food log. The selected day is filled dark. */
 export function DayStrip({
   days,
   selected,
@@ -29,19 +29,25 @@ export function DayStrip({
             style={{
               flex: 1,
               height: 56,
-              borderRadius: 18,
-              borderWidth: 1,
-              borderColor: isSelected ? colors.borderSelected : colors.borderDecorative,
-              backgroundColor: isSelected ? colors.surfaceSelected : colors.surfaceAlt,
+              borderRadius: 14,
+              backgroundColor: isSelected ? colors.text : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 4,
             }}
           >
-            <Text variant="label" style={{ color: isSelected ? colors.accent : colors.textMuted }}>
+            <Text variant="label" style={{ color: isSelected ? colors.bg : colors.textMuted }}>
               {weekdayLetter(day)}
             </Text>
-            <Text variant="displayS" numeric>
+            <Text
+              variant="body"
+              numeric
+              style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: isSelected ? colors.bg : colors.text,
+              }}
+            >
               {dayOfMonth(day)}
             </Text>
           </Pressable>

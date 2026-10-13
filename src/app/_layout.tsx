@@ -16,7 +16,8 @@ import { usePendingSync } from '@/features/session/use-pending-sync';
 import { useNotificationGuard } from '@/features/settings/use-notification-guard';
 import { useSettingsSync } from '@/features/settings/use-settings-sync';
 import { useAppFonts } from '@/design/fonts';
-import { color } from '@/design/tokens';
+import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '@/design/use-theme';
 import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 
@@ -50,6 +51,7 @@ export default function RootLayout() {
 /** Chooses what the user can reach: sign in, onboarding, or the app. */
 function AppNavigator() {
   const { t } = useTranslation();
+  const { colors, mode } = useTheme();
   const status = useSessionStore((s) => s.status);
   const profile = useProfile();
   useSettingsSync();
@@ -78,35 +80,41 @@ function AppNavigator() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: color.bg },
-        animation: 'fade',
-        animationDuration: 160,
-      }}
-    >
-      <Stack.Protected guard={status === 'unconfigured'}>
-        <Stack.Screen name="setup" />
-      </Stack.Protected>
-      <Stack.Protected guard={status === 'signedOut'}>
-        <Stack.Screen name="(auth)" />
-      </Stack.Protected>
-      <Stack.Protected guard={signedIn && !onboarded}>
-        <Stack.Screen name="(onboarding)" />
-      </Stack.Protected>
-      <Stack.Protected guard={signedIn && onboarded}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="(modals)"
-          options={{
-            presentation: 'modal',
-            animation: 'slide_from_bottom',
-            animationDuration: 220,
-          }}
-        />
-        <Stack.Screen name="session" options={{ gestureEnabled: false }} />
-      </Stack.Protected>
-    </Stack>
+    <>
+      <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.bg },
+          animation: 'fade',
+          animationDuration: 160,
+        }}
+      >
+        <Stack.Protected guard={status === 'unconfigured'}>
+          <Stack.Screen name="setup" />
+        </Stack.Protected>
+        <Stack.Protected guard={status === 'signedOut'}>
+          <Stack.Screen name="(auth)" />
+        </Stack.Protected>
+        <Stack.Protected guard={signedIn && !onboarded}>
+          <Stack.Screen name="(onboarding)" />
+        </Stack.Protected>
+        <Stack.Protected guard={signedIn && onboarded}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="(modals)"
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              animationDuration: 220,
+            }}
+          />
+          <Stack.Screen name="session" options={{ gestureEnabled: false }} />
+          <Stack.Screen name="profile" />
+          <Stack.Screen name="ai-chat" />
+          <Stack.Screen name="ai-chats" />
+        </Stack.Protected>
+      </Stack>
+    </>
   );
 }

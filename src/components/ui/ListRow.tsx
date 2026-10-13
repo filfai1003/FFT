@@ -75,7 +75,6 @@ export function ListRow({
     gap: 12,
     borderBottomWidth: divider ? 1 : 0,
     borderBottomColor: colors.borderDecorative,
-    borderStyle: 'dashed' as const,
     paddingVertical: 6,
   };
 

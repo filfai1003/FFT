@@ -109,7 +109,7 @@ export function BodyScreen() {
   const showToast = useToastStore((s) => s.show);
   const p = bodyProgress(entries.data ?? [], period, today);
   const b = p.bodyFat;
-  const u = unit.toUpperCase();
+  const u = unit;
 
   const shown = (kg: number) => displayWeight(kg, unit);
   const len = (cm: number) =>
@@ -149,7 +149,6 @@ export function BodyScreen() {
 
   const divider = {
     borderTopWidth: 1,
-    borderStyle: 'dashed',
     borderColor: colors.borderDecorative,
     paddingTop: 12,
   } as const;
@@ -342,7 +341,6 @@ export function BodyScreen() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       borderTopWidth: i === 0 ? 0 : 1,
-                      borderStyle: 'dashed',
                       borderColor: colors.borderDecorative,
                     }}
                   >

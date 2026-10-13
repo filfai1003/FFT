@@ -3,7 +3,7 @@ import { fontFamily, minFontSize, typeScale } from './tokens';
 
 export type TextVariant = keyof typeof typeScale;
 
-/** Variants set in Doto (dot-matrix). Everything else is Space Grotesk, label is Space Mono. */
+/** Big numbers and titles: semibold (titles bold), tabular digits so values do not jump. */
 const displayVariants: readonly TextVariant[] = [
   'displayXL',
   'displayL',
@@ -17,8 +17,9 @@ export type TextStyleOptions = {
   /** App text-size multiplier from the Accessibility screen. */
   scale: number;
   boldText: boolean;
-  dotNumbers: boolean;
-  /** True when the text is a number: it falls back to plain digits if dot-matrix is off. */
+  /** Kept for compatibility with the old dot-matrix setting; no longer changes the font. */
+  dotNumbers?: boolean;
+  /** True when the text is a number: tabular digits. */
   numeric?: boolean;
   medium?: boolean;
 };
@@ -30,23 +31,21 @@ export function resolveTextStyle(o: TextStyleOptions): TextStyle {
   const style: TextStyle = { fontSize, lineHeight };
 
   if (displayVariants.includes(o.variant)) {
-    style.textTransform = 'uppercase'; // Doto titles are always uppercase in the design
-    if (o.numeric && !o.dotNumbers) {
-      style.fontFamily = o.boldText ? fontFamily.bodyBold : fontFamily.bodyMedium;
-    } else {
-      style.fontFamily = fontFamily.display;
-    }
+    style.fontFamily =
+      o.variant === 'screenTitle' || o.boldText ? fontFamily.bodyBold : fontFamily.display;
+    if (fontSize >= 28) style.letterSpacing = -fontSize * 0.02;
   } else if (o.variant === 'label') {
     style.fontFamily = o.boldText ? fontFamily.labelBold : fontFamily.label;
-    style.letterSpacing = fontSize * typeScale.label.letterSpacing;
-    style.textTransform = 'uppercase';
   } else {
     const heavy = o.medium ?? o.variant === 'titleM';
     if (o.boldText) {
       style.fontFamily = heavy ? fontFamily.bodyBold : fontFamily.bodySemiBold;
+    } else if (o.variant === 'titleM') {
+      style.fontFamily = fontFamily.bodySemiBold;
     } else {
       style.fontFamily = heavy ? fontFamily.bodyMedium : fontFamily.body;
     }
   }
+  if (o.numeric || displayVariants.includes(o.variant)) style.fontVariant = ['tabular-nums'];
   return style;
 }

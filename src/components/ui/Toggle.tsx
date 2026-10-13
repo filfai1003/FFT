@@ -9,7 +9,7 @@ export type ToggleProps = {
   accessibilityLabel: string;
 };
 
-/** 44×26. On = light track + dark knob on the right; off = outlined track + knob on the left. */
+/** 50×30. On = filled track (text colour), knob on the right; off = grey track, knob on the left. */
 export function Toggle({ value, onValueChange, accessibilityLabel }: ToggleProps) {
   const { colors } = useTheme();
   return (
@@ -18,7 +18,7 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: ToggleProps
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ checked: value }}
       aria-checked={value}
-      // The visual is 44×26; the pressable area is 44px high.
+      // The visual is 50×30; the pressable area is 44px high.
       style={{ minWidth: touch.minTarget, minHeight: touch.minTarget, justifyContent: 'center' }}
       onPress={() => {
         tick();
@@ -27,23 +27,21 @@ export function Toggle({ value, onValueChange, accessibilityLabel }: ToggleProps
     >
       <View
         style={{
-          width: 44,
-          height: 26,
-          borderRadius: 13,
-          padding: value ? 3 : 2,
-          borderWidth: value ? 0 : 1,
-          borderColor: colors.textMuted,
-          backgroundColor: value ? colors.text : colors.bg,
+          width: 50,
+          height: 30,
+          borderRadius: 15,
+          padding: 3,
+          backgroundColor: value ? colors.text : colors.borderControl,
           justifyContent: 'center',
           alignItems: value ? 'flex-end' : 'flex-start',
         }}
       >
         <View
           style={{
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            backgroundColor: value ? colors.bg : colors.textMuted,
+            width: 24,
+            height: 24,
+            borderRadius: 12,
+            backgroundColor: value ? colors.bg : '#FFFFFF',
           }}
         />
       </View>

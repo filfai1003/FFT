@@ -233,7 +233,6 @@ export function DietGoalsScreen() {
               justifyContent: 'space-between',
               gap: 8,
               borderTopWidth: 1,
-              borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
               paddingTop: 10,
             }}

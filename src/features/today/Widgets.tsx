@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
+import { Gauge } from '@/components/ui/Gauge';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
@@ -13,12 +14,12 @@ import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { addDays, deviceTimeZone, localDay, weekOf } from '@/domain/day';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
-import { dotsOn } from '@/domain/dots';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
 import { useAddWater, useDayTotals, useRemoveWater, useWater } from '@/features/diet/log';
 import { CalendarGrid, CalendarLegend, useCalendarData } from '@/features/progress/CalendarGrid';
 import { useProfile } from '@/features/profile/api';
+import { useBodyEntries } from '@/features/progress/data';
 import { useToday } from '@/features/profile/use-today';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
@@ -130,26 +131,24 @@ export function NutritionWidget({ size }: Props) {
         ['fat', eaten.fat, target.fat],
       ] as const)
     : [];
-  const bar = (
-    <DotBar
-      total={size === 'large' ? 40 : 16}
-      on={dotsOn(eaten.kcal, target?.kcal ?? 0, size === 'large' ? 40 : 16)}
-      size={size === 'large' ? 10 : 8}
-      gap={size === 'large' ? 4 : 3}
-      accessibilityLabel={t('diet.caloriesBar', {
-        eaten: Math.round(eaten.kcal),
-        target: Math.round(target?.kcal ?? 0),
-      })}
-    />
-  );
+  const share = target && target.kcal > 0 ? eaten.kcal / target.kcal : 0;
+  const gaugeLabel = t('diet.caloriesBar', {
+    eaten: Math.round(eaten.kcal),
+    target: Math.round(target?.kcal ?? 0),
+  });
+  const over = target ? eaten.kcal > target.kcal * 1.1 : false;
 
   if (size === 'small') {
     return (
       <Frame size="small" label={t('today.caloriesLeft')}>
-        <Text variant="displayL" numeric>
-          {left}
-        </Text>
-        {bar}
+        <Gauge value={share} size={110} stroke={10} sweep={0.75} accessibilityLabel={gaugeLabel}>
+          <Text variant="displayS" numeric>
+            {left}
+          </Text>
+          <Text variant="label" muted>
+            {t('today.kcalLeftShort')}
+          </Text>
+        </Gauge>
         {fixed && nextMeal ? (
           <Text variant="bodyS" numberOfLines={1}>
             {nextMeal.name}
@@ -168,46 +167,66 @@ export function NutritionWidget({ size }: Props) {
   }
 
   return (
-    <Frame size="large" label={t('today.caloriesLeft')}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-        <Text variant="displayXL" numeric>
-          {left}
-        </Text>
-        <Text variant="label" muted>
-          {t('today.ofKcal', { kcal: Math.round(target?.kcal ?? 0) })}
-        </Text>
+    <Frame size="large" label={t('today.calories')}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+        <Gauge
+          value={share}
+          size={150}
+          stroke={12}
+          sweep={0.75}
+          color={over ? colors.warning : colors.dotOn}
+          accessibilityLabel={gaugeLabel}
+        >
+          <Text variant="displayM" numeric>
+            {left}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('today.kcalLeftShort')}
+          </Text>
+        </Gauge>
+        <View style={{ flex: 1, gap: 10 }}>
+          <View>
+            <Text variant="bodyS" muted>
+              {t('today.eaten')}
+            </Text>
+            <Text variant="displayS" numeric>
+              {Math.round(eaten.kcal)}
+            </Text>
+          </View>
+          <View>
+            <Text variant="bodyS" muted>
+              {t('today.target')}
+            </Text>
+            <Text variant="displayS" numeric>
+              {Math.round(target?.kcal ?? 0)}
+            </Text>
+          </View>
+        </View>
       </View>
-      {bar}
       <View
         style={{
           flexDirection: 'row',
           gap: 12,
           borderTopWidth: 1,
-          borderStyle: 'dashed',
           borderColor: colors.borderDecorative,
           paddingTop: 12,
         }}
       >
         {macroRows.map(([key, value, goal]) => (
           <View key={key} style={{ flex: 1, gap: 6 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" medium>
               {t(`diet.macro.${key}`)}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-              <Text variant="displayS" numeric>
-                {Math.round(value)}
-              </Text>
-              <Text variant="label" muted>
-                {`/${Math.round(goal)}g`}
-              </Text>
-            </View>
             <DotBar
-              total={10}
-              on={dotsOn(value, goal, 10)}
-              size={6}
-              gap={3}
+              total={Math.max(1, goal)}
+              on={value}
+              color={colors.macroSplit[key]}
+              track={colors.macroSoft[key]}
               accessibilityLabel={t(`diet.macro.${key}`)}
             />
+            <Text variant="label" muted numeric>
+              {`${Math.round(value)} / ${Math.round(goal)} g`}
+            </Text>
           </View>
         ))}
       </View>
@@ -215,7 +234,6 @@ export function NutritionWidget({ size }: Props) {
         style={{
           gap: 8,
           borderTopWidth: 1,
-          borderStyle: 'dashed',
           borderColor: colors.borderDecorative,
           paddingTop: 12,
         }}
@@ -367,6 +385,7 @@ export function WorkoutWidget({ size }: Props) {
 
 export function WaterWidget({ size }: Props) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const barHeight = useTabBarHeight();
   const today = useToday();
   const glassMl = usePreferencesStore((s) => s.waterGlassMl);
@@ -404,17 +423,36 @@ export function WaterWidget({ size }: Props) {
 
   return (
     <Frame size={size} label={t('today.waterLabel')}>
-      <DotBar
-        total={goalGlasses}
-        on={Math.min(glasses, goalGlasses)}
-        size={8}
-        gap={3}
-        off="outline"
-        accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
-      />
-      <Text variant="bodyS" medium>
-        {t('today.water', { n: glasses, total: goalGlasses })}
-      </Text>
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
+          style={{
+            width: 28,
+            height: 64,
+            borderRadius: 9,
+            backgroundColor: colors.waterSoft,
+            overflow: 'hidden',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <View
+            style={{
+              height: `${Math.min(100, (glasses / goalGlasses) * 100)}%`,
+              backgroundColor: colors.water,
+            }}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="displayS" numeric>
+            {t('today.litres', { l: ((water.data?.totalMl ?? 0) / 1000).toFixed(1) })}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('today.water', { n: glasses, total: goalGlasses })}
+          </Text>
+        </View>
+      </View>
       <View style={{ flexDirection: 'row', gap: 4 }}>
         <IconButton
           icon="minus"
@@ -424,6 +462,51 @@ export function WaterWidget({ size }: Props) {
         />
         <IconButton icon="plus" accessibilityLabel={t('today.addWater')} onPress={onWater} />
       </View>
+    </Frame>
+  );
+}
+
+/** The latest weight and how it moved over the last week. Opens Body. */
+export function WeightWidget({ size }: Props) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const today = useToday();
+  const entries = useBodyEntries();
+  const weights = (entries.data ?? []).filter((e) => e.weightKg != null);
+  const latest = weights[0];
+  const weekAgo = weights.find((e) => e.day <= addDays(today, -7));
+  const change =
+    latest?.weightKg != null && weekAgo?.weightKg != null
+      ? latest.weightKg - weekAgo.weightKg
+      : null;
+
+  return (
+    <Frame size={size} label={t('today.weight')} onPress={() => router.push('/progress/body')}>
+      {latest?.weightKg != null ? (
+        <>
+          <Text variant="displayS" numeric>
+            {t('today.kg', { kg: latest.weightKg.toFixed(1) })}
+          </Text>
+          {change != null ? (
+            <Text
+              variant="bodyS"
+              medium
+              style={{ color: change <= 0 ? colors.successText : colors.text }}
+            >
+              {t('today.weightChange', { kg: (change > 0 ? '+' : '') + change.toFixed(1) })}
+            </Text>
+          ) : (
+            <Text variant="bodyS" muted>
+              {t('today.weightOn', { day: latest.day })}
+            </Text>
+          )}
+        </>
+      ) : (
+        <Text variant="bodyS" muted>
+          {t('today.noWeight')}
+        </Text>
+      )}
     </Frame>
   );
 }
@@ -539,6 +622,7 @@ export const widgetComponents: Record<WidgetId, (p: Props) => ReactNode> = {
   nutrition: NutritionWidget,
   workout: WorkoutWidget,
   water: WaterWidget,
+  weight: WeightWidget,
   creatine: CreatineWidget,
   calendar: CalendarWidget,
 };

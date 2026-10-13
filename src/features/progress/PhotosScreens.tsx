@@ -35,7 +35,7 @@ import { signed } from './ProgressScreen';
 const infoFor = (e: BodyEntry | undefined, unit: 'kg' | 'lb') =>
   e
     ? [
-        e.weightKg != null ? `${displayWeight(e.weightKg, unit)} ${unit.toUpperCase()}` : null,
+        e.weightKg != null ? `${displayWeight(e.weightKg, unit)} ${unit}` : null,
         e.bodyFatPct != null ? `${e.bodyFatPct}%` : null,
       ]
         .filter(Boolean)
@@ -163,7 +163,7 @@ export function ComparePhotosScreen() {
     a?.weightKg != null && b?.weightKg != null
       ? {
           v: signed(displayWeight(b.weightKg, unit) - displayWeight(a.weightKg, unit)),
-          l: unit.toUpperCase(),
+          l: unit,
         }
       : null,
     a?.bodyFatPct != null && b?.bodyFatPct != null

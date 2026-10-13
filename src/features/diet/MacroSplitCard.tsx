@@ -75,7 +75,6 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
             alignItems: 'center',
             gap: 10,
             borderTopWidth: 1,
-            borderStyle: 'dashed',
             borderColor: colors.borderDecorative,
           }}
         >

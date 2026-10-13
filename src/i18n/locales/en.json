@@ -15,7 +15,7 @@
     "clear": "Clear"
   },
   "nav": {
-    "today": "Today",
+    "today": "Home",
     "train": "Train",
     "diet": "Diet",
     "progress": "Progress",
@@ -66,7 +66,8 @@
       "water": "Water",
       "creatine": "Creatine",
       "calendar": "Calendar",
-      "ai": "AI coach bar"
+      "ai": "AI coach bar",
+      "weight": "Weight"
     },
     "reorderHint": "Hold and slide to reorder",
     "focus": {
@@ -77,7 +78,17 @@
       "doneInfo": "Nothing left to do today. Check your numbers below.",
       "logTitle": "Log what you eat",
       "logInfo": "{{kcal}} kcal left today"
-    }
+    },
+    "calories": "Calories",
+    "kcalLeftShort": "kcal left",
+    "eaten": "Eaten",
+    "target": "Target",
+    "litres": "{{l}} L",
+    "weight": "Weight",
+    "kg": "{{kg}} kg",
+    "weightChange": "{{kg}} kg this week",
+    "weightOn": "Logged {{day}}",
+    "noWeight": "No weight yet. Tap to log it."
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -575,7 +586,12 @@
     "decreaseAmount": "Decrease amount",
     "increaseAmount": "Increase amount",
     "nutrition": "Nutrition",
-    "perGrams": "Per {{g}} g"
+    "perGrams": "Per {{g}} g",
+    "leftToday": "Left today",
+    "eatenOfTarget": "{{eaten}} of {{target}} kcal eaten",
+    "ofGrams": "of {{g}} g",
+    "nothingYet": "Nothing yet",
+    "targetLine": "Target {{kcal}} kcal"
   },
   "createFood": {
     "title": "New food",
@@ -862,7 +878,7 @@
       "yellow": "Yellow",
       "green": "Green",
       "blue": "Blue",
-      "white": "White"
+      "white": "Mono"
     },
     "notifications": "Notifications",
     "off": "Off",
@@ -897,9 +913,6 @@
     },
     "deniedTitle": "Notifications are blocked",
     "deniedBody": "Allow notifications for this app in your device settings, then turn this on again.",
-    "background": "Background",
-    "bgBlack": "Black",
-    "bgDots": "Dots",
     "openDeviceSettings": "Open device settings",
     "app": {
       "title": "App",
@@ -913,7 +926,15 @@
       "restart": "Update ready: restart the app",
       "upToDate": "You have the latest version.",
       "error": "Could not check for updates. Check your connection and try again."
-    }
+    },
+    "theme": "Theme",
+    "workoutTheme": "Workout theme",
+    "workoutThemeHint": "The workout in progress can look different, for example dark in the gym.",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "Phone",
+    "mon": "Mon",
+    "sun": "Sun"
   },
   "a11y": {
     "title": "Accessibility",
@@ -1214,5 +1235,19 @@
       "2": "Dinner"
     },
     "section": "Reminders"
+  },
+  "add": {
+    "title": "Add",
+    "food": "Food",
+    "scan": "Scan",
+    "water": "Water +{{ml}} ml",
+    "body": "Weight and body",
+    "workout": "Workout",
+    "workoutResume": "Back to workout",
+    "photo": "Photo",
+    "again": "Log again",
+    "againFood": "Log {{name}} again",
+    "per100": "{{kcal}} kcal · P {{p}} g per 100 g",
+    "coach": "Tell the coach what you ate"
   }
 }

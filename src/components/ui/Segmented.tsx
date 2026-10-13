@@ -27,12 +27,10 @@ export function Segmented<T extends string>({
       accessibilityLabel={accessibilityLabel}
       style={{
         flexDirection: 'row',
-        gap: 4,
-        padding: 4,
-        borderRadius: 26,
-        borderWidth: 1,
-        borderColor: colors.borderDecorative,
-        backgroundColor: colors.surfaceAlt,
+        gap: 2,
+        padding: 3,
+        borderRadius: 12,
+        backgroundColor: colors.dotOff,
       }}
     >
       {options.map((o) => {
@@ -53,17 +51,15 @@ export function Segmented<T extends string>({
             }}
             style={{
               flex: 1,
-              height: touch.minTarget,
-              borderRadius: 22,
-              borderWidth: selected ? 1 : 0,
-              borderColor: colors.borderSelected,
-              backgroundColor: selected ? colors.surfaceSelected : 'transparent',
+              minHeight: touch.minTarget - 6,
+              borderRadius: 10,
+              backgroundColor: selected ? colors.surfaceRaised : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
               opacity: o.disabled ? 0.35 : 1,
             }}
           >
-            <Text variant="label" style={{ color: selected ? colors.text : colors.textMuted }}>
+            <Text variant="body" medium={selected} style={{ fontSize: 14, color: colors.text }}>
               {o.label}
             </Text>
           </Pressable>

@@ -14,7 +14,10 @@ export type Preferences = {
   lengthUnit: 'cm' | 'ft_in';
   energyUnit: 'kcal' | 'kj';
   weekStart: 'mon' | 'sun';
+  /** Theme of the app. */
   theme: 'dark' | 'light' | 'system';
+  /** Theme of the workout in progress (it can differ from the app's). */
+  workoutTheme: 'dark' | 'light' | 'system';
   language: string;
   waterGlassMl: number;
   notifications: NotificationPrefs;
@@ -25,7 +28,8 @@ export const defaultPreferences: Preferences = {
   lengthUnit: 'cm',
   energyUnit: 'kcal',
   weekStart: 'mon',
-  theme: 'dark',
+  theme: 'light',
+  workoutTheme: 'light',
   language: 'en',
   waterGlassMl: 250,
   notifications: { rest_timer: true, workout_reminder: true, weekly_check_in: true, meals: false },

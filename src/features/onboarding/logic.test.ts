@@ -125,6 +125,6 @@ describe('local day helpers', () => {
       '2026-10-11',
     ]);
     expect(weekOf('2026-10-08', 'sun')[0]).toBe('2026-10-04');
-    expect(shortDateLabel('2026-10-08')).toBe('THU OCT 08');
+    expect(shortDateLabel('2026-10-08')).toBe('Thu 8 Oct');
   });
 });

@@ -208,7 +208,6 @@ export function FoodDetailScreen() {
               flexDirection: 'row',
               gap: 12,
               borderTopWidth: 1,
-              borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
               paddingTop: 12,
             }}
@@ -352,7 +351,6 @@ function NutritionTable({ per100, grams }: { per100: Per100; grams: number }) {
             minHeight: 32,
             alignItems: 'center',
             borderTopWidth: 1,
-            borderStyle: 'dashed',
             borderColor: colors.borderDecorative,
           }}
         >

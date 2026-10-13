@@ -1,15 +1,21 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import { shortDateLabel } from '@/domain/day';
+import { useTheme } from '@/design/use-theme';
+import { dayOfMonth, shortDateLabel, weekOf, weekdayLetter } from '@/domain/day';
 import { AI_DOCK_HEIGHT, AiDock } from '@/features/ai/AiDock';
+import { useCalendarData } from '@/features/progress/CalendarGrid';
+import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { Reveal } from '@/components/ui/motion';
-import { NextUpCard } from './NextUpCard';
+import { tick } from '@/lib/haptics';
 import { CustomizeSheet } from './CustomizeSheet';
 import { useCreatine } from './creatine-store';
 import { useHomeLayout } from './layout-store';
@@ -17,10 +23,88 @@ import { widgetComponents } from './Widgets';
 
 const WIDGET_GAP = 10;
 
-/** Today: the widgets you chose (calories and meals, workout, water, creatine, calendar) and the AI bar. */
+/** Initials for the profile button ("Filippo Faiella" -> "FF"). */
+export function initials(name: string | null | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join('');
+}
+
+/** This week at a glance: a dot under each day says if the diet was on target. Opens the calendar. */
+function WeekStrip() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const today = useToday();
+  const weekStart = usePreferencesStore((s) => s.weekStart);
+  const days = weekOf(today, weekStart);
+  const data = useCalendarData([days[0]!.slice(0, 7), days[6]!.slice(0, 7)]);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('calendar.open')}
+      onPress={() => {
+        tick();
+        router.push('/calendar');
+      }}
+      style={{ flexDirection: 'row', gap: 4 }}
+    >
+      {days.map((d) => {
+        const isToday = d === today;
+        const status = d <= today ? data.statusOf(d) : 'none';
+        const dot =
+          status === 'onTarget'
+            ? colors.success
+            : status === 'off'
+              ? colors.warning
+              : 'transparent';
+        return (
+          <View
+            key={d}
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              gap: 3,
+              paddingVertical: 6,
+              borderRadius: 12,
+              backgroundColor: isToday ? colors.text : 'transparent',
+            }}
+          >
+            <Text variant="label" style={{ color: isToday ? colors.bg : colors.textMuted }}>
+              {weekdayLetter(d)}
+            </Text>
+            <Text
+              variant="body"
+              numeric
+              style={{ fontWeight: '600', fontSize: 16, color: isToday ? colors.bg : colors.text }}
+            >
+              {dayOfMonth(d)}
+            </Text>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: isToday && dot === 'transparent' ? colors.bg : dot,
+              }}
+            />
+          </View>
+        );
+      })}
+    </Pressable>
+  );
+}
+
+/** Home: calories on top, then the widgets you chose (workout, water, weight, creatine, calendar). */
 export function TodayScreen() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
   const today = useToday();
+  const profile = useProfile();
   const { widgets, aiDock, loaded, load } = useHomeLayout();
   const creatineLoaded = useCreatine((s) => s.loaded);
   const loadCreatine = useCreatine((s) => s.load);
@@ -38,27 +122,54 @@ export function TodayScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={aiDock ? AI_DOCK_HEIGHT + 8 : 24} gap={16}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ gap: 4 }}>
-            <Text variant="label" muted>
+      <Screen scroll bottomBarHeight={aiDock ? AI_DOCK_HEIGHT + 8 : 24} gap={14}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('nav.profile')}
+            onPress={() => {
+              tick();
+              router.push('/profile');
+            }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: colors.dotOff,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {initials(profile.data?.name) ? (
+              <Text variant="body" medium>
+                {initials(profile.data?.name)}
+              </Text>
+            ) : (
+              <Icon name="user" size={22} color={colors.text} />
+            )}
+          </Pressable>
+          <View style={{ flex: 1 }}>
+            <Text variant="bodyS" muted>
               {shortDateLabel(today)}
             </Text>
-            <Text variant="displayL">{t('today.title')}</Text>
+            <Text variant="screenTitle" style={{ fontSize: 24, lineHeight: 28 }}>
+              {t('today.title')}
+            </Text>
           </View>
           <IconButton
             icon="sliders"
             accessibilityLabel={t('today.customize')}
             onPress={() => setCustomizing(true)}
           />
+          <IconButton
+            icon="sparkle"
+            accessibilityLabel={t('ai.chatScreenTitle')}
+            onPress={() => router.push('/ai-chat')}
+          />
         </View>
 
+        <WeekStrip />
         <ActiveSessionBanner />
-        <Reveal>
-          <NextUpCard />
-        </Reveal>
 
         <View
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -71,7 +182,7 @@ export function TodayScreen() {
                 key={w.id}
                 style={{ width: w.size === 'large' ? '100%' : half, flexDirection: 'column' }}
               >
-                <Reveal index={n + 1} style={{ flexGrow: 1 }}>
+                <Reveal index={n} style={{ flexGrow: 1 }}>
                   <Widget size={w.size} />
                 </Reveal>
               </View>

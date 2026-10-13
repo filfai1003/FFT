@@ -142,7 +142,6 @@ export function FoodSearchScreen() {
                 alignItems: 'center',
                 gap: 12,
                 borderBottomWidth: 1,
-                borderStyle: 'dashed',
                 borderColor: colors.borderDecorative,
               }}
             >

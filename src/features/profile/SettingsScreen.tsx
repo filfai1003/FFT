@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
-import { useBackground } from '@/design/background-store';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAppearanceStore } from '@/design/appearance-store';
+import { readableOn } from '@/design/contrast';
+import { accentColor } from '@/design/theme';
 import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ensurePermission } from '@/lib/notifications';
@@ -21,10 +22,10 @@ import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
 import { ReminderRow } from '@/features/settings/ReminderRow';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 
-/** Settings: units, accent colour, background and notifications. */
+/** Settings: units, theme (app and workout), accent colour and notifications. */
 export function SettingsScreen() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const router = useRouter();
   const prefs = usePreferencesStore();
   const accent = useAppearanceStore((s) => s.accent);
@@ -40,7 +41,11 @@ export function SettingsScreen() {
     prefs.set('notifications', { ...prefs.notifications, rest_timer: value });
   };
 
-  const background = useBackground();
+  const themeOptions = [
+    { value: 'light' as const, label: t('settings.themeLight') },
+    { value: 'dark' as const, label: t('settings.themeDark') },
+    { value: 'system' as const, label: t('settings.themeSystem') },
+  ];
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
@@ -57,8 +62,8 @@ export function SettingsScreen() {
             value={prefs.weightUnit}
             onChange={(v) => prefs.set('weightUnit', v)}
             options={[
-              { value: 'kg', label: 'KG' },
-              { value: 'lb', label: 'LB' },
+              { value: 'kg', label: 'kg' },
+              { value: 'lb', label: 'lb' },
             ]}
           />
         </UnitRow>
@@ -68,8 +73,8 @@ export function SettingsScreen() {
             value={prefs.lengthUnit}
             onChange={(v) => prefs.set('lengthUnit', v)}
             options={[
-              { value: 'cm', label: 'CM' },
-              { value: 'ft_in', label: 'FT·IN' },
+              { value: 'cm', label: 'cm' },
+              { value: 'ft_in', label: 'ft·in' },
             ]}
           />
         </UnitRow>
@@ -79,8 +84,8 @@ export function SettingsScreen() {
             value={prefs.energyUnit}
             onChange={(v) => prefs.set('energyUnit', v)}
             options={[
-              { value: 'kcal', label: 'KCAL' },
-              { value: 'kj', label: 'KJ' },
+              { value: 'kcal', label: 'kcal' },
+              { value: 'kj', label: 'kJ' },
             ]}
           />
         </UnitRow>
@@ -90,8 +95,8 @@ export function SettingsScreen() {
             value={prefs.weekStart}
             onChange={(v) => prefs.set('weekStart', v)}
             options={[
-              { value: 'mon', label: 'MON' },
-              { value: 'sun', label: 'SUN' },
+              { value: 'mon', label: t('settings.mon') },
+              { value: 'sun', label: t('settings.sun') },
             ]}
           />
         </UnitRow>
@@ -133,7 +138,7 @@ export function SettingsScreen() {
                       width: 26,
                       height: 26,
                       borderRadius: 13,
-                      backgroundColor: accentOptions[name],
+                      backgroundColor: accentColor(name, mode),
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
@@ -142,11 +147,7 @@ export function SettingsScreen() {
                       <Icon
                         name="check"
                         size={16}
-                        color={
-                          name === 'white' || name === 'yellow' || name === 'green'
-                            ? '#000000'
-                            : '#FFFFFF'
-                        }
+                        color={readableOn(accentColor(name, mode), '#FFFFFF', '#191917')}
                       />
                     ) : null}
                   </View>
@@ -156,15 +157,24 @@ export function SettingsScreen() {
           </View>
         </View>
         <View style={{ gap: 8 }}>
-          <Text>{t('settings.background')}</Text>
+          <Text>{t('settings.theme')}</Text>
           <Segmented
-            accessibilityLabel={t('settings.background')}
-            value={background.mode}
-            onChange={background.setMode}
-            options={[
-              { value: 'black', label: t('settings.bgBlack') },
-              { value: 'dots', label: t('settings.bgDots') },
-            ]}
+            accessibilityLabel={t('settings.theme')}
+            value={prefs.theme}
+            onChange={(v) => prefs.set('theme', v)}
+            options={themeOptions}
+          />
+        </View>
+        <View style={{ gap: 8 }}>
+          <Text>{t('settings.workoutTheme')}</Text>
+          <Text variant="bodyS" muted>
+            {t('settings.workoutThemeHint')}
+          </Text>
+          <Segmented
+            accessibilityLabel={t('settings.workoutTheme')}
+            value={prefs.workoutTheme}
+            onChange={(v) => prefs.set('workoutTheme', v)}
+            options={themeOptions}
           />
         </View>
       </Card>
@@ -203,7 +213,6 @@ export function SettingsScreen() {
             key={kind}
             style={{
               borderTopWidth: 1,
-              borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
             }}
           >
@@ -249,7 +258,6 @@ function UnitRow({
         gap: 8,
         paddingVertical: 10,
         borderTopWidth: 1,
-        borderStyle: 'dashed',
         borderColor: colors.borderDecorative,
         borderBottomWidth: 0,
         marginBottom: last ? -4 : 0,

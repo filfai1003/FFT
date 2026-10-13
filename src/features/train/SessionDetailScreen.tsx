@@ -48,8 +48,7 @@ export function SessionDetailScreen({
     timeZone: tz,
   })
     .format(new Date(s.startedAt))
-    .replace(',', '')
-    .toUpperCase();
+    .replace(',', '');
 
   const stats = [
     { value: String(s.stats.minutes), label: t('detail.minutes') },

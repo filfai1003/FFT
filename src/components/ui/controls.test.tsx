@@ -17,10 +17,10 @@ describe('Button', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('is 56px high when large and never below 44px', async () => {
+  it('is 52px high when large and never below 44px', async () => {
     await renderUI(<Button label="Save day" onPress={jest.fn()} size="large" />);
     const style = flat(screen.getByRole('button').props.style);
-    expect(style.height).toBe(56);
+    expect(style.height).toBe(52);
     expect(style.minHeight).toBeGreaterThanOrEqual(44);
   });
 

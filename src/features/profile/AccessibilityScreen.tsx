@@ -157,7 +157,6 @@ export function AccessibilityScreen() {
                 justifyContent: 'space-between',
                 gap: 12,
                 borderTopWidth: s.size || r !== s.rows[0] ? 1 : 0,
-                borderStyle: 'dashed',
                 borderColor: colors.borderDecorative,
               }}
             >

@@ -54,22 +54,22 @@ export function ProfileScreen() {
     age != null ? `${age} Y` : null,
     height,
     weight.data
-      ? `${displayWeight(weight.data.weightKg, prefs.weightUnit)} ${prefs.weightUnit.toUpperCase()}`
+      ? `${displayWeight(weight.data.weightKg, prefs.weightUnit)} ${prefs.weightUnit}`
       : null,
   ]
     .filter(Boolean)
     .join(' · ');
   const since = p?.created_at
-    ? new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' })
-        .format(new Date(p.created_at))
-        .toUpperCase()
+    ? new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(
+        new Date(p.created_at),
+      )
     : '';
 
   const groups: { name: string; value?: string; onPress: () => void }[][] = [
     [
       {
         name: t('profile.settings'),
-        value: `${prefs.weightUnit.toUpperCase()} · ${prefs.lengthUnit === 'cm' ? 'CM' : 'FT·IN'}`,
+        value: `${prefs.weightUnit} · ${prefs.lengthUnit === 'cm' ? 'cm' : 'ft·in'}`,
         onPress: () => router.push('/profile/settings'),
       },
       { name: t('profile.accessibility'), onPress: () => router.push('/profile/accessibility') },
@@ -186,7 +186,6 @@ export function ProfileScreen() {
                   alignItems: 'center',
                   gap: 12,
                   borderTopWidth: j === 0 ? 0 : 1,
-                  borderStyle: 'dashed',
                   borderColor: colors.borderDecorative,
                   opacity: pressed ? 0.7 : 1,
                 })}

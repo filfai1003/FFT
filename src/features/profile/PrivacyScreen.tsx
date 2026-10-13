@@ -38,9 +38,9 @@ export function PrivacyScreen() {
   const health = activeConsent(consents.data, 'health_data');
   const analytics = activeConsent(consents.data, 'analytics');
   const grantedOn = health
-    ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' })
-        .format(new Date(health.grantedAt))
-        .toUpperCase()
+    ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+        new Date(health.grantedAt),
+      )
     : '';
 
   const runExport = async (kind: 'full' | 'workouts') => {
@@ -86,7 +86,6 @@ export function PrivacyScreen() {
           justifyContent: 'space-between',
           gap: 12,
           borderTopWidth: i === 0 ? 0 : 1,
-          borderStyle: 'dashed',
           borderColor: colors.borderDecorative,
           opacity: r.disabled ? 0.5 : 1,
         }}
@@ -144,7 +143,6 @@ export function PrivacyScreen() {
               justifyContent: 'space-between',
               gap: 12,
               borderTopWidth: 1,
-              borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
             }}
           >

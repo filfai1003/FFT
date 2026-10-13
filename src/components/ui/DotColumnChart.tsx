@@ -23,7 +23,7 @@ export type DotColumnChartProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Bar chart made of stacked dots, one column per data point. */
+/** Bar chart with rounded columns, one per data point (the name stays from the dot-matrix era). */
 export function DotColumnChart({
   values,
   min = Math.min(...values),
@@ -57,20 +57,26 @@ export function DotColumnChart({
             ...(stretch ? { flex: 1 } : null),
           }}
         >
-          {Array.from({ length: rows }, (_, r) => (
+          <View
+            style={{
+              width: stretch ? '100%' : Math.max(dotSize * 2, 10),
+              height: rows * (dotSize + dotGap),
+              borderRadius: 6,
+              backgroundColor: colors.chartDotOff,
+              justifyContent: 'flex-end',
+              overflow: 'hidden',
+            }}
+          >
             <View
-              key={r}
               style={{
-                width: dotSize,
-                height: dotSize,
-                borderRadius: dotSize / 2,
-                // r = 0 is the top row; the bottom `level` rows are lit
-                backgroundColor: r >= rows - level ? colors.dotOn : colors.chartDotOff,
+                height: `${(level / rows) * 100}%`,
+                borderRadius: 6,
+                backgroundColor: colors.dotOn,
               }}
             />
-          ))}
+          </View>
           {labels ? (
-            <Text variant="label" muted style={{ marginTop: 4, letterSpacing: 0 }}>
+            <Text variant="label" muted style={{ marginTop: 4 }}>
               {labels[c]}
             </Text>
           ) : null}

@@ -211,7 +211,6 @@ function SessionRow({
         alignItems: 'center',
         gap: 14,
         borderBottomWidth: 1,
-        borderStyle: 'dashed',
         borderColor: colors.borderDecorative,
         opacity: pressed ? 0.7 : 1,
       })}
@@ -234,7 +233,6 @@ function SessionRow({
                 paddingVertical: 2,
                 borderRadius: 8,
                 borderWidth: 1,
-                borderStyle: 'dashed',
                 borderColor: colors.textPlaceholderIcon,
               }}
             >

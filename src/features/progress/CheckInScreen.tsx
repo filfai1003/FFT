@@ -156,7 +156,7 @@ export function CheckInScreen() {
             t('checkIn.weight'),
             weight,
             setWeight,
-            unit.toUpperCase(),
+            unit,
             lastWeight
               ? t('checkIn.last', {
                   value: displayWeight(lastWeight.weightKg!, unit),

@@ -1,5 +1,5 @@
 import { type StyleProp, type ViewStyle } from 'react-native';
-import { touch } from '@/design/tokens';
+import { fontFamily, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
@@ -9,9 +9,9 @@ import { Text } from './Text';
 export type ButtonVariant =
   /** The one accent-filled action of a screen. */
   | 'primary'
-  /** Dashed outline, mono label: "+ ADD EXERCISE". */
+  /** Outlined, on the card colour: "Add exercise". */
   | 'secondary'
-  /** Text row with a dashed top border, e.g. "TRAIN A DIFFERENT DAY". */
+  /** Plain text button, e.g. "Train a different day". */
   | 'ghost'
   /** Destructive, outlined in the danger colour. Never pinned to the bottom bar. */
   | 'danger';
@@ -44,19 +44,20 @@ export function Button({
   const { colors } = useTheme();
   const press = usePressScale();
   const large = size === 'large';
-  const height = large ? touch.primaryButtonHeight : touch.secondaryButtonHeight + 4;
+  const height = large ? touch.primaryButtonHeight : touch.secondaryButtonHeight;
+  const corner = 14;
 
   const look = {
     primary: {
-      container: { backgroundColor: colors.accent, borderRadius: height / 2 },
+      container: { backgroundColor: colors.accent, borderRadius: corner },
       fg: colors.onAccent,
     },
     secondary: {
       container: {
         borderWidth: 1,
-        borderStyle: 'dashed',
         borderColor: colors.borderControl,
-        borderRadius: height / 2,
+        backgroundColor: colors.surface,
+        borderRadius: corner,
       },
       fg: colors.text,
     },
@@ -64,25 +65,22 @@ export function Button({
       container: {
         minHeight: touch.minTarget,
         height: undefined,
-        borderTopWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: colors.borderDecorative,
-        justifyContent: 'space-between',
+        paddingHorizontal: 8,
       },
       fg: colors.text,
     },
     danger: {
       container: {
         borderWidth: 1,
-        borderColor: colors.danger,
-        borderRadius: height / 2,
+        borderColor: colors.borderDecorative,
+        backgroundColor: colors.surface,
+        borderRadius: corner,
       },
       fg: colors.danger,
     },
   } as const satisfies Record<ButtonVariant, { container: ViewStyle; fg: string }>;
 
   const { container, fg } = look[variant];
-  const mono = variant !== 'primary';
 
   return (
     <AnimatedPressable
@@ -117,13 +115,11 @@ export function Button({
     >
       {icon ? <Icon name={icon} size={20} color={fg} /> : null}
       <Text
-        variant={mono ? 'label' : large ? 'bodyL' : 'body'}
-        medium
-        style={{ color: fg, letterSpacing: mono ? 0.9 : 0 }}
+        variant={large ? 'bodyL' : 'body'}
+        style={{ color: fg, fontFamily: fontFamily.bodySemiBold }}
       >
         {label}
       </Text>
-      {variant === 'ghost' ? <Icon name="chevronRight" size={16} color={fg} /> : null}
     </AnimatedPressable>
   );
 }

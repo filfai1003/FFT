@@ -2,21 +2,22 @@ import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabBar, type TabBarItem } from '@/components/ui/TabBar';
-import { color } from '@/design/tokens';
+import { useTheme } from '@/design/use-theme';
+import { AddSheet, useAddSheet } from '@/features/today/AddSheet';
 import type { IconName } from '@/components/ui/Icon';
 
 type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
 const tabs = [
-  { name: 'index', icon: 'today', label: 'nav.today' },
-  { name: 'train', icon: 'train', label: 'nav.train' },
-  { name: 'diet', icon: 'diet', label: 'nav.diet' },
-  { name: 'progress', icon: 'progress', label: 'nav.progress' },
-  { name: 'profile', icon: 'profile', label: 'nav.profile' },
+  { name: 'index', icon: 'home', label: 'nav.today' },
+  { name: 'diet', icon: 'bowl', label: 'nav.diet' },
+  { name: 'train', icon: 'dumbbell', label: 'nav.train' },
+  { name: 'progress', icon: 'chart', label: 'nav.progress' },
 ] as const satisfies readonly { name: string; icon: IconName; label: string }[];
 
 function AppTabBar({ state, navigation }: TabBarProps) {
   const { t } = useTranslation();
+  const openAdd = useAddSheet((st) => st.set);
   const items: TabBarItem[] = state.routes.flatMap((route, index) => {
     const tab = tabs.find((x) => x.name === route.name);
     if (!tab) return [];
@@ -43,24 +44,33 @@ function AppTabBar({ state, navigation }: TabBarProps) {
       },
     ];
   });
-  return <TabBar items={items} />;
+  return (
+    <TabBar
+      items={items}
+      action={{ label: t('add.title'), icon: 'plus', onPress: () => openAdd(true) }}
+    />
+  );
 }
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
   return (
-    <Tabs
-      tabBar={(props) => <AppTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        animation: 'fade',
-        sceneStyle: { backgroundColor: color.bg },
-      }}
-    >
-      {tabs.map((tab) => (
-        // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page
-        // that was opened from elsewhere (e.g. the calendar opened from Today).
-        <Tabs.Screen key={tab.name} name={tab.name} options={{ popToTopOnBlur: true }} />
-      ))}
-    </Tabs>
+    <>
+      <Tabs
+        tabBar={(props) => <AppTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+          sceneStyle: { backgroundColor: colors.bg },
+        }}
+      >
+        {tabs.map((tab) => (
+          // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page
+          // that was opened from elsewhere (e.g. the calendar opened from Today).
+          <Tabs.Screen key={tab.name} name={tab.name} options={{ popToTopOnBlur: true }} />
+        ))}
+      </Tabs>
+      <AddSheet />
+    </>
   );
 }

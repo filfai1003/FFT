@@ -12,7 +12,7 @@ export type ChipProps = {
   role?: 'radio' | 'checkbox';
 };
 
-/** Selection is shown with a white border (never a filled block). */
+/** Selection is shown with a 2px border in the text colour. */
 export function Chip({ label, selected, onPress, role = 'checkbox' }: ChipProps) {
   const { colors } = useTheme();
   return (
@@ -29,21 +29,15 @@ export function Chip({ label, selected, onPress, role = 'checkbox' }: ChipProps)
         height: touch.minTarget,
         paddingHorizontal: 14,
         borderRadius: 22,
-        borderWidth: 1,
+        borderWidth: selected ? 2 : 1,
         borderColor: selected ? colors.borderSelected : colors.borderControl,
-        backgroundColor: selected ? colors.surfaceSelected : 'transparent',
+        backgroundColor: colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <Text
-        variant="label"
-        style={{
-          color: selected ? colors.text : colors.textMuted,
-          letterSpacing: 0.5,
-        }}
-      >
+      <Text variant="body" medium={selected} style={{ fontSize: 14, color: colors.text }}>
         {label}
       </Text>
     </Pressable>

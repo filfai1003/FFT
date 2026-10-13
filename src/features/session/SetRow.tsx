@@ -20,26 +20,26 @@ export function columnsFor(logType: LogType, weightUnit: string): ColumnSpec[] {
   switch (logType) {
     case 'weight_reps':
       return [
-        { field: 'weight', label: weightUnit.toUpperCase(), keyboard: 'decimal-pad' },
-        { field: 'reps', label: 'REPS', keyboard: 'number-pad' },
+        { field: 'weight', label: weightUnit, keyboard: 'decimal-pad' },
+        { field: 'reps', label: 'Reps', keyboard: 'number-pad' },
       ];
     case 'reps':
-      return [{ field: 'reps', label: 'REPS', keyboard: 'number-pad' }];
+      return [{ field: 'reps', label: 'Reps', keyboard: 'number-pad' }];
     case 'time':
       return [
         {
           field: 'duration',
-          label: 'TIME',
+          label: 'Time',
           keyboard: 'numbers-and-punctuation',
           placeholder: '0:00',
         },
       ];
     default:
       return [
-        { field: 'distance', label: 'KM', keyboard: 'decimal-pad' },
+        { field: 'distance', label: 'km', keyboard: 'decimal-pad' },
         {
           field: 'duration',
-          label: 'TIME',
+          label: 'Time',
           keyboard: 'numbers-and-punctuation',
           placeholder: '0:00',
         },
@@ -77,7 +77,6 @@ export const SetRow = memo(function SetRow({
         gap: 8,
         paddingVertical: 6,
         borderTopWidth: 1,
-        borderStyle: 'dashed',
         borderColor: colors.borderDecorative,
       }}
     >

@@ -1,0 +1,246 @@
+import { useRouter, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { Pressable, View } from 'react-native';
+import { create } from 'zustand';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { Sheet } from '@/components/ui/Sheet';
+import { useTabBarHeight } from '@/components/ui/TabBar';
+import { Text } from '@/components/ui/Text';
+import { useTheme } from '@/design/use-theme';
+import { mealForHour } from '@/domain/diet';
+import { useRecentFoods } from '@/features/diet/foods';
+import { useAddWater, useRemoveWater } from '@/features/diet/log';
+import { useToday } from '@/features/profile/use-today';
+import { useSessionStore as useWorkout } from '@/features/session/store';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { confirm, tick } from '@/lib/haptics';
+import { useToastStore } from '@/lib/toast-store';
+
+/** Opened by the "+" in the middle of the tab bar. */
+export const useAddSheet = create<{ open: boolean; set: (open: boolean) => void }>((set) => ({
+  open: false,
+  set: (open) => set({ open }),
+}));
+
+type Tile = {
+  key: string;
+  label: string;
+  icon: IconName;
+  tint: string;
+  ink: string;
+  run: () => void;
+};
+
+/** Add anything from anywhere: food, a scan, water, weight, a workout, a photo, or tell the coach. */
+export function AddSheet() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const open = useAddSheet((s) => s.open);
+  const setOpen = useAddSheet((s) => s.set);
+  const today = useToday();
+  const barHeight = useTabBarHeight();
+  const glassMl = usePreferencesStore((s) => s.waterGlassMl);
+  const addWater = useAddWater();
+  const removeWater = useRemoveWater();
+  const showToast = useToastStore((s) => s.show);
+  const active = useWorkout((s) => s.active);
+  const recent = useRecentFoods();
+  const meal = mealForHour(new Date().getHours());
+
+  const go = (href: Href) => {
+    setOpen(false);
+    router.push(href);
+  };
+
+  const tiles: Tile[] = [
+    {
+      key: 'food',
+      label: t('add.food'),
+      icon: 'search',
+      tint: colors.warningSoft,
+      ink: colors.warningText,
+      run: () => go({ pathname: '/food-search', params: { meal, day: today } }),
+    },
+    {
+      key: 'scan',
+      label: t('add.scan'),
+      icon: 'barcode',
+      tint: colors.surfaceAlt,
+      ink: colors.text,
+      run: () => go({ pathname: '/scanner', params: { meal, day: today } }),
+    },
+    {
+      key: 'water',
+      label: t('add.water', { ml: glassMl }),
+      icon: 'droplet',
+      tint: colors.waterSoft,
+      ink: colors.text,
+      run: () => {
+        setOpen(false);
+        void addWater.mutateAsync({ day: today, ml: glassMl }).then((id) => {
+          confirm();
+          showToast({
+            message: t('today.waterAdded'),
+            actionLabel: t('common.undo'),
+            bottomOffset: barHeight,
+            onAction: () => removeWater.mutate(id),
+          });
+        });
+      },
+    },
+    {
+      key: 'body',
+      label: t('add.body'),
+      icon: 'scale',
+      tint: colors.successSoft,
+      ink: colors.successText,
+      run: () => go('/check-in'),
+    },
+    {
+      key: 'workout',
+      label: active ? t('add.workoutResume') : t('add.workout'),
+      icon: 'dumbbell',
+      tint: colors.surfaceAlt,
+      ink: colors.text,
+      run: () =>
+        go(
+          active
+            ? { pathname: '/session/[sessionId]', params: { sessionId: active.id } }
+            : '/train',
+        ),
+    },
+    {
+      key: 'photo',
+      label: t('add.photo'),
+      icon: 'camera',
+      tint: colors.surfaceAlt,
+      ink: colors.text,
+      run: () => go('/progress/photos'),
+    },
+  ];
+
+  const foods = (recent.data ?? []).slice(0, 3);
+
+  return (
+    <Sheet
+      visible={open}
+      onClose={() => setOpen(false)}
+      title={t('add.title')}
+      closeLabel={t('common.close')}
+    >
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {tiles.map((tile) => (
+          <Pressable
+            key={tile.key}
+            accessibilityRole="button"
+            accessibilityLabel={tile.label}
+            onPress={() => {
+              tick();
+              tile.run();
+            }}
+            style={({ pressed }) => ({
+              width: '31%',
+              flexGrow: 1,
+              minHeight: 92,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.borderDecorative,
+              backgroundColor: colors.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: 10,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: tile.tint,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name={tile.icon} size={21} color={tile.ink} />
+            </View>
+            <Text variant="bodyS" medium style={{ textAlign: 'center' }}>
+              {tile.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {foods.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <Text variant="titleM">{t('add.again')}</Text>
+          <View
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.borderDecorative,
+              backgroundColor: colors.surface,
+              paddingHorizontal: 14,
+            }}
+          >
+            {foods.map((f, i) => (
+              <Pressable
+                key={f.id}
+                accessibilityRole="button"
+                accessibilityLabel={t('add.againFood', { name: f.name })}
+                onPress={() =>
+                  go({ pathname: '/food/[foodId]', params: { foodId: f.id, meal, day: today } })
+                }
+                style={{
+                  minHeight: 56,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: colors.divider,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text medium numberOfLines={1}>
+                    {f.name}
+                  </Text>
+                  <Text variant="bodyS" muted>
+                    {t('add.per100', {
+                      kcal: Math.round(f.per100.kcal),
+                      p: Math.round(f.per100.protein),
+                    })}
+                  </Text>
+                </View>
+                <Icon name="plus" size={18} color={colors.text} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('add.coach')}
+        onPress={() => go('/ai-chat')}
+        style={{
+          minHeight: 50,
+          borderRadius: 25,
+          borderWidth: 1,
+          borderColor: colors.borderControl,
+          backgroundColor: colors.surface,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingHorizontal: 16,
+        }}
+      >
+        <Icon name="sparkle" size={20} color={colors.textMuted} />
+        <Text muted style={{ flex: 1 }}>
+          {t('add.coach')}
+        </Text>
+      </Pressable>
+    </Sheet>
+  );
+}

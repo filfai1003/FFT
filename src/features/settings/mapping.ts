@@ -28,7 +28,9 @@ export function rowToState(row: SettingsRow): {
       lengthUnit: row.length_unit as Preferences['lengthUnit'],
       energyUnit: row.energy_unit as Preferences['energyUnit'],
       weekStart: row.week_start as Preferences['weekStart'],
-      theme: row.theme as Preferences['theme'],
+      // Rows saved before the themes existed (no workout_theme) start on the new default, light.
+      theme: row.workout_theme ? (row.theme as Preferences['theme']) : 'light',
+      workoutTheme: (row.workout_theme ?? 'light') as Preferences['workoutTheme'],
       language: row.language,
       waterGlassMl: row.water_glass_ml,
       notifications: { ...defaultPreferences.notifications, ...n },
@@ -56,6 +58,7 @@ export function stateToRow(
     energy_unit: prefs.energyUnit,
     week_start: prefs.weekStart,
     theme: prefs.theme,
+    workout_theme: prefs.workoutTheme,
     language: prefs.language,
     water_glass_ml: prefs.waterGlassMl,
     notifications: prefs.notifications,

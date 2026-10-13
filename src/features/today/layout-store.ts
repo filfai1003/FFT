@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type WidgetId = 'nutrition' | 'workout' | 'water' | 'creatine' | 'calendar';
+export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'creatine' | 'calendar';
 export type WidgetSize = 'small' | 'large';
 export type WidgetItem = { id: WidgetId; size: WidgetSize; visible: boolean };
 
@@ -9,6 +9,7 @@ export const defaultWidgets: readonly WidgetItem[] = [
   { id: 'nutrition', size: 'large', visible: true },
   { id: 'workout', size: 'large', visible: true },
   { id: 'water', size: 'small', visible: true },
+  { id: 'weight', size: 'small', visible: true },
   { id: 'creatine', size: 'small', visible: true },
   { id: 'calendar', size: 'large', visible: false },
 ];
@@ -32,7 +33,7 @@ export function mergeLayout(saved: unknown): HomeLayout {
     });
   }
   for (const w of defaultWidgets) if (!out.some((o) => o.id === w.id)) out.push({ ...w });
-  return { widgets: out, aiDock: typeof raw.aiDock === 'boolean' ? raw.aiDock : true };
+  return { widgets: out, aiDock: typeof raw.aiDock === 'boolean' ? raw.aiDock : false };
 }
 
 /** Moves the widget at `index` by `delta` places (clamped). */

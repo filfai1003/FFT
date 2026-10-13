@@ -115,7 +115,7 @@ export function StrengthScreen() {
                 info={t('progress.fromTo', {
                   from: Math.round(displayWeight(c.firstKg, unit)),
                   to: Math.round(displayWeight(c.lastKg, unit)),
-                  unit: unit.toUpperCase(),
+                  unit: unit,
                 })}
                 leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
                 right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}
@@ -159,7 +159,6 @@ function GroupRow(props: {
         alignItems: 'center',
         gap: 12,
         borderBottomWidth: 1,
-        borderStyle: 'dashed',
         borderColor: colors.borderDecorative,
         opacity: pressed ? 0.7 : 1,
       })}
@@ -259,7 +258,6 @@ export function MuscleGroupScreen() {
           style={{
             flexDirection: 'row',
             borderTopWidth: 1,
-            borderStyle: 'dashed',
             borderColor: colors.borderDecorative,
             paddingTop: 12,
           }}
@@ -287,7 +285,7 @@ export function MuscleGroupScreen() {
               info={t('progress.fromTo', {
                 from: Math.round(displayWeight(c.firstKg, unit)),
                 to: Math.round(displayWeight(c.lastKg, unit)),
-                unit: unit.toUpperCase(),
+                unit: unit,
               })}
               leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
               right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}

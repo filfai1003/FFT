@@ -2,71 +2,91 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
+import { Gauge } from '@/components/ui/Gauge';
 import { Text } from '@/components/ui/Text';
-import { dotsOn } from '@/domain/dots';
+import { useTheme } from '@/design/use-theme';
 import type { Macros } from '@/domain/diet';
 
 type Props = {
   eaten: Macros;
   target: Macros;
-  /** Right of the calories: "1360 LEFT" or "MEALS 2/4". */
+  /** Right of the calories: "1360 left" or "Meals 2/4". */
   caption: string;
 };
 
-const macroRows = [
-  ['protein', 'PROT'],
-  ['carbs', 'CARB'],
-  ['fat', 'FAT'],
-] as const;
+const macroKeys = ['protein', 'carbs', 'fat'] as const;
 
-/** Calories eaten of the target, the segmented bar and the three macro bars. */
+/** Calories left today (a filled bar) and the three macros as filling rings. */
 export function DaySummaryCard({ eaten, target, caption }: Props) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
+  const left = Math.max(0, Math.round(target.kcal - eaten.kcal));
+  const over = eaten.kcal > target.kcal * 1.1;
   return (
-    <Card gap={10} style={{ paddingVertical: 14, paddingHorizontal: 18 }}>
+    <Card gap={14}>
       <View
-        style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}
+        style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-          <Text variant="displayM" numeric>
-            {Math.round(eaten.kcal)}
+        <View>
+          <Text variant="bodyS" muted>
+            {t('diet.leftToday')}
           </Text>
-          <Text variant="label" muted>
-            {t('diet.ofTarget', { kcal: Math.round(target.kcal) })}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+            <Text variant="displayM" numeric>
+              {left}
+            </Text>
+            <Text variant="body" muted>
+              {t('common.kcal')}
+            </Text>
+          </View>
         </View>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted numeric>
           {caption}
         </Text>
       </View>
       <DotBar
-        shape="segment"
-        total={30}
-        on={dotsOn(eaten.kcal, target.kcal, 30)}
-        size={6}
-        gap={3}
+        total={Math.max(1, target.kcal)}
+        on={eaten.kcal}
+        size={12}
+        color={over ? colors.warning : colors.dotOn}
         accessibilityLabel={t('diet.caloriesBar', {
           eaten: Math.round(eaten.kcal),
           target: Math.round(target.kcal),
         })}
       />
-      <View style={{ flexDirection: 'row', gap: 14, paddingTop: 10 }}>
-        {macroRows.map(([key, label]) => (
-          <View key={key} style={{ flex: 1, gap: 6 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="label" muted>
-                {label}
-              </Text>
-              <Text variant="label">{`${Math.round(eaten[key])}/${Math.round(target[key])}`}</Text>
-            </View>
-            <DotBar
-              shape="segment"
-              total={10}
-              on={dotsOn(eaten[key], target[key], 10)}
-              size={5}
-              gap={2}
+      <Text variant="label" muted numeric>
+        {t('diet.eatenOfTarget', {
+          eaten: Math.round(eaten.kcal),
+          target: Math.round(target.kcal),
+        })}
+      </Text>
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 8,
+          borderTopWidth: 1,
+          borderColor: colors.divider,
+          paddingTop: 14,
+        }}
+      >
+        {macroKeys.map((key) => (
+          <View key={key} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Gauge
+              value={target[key] > 0 ? eaten[key] / target[key] : 0}
+              size={40}
+              stroke={5}
+              color={colors.macroSplit[key]}
+              track={colors.macroSoft[key]}
               accessibilityLabel={t(`diet.macro.${key}`)}
             />
+            <View style={{ flexShrink: 1 }}>
+              <Text variant="body" numeric style={{ fontWeight: '600' }}>
+                {`${Math.round(eaten[key])} g`}
+              </Text>
+              <Text variant="label" muted numeric>
+                {t('diet.ofGrams', { g: Math.round(target[key]), name: t(`diet.macro.${key}`) })}
+              </Text>
+            </View>
           </View>
         ))}
       </View>

@@ -48,20 +48,20 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     field: {
       ...(multiline
         ? { minHeight: 140, paddingVertical: 12 }
-        : { height: touch.primaryButtonHeight - 4 }),
-      borderRadius: radius.row,
+        : { height: touch.secondaryButtonHeight }),
+      borderRadius: radius.input,
       backgroundColor: colors.surface,
       paddingHorizontal: 16,
     },
     compact: {
       height: touch.minTarget,
       borderRadius: radius.tile,
-      backgroundColor: colors.bg,
+      backgroundColor: colors.surfaceAlt,
       paddingHorizontal: 8,
     },
     search: {
-      height: touch.primaryButtonHeight - 4,
-      borderRadius: 26,
+      height: touch.secondaryButtonHeight,
+      borderRadius: radius.input,
       backgroundColor: colors.surface,
       paddingHorizontal: 16,
     },
@@ -96,7 +96,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             alignItems: multiline ? 'flex-start' : 'center',
             gap: 10,
             borderWidth: 1,
-            // Focus = a white border (the browser's coloured outline is switched off below).
+            // Focus = a border in the text colour (the browser's coloured outline is switched off below).
             borderColor: error
               ? colors.danger
               : focused

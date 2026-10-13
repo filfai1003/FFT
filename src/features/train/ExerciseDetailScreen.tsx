@@ -104,8 +104,8 @@ export function ExerciseDetailScreen({
             </Text>
             <Text variant="label" muted style={{ lineHeight: 16 }}>
               {[exercise.primaryMuscle, ...exercise.secondaryMuscles, exercise.equipment]
-                .join(' · ')
-                .toUpperCase()}
+                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' · ')}
             </Text>
           </View>
         </View>
@@ -120,7 +120,7 @@ export function ExerciseDetailScreen({
                     ? String(displayWeight(record.actualMaxKg, unit))
                     : '—'
                 }
-                unit={unit.toUpperCase()}
+                unit={unit}
                 note={t('exerciseDetail.heaviest')}
               />
               <StatCard
@@ -130,7 +130,7 @@ export function ExerciseDetailScreen({
                     ? String(Math.round(displayWeight(record.est1rmKg, unit)))
                     : '—'
                 }
-                unit={unit.toUpperCase()}
+                unit={unit}
                 note={t('exerciseDetail.epley')}
               />
             </View>
@@ -170,7 +170,7 @@ export function ExerciseDetailScreen({
                     <Text variant="label" muted>
                       {t('exerciseDetail.change', {
                         delta: `${delta! >= 0 ? '+' : '−'}${Math.abs(delta!)}`,
-                        unit: unit.toUpperCase(),
+                        unit: unit,
                         count: values.length,
                       })}
                     </Text>

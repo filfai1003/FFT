@@ -29,27 +29,41 @@ export function weekOf(day: string, weekStart: 'mon' | 'sun'): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(first, i));
 }
 
-const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const MONTHS = [
-  'JAN',
-  'FEB',
-  'MAR',
-  'APR',
-  'MAY',
-  'JUN',
-  'JUL',
-  'AUG',
-  'SEP',
-  'OCT',
-  'NOV',
-  'DEC',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ] as const;
 
-/** "THU OCT 08" (label style of the Today header). Day names are data, not UI copy. */
+/** "Thu 8 Oct" (the date over the Home title). Day names are data, not UI copy. */
 export function shortDateLabel(day: string): string {
   const [y, m, d] = day.split('-').map(Number);
   const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-  return `${WEEKDAYS[dow]} ${MONTHS[m - 1]} ${String(d).padStart(2, '0')}`;
+  return `${WEEKDAYS[dow]} ${d} ${MONTHS[m - 1]}`;
 }
 
 export function weekdayLetter(day: string): string {
@@ -63,7 +77,7 @@ export function dayOfMonth(day: string): number {
 
 export function monthYearLabel(day: string): string {
   const m = Number(day.slice(5, 7));
-  return `${MONTHS[m - 1]} ${day.slice(0, 4)}`;
+  return `${MONTH_NAMES[m - 1]} ${day.slice(0, 4)}`;
 }
 
 export type RelativeDay =
@@ -79,7 +93,7 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
 }
 
-/** "today", "yesterday", "3 days ago" within a week, otherwise "OCT 05". */
+/** "today", "yesterday", "3 days ago" within a week, otherwise "5 Oct". */
 export function relativeDay(day: string, today: string): RelativeDay {
   const diff = daysBetween(day, today);
   if (diff <= 0) return { kind: 'today' };

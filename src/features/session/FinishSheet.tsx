@@ -66,7 +66,6 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
           <View
             style={{
               borderTopWidth: 1,
-              borderStyle: 'dashed',
               borderColor: colors.borderDecorative,
             }}
           >
@@ -79,7 +78,6 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   borderBottomWidth: 1,
-                  borderStyle: 'dashed',
                   borderColor: colors.borderDecorative,
                 }}
               >

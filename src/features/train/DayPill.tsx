@@ -52,5 +52,5 @@ export function shortDayLabel(name: string): string {
   // A short suffix (A, B, 2) keeps the days of a plan tell-apart-able.
   const last = words[words.length - 1] ?? '';
   const label = words.length > 1 && last.length <= 2 ? `${words[0]} ${last}` : words[0];
-  return label.slice(0, 6).toUpperCase();
+  return label.slice(0, 6);
 }

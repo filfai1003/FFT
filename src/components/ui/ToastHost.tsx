@@ -56,13 +56,11 @@ export function ToastHost() {
           minHeight: touch.listRowMin,
           paddingLeft: 18,
           paddingRight: 6,
-          borderRadius: 26,
-          borderWidth: 1,
-          borderColor: colors.borderControl,
-          backgroundColor: colors.surfaceRaised,
+          borderRadius: 16,
+          backgroundColor: colors.text,
         }}
       >
-        <Text variant="bodyS" style={{ flex: 1 }}>
+        <Text variant="bodyS" style={{ flex: 1, color: colors.bg }}>
           {toast.message}
         </Text>
         {toast.actionLabel ? (
@@ -79,7 +77,9 @@ export function ToastHost() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text variant="label">{toast.actionLabel}</Text>
+            <Text variant="body" style={{ color: colors.bg, fontWeight: '700' }}>
+              {toast.actionLabel}
+            </Text>
           </Pressable>
         ) : null}
       </View>

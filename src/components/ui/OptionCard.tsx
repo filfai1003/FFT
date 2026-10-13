@@ -35,7 +35,7 @@ export function OptionCard({
       style={({ pressed }) => ({
         minHeight: touch.listRowMin + 16,
         borderRadius: radius.cardSmall,
-        borderWidth: 1,
+        borderWidth: selected ? 2 : 1,
         borderColor: selected ? colors.borderSelected : colors.borderDecorative,
         backgroundColor: selected ? colors.surfaceSelected : colors.surface,
         padding: 16,

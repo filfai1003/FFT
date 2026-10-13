@@ -255,7 +255,6 @@ export function MealPlanEditor({
           gap: 8,
           borderRadius: 14,
           borderWidth: 1,
-          borderStyle: 'dashed',
           borderColor: colors.borderControl,
         }}
       >
