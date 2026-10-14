@@ -96,7 +96,6 @@ export function PrivacyScreen() {
   const rows = (
     items: {
       name: string;
-      detail: string;
       value: boolean;
       onChange: (v: boolean) => void;
       disabled?: boolean;
@@ -116,12 +115,9 @@ export function PrivacyScreen() {
           opacity: r.disabled ? 0.5 : 1,
         }}
       >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyS">{r.name}</Text>
-          <Text variant="label" muted>
-            {r.detail}
-          </Text>
-        </View>
+        <Text variant="bodyS" style={{ flex: 1 }}>
+          {r.name}
+        </Text>
         <Toggle value={r.value} onValueChange={r.onChange} accessibilityLabel={r.name} />
       </View>
     ));
@@ -147,12 +143,9 @@ export function PrivacyScreen() {
               gap: 12,
             }}
           >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.downloadAll')}</Text>
-              <Text variant="label" muted>
-                {t('privacy.downloadAllDetail')}
-              </Text>
-            </View>
+            <Text variant="bodyS" style={{ flex: 1 }}>
+              {t('privacy.downloadAll')}
+            </Text>
             <Button
               label={t('privacy.export')}
               block={false}
@@ -172,12 +165,9 @@ export function PrivacyScreen() {
               borderColor: colors.borderDecorative,
             }}
           >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.workoutsOnly')}</Text>
-              <Text variant="label" muted>
-                {t('privacy.workoutsOnlyDetail')}
-              </Text>
-            </View>
+            <Text variant="bodyS" style={{ flex: 1 }}>
+              {t('privacy.workoutsOnly')}
+            </Text>
             <Button
               label={t('privacy.export')}
               block={false}
@@ -197,12 +187,9 @@ export function PrivacyScreen() {
               borderColor: colors.borderDecorative,
             }}
           >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.importTitle')}</Text>
-              <Text variant="label" muted>
-                {t('privacy.importDetail')}
-              </Text>
-            </View>
+            <Text variant="bodyS" style={{ flex: 1 }}>
+              {t('privacy.importTitle')}
+            </Text>
             <Button
               label={t('privacy.import')}
               block={false}
@@ -230,13 +217,11 @@ export function PrivacyScreen() {
           {rows([
             {
               name: t('privacy.blur'),
-              detail: t('privacy.blurDetail'),
               value: privacy.blurPhotos,
               onChange: (v) => privacy.set('blurPhotos', v),
             },
             {
               name: t('privacy.lock'),
-              detail: t('privacy.lockDetail'),
               value: privacy.lockPhotos,
               onChange: toggleLock,
             },
@@ -250,7 +235,6 @@ export function PrivacyScreen() {
           {rows([
             {
               name: t('privacy.analytics'),
-              detail: t('privacy.analyticsDetail'),
               value: analytics != null,
               onChange: (v) => setConsent.mutate({ type: 'analytics', granted: v }),
             },
@@ -285,9 +269,6 @@ export function PrivacyScreen() {
 
         <View style={{ gap: 8, paddingTop: 8 }}>
           <Button label={t('privacy.delete')} variant="danger" onPress={() => setRemoving(true)} />
-          <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
-            {t('privacy.deleteNote')}
-          </Text>
         </View>
       </Screen>
 

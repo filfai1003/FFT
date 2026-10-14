@@ -31,7 +31,6 @@ export function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const profile = useProfile();
-  const premium = usePlanStore((s) => s.premium === true && s.home === 'online');
   const plan = usePlanStore((s) => s.plan ?? 'free');
   const weight = useLatestWeight();
   const today = useToday();
@@ -152,13 +151,6 @@ export function ProfileScreen() {
             {t('profile.memberSince', { date: since })}
           </Text>
           <Text variant="screenTitle">{t('nav.profile')}</Text>
-          <Text variant="label" muted>
-            {offline
-              ? t('profile.offlineBadge')
-              : premium
-                ? t('profile.premiumBadge')
-                : t('profile.localBadge')}
-          </Text>
         </View>
 
         <Pressable
@@ -221,9 +213,6 @@ export function ProfileScreen() {
         {offline ? (
           <Card gap={10}>
             <Text variant="titleM">{t('link.cardTitle')}</Text>
-            <Text variant="bodyS" muted>
-              {t('link.cardBody')}
-            </Text>
             <Button
               label={t('link.cardButton')}
               onPress={() => router.push('/profile/link-account')}

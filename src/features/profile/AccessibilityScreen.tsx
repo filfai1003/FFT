@@ -157,12 +157,7 @@ export function AccessibilityScreen() {
                 borderColor: colors.borderDecorative,
               }}
             >
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text>{t(`a11y.option.${r.name}.name`)}</Text>
-                <Text variant="label" muted>
-                  {t(`a11y.option.${r.name}.detail`)}
-                </Text>
-              </View>
+              <Text style={{ flex: 1 }}>{t(`a11y.option.${r.name}.name`)}</Text>
               <Toggle
                 value={a[r.key] as boolean}
                 onValueChange={(v) => a.set(r.key as 'boldText', v)}

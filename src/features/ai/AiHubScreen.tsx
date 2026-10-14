@@ -101,9 +101,6 @@ export function AiHubScreen() {
             keyboardType="url"
           />
         ) : null}
-        <Text variant="bodyS" muted>
-          {t('ai.privacyNote')}
-        </Text>
         <Button
           label={t('common.save')}
           disabled={!canSave || draft == null}
@@ -146,9 +143,6 @@ function IncludedCard() {
       <Card gap={10}>
         <Text variant="label" muted>
           {t('ai.includedTitle')}
-        </Text>
-        <Text variant="bodyS" muted>
-          {t('ai.includedUpsell')}
         </Text>
         <Button
           label={t('ai.seePlans')}
