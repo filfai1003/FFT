@@ -498,7 +498,7 @@ const ROUTES = [
  * Postgres). `db.userForToken(hash)` → user id or null; `db.asUser(userId, fn)` runs fn(q) in
  * one transaction as that user (q(sql, params) → rows).
  */
-export function createApi(db, { perMinute = PER_MINUTE } = {}) {
+export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
   const hits = new Map();
   const limited = (userId) => {
     const minute = Math.floor(Date.now() / 60000);
@@ -646,7 +646,15 @@ export function createApi(db, { perMinute = PER_MINUTE } = {}) {
       return await rest(method, path, query, headers, body);
     } catch (e) {
       if (e instanceof ApiError) {
-        const extra = e.status === 401 ? { 'www-authenticate': 'Bearer' } : undefined;
+        // Points AI apps (Claude, ChatGPT…) to the sign-in with FFT (server/oauth.js).
+        const extra =
+          e.status === 401
+            ? {
+                'www-authenticate': base
+                  ? `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`
+                  : 'Bearer',
+              }
+            : undefined;
         return { status: e.status, body: { error: e.message }, headers: extra };
       }
       console.error(e);

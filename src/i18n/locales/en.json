@@ -1066,7 +1066,10 @@
     "madeTitle": "Your token",
     "madeBody": "Copy it now: for your safety it is shown only this once.",
     "copyToken": "Copy token",
-    "copyClaudeCode": "Copy Claude Code command"
+    "copyClaudeCode": "Copy Claude Code command",
+    "connectTitle": "Connect an AI app",
+    "addTo": "Add to {{app}}",
+    "connectCopied": "Address copied. In {{app}}: add a custom connector, paste it, then sign in with FFT."
   },
   "ai": {
     "includedTitle": "AI included with Premium",

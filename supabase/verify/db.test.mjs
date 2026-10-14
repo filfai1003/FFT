@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
+import { createOAuth } from '../../server/oauth.js';
+import { createHash } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const supabaseDir = path.join(here, '..');
@@ -900,5 +902,200 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok('strength_score_pct' in r.body);
     assert.equal((await call('POST', '/v1/tools/nope', {})).status, 404);
+  });
+
+  it('without a token, MCP points AI apps to the sign-in (OAuth metadata)', async () => {
+    const withBase = createApi(testDb, { base: 'https://api.test' });
+    const r = await withBase({ method: 'POST', path: '/mcp', headers: {}, body: {} });
+    assert.equal(r.status, 401);
+    assert.equal(
+      r.headers['www-authenticate'],
+      'Bearer resource_metadata="https://api.test/.well-known/oauth-protected-resource"',
+    );
+  });
+});
+
+describe('sign in with FFT for AI apps (server/oauth.js)', () => {
+  const BASE = 'https://api.test';
+  const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
+  const users = { 'a@test.dev': A, 'c@test.dev': C };
+  const oauth = createOAuth({
+    sql: async (text, params) => {
+      await admin();
+      return (await db.query(text, params)).rows;
+    },
+    // The auth service checks passwords; here: the right one is "right".
+    signIn: async (email, password) => (password === 'right' ? (users[email] ?? null) : null),
+    planOf: async (uid) => {
+      await admin();
+      return (await one('select public.plan_of($1) as p', [uid])).p;
+    },
+    base: BASE,
+  });
+  const api = createApi(
+    {
+      async userForToken(hash) {
+        await admin();
+        return (await one('select public.api_token_user($1) as u', [hash])).u;
+      },
+      async asUser(uid, fn) {
+        await as(uid);
+        return fn(async (sql, params) => (await db.query(sql, params)).rows);
+      },
+    },
+    { base: BASE },
+  );
+  const b64url = (b) =>
+    b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const verifier = 'v'.repeat(50);
+  const challenge = b64url(createHash('sha256').update(verifier).digest());
+  const go = (method, path, body, query = {}, headers = {}) =>
+    oauth({ method, path, body, query, headers, ip: '1.2.3.4' });
+  let clientId = '';
+  let refresh = '';
+  let access = '';
+  const authorize = (email, password, extra = {}) =>
+    go('POST', '/oauth/authorize', {
+      client_id: clientId,
+      redirect_uri: REDIRECT,
+      state: 'xyz',
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      email,
+      password,
+      ...extra,
+    });
+
+  it('the app finds the sign-in and registers itself', async () => {
+    const meta = JSON.parse((await go('GET', '/.well-known/oauth-authorization-server')).body);
+    assert.equal(meta.token_endpoint, `${BASE}/oauth/token`);
+    assert.deepEqual(meta.code_challenge_methods_supported, ['S256']);
+    const res = JSON.parse((await go('GET', '/.well-known/oauth-protected-resource/mcp')).body);
+    assert.equal(res.resource, `${BASE}/mcp`);
+    assert.equal(
+      (await go('POST', '/oauth/register', { redirect_uris: ['http://evil.com/cb'] })).status,
+      400,
+    );
+    const reg = await go('POST', '/oauth/register', {
+      redirect_uris: [REDIRECT],
+      client_name: 'Claude',
+    });
+    assert.equal(reg.status, 201);
+    clientId = JSON.parse(reg.body).client_id;
+  });
+
+  it('the sign-in page names the app; a wrong password or a free account gets no code', async () => {
+    const pageRes = await go('GET', '/oauth/authorize', undefined, {
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: REDIRECT,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state: 'xyz',
+    });
+    assert.equal(pageRes.status, 200);
+    assert.match(pageRes.body, /<b>Claude<\/b> wants to read and change your FFT data/);
+    assert.equal(
+      (
+        await go('GET', '/oauth/authorize', undefined, {
+          client_id: clientId,
+          redirect_uri: 'https://other.dev/cb',
+          code_challenge: challenge,
+        })
+      ).status,
+      400,
+    );
+    assert.match((await authorize('a@test.dev', 'wrong')).body, /Wrong email or password/);
+    assert.match((await authorize('c@test.dev', 'right')).body, /part of Supporter and Premium/);
+  });
+
+  it('right password: code, then a token that works on MCP; the code works once', async () => {
+    const r = await authorize('a@test.dev', 'right');
+    assert.equal(r.status, 302);
+    const back = new URL(r.headers.location);
+    assert.equal(back.origin + back.pathname, REDIRECT);
+    assert.equal(back.searchParams.get('state'), 'xyz');
+    const code = back.searchParams.get('code');
+    const exchange = (v) =>
+      go('POST', '/oauth/token', {
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: REDIRECT,
+        client_id: clientId,
+        code_verifier: v,
+      });
+    const bad = await exchange('x'.repeat(50));
+    assert.equal(JSON.parse(bad.body).error, 'invalid_grant');
+    // The code was spent by the wrong attempt too: sign in again.
+    const again = new URL((await authorize('a@test.dev', 'right')).headers.location);
+    const t = await go('POST', '/oauth/token', {
+      grant_type: 'authorization_code',
+      code: again.searchParams.get('code'),
+      redirect_uri: REDIRECT,
+      client_id: clientId,
+      code_verifier: verifier,
+    });
+    const tokens = JSON.parse(t.body);
+    assert.equal(t.status, 200, t.body);
+    assert.match(tokens.access_token, /^fft_/);
+    access = tokens.access_token;
+    refresh = tokens.refresh_token;
+    const me = await api({
+      method: 'POST',
+      path: '/mcp',
+      headers: { authorization: `Bearer ${access}` },
+      body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'get_profile', arguments: {} },
+      },
+    });
+    assert.equal(me.status, 200);
+    assert.ok(!me.body.result.isError);
+    const reuse = await go('POST', '/oauth/token', {
+      grant_type: 'authorization_code',
+      code: again.searchParams.get('code'),
+      redirect_uri: REDIRECT,
+      client_id: clientId,
+      code_verifier: verifier,
+    });
+    assert.equal(JSON.parse(reuse.body).error, 'invalid_grant');
+    // The connection shows in the user's token list, named after the app.
+    await as(A);
+    assert.equal(
+      await count(
+        `select count(*) as n from public.api_tokens where name = 'Claude' and client_id is not null and deleted_at is null`,
+      ),
+      1,
+    );
+  });
+
+  it('the refresh token renews the access; revoking in the app ends the connection', async () => {
+    const r = await go('POST', '/oauth/token', {
+      grant_type: 'refresh_token',
+      refresh_token: refresh,
+      client_id: clientId,
+    });
+    const next = JSON.parse(r.body);
+    assert.equal(r.status, 200, r.body);
+    const asAccess = (t) =>
+      api({ method: 'GET', path: '/v1/me', headers: { authorization: `Bearer ${t}` } });
+    assert.equal((await asAccess(access)).status, 401); // the old access token is replaced
+    assert.equal((await asAccess(next.access_token)).status, 200);
+    await as(A);
+    const id = (
+      await one(
+        `select id from public.api_tokens where name = 'Claude' and client_id is not null and deleted_at is null`,
+      )
+    ).id;
+    await db.query('select public.set_api_token_revoked($1, true)', [id]);
+    assert.equal((await asAccess(next.access_token)).status, 401);
+    const after = await go('POST', '/oauth/token', {
+      grant_type: 'refresh_token',
+      refresh_token: next.refresh_token,
+      client_id: clientId,
+    });
+    assert.equal(JSON.parse(after.body).error, 'invalid_grant');
   });
 });

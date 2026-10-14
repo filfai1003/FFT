@@ -1,10 +1,12 @@
 // The small server next to Supabase: it runs the database migrations at start, serves the Edge
 // Functions (`off`, `delete-account`, `ai`) that Kong exposes at /functions/v1/<name>, and the
-// personal API of paid plans (REST at /v1, MCP at /mcp; see api.js) on its own public domain.
+// personal API of paid plans (REST at /v1, MCP at /mcp; see api.js) on its own public domain,
+// with the sign-in for AI apps that connect to the MCP server (OAuth, see oauth.js).
 import { Buffer } from 'node:buffer';
 import http from 'node:http';
 import pg from 'pg';
 import { createApi, pgDatabase } from './api.js';
+import { createOAuth } from './oauth.js';
 import { migrate } from './migrate.js';
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
@@ -12,7 +14,58 @@ const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 })
 pg.types.setTypeParser(1082, (v) => v);
 // Decimals (weights, macros) as numbers, as the app has them: the coach tools give the same answers.
 pg.types.setTypeParser(1700, (v) => Number(v));
-const api = createApi(pgDatabase(pool));
+/** The public address of this service (the MCP address is <BASE>/mcp). */
+const BASE = (process.env.PUBLIC_URL ?? 'https://fft-api.up.railway.app').replace(/\/+$/, '');
+const api = createApi(pgDatabase(pool), { base: BASE });
+
+/** Email + password checked by the auth service itself (the same sign-in as the app). */
+async function signIn(email, password) {
+  if (!email || !password) return null;
+  const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    },
+    body: JSON.stringify({ email, password }),
+  }).catch(() => null);
+  if (!res?.ok) return null;
+  const data = await res.json().catch(() => null);
+  return data?.user?.id ?? null;
+}
+const oauth = createOAuth({
+  sql: async (text, params) => (await pool.query(text, params)).rows,
+  signIn,
+  planOf: async (userId) =>
+    (await pool.query('select public.plan_of($1) as p', [userId])).rows[0]?.p ?? 'free',
+  base: BASE,
+});
+
+async function serveOAuth(req, res, url, raw) {
+  if (req.method === 'OPTIONS') return void res.writeHead(204, cors).end();
+  if (raw.length > 64 * 1024) return void res.writeHead(413).end();
+  const text = raw.toString('utf8');
+  let body;
+  if (text) {
+    body = /application\/json/.test(req.headers['content-type'] ?? '')
+      ? JSON.parse(text)
+      : Object.fromEntries(new URLSearchParams(text));
+  }
+  const out = await oauth({
+    method: req.method,
+    path: url.pathname.replace(/\/+$/, ''),
+    query: Object.fromEntries(url.searchParams),
+    body,
+    headers: req.headers,
+    ip: String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '')
+      .split(',')[0]
+      .trim(),
+  });
+  if (!out) return void res.writeHead(404).end('not found');
+  res.writeHead(out.status, { ...cors, ...out.headers });
+  res.end(out.body);
+}
+
 const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers':
@@ -67,12 +120,14 @@ http
     const path = url.pathname.replace(/\/+$/, '');
     if (path === '/health') return void res.writeHead(200).end('ok');
     const isApi = path === '/mcp' || path === '/v1' || path.startsWith('/v1/');
+    const isOAuth = path.startsWith('/oauth/') || path.startsWith('/.well-known/');
     const handler = handlers[path.split('/').pop() ?? ''];
-    if (!isApi && !handler) return void res.writeHead(404).end('not found');
+    if (!isApi && !isOAuth && !handler) return void res.writeHead(404).end('not found');
     try {
       const chunks = [];
       for await (const c of req) chunks.push(c);
       if (isApi) return void (await serveApi(req, res, url, Buffer.concat(chunks)));
+      if (isOAuth) return void (await serveOAuth(req, res, url, Buffer.concat(chunks)));
       const hasBody = !['GET', 'HEAD'].includes(req.method);
       const request = new Request(`http://localhost${req.url}`, {
         method: req.method,

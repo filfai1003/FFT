@@ -11,6 +11,18 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units
   are metric. Writes reach the user's phones with the next sync.
 
+## Sign in with FFT (Claude, ChatGPT)
+
+AI apps add FFT as a connector by its MCP address and a sign-in, with no token: OAuth 2.1
+(authorization code + PKCE S256, dynamic client registration, refresh tokens; `server/oauth.js`).
+Without a token `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata=…`; the app
+reads `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
+registers at `/oauth/register`, opens `/oauth/authorize` (FFT email and password, checked by the
+auth service; Supporter and Premium only) and gets tokens at `/oauth/token` (access 7 days, then
+renewed with the refresh token). Each connection is a token row named after the app, listed and
+revocable in the app. In the app, Settings → API & MCP → Add to Claude / Add to ChatGPT copies the
+address and opens that app's connectors page.
+
 ## MCP
 
 `POST /mcp` — Streamable HTTP, stateless, JSON replies (protocol 2025-06-18, 2025-03-26,
