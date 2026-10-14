@@ -18,7 +18,7 @@ Services, all on Railway's private network, one public URL (Kong):
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `kong`     | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1` |
 | `api`      | this repo (`server/Dockerfile`)    | **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
-| `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `app-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
+| `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
 | `admin`    | this repo (`admin/`)               | admin panel, public domain `admin-fft`            |
 
