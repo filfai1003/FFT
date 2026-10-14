@@ -10,6 +10,8 @@ import { migrate } from './migrate.js';
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
 // Dates stay plain YYYY-MM-DD strings (no time zone shifts).
 pg.types.setTypeParser(1082, (v) => v);
+// Decimals (weights, macros) as numbers, as the app has them: the coach tools give the same answers.
+pg.types.setTypeParser(1700, (v) => Number(v));
 const api = createApi(pgDatabase(pool));
 const cors = {
   'access-control-allow-origin': '*',

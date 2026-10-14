@@ -656,7 +656,9 @@ describe('personal API and MCP (server/api.js)', () => {
           JSON.stringify({ sub: uid, role: 'authenticated' }),
         ]);
         await db.exec('set local role authenticated');
-        const result = await fn(async (sql, params) => (await db.query(sql, params)).rows);
+        // Dates as YYYY-MM-DD text, like the real server (server/index.js sets the same parser).
+        const asText = { parsers: { 1082: (v) => v, 1700: (v) => Number(v) } };
+        const result = await fn(async (sql, params) => (await db.query(sql, params, asText)).rows);
         await db.exec('commit');
         return result;
       } catch (e) {
@@ -741,13 +743,13 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal(summary.water_ml, 300);
     assert.equal(summary.food_logs.length, 1);
 
-    assert.equal((await tool('delete_food_log', { id: logged.id })).deleted, logged.id);
+    assert.equal((await tool('remove_food_log', { id: logged.id })).deleted, logged.id);
     assert.equal((await tool('get_day', { day: D })).eaten.kcal, 0);
   });
 
   it('a day keeps one body entry: new values replace that day, the others stay', async () => {
-    await tool('log_body_metrics', { day: D, weight_kg: 80.5 });
-    await tool('log_body_metrics', { day: D, body_fat_pct: 18 });
+    await tool('log_body', { day: D, weight_kg: 80.5 });
+    await tool('log_body', { day: D, body_fat_pct: 18 });
     const rows = (await call('GET', '/v1/body', undefined, token, { from: D, to: D })).body;
     assert.deepEqual(rows, [{ day: D, weight_kg: 80.5, body_fat_pct: 18 }]);
   });
@@ -757,7 +759,7 @@ describe('personal API and MCP (server/api.js)', () => {
       (await tool('log_food', { meal: 'brunch', name: 'x', kcal: 1 })).error,
       /meal must be/,
     );
-    assert.match((await tool('log_body_metrics', { day: D, weight_kg: 900 })).error, /weight_kg/);
+    assert.match((await tool('log_body', { day: D, weight_kg: 900 })).error, /weight_kg/);
     assert.equal((await call('GET', '/v1/nope')).status, 404);
     assert.equal((await mcp('nope/nope')).error.code, -32601);
   });
@@ -779,5 +781,124 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal((await go()).status, 200);
     assert.equal((await go()).status, 200);
     assert.equal((await go()).status, 429);
+  });
+
+  // The in-app coach's tools on the server (server/coach.js + src/domain, the same code as the app).
+  it('MCP lists the coach tools and says which ones change data', async () => {
+    const tools = (await mcp('tools/list')).result.tools;
+    const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+    for (const n of ['list_data', 'query_data', 'get_strength', 'propose_plans', 'set_supplement'])
+      assert.ok(byName[n], n);
+    assert.equal(byName.query_data.annotations.readOnlyHint, true);
+    assert.equal(byName.propose_plans.annotations.readOnlyHint, false);
+  });
+
+  it('list_data and query_data read everything, as the coach does', async () => {
+    const map = await tool('list_data', {});
+    assert.ok(map.tables.some((t) => t.table === 'supplements'));
+    assert.ok(!map.tables.find((t) => t.table === 'body_metrics').columns.includes('server_at'));
+    const r = await tool('query_data', {
+      table: 'body_metrics',
+      columns: ['day', 'weight_kg'],
+      where: [
+        { column: 'weight_kg', op: 'not_null' },
+        { column: 'day', op: '=', value: D },
+      ],
+    });
+    assert.equal(r.matching_rows, 1);
+    assert.deepEqual(r.rows, [{ day: D, weight_kg: 80.5 }]);
+    assert.match((await tool('query_data', { table: 'auth_users' })).error, /must be one of/);
+  });
+
+  it('calorie target: the same safety rules as the app', async () => {
+    assert.match(
+      (await tool('set_nutrition_goal', { kcal: 1200, protein_g: 100, carbs_g: 120, fat_g: 36 }))
+        .error,
+      /1500/,
+    );
+    assert.match(
+      (await tool('set_nutrition_goal', { kcal: 2000, protein_g: 10, carbs_g: 10, fat_g: 10 }))
+        .error,
+      /within 10%/,
+    );
+    const ok = await tool('set_nutrition_goal', {
+      kcal: 2200,
+      protein_g: 160,
+      carbs_g: 230,
+      fat_g: 70,
+    });
+    assert.equal(ok.saved, true);
+    assert.equal((await tool('get_diet', {})).diet_plan.daily.kcal, 2200);
+  });
+
+  it('supplements: add one, tick it, untick it', async () => {
+    await tool('add_supplement', { name: 'Creatine', dose: '5 g' });
+    assert.deepEqual(await tool('set_supplement', { name: 'creatine', day: D }), {
+      supplement: 'Creatine',
+      day: D,
+      taken: true,
+    });
+    await tool('set_supplement', { name: 'creatine', day: D }); // twice = still one tick
+    const ticks = await tool('query_data', {
+      table: 'supplement_logs',
+      where: [{ column: 'day', op: '=', value: D }],
+    });
+    assert.equal(ticks.matching_rows, 1);
+    await tool('set_supplement', { name: 'Creatine', day: D, taken: false });
+    assert.equal((await tool('query_data', { table: 'supplement_logs' })).matching_rows, 0);
+  });
+
+  it('propose_plans: a new workout plan and a diet, in the coach format', async () => {
+    const r = await tool('propose_plans', {
+      workout_plan: {
+        name: 'API plan',
+        days: [
+          {
+            name: 'Push',
+            exercises: [{ exercise: 'Barbell bench press', sets: 3, reps: '8-10', rest_s: 120 }],
+          },
+        ],
+      },
+      diet_plan: {
+        mode: 'tracking',
+        daily: { kcal: 2300, protein_g: 170, carbs_g: 240, fat_g: 72 },
+      },
+    });
+    assert.equal(r.saved, true, JSON.stringify(r));
+    assert.equal(r.diet_applied, true);
+    const plans = (await tool('get_workout_plans', {})).workout_plans;
+    const made = plans.find((p) => p.id === r.workout_plan_id);
+    assert.equal(made.days[0].exercises[0].exercise, 'Barbell bench press');
+    // Changing it keeps a backup copy, archived.
+    const again = await tool('propose_plans', {
+      workout_plan: { ...made, name: 'API plan v2' },
+    });
+    assert.equal(again.workout_updated, true);
+    assert.equal(again.backup, 'API plan (before AI)');
+  });
+
+  it('own foods: create, change, delete; catalogue foods cannot be changed', async () => {
+    const { food_id } = await tool('create_food', {
+      name: 'Protein bar',
+      kcal_100g: 380,
+      protein_100g: 30,
+      carbs_100g: 35,
+      fat_100g: 12,
+      portions: [{ label: '1 bar', grams: 60 }],
+    });
+    assert.equal((await tool('update_food', { food_id, kcal_100g: 390 })).updated, food_id);
+    assert.match(
+      (await tool('update_food', { food_id: 'cf000000-0000-4000-8000-000000013039', kcal_100g: 1 }))
+        .error,
+      /Only foods you created/,
+    );
+    assert.equal((await tool('delete_food', { food_id })).deleted, 'Protein bar');
+  });
+
+  it('every tool is also REST: POST /v1/tools/<name>', async () => {
+    const r = await call('POST', '/v1/tools/get_strength', { period: '4w' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.ok('strength_score_pct' in r.body);
+    assert.equal((await call('POST', '/v1/tools/nope', {})).status, 404);
   });
 });

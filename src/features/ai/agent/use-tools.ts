@@ -34,7 +34,16 @@ import { getSupabase } from '@/lib/supabase';
 import { useApplyImport } from '../apply';
 import { useAiContext } from '../context';
 import { day as dayArg, num, optNum, optStr, round, str, type Input } from './args';
+import { DATA_TOOL_SPECS } from '@/domain/data-tools';
+import {
+  fetchSupplements,
+  useSaveSupplement,
+  useSetSupplementDeleted,
+  useSetTaken,
+} from '@/features/supplements/data';
+import { newId } from '@/lib/uuid';
 import { listData, queryData, strengthReport } from './explore';
+
 import {
   readBody,
   readDay,
@@ -46,6 +55,12 @@ import {
   type ReadContext,
 } from './reads';
 import type { ChangeLine, ToolDef } from './types';
+
+/** Description and schema shared with the MCP server (domain/data-tools.ts). */
+const specOf = (name: keyof typeof DATA_TOOL_SPECS) => ({
+  description: DATA_TOOL_SPECS[name].description,
+  schema: DATA_TOOL_SPECS[name].schema as unknown as Record<string, unknown>,
+});
 
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
   type: 'object',
@@ -169,6 +184,9 @@ export function useAgentTools(): ToolDef[] {
   const setCheck = useSetCheck();
   const saveGoal = useSaveGoal();
   const applyImport = useApplyImport();
+  const saveSupplement = useSaveSupplement();
+  const setSupplementDeleted = useSetSupplementDeleted();
+  const setTaken = useSetTaken();
 
   const ownFood = async (id: string) => {
     const food = await fetchFood(id);
@@ -256,76 +274,17 @@ export function useAgentTools(): ToolDef[] {
     },
     {
       name: 'list_data',
-      description:
-        'Map of ALL the data the user has: every table, what it holds, its columns and how many rows. Call it before query_data when the other tools do not answer the question.',
-      schema: obj({}),
+      ...specOf('list_data'),
       run: async () => listData(),
     },
     {
       name: 'query_data',
-      description:
-        'Ask any question of one table (see list_data): filter, sort, pick columns, or group and aggregate (count/sum/avg/min/max) so only the answer comes back, not every row. Runs on the device, free: ask several small questions rather than one huge one. Examples: weight trend = body_metrics columns [day, weight_kg] order_by day; protein per meal = food_logs where day >= X, group_by [meal], aggregates [{fn: avg, column: protein_g}]; bench history = session_sets where exercise_name contains "bench".',
-      schema: obj(
-        {
-          table: text('A table from list_data.'),
-          columns: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Columns to return (default all).',
-          },
-          where: {
-            type: 'array',
-            description: 'Filters, all must match.',
-            items: {
-              type: 'object',
-              properties: {
-                column: { type: 'string' },
-                op: {
-                  type: 'string',
-                  enum: ['=', '!=', '>', '>=', '<', '<=', 'contains', 'in', 'is_null', 'not_null'],
-                },
-                value: { description: 'A value; a list for "in".' },
-              },
-              required: ['column', 'op'],
-            },
-          },
-          group_by: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Columns to group by.',
-          },
-          aggregates: {
-            type: 'array',
-            description:
-              'Per group (or over all rows): count (column optional), sum, avg, min, max.',
-            items: {
-              type: 'object',
-              properties: {
-                fn: { type: 'string', enum: ['count', 'sum', 'avg', 'min', 'max'] },
-                column: { type: 'string' },
-              },
-              required: ['fn'],
-            },
-          },
-          order_by: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: { column: { type: 'string' }, desc: { type: 'boolean' } },
-              required: ['column'],
-            },
-          },
-          limit: number('Rows to return, 1 to 200. Default 50.'),
-        },
-        ['table'],
-      ),
+      ...specOf('query_data'),
       run: async (input) => queryData(input),
     },
     {
       name: 'get_strength',
-      description:
-        'The strength progress of the Progress screen: strength score, score per muscle group, and per exercise the estimated 1RM at the start and end of the period, % change, sets, heaviest weight and best 1RM ever.',
-      schema: obj({ period: text('4w, 12w, 1y or all. Default 12w.') }),
+      ...specOf('get_strength'),
       run: async (input) => strengthReport(input, ctx.today),
     },
     {
@@ -356,7 +315,85 @@ export function useAgentTools(): ToolDef[] {
     run: async (input: Input) => ({ content: await t.run(input) }),
   }));
 
+  /** A supplement of the list by name (or id), like the MCP server's set_supplement. */
+  const supplementOf = async (input: Input) => {
+    const list = await fetchSupplements();
+    const byId = optStr(input, 'supplement_id', 60);
+    if (byId) {
+      const s = list.find((x) => x.id === byId);
+      if (!s) throw new Error('Supplement not found.');
+      return s;
+    }
+    const wanted = str(input, 'name', 60).toLowerCase();
+    const s =
+      list.find((x) => x.name.toLowerCase() === wanted) ??
+      list.find((x) => x.name.toLowerCase().includes(wanted));
+    if (!s)
+      throw new Error(
+        `No supplement "${wanted}". Supplements: ${list.map((x) => x.name).join(', ') || 'none (add_supplement first)'}`,
+      );
+    return s;
+  };
+
   const writes: ToolDef[] = [
+    {
+      name: 'add_supplement',
+      write: true,
+      description: "Add a supplement to the user's list (creatine, vitamin D…), with its dose.",
+      schema: obj(
+        {
+          name: text('e.g. "Creatine".'),
+          dose: text('As said: "5 g", "1 capsule", "2000 IU" (optional).'),
+        },
+        ['name'],
+      ),
+      describe: (input) => [...line('name', input.name), ...line('amount', input.dose)],
+      run: async (input) => {
+        const list = await fetchSupplements();
+        const id = newId();
+        await saveSupplement.mutateAsync({
+          id,
+          name: str(input, 'name', 60),
+          dose: optStr(input, 'dose', 40) ?? null,
+          position: list.length,
+        });
+        return {
+          content: { supplement_id: id },
+          undo: async () => {
+            await setSupplementDeleted.mutateAsync({ id, deleted: true });
+          },
+        };
+      },
+    },
+    {
+      name: 'set_supplement',
+      write: true,
+      description:
+        'Mark a supplement as taken (or not taken) on a day (default today), by its name or supplement_id.',
+      schema: obj({
+        name: text('Name of the supplement (as in the list).'),
+        supplement_id: text('Id of the supplement (optional).'),
+        day: dayField,
+        taken: { type: 'boolean', description: 'true = taken (default), false = not taken.' },
+      }),
+      describe: (input) => [
+        ...line('day', input.day ?? today),
+        ...line('name', input.name ?? input.supplement_id),
+        ...line('status', input.taken === false ? 'not taken' : 'taken'),
+      ],
+      run: async (input) => {
+        const s = await supplementOf(input);
+        const day = dayArg(input, 'day', today);
+        const taken = input.taken !== false;
+        await setTaken.mutateAsync({ day, supplementId: s.id, taken });
+        return {
+          content: { supplement: s.name, day, taken },
+          undo: async () => {
+            await setTaken.mutateAsync({ day, supplementId: s.id, taken: !taken });
+          },
+        };
+      },
+    },
     {
       name: 'log_body',
       write: true,

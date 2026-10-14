@@ -93,7 +93,7 @@
     "db:test": "supabase test db",
     "db:seed": "node supabase/scripts/generate-seed.js",
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
-    "db:verify": "node --test supabase/verify/db.test.mjs",
+    "db:verify": "node --import ./server/ts-resolve.mjs --test supabase/verify/db.test.mjs",
     "db:images": "node supabase/scripts/upload-images.mjs",
     "db:demo": "docker exec -i supabase_db_fft psql -U postgres -v ON_ERROR_STOP=1 -f - < supabase/scripts/demo-data.sql"
   },

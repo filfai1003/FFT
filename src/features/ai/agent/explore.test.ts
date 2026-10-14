@@ -28,15 +28,13 @@ type Out = {
 
 beforeAll(async () => {
   const c = mockClient;
-  await c
-    .from('body_metrics')
-    .insert(
-      [80, 79.5, 79, 78.2].map((w, i) => ({
-        id: id(10 + i),
-        day: `2026-10-0${i + 1}`,
-        weight_kg: w,
-      })),
-    );
+  await c.from('body_metrics').insert(
+    [80, 79.5, 79, 78.2].map((w, i) => ({
+      id: id(10 + i),
+      day: `2026-10-0${i + 1}`,
+      weight_kg: w,
+    })),
+  );
   await c.from('body_goals').insert({ id: id(20), valid_from: '2026-10-01', target_weight_kg: 75 });
   await c.from('food_logs').insert(
     ['breakfast', 'lunch', 'lunch'].map((meal, i) => ({

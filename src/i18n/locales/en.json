@@ -1220,7 +1220,9 @@
       "propose_plans": "Create or change plans",
       "list_data": "Data map",
       "query_data": "Query",
-      "get_strength": "Strength"
+      "get_strength": "Strength",
+      "add_supplement": "Add a supplement",
+      "set_supplement": "Supplement taken"
     },
     "actionsTitle": "Changes it suggests",
     "applyActions": "Apply these changes",

@@ -31,13 +31,35 @@ claude mcp add --transport http fft https://fft-api.up.railway.app/mcp --header 
 | `list_food_logs` | `GET /v1/food-logs` | `from`, `to` |
 | `search_foods` | `GET /v1/foods?q=` | `query` |
 | `log_food` | `POST /v1/food-logs` | `meal` + (`food_id`, `grams`) or (`name`, `kcal`, `protein_g`, `carbs_g`, `fat_g`, `grams`), `day` |
-| `delete_food_log` | `DELETE /v1/food-logs/{id}` | `id` |
+| `remove_food_log` | `DELETE /v1/food-logs/{id}` | `log_id` |
 | `list_water` | `GET /v1/water` | `from`, `to` |
 | `log_water` | `POST /v1/water` | `ml`, `day` |
 | `list_body_metrics` | `GET /v1/body` | `from`, `to` |
-| `log_body_metrics` | `POST /v1/body` | `weight_kg`, `body_fat_pct`, `waist_cm`, `hips_cm`, `chest_cm`, `arm_cm`, `thigh_cm`, `day` |
+| `log_body` | `POST /v1/body` | `weight_kg`, `body_fat_pct`, `waist_cm`, `hips_cm`, `chest_cm`, `arm_cm`, `thigh_cm`, `day` |
 | `list_workouts` | `GET /v1/workouts` | `from`, `to` |
 | `get_goals` | `GET /v1/goals` | |
+
+**The in-app coach's tools** (same names, descriptions and rules; the logic is the app's own
+`src/domain` code, run by the server: `src/domain/data-tools.ts` for the data questions, plan import,
+nutrition safety). Over REST every tool, these included, is `POST /v1/tools/{name}` with the
+arguments as the JSON body.
+
+| Tool | Changes data | What |
+|---|---|---|
+| `list_data` | | every table, what it holds, its columns, how many rows |
+| `query_data` | | `table`, `columns`, `where` [{column, op, value}], `group_by`, `aggregates` [{fn, column}], `order_by`, `limit` |
+| `get_strength` | | strength score, by muscle group and exercise (`period` 4w/12w/1y/all) |
+| `get_workout_plans` | | the plans in the plan format |
+| `get_diet` | | calorie/macro target, maintenance, water goal, fixed meals |
+| `list_exercises` | | exercise names (`muscle`) |
+| `propose_plans` | yes | `workout_plan` and/or `diet_plan` in the plan format; a changed plan keeps an archived backup |
+| `set_nutrition_goal` | yes | `kcal`, `protein_g`, `carbs_g`, `fat_g` (never < 1500 kcal or > 25 % deficit) |
+| `set_meal_status` | yes | fixed meals: `meal`, `status` done/skipped/adjusted/pending |
+| `create_food`, `update_food`, `delete_food` | yes | the user's own foods (per 100 g, portions) |
+| `add_supplement`, `set_supplement` | yes | the supplement list; taken / not taken on a `day` |
+
+In MCP every tool carries `annotations.readOnlyHint`: clients like Claude ask the user before a tool
+that changes data (the app asks for each change and offers Undo).
 
 Ranges default to the last 7 days, at most a year. Errors: `{ "error": "…" }` with 400 (bad
 input or a database rule, e.g. a weight out of range), 401 (no token, revoked, or the plan no

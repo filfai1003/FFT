@@ -17,20 +17,19 @@ export const supplementKeys = {
   logs: (from: string, to: string) => ['supplements', 'logs', from, to] as const,
 };
 
+export async function fetchSupplements(): Promise<Supplement[]> {
+  const { data, error } = await getSupabase()
+    .from('supplements')
+    .select('id, name, dose, position')
+    .is('deleted_at', null)
+    .order('position')
+    .order('created_at');
+  if (error) throw error;
+  return (data as Supplement[]).map((s) => ({ ...s, position: Number(s.position) }));
+}
+
 export function useSupplements() {
-  return useQuery({
-    queryKey: supplementKeys.list,
-    queryFn: async (): Promise<Supplement[]> => {
-      const { data, error } = await getSupabase()
-        .from('supplements')
-        .select('id, name, dose, position')
-        .is('deleted_at', null)
-        .order('position')
-        .order('created_at');
-      if (error) throw error;
-      return (data as Supplement[]).map((s) => ({ ...s, position: Number(s.position) }));
-    },
-  });
+  return useQuery({ queryKey: supplementKeys.list, queryFn: fetchSupplements });
 }
 
 /** Which supplements were taken on each day of the range: day → set of supplement ids. */

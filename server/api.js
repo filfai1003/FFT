@@ -4,6 +4,7 @@
 // security decides what can be read or written, exactly as for the app. Writes reach the user's
 // phones with the next sync. Docs: docs/API.md.
 import { createHash } from 'node:crypto';
+import { COACH_TOOLS, ToolError } from './coach.js';
 
 const MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -228,6 +229,7 @@ export const TOOLS = [
   },
   {
     name: 'log_food',
+    write: true,
     description:
       'Logs a food for a meal. Either food_id (from search_foods) with grams, or a name with its kcal (and macros) for the amount eaten.',
     inputSchema: {
@@ -306,13 +308,18 @@ export const TOOLS = [
     },
   },
   {
-    name: 'delete_food_log',
-    description: 'Removes a logged food (by its id from get_day or list_food_logs).',
-    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+    name: 'remove_food_log',
+    write: true,
+    description: 'Remove one entry from the food log (log_id from get_day or list_food_logs).',
+    inputSchema: {
+      type: 'object',
+      properties: { log_id: { type: 'string', description: 'Id of the entry.' } },
+      required: ['log_id'],
+    },
     run: async (q, args) => {
       const rows = await q(
         `update public.food_logs set deleted_at = now() where id = $1 and deleted_at is null returning id`,
-        [uuid(args.id, 'id')],
+        [uuid(args.log_id ?? args.id, 'log_id')],
       );
       if (rows.length === 0) throw new ApiError(404, 'food log not found');
       return { deleted: rows[0].id };
@@ -334,6 +341,7 @@ export const TOOLS = [
   },
   {
     name: 'log_water',
+    write: true,
     description: 'Adds water drunk (ml).',
     inputSchema: {
       type: 'object',
@@ -377,7 +385,8 @@ export const TOOLS = [
     },
   },
   {
-    name: 'log_body_metrics',
+    name: 'log_body',
+    write: true,
     description:
       'Records weight, body fat or measurements for a day. A day has one entry: given values replace those of that day, the others stay.',
     inputSchema: {
@@ -459,6 +468,8 @@ export const TOOLS = [
       return { nutrition: clean(nutrition), body: clean(body) };
     },
   },
+  // The rest of the in-app coach's tools (same names, descriptions and rules): server/coach.js.
+  ...COACH_TOOLS,
 ];
 const byName = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
 
@@ -472,12 +483,12 @@ const ROUTES = [
   ['GET', /^\/v1\/days\/([^/]+)$/, 'get_day', (m) => ({ day: m[1] })],
   ['GET', /^\/v1\/food-logs$/, 'list_food_logs'],
   ['POST', /^\/v1\/food-logs$/, 'log_food'],
-  ['DELETE', /^\/v1\/food-logs\/([^/]+)$/, 'delete_food_log', (m) => ({ id: m[1] })],
+  ['DELETE', /^\/v1\/food-logs\/([^/]+)$/, 'remove_food_log', (m) => ({ log_id: m[1] })],
   ['GET', /^\/v1\/foods$/, 'search_foods', (_m, query) => ({ query: query.q ?? query.query })],
   ['GET', /^\/v1\/water$/, 'list_water'],
   ['POST', /^\/v1\/water$/, 'log_water'],
   ['GET', /^\/v1\/body$/, 'list_body_metrics'],
-  ['POST', /^\/v1\/body$/, 'log_body_metrics'],
+  ['POST', /^\/v1\/body$/, 'log_body'],
   ['GET', /^\/v1\/workouts$/, 'list_workouts'],
   ['GET', /^\/v1\/goals$/, 'get_goals'],
 ];
@@ -528,6 +539,7 @@ export function createApi(db, { perMinute = PER_MINUTE } = {}) {
       } catch (e) {
         // Database rules (checks, safety limits) come back as a plain 400.
         if (e?.code && /^(22|23)/.test(e.code)) throw bad(e.message);
+        if (e instanceof ToolError) throw new ApiError(e.status, e.message);
         throw e;
       }
     });
@@ -539,6 +551,13 @@ export function createApi(db, { perMinute = PER_MINUTE } = {}) {
         body: { tools: TOOLS.map((t) => t.name), docs: 'https://github.com/ (docs/API.md)' },
       };
     const userId = await authed(headers);
+    // Every tool, as REST: POST /v1/tools/<name> with the arguments as the JSON body.
+    const tool = path.match(/^\/v1\/tools\/([a-z_]+)$/);
+    if (tool) {
+      if (method !== 'POST') throw new ApiError(405, 'use POST');
+      if (!byName[tool[1]]) throw new ApiError(404, `no such tool: ${tool[1]}`);
+      return { status: 200, body: await call(userId, tool[1], body ?? {}) };
+    }
     for (const [m, re, name, toArgs] of ROUTES) {
       const match = path.match(re);
       if (!match) continue;
@@ -572,17 +591,19 @@ export function createApi(db, { perMinute = PER_MINUTE } = {}) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'fft', title: 'FFT', version: '1.0.0' },
           instructions:
-            "The user's FFT fitness data: food log, nutrition goals, water, body measurements, workouts. Dates are the user's local dates (YYYY-MM-DD); units are metric. Writes appear on the user's phones at the next sync.",
+            "The user's FFT fitness data, with the same tools as the in-app coach. Start with get_profile; for anything else call list_data once, then query_data (small precise questions, group and aggregate instead of pulling many rows). Dates are the user's local dates (YYYY-MM-DD); units are metric. Never set a calorie target below 1500 kcal or more than 25% under maintenance (the server refuses). Changes appear on the user's phones at the next sync.",
         });
       }
       case 'ping':
         return reply({});
       case 'tools/list':
         return reply({
-          tools: TOOLS.map(({ name, description, inputSchema }) => ({
+          tools: TOOLS.map(({ name, description, inputSchema, write }) => ({
             name,
             description,
             inputSchema,
+            // Clients (Claude…) ask the user before a tool that changes data.
+            annotations: { readOnlyHint: !write, destructiveHint: false, openWorldHint: false },
           })),
         });
       case 'tools/call': {

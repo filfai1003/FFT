@@ -49,6 +49,7 @@ describe('the assistant changing data (after approval)', () => {
       .map((t) => t.name)
       .sort();
     expect(writes).toEqual([
+      'add_supplement',
       'create_food',
       'delete_food',
       'log_body',
@@ -58,6 +59,7 @@ describe('the assistant changing data (after approval)', () => {
       'remove_food_log',
       'set_meal_status',
       'set_nutrition_goal',
+      'set_supplement',
       'update_food',
     ]);
     expect(
