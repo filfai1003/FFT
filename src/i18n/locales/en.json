@@ -598,7 +598,10 @@
     "labelUnreadable": "Could not read a nutrition table in that photo. Try again closer, with good light.",
     "labelFailed": "The label could not be read right now. Try again, or fill in the values.",
     "labelNeedsAi": "Reading labels uses the AI coach: Premium, or your own AI key.",
-    "labelAiSettings": "AI coach"
+    "labelAiSettings": "AI coach",
+    "labelCameraTitle": "Nutrition label",
+    "labelNeedCamera": "Allow the camera to photograph the label, or pick a photo.",
+    "scanBarcode": "Scan the barcode"
   },
   "scanner": {
     "close": "Close scanner",

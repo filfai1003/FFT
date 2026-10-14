@@ -1,8 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { FormHeader } from '@/components/ui/FormHeader';
@@ -10,7 +9,6 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
-import type { LabelValues } from '@/domain/label';
 import { parseDecimal } from '@/domain/numbers';
 import type { Portion } from '@/domain/diet';
 import { useFood, useSaveFood, type Food } from './foods';
@@ -19,7 +17,8 @@ import { useToastStore } from '@/lib/toast-store';
 import { usePlanStore } from '@/lib/plan';
 import { aiReady, effectiveAiSettings } from '@/features/ai/included';
 import { useAiSettings } from '@/features/ai/settings-store';
-import { photographLabel, readLabel } from './label-photo';
+import { CameraModal, type CapturedPhoto } from './CameraModal';
+import { readLabel } from './label-photo';
 
 type FieldKey = 'kcal' | 'protein' | 'carbs' | 'sugars' | 'fat' | 'saturates' | 'fiber' | 'salt';
 const fields: { key: FieldKey; unit: string; sub?: boolean; required?: boolean }[] = [
@@ -37,52 +36,10 @@ const text = (n: number | null | undefined) => (n == null ? '' : String(n));
 
 /** Create your own food ("Mine"), or edit one when opened with `editId`. */
 export function CreateFoodScreen() {
-  const { t } = useTranslation();
-  const { editId, photoUri, photoWidth } = useLocalSearchParams<{
-    editId?: string;
-    /** A photo of the label taken in the scanner: read first, then the form opens filled. */
-    photoUri?: string;
-    photoWidth?: string;
-  }>();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
   const food = useFood(editId);
-  const plan = usePlanStore((s) => s.plan);
-  const label = useQuery({
-    queryKey: ['label-photo', photoUri],
-    enabled: !!photoUri && !editId,
-    staleTime: Infinity,
-    retry: false,
-    queryFn: async () => {
-      const settings = await loadedAiSettings();
-      return readLabel(
-        { uri: photoUri!, width: photoWidth ? Number(photoWidth) : undefined },
-        effectiveAiSettings(settings, plan),
-      );
-    },
-  });
   if (editId && !food.data) return <Screen>{null}</Screen>;
-  if (photoUri && !editId && label.isPending)
-    return (
-      <Screen gap={12}>
-        <ActivityIndicator />
-        <Text muted style={{ textAlign: 'center' }}>
-          {t('createFood.labelReading')}
-        </Text>
-      </Screen>
-    );
-  return (
-    <FoodForm
-      key={editId ?? 'new'}
-      initial={editId ? food.data : undefined}
-      prefill={label.data ?? null}
-      prefillError={
-        label.isError
-          ? 'createFood.labelFailed'
-          : label.isSuccess && !label.data
-            ? 'createFood.labelUnreadable'
-            : null
-      }
-    />
-  );
+  return <FoodForm key={editId ?? 'new'} initial={editId ? food.data : undefined} />;
 }
 
 /** The AI settings as saved (loaded from the device the first time). */
@@ -91,7 +48,10 @@ async function loadedAiSettings() {
   return useAiSettings.getState();
 }
 
-/** Whether the AI can read a label now; if not, says so (with a way to the AI settings). */
+/**
+ * Whether the AI can read a label now: the settings to use, or null (and a message with a way to
+ * the AI coach settings).
+ */
 export function useLabelReader() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -111,15 +71,7 @@ export function useLabelReader() {
 }
 
 /** Per 100 g from the label, optional portions and barcode. */
-function FoodForm({
-  initial,
-  prefill,
-  prefillError,
-}: {
-  initial?: Food;
-  prefill?: LabelValues | null;
-  prefillError?: 'createFood.labelFailed' | 'createFood.labelUnreadable' | null;
-}) {
+function FoodForm({ initial }: { initial?: Food }) {
   const { t } = useTranslation();
   const router = useRouter();
   const barHeight = useActionBarHeight();
@@ -127,41 +79,46 @@ function FoodForm({
     meal?: string;
     day?: string;
     barcode?: string;
+    /** '1' = from the scanner's "Photograph the label": the camera opens right away. */
+    capture?: string;
   }>();
   const save = useSaveFood();
   const editing = !!initial;
-  const [name, setName] = useState(initial?.name ?? prefill?.name ?? '');
-  const [brand, setBrand] = useState(initial?.brand ?? prefill?.brand ?? '');
+  const [name, setName] = useState(initial?.name ?? '');
+  const [brand, setBrand] = useState(initial?.brand ?? '');
   const [barcode, setBarcode] = useState(initial?.barcode ?? params.barcode ?? '');
   const [values, setValues] = useState<Record<FieldKey, string>>({
-    kcal: text(initial?.per100.kcal ?? prefill?.per100.kcal),
-    protein: text(initial?.per100.protein ?? prefill?.per100.protein),
-    carbs: text(initial?.per100.carbs ?? prefill?.per100.carbs),
-    sugars: text(initial?.per100.sugars ?? prefill?.per100.sugars),
-    fat: text(initial?.per100.fat ?? prefill?.per100.fat),
-    saturates: text(initial?.per100.saturates ?? prefill?.per100.saturates),
-    fiber: text(initial?.per100.fiber ?? prefill?.per100.fiber),
-    salt: text(initial?.per100.salt ?? prefill?.per100.salt),
+    kcal: text(initial?.per100.kcal),
+    protein: text(initial?.per100.protein),
+    carbs: text(initial?.per100.carbs),
+    sugars: text(initial?.per100.sugars),
+    fat: text(initial?.per100.fat),
+    saturates: text(initial?.per100.saturates),
+    fiber: text(initial?.per100.fiber),
+    salt: text(initial?.per100.salt),
   });
   const [portions, setPortions] = useState<{ label: string; grams: string }[]>(
-    initial
-      ? initial.servings.map((p) => ({ label: p.label, grams: String(p.grams) }))
-      : prefill?.portion
-        ? [{ label: prefill.portion.label, grams: String(prefill.portion.grams) }]
-        : [],
+    (initial?.servings ?? []).map((p) => ({ label: p.label, grams: String(p.grams) })),
   );
-  const [error, setError] = useState<string | null>(() => (prefillError ? t(prefillError) : null));
+  const [error, setError] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
+  /** The app's camera over the form: a label photo, or a barcode. */
+  const [camera, setCamera] = useState<'photo' | 'barcode' | null>(() =>
+    params.capture === '1' && !initial ? 'photo' : null,
+  );
   const showToast = useToastStore((s) => s.show);
   const labelReader = useLabelReader();
 
-  /** Photo of the nutrition table → the AI reads it → the form is filled (checked before Save). */
-  const fillFromLabel = async () => {
+  const openLabelCamera = async () => {
     setError(null);
+    if (await labelReader(barHeight)) setCamera('photo');
+  };
+
+  /** Photo of the nutrition table → the AI reads it → the form is filled (checked before Save). */
+  const fillFromLabel = async (photo: CapturedPhoto) => {
+    setCamera(null);
     const settings = await labelReader(barHeight);
     if (!settings) return;
-    const photo = await photographLabel();
-    if (!photo) return;
     setReading(true);
     try {
       const v = await readLabel(photo, settings);
@@ -242,7 +199,7 @@ function FoodForm({
           icon="camera"
           label={reading ? t('createFood.labelReading') : t('createFood.labelPhoto')}
           disabled={reading}
-          onPress={() => void fillFromLabel()}
+          onPress={() => void openLabelCamera()}
         />
         <Input
           label={t('createFood.name')}
@@ -260,12 +217,21 @@ function FoodForm({
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Input
-              label={t('createFood.barcode')}
-              value={barcode}
-              onChangeText={(v) => setBarcode(v.replace(/\D/g, ''))}
-              keyboardType="number-pad"
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 6 }}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  label={t('createFood.barcode')}
+                  value={barcode}
+                  onChangeText={(v) => setBarcode(v.replace(/\D/g, ''))}
+                  keyboardType="number-pad"
+                />
+              </View>
+              <IconButton
+                icon="barcode"
+                accessibilityLabel={t('createFood.scanBarcode')}
+                onPress={() => setCamera('barcode')}
+              />
+            </View>
           </View>
         </View>
 
@@ -347,6 +313,15 @@ function FoodForm({
           onPress={submit}
         />
       </BottomActionBar>
+      <CameraModal
+        mode={camera}
+        onClose={() => setCamera(null)}
+        onPhoto={(photo) => void fillFromLabel(photo)}
+        onCode={(code) => {
+          setBarcode(code.replace(/\D/g, ''));
+          setCamera(null);
+        }}
+      />
     </>
   );
 }

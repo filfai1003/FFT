@@ -13,7 +13,6 @@ import { useTheme } from '@/design/use-theme';
 import { confirm } from '@/lib/haptics';
 import type { Food } from './foods';
 import { useLabelReader } from './CreateFoodScreen';
-import { photographLabel } from './label-photo';
 import { lookupBarcode } from './off';
 import { goBack } from '@/lib/navigation';
 
@@ -35,27 +34,13 @@ export function ScannerScreen() {
   const [typing, setTyping] = useState(false);
   const [typed, setTyped] = useState('');
   const busy = useRef(false);
-  /** The scanner lets go of the camera while the label is photographed. */
-  const [cameraOff, setCameraOff] = useState(false);
   const labelReader = useLabelReader();
 
-  /** Not found: a photo of the nutrition table fills the New food form (barcode included). */
+  /** Not found: New food opens on the app's camera; the label photo fills the form (barcode kept). */
   const photoLabel = async (code: string) => {
     if (!(await labelReader())) return;
-    setCameraOff(true);
-    const photo = await photographLabel();
-    setCameraOff(false);
-    if (!photo) return;
     setState({ kind: 'scanning' });
-    router.replace({
-      pathname: '/food/new',
-      params: {
-        ...next,
-        barcode: code,
-        photoUri: photo.uri,
-        ...(photo.width ? { photoWidth: String(photo.width) } : {}),
-      },
-    });
+    router.replace({ pathname: '/food/new', params: { ...next, barcode: code, capture: '1' } });
   };
 
   const handle = async (code: string) => {
@@ -104,7 +89,7 @@ export function ScannerScreen() {
             backgroundColor: '#0a0a0a',
           }}
         >
-          {permission?.granted && !cameraOff ? (
+          {permission?.granted ? (
             <CameraView
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
               facing="back"
