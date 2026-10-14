@@ -16,13 +16,13 @@ Services, all on Railway's private network, one public URL (Kong):
 | `auth`     | supabase/gotrue:v2.189.0           | email + password, `GOTRUE_MAILER_AUTOCONFIRM=true` (no SMTP yet) |
 | `rest`     | postgrest/postgrest:v14.12         |                                                 |
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
-| `kong`     | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
+| `backend`  | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
 | `api`      | this repo (`server/Dockerfile`)    | **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
 | `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
 | `admin`    | this repo (`admin/`)               | admin panel, public domain `admin-fft`            |
 
-Public URL: `https://your-backend.example.com` (the `kong` service domain).
+Public URL: `https://your-backend.example.com` (the `backend` service domain, Kong).
 
 `api` is the automatic part: at every start it applies the `supabase/migrations/*.sql` not applied yet
 (tracked in `public.app_migrations`), then `supabase/seed.sql` (the exercise catalogue, an idempotent
