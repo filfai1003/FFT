@@ -34,6 +34,7 @@ import { getSupabase } from '@/lib/supabase';
 import { useApplyImport } from '../apply';
 import { useAiContext } from '../context';
 import { day as dayArg, num, optNum, optStr, round, str, type Input } from './args';
+import { listData, queryData, strengthReport } from './explore';
 import {
   readBody,
   readDay,
@@ -252,6 +253,80 @@ export function useAgentTools(): ToolDef[] {
         "Foods the app knows. Without a query: the user's own foods. With a query: search by name. Gives food_id, needed to log or change a food.",
       schema: obj({ query: text('Part of the food name (optional).') }),
       run: async (input) => readFoods(optStr(input, 'query', 60), userId),
+    },
+    {
+      name: 'list_data',
+      description:
+        'Map of ALL the data the user has: every table, what it holds, its columns and how many rows. Call it before query_data when the other tools do not answer the question.',
+      schema: obj({}),
+      run: async () => listData(),
+    },
+    {
+      name: 'query_data',
+      description:
+        'Ask any question of one table (see list_data): filter, sort, pick columns, or group and aggregate (count/sum/avg/min/max) so only the answer comes back, not every row. Runs on the device, free: ask several small questions rather than one huge one. Examples: weight trend = body_metrics columns [day, weight_kg] order_by day; protein per meal = food_logs where day >= X, group_by [meal], aggregates [{fn: avg, column: protein_g}]; bench history = session_sets where exercise_name contains "bench".',
+      schema: obj(
+        {
+          table: text('A table from list_data.'),
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Columns to return (default all).',
+          },
+          where: {
+            type: 'array',
+            description: 'Filters, all must match.',
+            items: {
+              type: 'object',
+              properties: {
+                column: { type: 'string' },
+                op: {
+                  type: 'string',
+                  enum: ['=', '!=', '>', '>=', '<', '<=', 'contains', 'in', 'is_null', 'not_null'],
+                },
+                value: { description: 'A value; a list for "in".' },
+              },
+              required: ['column', 'op'],
+            },
+          },
+          group_by: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Columns to group by.',
+          },
+          aggregates: {
+            type: 'array',
+            description:
+              'Per group (or over all rows): count (column optional), sum, avg, min, max.',
+            items: {
+              type: 'object',
+              properties: {
+                fn: { type: 'string', enum: ['count', 'sum', 'avg', 'min', 'max'] },
+                column: { type: 'string' },
+              },
+              required: ['fn'],
+            },
+          },
+          order_by: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { column: { type: 'string' }, desc: { type: 'boolean' } },
+              required: ['column'],
+            },
+          },
+          limit: number('Rows to return, 1 to 200. Default 50.'),
+        },
+        ['table'],
+      ),
+      run: async (input) => queryData(input),
+    },
+    {
+      name: 'get_strength',
+      description:
+        'The strength progress of the Progress screen: strength score, score per muscle group, and per exercise the estimated 1RM at the start and end of the period, % change, sets, heaviest weight and best 1RM ever.',
+      schema: obj({ period: text('4w, 12w, 1y or all. Default 12w.') }),
+      run: async (input) => strengthReport(input, ctx.today),
     },
     {
       name: 'list_exercises',

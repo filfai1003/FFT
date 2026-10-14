@@ -5,7 +5,7 @@ import { callModel } from './provider';
 import type { AgentMessage, ToolCall, ToolDef, ToolOutcome, ToolResult } from './types';
 
 /** The model may chain tools (look, then change, then check); this stops a runaway loop. */
-export const MAX_STEPS = 10;
+export const MAX_STEPS = 20;
 const MAX_RESULT_CHARS = 12_000;
 
 export type Approval = 'approved' | 'rejected';

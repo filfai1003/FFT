@@ -65,7 +65,9 @@ describe('the assistant changing data (after approval)', () => {
         .filter((t) => !t.write)
         .every(
           (t) =>
-            t.name.startsWith('get_') || t.name.endsWith('_foods') || t.name === 'list_exercises',
+            t.name.startsWith('get_') ||
+            t.name.endsWith('_foods') ||
+            ['list_exercises', 'list_data', 'query_data'].includes(t.name),
         ),
     ).toBe(true);
   });
