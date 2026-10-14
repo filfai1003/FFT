@@ -1002,6 +1002,11 @@
     }
   },
   "privacy": {
+    "importTitle": "Import an export",
+    "importDetail": "An FFT export (.zip) comes back: added to what is here, nothing is deleted; for the same item the newest version wins.",
+    "import": "Import",
+    "imported": "Imported {{count}} items and {{photos}} photos.",
+    "notAnExport": "This file is not an FFT export. Choose the .zip made by Export.",
     "title": "Privacy & data",
     "yourData": "Your data",
     "downloadAll": "Download everything",

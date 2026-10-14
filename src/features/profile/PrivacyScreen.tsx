@@ -17,6 +17,8 @@ import { goBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { activeConsent, deleteAccount, useConsents, useSetConsent } from './account';
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
+import { importExport, pickExportFile } from './import';
+import { useSessionStore } from '@/features/auth/session-store';
 import { usePrivacyStore } from './privacy-store';
 
 /** Privacy & data: export, photo privacy, sharing, consent, delete account. */
@@ -29,7 +31,8 @@ export function PrivacyScreen() {
   const consents = useConsents();
   const setConsent = useSetConsent();
   const showToast = useToastStore((s) => s.show);
-  const [busy, setBusy] = useState<'full' | 'workouts' | null>(null);
+  const [busy, setBusy] = useState<'full' | 'workouts' | 'import' | null>(null);
+  const userId = useSessionStore((st) => st.userId);
   const [withdraw, setWithdraw] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [typed, setTyped] = useState('');
@@ -57,6 +60,29 @@ export function PrivacyScreen() {
         );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** An earlier export comes back: added to what is here, nothing is deleted. */
+  const runImport = async () => {
+    setError(null);
+    const zip = await pickExportFile().catch(() => null);
+    if (!zip || !userId) return;
+    setBusy('import');
+    try {
+      const r = await importExport(zip, userId);
+      await queryClient.invalidateQueries();
+      showToast({ message: t('privacy.imported', { count: r.rows, photos: r.photos }) });
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message === 'not an FFT export'
+          ? t('privacy.notAnExport')
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      );
     } finally {
       setBusy(null);
     }
@@ -158,6 +184,31 @@ export function PrivacyScreen() {
               variant="secondary"
               disabled={busy != null}
               onPress={() => runExport('workouts')}
+            />
+          </View>
+          <View
+            style={{
+              minHeight: 60,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              borderTopWidth: 1,
+              borderColor: colors.borderDecorative,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyS">{t('privacy.importTitle')}</Text>
+              <Text variant="label" muted>
+                {t('privacy.importDetail')}
+              </Text>
+            </View>
+            <Button
+              label={t('privacy.import')}
+              block={false}
+              variant="secondary"
+              disabled={busy != null}
+              onPress={() => void runImport()}
             />
           </View>
           {busy ? (
