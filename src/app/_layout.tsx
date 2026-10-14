@@ -11,6 +11,9 @@ import { Text } from '@/components/ui/Text';
 import { startAuthListener, useSessionStore } from '@/features/auth/session-store';
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
+import { PlanMoveScreen } from '@/features/premium/PlanMoveScreen';
+import { PremiumScreen } from '@/features/premium/PremiumScreen';
+import { usePlanGate } from '@/features/premium/use-plan-gate';
 import { activeConsent, useConsents } from '@/features/profile/account';
 import { usePendingSync } from '@/features/session/use-pending-sync';
 import { useNotificationGuard } from '@/features/settings/use-notification-guard';
@@ -48,8 +51,22 @@ export default function RootLayout() {
   );
 }
 
-/** Chooses what the user can reach: sign in, onboarding, or the app. */
+/**
+ * First where the account's data lives (premium = online, moved when the plan changed; on the web
+ * only premium accounts get in), then the routes.
+ */
 function AppNavigator() {
+  const { phase, retry, later } = usePlanGate();
+  if (phase.kind === 'checking') return <Screen>{null}</Screen>;
+  if (phase.kind === 'paywall') return <PremiumScreen gate />;
+  if (phase.kind === 'moving') return <PlanMoveScreen direction={phase.direction} />;
+  if (phase.kind === 'error')
+    return <PlanMoveScreen direction={phase.direction} failed onRetry={retry} onLater={later} />;
+  return <AppRoutes />;
+}
+
+/** Chooses what the user can reach: sign in, onboarding, or the app. */
+function AppRoutes() {
   const { t } = useTranslation();
   const { colors, mode } = useTheme();
   const status = useSessionStore((s) => s.status);

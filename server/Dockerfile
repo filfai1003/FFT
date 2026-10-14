@@ -7,6 +7,7 @@ RUN npm ci --omit=dev
 COPY server/index.js server/migrate.js ./
 COPY supabase/functions ./fn
 COPY supabase/migrations ./migrations
+COPY supabase/seed.sql ./seed.sql
 # The Edge Functions are written for Deno ("npm:" imports): Node needs the plain package name.
 RUN sed -i "s#npm:@supabase/supabase-js@2#@supabase/supabase-js#" fn/*/index.ts
 CMD ["node", "index.js"]

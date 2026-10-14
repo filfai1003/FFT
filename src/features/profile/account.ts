@@ -5,7 +5,7 @@ import { useConversations } from '@/features/ai/agent/conversations';
 import { useSessionStore as useWorkout } from '@/features/session/store';
 import { syncPendingSessions } from '@/features/session/sync';
 import { getMode } from '@/lib/mode';
-import { getAuthClient, getSupabase } from '@/lib/supabase';
+import { dataIsOnline, getAuthClient, getSupabase } from '@/lib/supabase';
 import { newId } from '@/lib/uuid';
 import { POLICY_VERSION } from '@/features/onboarding/logic';
 
@@ -109,8 +109,11 @@ export async function deleteAccount(queryClient: { clear: () => void }): Promise
     const online = await getAuthClient().functions.invoke('delete-account');
     if (online.error) return online.error.message;
   }
-  const { error } = await getSupabase().functions.invoke('delete-account');
-  if (error) return error.message;
+  // Premium data lives on the server and went with the account; otherwise erase the device copy.
+  if (!dataIsOnline()) {
+    const { error } = await getSupabase().functions.invoke('delete-account');
+    if (error) return error.message;
+  }
   const userId = useAuth.getState().userId;
   if (userId) useConversations.getState().clearUser(userId);
   await signOut().catch(() => undefined);

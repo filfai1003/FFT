@@ -4,7 +4,7 @@ import type { Database } from '@/types/database';
 import { getCurrentUserId } from './current-user';
 import { getLocalClient, LOCAL_USER_ID } from './local-db';
 import { getMode } from './mode';
-import { isPremium } from './plan';
+import { dataHomeIsOnline } from './plan';
 import { authStorage } from './secure-storage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -37,7 +37,7 @@ export function getAuthClient(): SupabaseClient<Database> {
 }
 
 /** True when the user's data lives on the server (premium); otherwise it stays on the device. */
-export const dataIsOnline = () => getMode() === 'cloud' && isPremium();
+export const dataIsOnline = () => getMode() === 'cloud' && dataHomeIsOnline(getCurrentUserId());
 
 /**
  * Where the user's DATA lives (plans, workouts, food, body, photos…). Free accounts and the

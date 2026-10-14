@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMode } from '@/lib/mode';
 import { newId } from '@/lib/uuid';
-import { getAuthClient, getSupabase, isSupabaseConfigured } from '@/lib/supabase';
+import { dataIsOnline, getAuthClient, getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { toFood, type Food } from './foods';
 
 type OffResponse = { foods?: Parameters<typeof toFood>[0][]; offline?: boolean };
@@ -10,6 +10,7 @@ type OffRow = Parameters<typeof toFood>[0];
 
 /** Keeps products found online in the on-device foods, so they can be logged (and found) offline. */
 async function saveLocally(rows: OffRow[]) {
+  if (dataIsOnline()) return; // premium: the server already keeps them (shared rows)
   const db = getSupabase();
   for (const row of rows) {
     const { food_servings: servings, ...food } = row;

@@ -14,6 +14,7 @@ on:
       - 'server/**'
       - 'site/**'
       - 'admin/**'
+      - 'web/**'
       - 'supabase/**'
       - 'docs/**'
       - 'tools/**'

@@ -1,6 +1,7 @@
 import { createLocalClient, type LocalClient } from './client';
 import { LocalDb, type Kv } from './engine';
 import { kv } from './kv';
+import { columns, withDefaults, type Row } from './schema';
 
 const clients = new Map<string, LocalClient>();
 const dbs = new Map<string, LocalDb>();
@@ -56,4 +57,73 @@ export async function moveLocalData(from: string, to: string, store: Kv = kv): P
   return rows;
 }
 
+/** Every table of one user's on-device database (read only: use the client to change rows). */
+export async function readLocalTables(
+  userId: string,
+  store: Kv = kv,
+): Promise<Record<string, Row[]>> {
+  const db = dbFor(userId, store);
+  await db.ready;
+  return db.tables;
+}
+
+/**
+ * Puts rows that come from the server into one user's on-device database (premium ended): each
+ * table given replaces the user's rows of that table; the catalogue and the Open Food Facts foods
+ * already on the device are kept.
+ */
+export async function replaceLocalTables(
+  userId: string,
+  incoming: Record<string, Row[]>,
+  store: Kv = kv,
+): Promise<void> {
+  const db = dbFor(userId, store);
+  await db.ready;
+  for (const [table, rows] of Object.entries(incoming)) {
+    if (!columns[table]) continue;
+    const ids = new Set(rows.map((r) => r.id));
+    const shared =
+      table === 'exercises' || table === 'foods'
+        ? db.tables[table].filter((r) => r.owner_id == null && !ids.has(r.id))
+        : table === 'food_servings'
+          ? db.tables[table].filter((r) => !ids.has(r.id))
+          : [];
+    const clean = rows.map((r) =>
+      withDefaults(
+        table,
+        Object.fromEntries(columns[table].filter((c) => c in r).map((c) => [c, r[c]])),
+        userId,
+      ),
+    );
+    db.tables[table] = [...shared, ...clean];
+  }
+  await db.save();
+}
+
+/** Erases one user's data and files on this device (it now lives on the server). */
+export async function wipeLocalData(userId: string, store: Kv = kv): Promise<void> {
+  await dbFor(userId, store).wipe();
+}
+
+/** The bytes of a file kept on the device (`<bucket>/<path>`), or null when it is missing. */
+export async function readLocalFile(key: string, store: Kv = kv): Promise<ArrayBuffer | null> {
+  const url = await store.fileUrl(key);
+  if (!url) return null;
+  try {
+    return await (await fetch(url)).arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+export async function writeLocalFile(
+  key: string,
+  bytes: Uint8Array,
+  mime: string,
+  store: Kv = kv,
+): Promise<void> {
+  await store.putFile(key, bytes, mime);
+}
+
 export { LOCAL_USER_ID } from './schema';
+export { columns, type Row } from './schema';

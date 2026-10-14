@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
 
@@ -51,6 +51,12 @@ export async function migrate(dir, log = console.log) {
       }
     }
     log('migrations up to date');
+    // The exercise catalogue (idempotent upsert, ids shared with the app): always the latest list.
+    const seed = join(dir, '..', 'seed.sql');
+    if (existsSync(seed)) {
+      await client.query(readFileSync(seed, 'utf8'));
+      log('catalogue up to date');
+    }
   } finally {
     await client.end();
   }

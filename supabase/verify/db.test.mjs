@@ -15,6 +15,8 @@ const supabaseDir = path.join(here, '..');
 
 const A = 'aaaaaaaa-0000-0000-0000-00000000000a';
 const B = 'bbbbbbbb-0000-0000-0000-00000000000b';
+// A and B are premium (data online); C is a free account (data on the phone only).
+const C = 'cccccccc-0000-0000-0000-00000000000c';
 
 let db;
 
@@ -56,7 +58,9 @@ before(async () => {
   await db.exec(`
     insert into auth.users (id, instance_id, aud, role, email) values
       ('${A}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'a@test.dev'),
-      ('${B}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b@test.dev');
+      ('${B}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b@test.dev'),
+      ('${C}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'c@test.dev');
+    insert into public.vip_users (user_id, note) values ('${A}', 'friend'), ('${B}', 'friend');
   `);
 });
 
@@ -81,8 +85,8 @@ describe('schema', () => {
 
   it('creates a profile and settings at sign-up', async () => {
     await admin();
-    assert.equal(await count('select count(*) as n from public.profiles'), 2);
-    assert.equal(await count('select count(*) as n from public.user_settings'), 2);
+    assert.equal(await count('select count(*) as n from public.profiles'), 3);
+    assert.equal(await count('select count(*) as n from public.user_settings'), 3);
   });
 
   it('seeds at least 60 catalogue exercises with valid muscles and equipment', async () => {
@@ -349,32 +353,107 @@ describe('domain rules', () => {
 describe('vip users and admin audit', () => {
   before(async () => {
     await admin();
-    await db.exec(`insert into public.vip_users (user_id, note) values ('${A}', 'friend')`);
     await db.exec(`insert into public.admin_audit (action) values ('test')`);
   });
 
   it('a user sees only their own vip row', async () => {
     await as(A);
     assert.equal(await count('select count(*) as n from public.vip_users'), 1);
-    await as(B);
+    await as(C);
     assert.equal(await count('select count(*) as n from public.vip_users'), 0);
   });
 
   it('a user cannot make themselves vip, change it or remove it', async () => {
-    await as(B);
-    await rejects(`insert into public.vip_users (user_id) values ('${B}')`, '42501');
+    await as(C);
+    await rejects(`insert into public.vip_users (user_id) values ('${C}')`, '42501');
     await as(A);
     const changed = await db.query(`update public.vip_users set note = 'hacked' returning user_id`);
     assert.equal(changed.rows.length, 0);
     const removed = await db.query(`delete from public.vip_users returning user_id`);
     assert.equal(removed.rows.length, 0);
     await admin();
-    assert.equal(await count('select count(*) as n from public.vip_users'), 1);
+    assert.equal(await count('select count(*) as n from public.vip_users'), 2);
   });
 
   it('the admin audit is closed to every user', async () => {
     await as(A);
     assert.equal(await count('select count(*) as n from public.admin_audit'), 0);
     await rejects(`insert into public.admin_audit (action) values ('forged')`, '42501');
+  });
+});
+
+describe('only premium accounts keep data on the server', () => {
+  it('is_premium() is true for VIP accounts only', async () => {
+    await as(A);
+    assert.equal((await one('select public.is_premium() as p')).p, true);
+    await as(C);
+    assert.equal((await one('select public.is_premium() as p')).p, false);
+  });
+
+  it('a free account cannot write any data online', async () => {
+    await as(C);
+    await rejects(
+      `insert into public.food_logs (day, meal, name, grams, kcal) values ('2026-10-08', 'lunch', 'x', 1, 1)`,
+      '42501',
+    );
+    await rejects(
+      `insert into public.body_metrics (day, weight_kg) values ('2026-10-08', 80)`,
+      '42501',
+    );
+    await rejects(
+      `insert into public.exercises (name, primary_muscle, equipment, owner_id)
+       values ('Mine', 'back', 'cables', '${C}')`,
+      '42501',
+    );
+    const r = await db.query(`update public.profiles set name = 'C' returning id`);
+    assert.equal(r.rows.length, 0, 'not even its own profile');
+  });
+
+  it('after premium ends, the data can still be read and deleted (taken back to the phone)', async () => {
+    await admin();
+    await db.exec(
+      `insert into public.water_logs (user_id, day, ml) values ('${C}', '2026-10-08', 250)`,
+    );
+    await as(C);
+    assert.equal(await count('select count(*) as n from public.water_logs'), 1);
+    const changed = await db.query('update public.water_logs set ml = 500 returning id');
+    assert.equal(changed.rows.length, 0);
+    const removed = await db.query('delete from public.water_logs returning id');
+    assert.equal(removed.rows.length, 1);
+  });
+
+  it('catalogue ids are the same as in the app', async () => {
+    await admin();
+    const r = await one(
+      `select id from public.exercises where slug = 'bench-press' and owner_id is null`,
+    );
+    assert.equal(r.id, 'ca7a1090-0000-4000-8000-8444f9e37bc7');
+  });
+
+  it('clear_my_online_data removes every row of the caller and nobody else', async () => {
+    await as(B);
+    await db.exec(`
+      insert into public.workout_plans (id, name, status) values ('44444444-0000-0000-0000-000000000001', 'B plan', 'active');
+      insert into public.plan_days (id, plan_id, position, name) values ('44444444-0000-0000-0000-000000000002', '44444444-0000-0000-0000-000000000001', 0, 'Day');
+      insert into public.body_metrics (day, weight_kg) values ('2026-10-08', 70);
+      insert into public.consents (type, policy_version) values ('health_data', '2026-10');
+      update public.profiles set name = 'Bea';
+    `);
+    await admin();
+    const othersBefore = await count(
+      `select count(*) as n from public.body_metrics where user_id <> '${B}'`,
+    );
+    await as(B);
+    await db.exec('select public.clear_my_online_data()');
+    assert.equal(await count('select count(*) as n from public.workout_plans'), 0);
+    assert.equal(await count('select count(*) as n from public.body_metrics'), 0);
+    assert.equal(await count('select count(*) as n from public.consents'), 0);
+    const p = await one('select name from public.profiles');
+    assert.equal(p.name, null, 'an empty profile stays (every account has one)');
+    await admin();
+    assert.equal(
+      await count(`select count(*) as n from public.body_metrics where user_id <> '${B}'`),
+      othersBefore,
+    );
   });
 });

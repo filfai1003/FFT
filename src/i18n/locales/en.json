@@ -866,7 +866,8 @@
     "leaveOffline": "Leave offline mode",
     "localBadge": "Free account · data stays on this device",
     "ai": "AI plans & import",
-    "vip": "VIP"
+    "premium": "Premium",
+    "premiumBadge": "Premium · data saved online"
   },
   "settings": {
     "title": "Settings",
@@ -1268,5 +1269,26 @@
     "failed": "The account could not be created. Check your connection and try again.",
     "confirm": "Confirm your email, then sign in with it: your data is waiting in the account.",
     "done": "Account created. Your data is in it."
+  },
+  "premium": {
+    "title": "FFT Premium",
+    "intro": "Premium keeps your data online, so it is the same on your phone and on the web.",
+    "gateIntro": "The web version of FFT is part of Premium. Your account is free: your data stays on your phone.",
+    "perkWeb": "Use FFT from any browser, with all your data",
+    "perkDevices": "The same workouts, food and progress on every device",
+    "perkSafe": "Nothing lost if you change or lose your phone",
+    "activeTitle": "Premium is active",
+    "activeBody": "Your data is saved online. You can also open FFT from a browser with this account.",
+    "soonTitle": "Coming soon",
+    "soonBody": "Premium cannot be bought yet. For now it is given by invitation.",
+    "freeNote": "Free accounts keep everything on the phone: only the email and password are saved online.",
+    "moving": "Moving your data",
+    "upTitle": "Moving your data online",
+    "upBody": "Premium is on: your workouts, food, weight and photos are being saved online. Keep the app open.",
+    "downTitle": "Bringing your data to this phone",
+    "downBody": "Premium has ended: your data is coming back to this phone and then removed from the server. Keep the app open.",
+    "moveFailedTitle": "Your data could not be moved",
+    "moveFailedBody": "Nothing was lost. Check your connection and try again.",
+    "later": "Keep using this phone for now"
   }
 }

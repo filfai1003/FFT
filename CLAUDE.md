@@ -20,14 +20,14 @@ src/app/            routing only (thin screens). (tabs)/ = Home (index), diet, t
 src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar (filled bar), Gauge (arc/ring), DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, ExerciseImage, Icon, Text)
 src/design/         tokens.ts (light + dark palettes, mirror of tokens.json, tested), theme, use-theme (app/workout scope), appearance-store (a11y settings), fonts, text-style
 src/domain/         pure logic with tests: strength (Epley), nutrition (Mifflin, safety), rotation, units, dots, numbers
-src/features/       per-area queries and screens
+src/features/       per-area queries and screens (premium/ = plan gate and data moves)
 src/lib/            supabase client, query client, toast store, haptics
 src/i18n/           en.json + typed keys
 supabase/           migrations/, seed.sql, tests/database (pgTAP, real stack), verify/ (embedded Postgres), scripts/
 ```
 
 ## Where data lives
-Free accounts and the account-less mode keep ALL user data on the device: `getSupabase()` returns `src/lib/local-db`, a stand-in for the Supabase client (same table/column names, same query-builder calls; one database per user id). The server (`getAuthClient()`) holds only the account and the Edge Functions. Never read or write user data through `getAuthClient()`. When a feature needs a new query shape (operator, embedded relation, view, rpc), add it in `local-db` (`query.ts`, `schema.ts` relations/columns/uniques, `views.ts`) and a test in `local-db.test.ts`; new tables/columns need the same entry in `schema.ts`; the exercise catalogue is regenerated with `npm run db:seed`. Premium (later) is decided in `src/lib/plan.ts`.
+Free accounts and the account-less mode keep ALL user data on the device: `getSupabase()` returns `src/lib/local-db`, a stand-in for the Supabase client (same table/column names, same query-builder calls; one database per user id). The server (`getAuthClient()`) holds only the account and the Edge Functions. Never read or write user data through `getAuthClient()`. When a feature needs a new query shape (operator, embedded relation, view, rpc), add it in `local-db` (`query.ts`, `schema.ts` relations/columns/uniques, `views.ts`) and a test in `local-db.test.ts`; new tables/columns need the same entry in `schema.ts`; the exercise catalogue is regenerated with `npm run db:seed` (same ids as the server). Premium accounts (today: VIP from the admin panel) keep their data ON THE SERVER instead: `getSupabase()` then returns the server client (`src/lib/plan.ts` = where the data lives, `src/features/premium/` moves it when the plan changes, the server refuses data writes from non-premium accounts). So every query must work on both: local-db and PostgREST. The web app is for premium accounts only (DECISIONS 38).
 
 ## Non-negotiables
 - UI copy in English, always through i18n (`t('…')`). Code, tables, variables in English. ESLint forbids literal JSX text.

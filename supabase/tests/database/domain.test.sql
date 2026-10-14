@@ -12,6 +12,8 @@ end $$;
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('aaaaaaaa-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'a@test.dev');
+-- Premium: only premium accounts keep data on the server.
+insert into public.vip_users (user_id) values ('aaaaaaaa-0000-0000-0000-00000000000a');
 
 -- Epley: weight × (1 + reps / 30), reps 1..12 only, 1 rep = the weight itself ---------------------
 select is(public.epley_1rm(100, 1), 100::numeric, 'Epley: 1 rep is the weight itself');

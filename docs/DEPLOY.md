@@ -4,6 +4,8 @@
 Free accounts keep all their data on the phone. The server only holds: Auth (email + password), the
 empty `profiles` row created by the `handle_new_user` trigger, the exercise-image bucket, and two
 small functions (`off` = Open Food Facts search, `delete-account`). See `CLAUDE.md` → "Where data lives".
+Premium accounts (VIP from the admin panel, for now) keep their data here too: the tables and the
+private photo buckets; the database refuses data writes from other accounts (DECISIONS 38).
 
 ## Server (Railway project `fft`, environment `production`)
 Services, all on Railway's private network, one public URL (Kong):
@@ -16,13 +18,17 @@ Services, all on Railway's private network, one public URL (Kong):
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `kong`     | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1` |
 | `api`      | this repo (`server/Dockerfile`)    | **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
+| `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `app-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
+| `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
+| `admin`    | this repo (`admin/`)               | admin panel, public domain `admin-fft`            |
 
-Public URL: `https://your-backend.example.com`.
+Public URL: `https://your-backend.example.com` (the `kong` service domain).
 
 `api` is the automatic part: at every start it applies the `supabase/migrations/*.sql` not applied yet
-(tracked in `public.app_migrations`) and serves `off` and `delete-account` (the Deno files in
+(tracked in `public.app_migrations`), then `supabase/seed.sql` (the exercise catalogue, an idempotent
+upsert with the same ids as the app), and serves `off` and `delete-account` (the Deno files in
 `supabase/functions/`, run on Node by `server/index.js`). So a new migration or a function change
-reaches the server just by pushing to `main`.
+reaches the server just by pushing to `main` (a catalogue-only change needs a redeploy of `api`).
 
 Secrets (`JWT_SECRET`, the anon and service-role keys, the database password) live only in Railway
 variables and in `.secrets/` (git-ignored). The anon key is public by design and is in the EAS env.

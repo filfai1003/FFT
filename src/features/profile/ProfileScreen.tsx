@@ -19,9 +19,9 @@ import { ageInYears } from '@/domain/nutrition';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { getMode } from '@/lib/mode';
+import { usePlanStore } from '@/lib/plan';
 import { logOut, logOutAnyway } from './account';
 import { useLatestWeight, useProfile } from './api';
-import { useIsVip } from './vip';
 
 /** Profile: who you are, premium showcase, and the settings sections. */
 export function ProfileScreen() {
@@ -30,7 +30,7 @@ export function ProfileScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const profile = useProfile();
-  const vip = useIsVip();
+  const premium = usePlanStore((s) => s.premium === true && s.home === 'online');
   const weight = useLatestWeight();
   const today = useToday();
   const prefs = usePreferencesStore();
@@ -69,6 +69,7 @@ export function ProfileScreen() {
       )
     : '';
 
+  const offline = getMode() === 'offline';
   const groups: { name: string; value?: string; onPress: () => void }[][] = [
     [
       {
@@ -79,13 +80,14 @@ export function ProfileScreen() {
       { name: t('profile.accessibility'), onPress: () => router.push('/profile/accessibility') },
     ],
     [
+      ...(offline
+        ? []
+        : [{ name: t('premium.title'), onPress: () => router.push('/profile/premium') }]),
       { name: t('profile.ai'), onPress: () => router.push('/profile/ai') },
       { name: t('profile.privacy'), onPress: () => router.push('/profile/privacy') },
       { name: t('profile.help'), onPress: () => setHelp(true) },
     ],
   ];
-
-  const offline = getMode() === 'offline';
 
   const doLogOut = async () => {
     const result = await logOut(queryClient);
@@ -102,7 +104,11 @@ export function ProfileScreen() {
           </Text>
           <Text variant="screenTitle">{t('nav.profile')}</Text>
           <Text variant="label" muted>
-            {offline ? t('profile.offlineBadge') : t('profile.localBadge')}
+            {offline
+              ? t('profile.offlineBadge')
+              : premium
+                ? t('profile.premiumBadge')
+                : t('profile.localBadge')}
           </Text>
         </View>
 
@@ -154,7 +160,7 @@ export function ProfileScreen() {
                   borderColor: colors.borderControl,
                 }}
               >
-                <Text variant="label">{vip ? t('profile.vip') : t('profile.free')}</Text>
+                <Text variant="label">{premium ? t('profile.premium') : t('profile.free')}</Text>
               </View>
             </View>
             <Text variant="label" muted>

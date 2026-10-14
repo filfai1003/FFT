@@ -1150,7 +1150,9 @@ export type Database = {
       };
     };
     Functions: {
+      clear_my_online_data: { Args: never; Returns: undefined };
       epley_1rm: { Args: { reps: number; weight_kg: number }; Returns: number };
+      is_premium: { Args: never; Returns: boolean };
       last_sets: {
         Args: { p_exercise_ids: string[] };
         Returns: {
