@@ -3,8 +3,6 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import { getCurrentUserId } from './current-user';
 import { getLocalClient, LOCAL_USER_ID } from './local-db';
-import { getMode } from './mode';
-import { dataHomeIsOnline } from './plan';
 import { authStorage } from './secure-storage';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -36,14 +34,11 @@ export function getAuthClient(): SupabaseClient<Database> {
   return client;
 }
 
-/** True when the user's data lives on the server (premium); otherwise it stays on the device. */
-export const dataIsOnline = () => getMode() === 'cloud' && dataHomeIsOnline(getCurrentUserId());
-
 /**
- * Where the user's DATA lives (plans, workouts, food, body, photos…). Free accounts and the
- * account-less mode use the database on this device, one per user, with the same API as Supabase.
+ * Where the app reads and writes the user's DATA (plans, workouts, food, body, photos…): always
+ * the database on this device, one per user, with the same API as Supabase. Instant and offline;
+ * premium accounts are also copied to the server in the background (features/premium/sync.ts).
  */
 export function getSupabase(): SupabaseClient<Database> {
-  if (dataIsOnline()) return getAuthClient();
   return getLocalClient(getCurrentUserId() ?? LOCAL_USER_ID) as unknown as SupabaseClient<Database>;
 }

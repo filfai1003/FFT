@@ -4,7 +4,7 @@ import { create } from 'zustand';
 /**
  * Where the signed-in account's data lives. Free accounts: on the device (the server holds only
  * the email and password). Premium accounts: on the server, so the web app and every phone see the
- * same data. Moving between the two is done by features/premium/transfer.ts when the plan changes.
+ * same data. The app always works on the device; for premium accounts features/premium/sync.ts keeps the server up to date in the background.
  *
  * Premium today = VIP, made by the admin panel (paid plans later); the server decides it
  * (`is_premium()`), and only premium accounts can write data online (row level security).
@@ -62,9 +62,3 @@ export function resetPlan() {
 }
 
 export const isPremium = (): boolean => usePlanStore.getState().premium === true;
-
-/** True when this account's data is read and written on the server. */
-export const dataHomeIsOnline = (userId: string | null): boolean => {
-  const s = usePlanStore.getState();
-  return userId != null && s.userId === userId && s.home === 'online';
-};

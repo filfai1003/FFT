@@ -457,3 +457,76 @@ describe('only premium accounts keep data on the server', () => {
     );
   });
 });
+
+describe('premium sync (last change wins)', () => {
+  const W = '55555555-0000-0000-0000-000000000001';
+  const row = (ml, at) => ({ id: W, user_id: A, day: '2026-10-14', ml, updated_at: at });
+  const push = (rows, deletes = []) =>
+    db.query('select public.sync_push($1, $2::jsonb, $3::jsonb)', [
+      'water_logs',
+      JSON.stringify(rows),
+      JSON.stringify(deletes),
+    ]);
+  const ml = async () =>
+    (await one(`select ml from public.water_logs where id = '${W}'`))?.ml ?? null;
+
+  it('stores a new row and keeps the time of the action', async () => {
+    await as(A);
+    await push([row(250, '2026-10-14T10:00:00Z')]);
+    assert.equal(await ml(), 250);
+    const r = await one(`select updated_at from public.water_logs where id = '${W}'`);
+    assert.equal(new Date(r.updated_at).toISOString(), '2026-10-14T10:00:00.000Z');
+  });
+
+  it('a newer change wins, an older one arriving later is ignored', async () => {
+    await as(A);
+    await push([row(500, '2026-10-14T12:00:00Z')]);
+    await push([row(750, '2026-10-14T11:00:00Z')]); // made earlier, sent later (offline phone)
+    assert.equal(await ml(), 500);
+  });
+
+  it('the same change sent twice counts once', async () => {
+    await as(A);
+    await push([row(500, '2026-10-14T12:00:00Z')]);
+    await push([row(500, '2026-10-14T12:00:00Z')]);
+    assert.equal(await count(`select count(*) as n from public.water_logs where id = '${W}'`), 1);
+    assert.equal(await ml(), 500);
+  });
+
+  it('pull returns own changes since a time, not the catalogue', async () => {
+    await as(A);
+    const r = (await one(`select public.sync_pull('2000-01-01') as p`)).p;
+    assert.ok(r.water_logs.some((w) => w.id === W));
+    assert.ok(
+      r.exercises.every((e) => e.owner_id === A),
+      'catalogue rows are not sent',
+    );
+    assert.ok(!('server_at' in r.water_logs[0]));
+    const later = (await one(`select public.sync_pull($1) as p`, [r.now])).p;
+    assert.equal(later.water_logs.length, 0, 'nothing new since the last pull');
+  });
+
+  it('a delete made before the last change is ignored; a later one removes it and leaves a tombstone', async () => {
+    await as(A);
+    await push([], [{ id: W, at: '2026-10-14T11:30:00Z' }]);
+    assert.equal(await ml(), 500, 'the 12:00 change is newer than the delete');
+    await push([], [{ id: W, at: '2026-10-14T13:00:00Z' }]);
+    assert.equal(await ml(), null);
+    const r = (await one(`select public.sync_pull('2000-01-01') as p`)).p;
+    assert.ok(r.tombstones.some((t) => t.table === 'water_logs' && t.id === W));
+  });
+
+  it("nobody can push into someone else's data, and free accounts cannot push", async () => {
+    await as(B);
+    await rejects(
+      `select public.sync_push('water_logs', '[{"id":"55555555-0000-0000-0000-000000000002","user_id":"${A}","day":"2026-10-14","ml":1,"updated_at":"2026-10-14T00:00:00Z"}]', '[]')`,
+      '42501',
+    );
+    await as(C);
+    await rejects(
+      `select public.sync_push('water_logs', '[{"id":"55555555-0000-0000-0000-000000000003","user_id":"${C}","day":"2026-10-14","ml":1,"updated_at":"2026-10-14T00:00:00Z"}]', '[]')`,
+      '42501',
+    );
+    await rejects(`select public.sync_push('vip_users', '[]', '[]')`, '22023');
+  });
+});

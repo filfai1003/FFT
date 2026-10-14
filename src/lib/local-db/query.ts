@@ -311,7 +311,10 @@ export class LocalQuery implements PromiseLike<Result> {
         changed.push(existing ?? row);
       }
     }
-    if (changed.length) this.db.scheduleSave();
+    if (changed.length) {
+      this.db.scheduleSave();
+      this.db.record(table, changed, this.op === 'delete' ? 'delete' : 'upsert');
+    }
     return { rows: changed };
   }
 

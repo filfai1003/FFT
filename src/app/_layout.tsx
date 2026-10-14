@@ -15,6 +15,9 @@ import { ConsentGate } from '@/features/profile/ConsentGate';
 import { PlanMoveScreen } from '@/features/premium/PlanMoveScreen';
 import { PremiumScreen } from '@/features/premium/PremiumScreen';
 import { usePlanGate } from '@/features/premium/use-plan-gate';
+import { useSync } from '@/features/premium/use-sync';
+import { getMode } from '@/lib/mode';
+import { usePlanStore } from '@/lib/plan';
 import { activeConsent, useConsents } from '@/features/profile/account';
 import { usePendingSync } from '@/features/session/use-pending-sync';
 import { useNotificationGuard } from '@/features/settings/use-notification-guard';
@@ -78,6 +81,10 @@ function AppRoutes() {
   useNotificationGuard(status === 'signedIn');
   const consents = useConsents();
   usePendingSync(status === 'signedIn');
+  // Premium: the device's changes go to the server in the background, other devices' come back.
+  const userId = useSessionStore((st) => st.userId);
+  const syncing = usePlanStore((p) => p.home === 'online' && p.userId === userId);
+  useSync(userId, status === 'signedIn' && getMode() === 'cloud' && syncing);
 
   const signedIn = status === 'signedIn';
   const onboarded = isOnboarded(profile.data);

@@ -15,6 +15,11 @@ function dbFor(userId: string, store: Kv = kv): LocalDb {
   return db;
 }
 
+/** The on-device database itself (the sync reads its outbox and applies the server's rows). */
+export function getLocalDb(userId: string): LocalDb {
+  return dbFor(userId);
+}
+
 /** The on-device database of one user (created on first use): the "backend" of free accounts. */
 export function getLocalClient(userId: string): LocalClient {
   let client = clients.get(userId);
@@ -127,3 +132,4 @@ export async function writeLocalFile(
 
 export { LOCAL_USER_ID } from './schema';
 export { columns, type Row } from './schema';
+export { pkOf, type LocalDb, type Pending } from './engine';

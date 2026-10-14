@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
 import { loadPlan, resetPlan, savePlan } from '@/lib/plan';
-import { downloadToDevice, fetchPremium, uploadToServer } from './transfer';
+import { fetchPremium, startSync, stopSync } from './sync';
 
 export type PlanPhase =
   | { kind: 'checking' }
@@ -39,33 +39,49 @@ export function usePlanGate() {
     void (async () => {
       const saved = await loadPlan(userId);
       set({ kind: 'checking' });
-      const fetched = await withTimeout(fetchPremium(), 8000, null);
-      if (fetched != null) await savePlan(userId, { premium: fetched });
+      // Known on this device: start at once (offline too) and ask the server in the background;
+      // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
+      const asking = fetchPremium();
+      let fetched: boolean | null = null;
+      if (saved.premium == null) {
+        fetched = await withTimeout(asking, 8000, null);
+        if (fetched != null) await savePlan(userId, { premium: fetched });
+      } else {
+        void asking.then(async (answer) => {
+          if (answer == null || !live) return;
+          await savePlan(userId, { premium: answer });
+          if (answer !== saved.premium) setAttempt((n) => n + 1);
+        });
+      }
       const premium = fetched ?? saved.premium ?? false;
+      // Only a "no" from the server ends premium (now or on an earlier start), never a timeout.
+      const confirmedFree = fetched === false || (fetched == null && saved.premium === false);
 
-      if (Platform.OS === 'web') {
-        if (!premium) return set({ kind: 'paywall' });
-        await savePlan(userId, { home: 'online' });
+      if (premium) {
+        // Premium: the device keeps working on its own database; the sync runs in the
+        // background (use-sync.ts). The first time, everything on the device is queued to go up.
+        if (saved.home === 'device') {
+          await startSync(userId);
+          await savePlan(userId, { home: 'online' });
+        }
         return set({ kind: 'ready' });
       }
-
-      const direction =
-        fetched === true && saved.home === 'device'
-          ? 'up'
-          : fetched === false && saved.home === 'online'
-            ? 'down'
-            : null;
-      if (!direction) return set({ kind: 'ready' });
-      set({ kind: 'moving', direction });
-      try {
-        if (direction === 'up') await uploadToServer(userId);
-        else await downloadToDevice(userId);
-        await savePlan(userId, { home: direction === 'up' ? 'online' : 'device' });
-        queryClient.clear();
-        set({ kind: 'ready' });
-      } catch {
-        set({ kind: 'error', direction });
+      // On the web the app is for premium accounts only.
+      if (Platform.OS === 'web') return set({ kind: 'paywall' });
+      // Premium ended (the server said so): keep everything here, clear the server.
+      if (confirmedFree && saved.home === 'online') {
+        set({ kind: 'moving', direction: 'down' });
+        try {
+          await stopSync(userId);
+          await savePlan(userId, { home: 'device' });
+          queryClient.clear();
+          set({ kind: 'ready' });
+        } catch {
+          set({ kind: 'error', direction: 'down' });
+        }
+        return;
       }
+      set({ kind: 'ready' });
     })();
     return () => {
       live = false;
