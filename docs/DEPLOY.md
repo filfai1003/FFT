@@ -71,8 +71,9 @@ Package name: `com.filfai1003.fft`.
 
 ## Install page and APK download
 - Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
-  It shows the download button, the install steps, screenshots (`site/screens/`) and an animated
-  dot-grid background.
+  Same look as the app (light, Figtree, follows the phone's dark mode): the download button, the
+  install steps, screenshots (`site/screens/`, taken from the web preview at 390×844) and a few exercise
+  pictures (`site/exercises/`).
 - The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit), next to
   `config.js` (version, size, build). nginx (`site/nginx.conf`) serves both from the page's own
   address (`/fft.apk`, `/config.js`), reading the backend address from the service variable

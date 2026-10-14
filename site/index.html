@@ -8,41 +8,58 @@
       name="description"
       content="Install FFT on your Android phone: workouts, diet and progress in one place."
     />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#F6F5F2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="favicon.png" />
     <style>
       @font-face {
-        font-family: 'Doto';
-        src: url('fonts/Doto_800ExtraBold.ttf');
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Space Mono';
-        src: url('fonts/SpaceMono_400Regular.ttf');
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Space Grotesk';
+        font-family: 'Figtree';
         font-weight: 400;
-        src: url('fonts/SpaceGrotesk_400Regular.ttf');
+        src: url('fonts/Figtree_400Regular.ttf');
         font-display: swap;
       }
       @font-face {
-        font-family: 'Space Grotesk';
+        font-family: 'Figtree';
         font-weight: 500;
-        src: url('fonts/SpaceGrotesk_500Medium.ttf');
+        src: url('fonts/Figtree_500Medium.ttf');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Figtree';
+        font-weight: 600;
+        src: url('fonts/Figtree_600SemiBold.ttf');
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Figtree';
+        font-weight: 700;
+        src: url('fonts/Figtree_700Bold.ttf');
         font-display: swap;
       }
 
+      /* Same colours as the app (src/design/tokens.ts): light by default, dark with the phone. */
       :root {
-        --bg: #000;
-        --surface: #111;
-        --border: #262626;
-        --control: #6e6e6e;
-        --text: #f2f2f2;
-        --muted: #8e8e8e;
+        --bg: #f6f5f2;
+        --surface: #ffffff;
+        --border: #e7e4de;
+        --control: #8a867f;
+        --text: #191917;
+        --muted: #67645e;
         --accent: #d71921;
+        --on-accent: #ffffff;
+        --tile: #111110;
       }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111110;
+          --surface: #1d1c1a;
+          --border: #2e2c29;
+          --control: #7f7b74;
+          --text: #f4f3f0;
+          --muted: #a8a49d;
+        }
+      }
+
       * {
         box-sizing: border-box;
       }
@@ -54,70 +71,76 @@
       }
       body {
         min-height: 100vh;
-        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-family: 'Figtree', system-ui, sans-serif;
         font-size: 17px;
-        line-height: 1.45;
+        line-height: 1.5;
         -webkit-font-smoothing: antialiased;
       }
-      #bg {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        pointer-events: none;
-      }
       main {
-        position: relative;
-        z-index: 1;
-        max-width: 960px;
+        max-width: 1040px;
         margin: 0 auto;
-        padding: 56px 20px 72px;
+        padding: 40px 16px 64px;
         display: flex;
         flex-direction: column;
-        gap: 48px;
+        gap: 56px;
       }
-
-      .label {
-        font-family: 'Space Mono', monospace;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+      h2 {
+        margin: 0 0 16px;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .muted {
         color: var(--muted);
       }
+
+      /* Hero: text and button, a phone on wide screens. */
       .hero {
+        display: grid;
+        gap: 32px;
+        align-items: center;
+      }
+      @media (min-width: 820px) {
+        .hero {
+          grid-template-columns: 1.1fr 0.9fr;
+        }
+      }
+      .hero-text {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        gap: 20px;
+        gap: 18px;
+      }
+      .kicker {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--muted);
       }
       h1 {
         margin: 0;
-        font-family: 'Doto', monospace;
-        font-weight: 800;
-        text-transform: uppercase;
-        font-size: clamp(88px, 22vw, 176px);
-        line-height: 0.9;
-        letter-spacing: 0.02em;
+        font-weight: 700;
+        font-size: clamp(64px, 16vw, 120px);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
       }
       .tagline {
         margin: 0;
-        max-width: 28ch;
-        font-size: clamp(19px, 3.2vw, 24px);
+        max-width: 26ch;
+        font-size: clamp(20px, 3.4vw, 26px);
+        line-height: 1.3;
       }
-
       .download {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
-        height: 56px;
-        padding: 0 30px;
-        border-radius: 28px;
+        min-height: 56px;
+        padding: 0 28px;
+        border-radius: 16px;
         background: var(--accent);
-        color: #fff;
+        color: var(--on-accent);
         text-decoration: none;
-        font-weight: 500;
+        font-weight: 600;
         font-size: 17px;
         transition:
           transform 120ms ease-out,
@@ -136,11 +159,27 @@
         height: 20px;
       }
       .meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px 18px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .phone {
+        justify-self: center;
+        width: min(300px, 78vw);
       }
 
+      /* Screenshots: phone frames. */
+      .frame {
+        display: block;
+        width: 100%;
+        aspect-ratio: 390 / 844;
+        object-fit: cover;
+        border-radius: 32px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        box-shadow: 0 18px 40px -24px rgba(25, 25, 23, 0.35);
+      }
+
+      /* Install steps: white cards. */
       .steps {
         display: grid;
         gap: 12px;
@@ -149,58 +188,79 @@
         padding: 0;
         list-style: none;
       }
-      .steps li {
+      .card {
+        background: var(--surface);
         border: 1px solid var(--border);
-        background: rgba(17, 17, 17, 0.85);
         border-radius: 20px;
         padding: 18px;
+      }
+      .steps li {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        gap: 14px;
+        align-items: flex-start;
       }
-      .steps b {
-        font-family: 'Doto', monospace;
-        font-size: 30px;
-        font-weight: 800;
-        line-height: 1;
-      }
-      .steps span {
-        color: var(--text);
+      .num {
+        flex: 0 0 auto;
+        width: 32px;
+        height: 32px;
+        border-radius: 16px;
+        border: 2px solid var(--text);
+        display: grid;
+        place-items: center;
+        font-weight: 600;
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
       }
 
       .shots {
         display: flex;
         gap: 16px;
         overflow-x: auto;
-        padding: 4px 2px 16px;
+        padding: 4px 2px 20px;
         scroll-snap-type: x proximity;
         -webkit-overflow-scrolling: touch;
       }
       .shots figure {
         margin: 0;
         flex: 0 0 auto;
-        width: min(240px, 62vw);
+        width: min(230px, 62vw);
         scroll-snap-align: start;
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
-      .shots img {
-        width: 100%;
-        display: block;
-        border-radius: 28px;
-        border: 1px solid var(--control);
-        background: var(--surface);
-        aspect-ratio: 375 / 812;
-        object-fit: cover;
-      }
       .shots figcaption {
+        font-size: 15px;
+        font-weight: 500;
         text-align: center;
+      }
+      .shots figcaption span {
+        display: block;
+        font-size: 13px;
+        font-weight: 400;
+        color: var(--muted);
+      }
+
+      /* Exercise pictures. */
+      .exercises {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      }
+      .exercises img {
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 22%;
+        background: var(--tile);
+        border: 1px solid var(--border);
+        display: block;
       }
 
       footer {
         color: var(--muted);
-        font-size: 13px;
+        font-size: 14px;
+        border-top: 1px solid var(--border);
+        padding-top: 20px;
       }
       @media (prefers-reduced-motion: reduce) {
         .download {
@@ -210,69 +270,93 @@
     </style>
   </head>
   <body>
-    <svg id="bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>
-
     <main>
       <section class="hero">
-        <span class="label">Training and diet</span>
-        <h1>FFT</h1>
-        <p class="tagline">Train, eat and track your progress in one place.</p>
-        <a id="download" class="download" href="#" download>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
-          </svg>
-          Download for Android
-        </a>
-        <div class="meta">
-          <span class="label">Android · APK</span>
-          <span class="label" id="version"></span>
+        <div class="hero-text">
+          <span class="kicker">Training and diet</span>
+          <h1>FFT</h1>
+          <p class="tagline">Train, eat and track your progress in one place.</p>
+          <a id="download" class="download" href="#" download>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
+            </svg>
+            Download for Android
+          </a>
+          <span class="meta" id="version">Android · APK</span>
         </div>
+        <img
+          class="frame phone"
+          src="screens/today.jpg"
+          alt="Today: calories left, macros and today's workout"
+        />
       </section>
 
-      <ol class="steps" aria-label="How to install">
-        <li><b>1</b><span>Tap Download and open the file on your phone.</span></li>
-        <li><b>2</b><span>If Android asks, allow installs from this browser.</span></li>
-        <li><b>3</b><span>Open FFT and create your account.</span></li>
-      </ol>
+      <section aria-labelledby="install">
+        <h2 id="install">Install in three steps</h2>
+        <ol class="steps">
+          <li class="card">
+            <span class="num">1</span><span>Tap Download and open the file on your phone.</span>
+          </li>
+          <li class="card">
+            <span class="num">2</span><span>If Android asks, allow installs from this browser.</span>
+          </li>
+          <li class="card">
+            <span class="num">3</span
+            ><span>Open FFT and create an account, or use it without one.</span>
+          </li>
+        </ol>
+      </section>
 
-      <section aria-label="Screenshots">
+      <section aria-labelledby="inside">
+        <h2 id="inside">What's inside</h2>
         <div class="shots">
           <figure>
-            <img
-              src="screens/today.jpg"
-              alt="Today: your next workout, calories and water"
-              loading="lazy"
-            />
-            <figcaption class="label">Today</figcaption>
+            <img class="frame" src="screens/train.jpg" alt="Train: next workout and the cycle" loading="lazy" />
+            <figcaption>Train<span>Your plan, day by day</span></figcaption>
           </figure>
           <figure>
-            <img src="screens/train.jpg" alt="Train: your plan and next workout" loading="lazy" />
-            <figcaption class="label">Train</figcaption>
+            <img class="frame" src="screens/workout.jpg" alt="A workout: sets, weights and the rest timer" loading="lazy" />
+            <figcaption>Workout<span>Log sets, rest timer</span></figcaption>
           </figure>
           <figure>
-            <img src="screens/diet.jpg" alt="Diet: meals and macros" loading="lazy" />
-            <figcaption class="label">Diet</figcaption>
+            <img class="frame" src="screens/diet.jpg" alt="Diet: meals, calories and macros" loading="lazy" />
+            <figcaption>Diet<span>Meals and macros</span></figcaption>
           </figure>
           <figure>
-            <img
-              src="screens/progress.jpg"
-              alt="Progress: strength, weight and photos"
-              loading="lazy"
-            />
-            <figcaption class="label">Progress</figcaption>
+            <img class="frame" src="screens/progress.jpg" alt="Progress: strength, weight and body fat" loading="lazy" />
+            <figcaption>Progress<span>Strength, weight, body fat</span></figcaption>
+          </figure>
+          <figure>
+            <img class="frame" src="screens/library.jpg" alt="Library: exercises with pictures" loading="lazy" />
+            <figcaption>Library<span>72 exercises</span></figcaption>
           </figure>
         </div>
       </section>
 
-      <footer>Your workouts, meals and photos stay on your phone.</footer>
+      <section aria-labelledby="pictures">
+        <h2 id="pictures">Every exercise has a picture</h2>
+        <div class="exercises">
+          <img src="exercises/bench-press.png" alt="Barbell bench press" loading="lazy" />
+          <img src="exercises/back-squat.png" alt="Back squat" loading="lazy" />
+          <img src="exercises/deadlift.png" alt="Deadlift" loading="lazy" />
+          <img src="exercises/pull-up.png" alt="Pull-up" loading="lazy" />
+          <img src="exercises/lateral-raise.png" alt="Lateral raise" loading="lazy" />
+          <img src="exercises/hip-thrust.png" alt="Barbell hip thrust" loading="lazy" />
+        </div>
+      </section>
+
+      <footer>
+        Free accounts keep your workouts, meals and photos on your phone; only the email and
+        password are online.
+      </footer>
     </main>
 
     <script src="config.js"></script>
@@ -284,96 +368,7 @@
         if (cfg.url) a.href = cfg.url;
         if (cfg.version)
           document.getElementById('version').textContent =
-            'v' + cfg.version + (cfg.size ? ' · ' + cfg.size : '');
-      })();
-
-      // Background: the same as the app's "waves" mode (dot grid + rings of bigger dots spreading out).
-      (function () {
-        var NS = 'http://www.w3.org/2000/svg';
-        var SPACING = 14,
-          WAVE_MS = 5600,
-          RING = 96;
-        var svg = document.getElementById('bg');
-        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        function el(name, attrs, parent) {
-          var e = document.createElementNS(NS, name);
-          for (var k in attrs) e.setAttribute(k, attrs[k]);
-          if (parent) parent.appendChild(e);
-          return e;
-        }
-        var defs = el('defs', {}, svg);
-        var base = el(
-          'pattern',
-          { id: 'dots', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' },
-          defs,
-        );
-        el('circle', { cx: SPACING / 2, cy: SPACING / 2, r: 0.75, fill: '#1C1C1C' }, base);
-        var big = el(
-          'pattern',
-          { id: 'big', width: SPACING, height: SPACING, patternUnits: 'userSpaceOnUse' },
-          defs,
-        );
-        el('circle', { cx: SPACING / 2, cy: SPACING / 2, r: 2.4, fill: '#8C8C8C' }, big);
-        var mask = el(
-          'mask',
-          { id: 'waves', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: 1, height: 1 },
-          defs,
-        );
-        var rings = [0, 1].map(function () {
-          return {
-            soft: el('circle', { fill: 'none', stroke: '#fff', 'stroke-width': RING }, mask),
-            core: el('circle', { fill: 'none', stroke: '#fff', 'stroke-width': RING * 0.4 }, mask),
-          };
-        });
-        el('rect', { width: '100%', height: '100%', fill: 'url(#dots)' }, svg);
-        var bigRect = el('rect', { fill: 'url(#big)', mask: 'url(#waves)' }, svg);
-
-        var w = 0,
-          h = 0;
-        function size() {
-          w = window.innerWidth;
-          h = window.innerHeight;
-          mask.setAttribute('width', w);
-          mask.setAttribute('height', h);
-          bigRect.setAttribute('width', w);
-          bigRect.setAttribute('height', h);
-        }
-        size();
-        window.addEventListener('resize', size);
-        if (reduce) {
-          bigRect.setAttribute('display', 'none');
-          return;
-        }
-
-        function draw(now) {
-          var reach = Math.max(w, h) * 0.95;
-          var origins = [
-            { x: w * 0.3, y: h * 0.22, off: 0 },
-            { x: w * 0.78, y: h * 0.7, off: WAVE_MS / 2 },
-          ];
-          origins.forEach(function (o, i) {
-            var p = ((now + o.off) % WAVE_MS) / WAVE_MS;
-            var fade = Math.pow(1 - p, 1.4);
-            var r = Math.max(1, p * reach);
-            var ring = rings[i];
-            ring.soft.setAttribute('cx', o.x);
-            ring.soft.setAttribute('cy', o.y);
-            ring.soft.setAttribute('r', r);
-            ring.soft.setAttribute('stroke-opacity', 0.45 * fade);
-            ring.core.setAttribute('cx', o.x);
-            ring.core.setAttribute('cy', o.y);
-            ring.core.setAttribute('r', r);
-            ring.core.setAttribute('stroke-opacity', fade);
-          });
-        }
-        var last = 0;
-        (function frame(t) {
-          if (t - last > 33) {
-            last = t;
-            draw(t);
-          }
-          requestAnimationFrame(frame);
-        })(0);
+            'Android · APK · v' + cfg.version + (cfg.size ? ' · ' + cfg.size : '');
       })();
     </script>
   </body>
