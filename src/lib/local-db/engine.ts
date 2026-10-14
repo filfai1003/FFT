@@ -13,6 +13,23 @@ export type Kv = {
 
 const dbKey = (userId: string) => `database-${userId}.json`;
 const FORMAT = 1;
+/** Rows made empty by the app (profile, settings): any real version, e.g. from the server, wins. */
+const SEEDED_AT = '1970-01-01T00:00:00.000Z';
+
+type SavedDb = { format: number; tables: Record<string, Row[]>; outbox?: Record<string, Pending> };
+
+/** A saved database, or null when the text is missing, cut short or of another format. */
+function parseDb(text: string | null): SavedDb | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as SavedDb;
+    return parsed?.format === FORMAT && parsed.tables && typeof parsed.tables === 'object'
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The key column of a table. */
 export const pkOf = (table: string) => (table === 'user_settings' ? 'user_id' : 'id');
@@ -51,6 +68,12 @@ export class LocalDb {
   private listeners = new Set<() => void>();
   readonly ready: Promise<void>;
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private saving: Promise<void> = Promise.resolve();
+  /**
+   * True when no saved database could be read at start (a new user on this device, or a file
+   * lost): a premium account then takes everything back from the server (see sync.ts).
+   */
+  freshStart = false;
 
   /** One database per user: accounts on the same device never see each other's data. */
   constructor(
@@ -61,32 +84,30 @@ export class LocalDb {
   }
 
   private async load() {
+    const key = dbKey(this.userId);
     // Before accounts had their own file, the account-less mode used `database.json`.
     const text =
-      (await this.kv.getText(dbKey(this.userId))) ??
+      (await this.kv.getText(key)) ??
       (this.userId === LOCAL_USER_ID ? await this.kv.getText('database.json') : null);
-    let saved: Record<string, Row[]> = {};
-    if (text) {
-      try {
-        const parsed = JSON.parse(text) as {
-          format: number;
-          tables: Record<string, Row[]>;
-          outbox?: Record<string, Pending>;
-        };
-        if (parsed.format === FORMAT) {
-          saved = parsed.tables;
-          this.outbox = parsed.outbox ?? {};
-        }
-      } catch {
-        saved = {}; // unreadable file: start clean rather than crash
-      }
+    let saved = parseDb(text);
+    if (!saved && text) {
+      // Unreadable (cut short by a crash): the previous copy, and the bad one is kept aside,
+      // never written over, so nothing is lost for good.
+      await this.kv.setText(`${key}.unreadable-${Date.now()}`, text);
+      saved = parseDb(await this.kv.getText(`${key}.bak`));
     }
-    for (const name of tableNames) this.tables[name] = saved[name] ?? [];
-    this.seed();
+    this.freshStart = saved == null;
+    this.outbox = saved?.outbox ?? {};
+    for (const name of tableNames) this.tables[name] = saved?.tables[name] ?? [];
+    if (this.seed() || !text) await this.save();
   }
 
-  /** Catalogue exercises and the one local user (profile + settings), created when missing. */
-  private seed() {
+  /**
+   * Catalogue exercises and the one local user (profile + settings), created when missing.
+   * True when something changed (only then the database is written).
+   */
+  private seed(): boolean {
+    let changed = false;
     const exercises = this.tables.exercises;
     for (const e of catalogue) {
       const existing = exercises.find((x) => x.owner_id == null && x.slug === e.slug);
@@ -98,8 +119,15 @@ export class LocalDb {
         log_type: e.log,
         image_path: e.image,
       };
-      if (existing) Object.assign(existing, fields);
-      else
+      if (existing) {
+        if (
+          Object.entries(fields).some(([k, v]) => JSON.stringify(existing[k]) !== JSON.stringify(v))
+        ) {
+          Object.assign(existing, fields);
+          changed = true;
+        }
+      } else {
+        changed = true;
         exercises.push(
           withDefaults(
             'exercises',
@@ -112,14 +140,23 @@ export class LocalDb {
             this.userId,
           ),
         );
+      }
     }
-    if (!this.tables.profiles.some((p) => p.id === this.userId))
-      this.tables.profiles.push(withDefaults('profiles', { id: this.userId }, this.userId));
-    if (!this.tables.user_settings.some((s) => s.user_id === this.userId))
-      this.tables.user_settings.push(
-        withDefaults('user_settings', { user_id: this.userId }, this.userId),
-      );
-    void this.save();
+    if (!this.tables.profiles.some((p) => p.id === this.userId)) {
+      this.tables.profiles.push({
+        ...withDefaults('profiles', { id: this.userId }, this.userId),
+        updated_at: SEEDED_AT,
+      });
+      changed = true;
+    }
+    if (!this.tables.user_settings.some((s) => s.user_id === this.userId)) {
+      this.tables.user_settings.push({
+        ...withDefaults('user_settings', { user_id: this.userId }, this.userId),
+        updated_at: SEEDED_AT,
+      });
+      changed = true;
+    }
+    return changed;
   }
 
   /** Called after the app writes (the sync sends the changes soon after). */
@@ -218,10 +255,17 @@ export class LocalDb {
       clearTimeout(this.saveTimer);
       this.saveTimer = null;
     }
-    await this.kv.setText(
-      dbKey(this.userId),
-      JSON.stringify({ format: FORMAT, tables: this.tables, outbox: this.outbox }),
-    );
+    // One write at a time, in order: the last one always holds the latest state.
+    const text = JSON.stringify({ format: FORMAT, tables: this.tables, outbox: this.outbox });
+    this.saving = this.saving.catch(() => {}).then(() => this.kv.setText(dbKey(this.userId), text));
+    await this.saving;
+  }
+
+  /** Writes what is pending and waits for it (before the app restarts for an update). */
+  async flush() {
+    await this.ready;
+    if (this.saveTimer) await this.save();
+    await this.saving.catch(() => {});
   }
 
   /** Empties the tables but keeps the files (they now belong to another user, see moveLocalData). */

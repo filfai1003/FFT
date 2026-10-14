@@ -15,6 +15,11 @@ function dbFor(userId: string, store: Kv = kv): LocalDb {
   return db;
 }
 
+/** Finishes every pending write of the on-device databases (call before the app restarts). */
+export async function flushLocalDbs(): Promise<void> {
+  await Promise.all([...dbs.values()].map((db) => db.flush()));
+}
+
 /** The on-device database itself (the sync reads its outbox and applies the server's rows). */
 export function getLocalDb(userId: string): LocalDb {
   return dbFor(userId);

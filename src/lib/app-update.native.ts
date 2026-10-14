@@ -1,4 +1,5 @@
 import type { AppUpdateInfo } from './app-update';
+import { flushLocalDbs } from './local-db';
 
 export type { AppUpdateInfo } from './app-update';
 
@@ -51,7 +52,10 @@ export async function checkForAppUpdate(): Promise<'none' | 'ready' | 'error'> {
 
 export async function restartApp() {
   const u = updates();
-  if (u) await u.reloadAsync();
+  if (!u) return;
+  // A restart in the middle of a save must never cut the database short.
+  await flushLocalDbs().catch(() => {});
+  await u.reloadAsync();
 }
 
 /** At a cold start: look for a newer version and, if there is one, switch to it right away. */

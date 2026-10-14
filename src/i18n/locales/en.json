@@ -940,25 +940,32 @@
     "sizeOf": "Text size {{n}} of 5",
     "option": {
       "boldText": {
-        "name": "Bold text"
+        "name": "Bold text",
+        "detail": "Thicker body text"
       },
       "dotNumbers": {
-        "name": "Dot-matrix numbers"
+        "name": "Dot-matrix numbers",
+        "detail": "Off = plain, easier-to-read digits"
       },
       "highContrast": {
-        "name": "Higher contrast"
+        "name": "Higher contrast",
+        "detail": "Brighter greys and borders"
       },
       "reduceMotion": {
-        "name": "Reduce motion"
+        "name": "Reduce motion",
+        "detail": "No animations or transitions"
       },
       "haptics": {
-        "name": "Haptics"
+        "name": "Haptics",
+        "detail": "Vibrate on ticks and sets"
       },
       "oneHandMode": {
-        "name": "One-hand mode"
+        "name": "One-hand mode",
+        "detail": "Bigger buttons, actions at the bottom"
       },
       "spokenCountdown": {
-        "name": "Spoken rest countdown"
+        "name": "Spoken rest countdown",
+        "detail": "Reads 10 … 3, 2, 1 out loud"
       }
     }
   },
@@ -992,7 +999,14 @@
     "deleteWord": "DELETE",
     "typeToConfirm": "Type {{word}} to confirm",
     "deleteConfirm": "Delete everything",
-    "deleted": "Your account was deleted"
+    "deleted": "Your account was deleted",
+    "downloadAllDetail": "ZIP · JSON + CSV + photos",
+    "workoutsOnlyDetail": "CSV · opens in any spreadsheet",
+    "blurDetail": "Safe to open the app in public",
+    "lockDetail": "Face ID or passcode to view",
+    "analyticsDetail": "Helps us fix bugs · no health data",
+    "importDetail": "ZIP from Export · nothing is deleted",
+    "deleteNote": "Removes all your data and photos within 30 days. This can't be undone."
   },
   "gate": {
     "title": "Consent withdrawn",

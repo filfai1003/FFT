@@ -12,12 +12,28 @@ function fileFor(key: string, kind: 'text' | 'file') {
 export const kv: Kv = {
   async getText(key) {
     const f = fileFor(key, 'text');
-    return f.exists ? await f.text() : null;
+    if (f.exists) return await f.text();
+    // Stopped between the two steps of setText: the new copy is complete in the .tmp file.
+    const tmp = fileFor(`${key}.tmp`, 'text');
+    return tmp.exists ? await tmp.text() : null;
   },
+  /**
+   * Never half-written: the text goes to a .tmp file first, which then takes the place of the
+   * old one; the old one stays as `<key>.bak` (read when the main copy is unreadable). The app can
+   * be killed or restarted (an update) at any moment without losing the database.
+   */
   async setText(key, text) {
     const f = fileFor(key, 'text');
-    if (!f.exists) f.create();
-    f.write(text);
+    const tmp = fileFor(`${key}.tmp`, 'text');
+    const bak = fileFor(`${key}.bak`, 'text');
+    if (tmp.exists) tmp.delete();
+    tmp.create();
+    tmp.write(text);
+    if (f.exists) {
+      if (bak.exists) bak.delete();
+      f.move(bak);
+    }
+    tmp.move(fileFor(key, 'text'));
   },
   async putFile(key, bytes) {
     const f = fileFor(key, 'file');

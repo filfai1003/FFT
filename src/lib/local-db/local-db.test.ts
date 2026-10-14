@@ -349,3 +349,59 @@ describe('generic foods (CIQUAL)', () => {
     expect(db.tables.foods.some((f) => f.source === 'ciqual')).toBe(false);
   });
 });
+
+describe('the database file survives crashes and restarts', () => {
+  const key = `database-${LOCAL_USER_ID}.json`;
+
+  it('a file cut short (restart in the middle of a save): the previous copy is used, the bad one kept', async () => {
+    const first = setup();
+    await first.db.ready;
+    await first.c.from('profiles').update({ name: 'Ada' }).eq('id', LOCAL_USER_ID);
+    await first.db.save();
+    const good = first.kv.texts.get(key)!;
+    first.kv.texts.set(`${key}.bak`, good);
+    first.kv.texts.set(key, good.slice(0, good.length / 2)); // cut short
+
+    const again = new LocalDb(first.kv, LOCAL_USER_ID);
+    await again.ready;
+    expect(again.tables.profiles[0].name).toBe('Ada');
+    expect(again.freshStart).toBe(false);
+    expect([...first.kv.texts.keys()].some((k) => k.startsWith(`${key}.unreadable-`))).toBe(true);
+  });
+
+  it('opening the database does not write it when nothing changed', async () => {
+    const first = setup();
+    await first.db.ready;
+    await first.db.save();
+    const writes: string[] = [];
+    const kv = { ...first.kv, setText: async (k: string, v: string) => void writes.push(k, v) };
+    const again = new LocalDb(kv, LOCAL_USER_ID);
+    await again.ready;
+    expect(writes).toEqual([]);
+    expect(again.freshStart).toBe(false);
+  });
+
+  it('a device with no database: the empty profile it makes yields to the real one from the server', async () => {
+    const { db } = setup();
+    await db.ready;
+    expect(db.freshStart).toBe(true);
+    db.applyRemote('profiles', [
+      {
+        id: LOCAL_USER_ID,
+        name: 'Ada',
+        onboarding_completed_at: '2026-10-01T10:00:00.000Z',
+        updated_at: '2026-10-01T10:00:00.000Z',
+      },
+    ]);
+    expect(db.tables.profiles[0]).toMatchObject({ name: 'Ada' });
+    expect(db.tables.profiles[0].onboarding_completed_at).not.toBeNull();
+  });
+
+  it('flush waits for a pending save', async () => {
+    const { db, c, kv } = setup();
+    await db.ready;
+    await c.from('water_logs').insert({ id: id(900), day: '2026-10-14', ml: 250 });
+    await db.flush();
+    expect(kv.texts.get(key)).toContain(id(900));
+  });
+});

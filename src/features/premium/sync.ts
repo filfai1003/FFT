@@ -175,7 +175,9 @@ function isNetworkError(e: { message?: string; code?: string }) {
 export async function pull(userId: string, opts: { full?: boolean } = {}): Promise<boolean> {
   const db = getLocalDb(userId);
   await db.ready;
-  const saved = opts.full ? null : await AsyncStorage.getItem(cursorKey(userId));
+  // The device started with no readable database: everything comes back, not only what is new.
+  const full = opts.full || db.freshStart;
+  const saved = full ? null : await AsyncStorage.getItem(cursorKey(userId));
   const since = saved ? new Date(new Date(saved).getTime() - OVERLAP_MS).toISOString() : EPOCH;
   const { data, error } = await server().rpc('sync_pull', { p_since: since });
   if (error) throw new Error(error.message);
@@ -203,13 +205,17 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
     }
   }
   await AsyncStorage.setItem(cursorKey(userId), result.now);
+  db.freshStart = false;
   return changed;
 }
 
-/** One round: send, then receive. */
+/** One round: send, then receive (a device that lost its database receives first). */
 export async function syncOnce(userId: string): Promise<boolean> {
+  const db = getLocalDb(userId);
+  await db.ready;
+  const recovered = db.freshStart ? await pull(userId) : false;
   await push(userId);
-  return pull(userId);
+  return (await pull(userId)) || recovered;
 }
 
 /** Premium starts on this device: everything here goes up, then the account's data comes down. */
