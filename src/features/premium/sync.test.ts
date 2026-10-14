@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalClient, getLocalDb, type Row } from '@/lib/local-db';
 import { push, pull, startSync, syncOnce } from './sync';
 
@@ -168,6 +169,21 @@ describe('premium sync', () => {
     });
     await pull(U, { full: true });
     expect(localWater(id(2))).toBeUndefined();
+  });
+
+  it('once per device, everything is sent again: a row the server never got arrives', async () => {
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(900), day: '2026-10-14', ml: 330 });
+    await syncOnce(U);
+    // As if the server had refused it back then and the outbox had dropped it.
+    mockServer.table('water_logs').delete(id(900));
+    getLocalDb(U).settle(Object.values(getLocalDb(U).outbox));
+    await syncOnce(U);
+    expect(water(id(900))).toBeUndefined(); // already resent on this device: not again
+    await AsyncStorage.removeItem(`fft.sync.resent-2.${U}`);
+    await syncOnce(U);
+    expect(water(id(900))).toMatchObject({ ml: 330 });
   });
 
   it('catalogue exercises are never sent', async () => {

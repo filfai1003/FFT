@@ -1099,3 +1099,32 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     assert.equal(JSON.parse(after.body).error, 'invalid_grant');
   });
 });
+
+describe('food logs of products only on the phone', () => {
+  it('sync keeps the log (values copied in it) and drops the link to the unknown product', async () => {
+    await as(A);
+    const row = {
+      id: 'f00d0000-0000-4000-8000-000000000001',
+      user_id: A,
+      day: '2026-10-15',
+      meal: 'breakfast',
+      food_id: 'f00d0000-0000-4000-8000-0000000000ff',
+      name: 'Fusilli No. 34',
+      grams: 100,
+      kcal: 351,
+      protein_g: 12,
+      carbs_g: 70,
+      fat_g: 1.5,
+      updated_at: '2026-10-15T07:30:00.000Z',
+    };
+    await db.query(`select public.sync_push('food_logs', $1::jsonb, '[]'::jsonb)`, [
+      JSON.stringify([row]),
+    ]);
+    const saved = await one(`select name, food_id, kcal from public.food_logs where id = $1`, [
+      row.id,
+    ]);
+    assert.equal(saved.name, 'Fusilli No. 34');
+    assert.equal(saved.food_id, null);
+    assert.equal(Number(saved.kcal), 351);
+  });
+});

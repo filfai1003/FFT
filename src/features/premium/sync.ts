@@ -146,6 +146,8 @@ export async function push(userId: string): Promise<number> {
       for (const r of part) {
         const e = await pushRows(table, [r.row], []);
         if (e && isNetworkError(e)) throw new Error(e.message);
+        // Left out for good: say so (a row lost without a trace is how a breakfast went missing).
+        if (e) console.warn(`sync: the server refused ${table} ${r.p.key}: ${e.message}`);
         sent.push(r.p);
       }
     }
@@ -216,9 +218,17 @@ export async function syncOnce(userId: string): Promise<boolean> {
   const db = getLocalDb(userId);
   await db.ready;
   const recovered = db.freshStart ? await pull(userId) : false;
+  // Once per device: everything goes up again. Food logs of products only on the device used to be
+  // refused by the server and lost from the outbox; the server now keeps them (without the link).
+  // Rows the server already has in the same version change nothing.
+  const resend = await AsyncStorage.getItem(resendKey(userId));
+  if (!resend) db.markAllDirty();
   await push(userId);
+  if (!resend) await AsyncStorage.setItem(resendKey(userId), new Date().toISOString());
   return (await pull(userId)) || recovered;
 }
+
+const resendKey = (userId: string) => `fft.sync.resent-2.${userId}`;
 
 /** Premium starts on this device: everything here goes up, then the account's data comes down. */
 export async function startSync(userId: string) {
