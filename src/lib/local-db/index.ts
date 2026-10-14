@@ -117,10 +117,11 @@ export async function wipeLocalData(userId: string, store: Kv = kv): Promise<voi
 
 /** The bytes of a file kept on the device (`<bucket>/<path>`), or null when it is missing. */
 export async function readLocalFile(key: string, store: Kv = kv): Promise<ArrayBuffer | null> {
-  const url = await store.fileUrl(key);
-  if (!url) return null;
   try {
-    return await (await fetch(url)).arrayBuffer();
+    const bytes = await store.readFile(key);
+    return bytes
+      ? (bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
+      : null;
   } catch {
     return null;
   }

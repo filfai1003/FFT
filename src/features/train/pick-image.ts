@@ -1,5 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { readUri } from '@/lib/read-uri';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -34,7 +35,11 @@ export async function uploadPrivateImage(
   localUri: string,
 ): Promise<string> {
   const path = `${userId}/${name}`;
-  const body = await (await fetch(localUri)).arrayBuffer();
+  const bytes = await readUri(localUri);
+  const body = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
   const { error } = await getSupabase()
     .storage.from(bucket)
     .upload(path, body, { contentType: 'image/jpeg', upsert: true });

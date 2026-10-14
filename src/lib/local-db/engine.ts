@@ -7,6 +7,8 @@ export type Kv = {
   setText(key: string, text: string): Promise<void>;
   putFile(key: string, bytes: Uint8Array, mime: string): Promise<void>;
   fileUrl(key: string): Promise<string | null>;
+  /** The bytes of a stored file, or null when there is none. */
+  readFile(key: string): Promise<Uint8Array | null>;
   removeFile(key: string): Promise<void>;
   clearAll(): Promise<void>;
 };

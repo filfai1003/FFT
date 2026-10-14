@@ -10,6 +10,7 @@ function memoryKv(): Kv {
     setText: async (k, v) => void texts.set(k, v),
     putFile: async () => undefined,
     fileUrl: async () => null,
+    readFile: async () => null,
     removeFile: async () => undefined,
     clearAll: async () => texts.clear(),
   };

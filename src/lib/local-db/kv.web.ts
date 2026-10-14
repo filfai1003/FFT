@@ -43,6 +43,10 @@ export const kv: Kv = {
     const blob = await run('readonly', (s) => s.get(`file:${key}`));
     return blob instanceof Blob ? URL.createObjectURL(blob) : null;
   },
+  async readFile(key) {
+    const blob = await run('readonly', (s) => s.get(`file:${key}`));
+    return blob instanceof Blob ? new Uint8Array(await blob.arrayBuffer()) : null;
+  },
   async removeFile(key) {
     await run('readwrite', (s) => s.delete(`file:${key}`));
   },

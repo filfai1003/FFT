@@ -15,6 +15,7 @@ jest.mock('@/lib/local-db/kv', () => {
       setText: async (k: string, v: string) => void texts.set(k, v),
       putFile: async (k: string, b: Uint8Array) => void files.set(k, b),
       fileUrl: async (k: string) => (files.has(k) ? `mem:${k}` : null),
+      readFile: async (k: string) => files.get(k) ?? null,
       removeFile: async (k: string) => void files.delete(k),
       clearAll: async () => undefined,
     },

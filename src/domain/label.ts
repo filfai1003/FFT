@@ -53,10 +53,72 @@ const textOf = (v: unknown, max: number): string | null =>
   typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null;
 const round = (n: number, places = 1) => Math.round(n * 10 ** places) / 10 ** places;
 
-/** null when the answer is not a readable label (nothing to fill). */
+/** Other names models use for the same values (lower case, spaces and dashes as "_"). */
+const ALIASES: Record<string, string[]> = {
+  kcal: ['kcal', 'energy_kcal', 'calories', 'energy', 'kcal_100g', 'calorie'],
+  kj: ['kj', 'energy_kj', 'kilojoules'],
+  protein: ['protein', 'proteins', 'protein_g', 'proteine'],
+  carbs: [
+    'carbs',
+    'carbohydrates',
+    'carbohydrate',
+    'total_carbohydrates',
+    'carbohydrates_g',
+    'carboidrati',
+  ],
+  sugars: ['sugars', 'sugar', 'of_which_sugars', 'zuccheri'],
+  fat: ['fat', 'fats', 'total_fat', 'fat_g', 'grassi'],
+  saturates: [
+    'saturates',
+    'saturated_fat',
+    'saturated',
+    'of_which_saturates',
+    'saturated_fats',
+    'saturi',
+  ],
+  fiber: ['fiber', 'fibre', 'dietary_fiber', 'fibres', 'fibers', 'fibre_g', 'fibre_alimentari'],
+  salt: ['salt', 'sale'],
+  sodium: ['sodium', 'sodio'],
+};
+const norm = (k: string) => k.toLowerCase().replace(/[\s-]+/g, '_');
+
+/** The value of one nutrient in a JSON object, whatever name the model gave it. */
+function pick(obj: Record<string, unknown> | undefined, key: string): number | null {
+  if (!obj) return null;
+  for (const [k, v] of Object.entries(obj))
+    if (ALIASES[key]!.includes(norm(k))) {
+      const n = numberOf(v);
+      if (n != null) return n;
+    }
+  return null;
+}
+
+/** Values written as text ("Protein 12.5 g", "Energy 1521 kJ / 359 kcal"), per 100 g. */
+function fromText(reply: string): Record<string, number | null> {
+  const out: Record<string, number | null> = {};
+  const find = (re: RegExp) => {
+    const m = re.exec(reply);
+    return m ? numberOf(m[1]) : null;
+  };
+  out.kcal = find(/(\d+(?:[.,]\d+)?)\s*kcal/i);
+  out.kj = find(/(\d+(?:[.,]\d+)?)\s*kj/i);
+  out.protein = find(/protei\w*[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.carbs = find(/carb\w*[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.sugars = find(/sugar\w*[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.fat = find(/(?:^|[^a-z])fats?[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/im);
+  out.saturates = find(/saturat\w*[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.fiber = find(/fib(?:er|re)\w*[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.salt = find(/salt[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  out.sodium = find(/sodium[^\d\n]{0,20}(\d+(?:[.,]\d+)?)/i);
+  return out;
+}
+
+/**
+ * The form values in the AI's answer, or null when there is nothing at all to fill. Whatever is
+ * found is used, even one value: the user completes the rest.
+ */
 export function parseLabelReply(reply: string): LabelValues | null {
-  const raw = extractJson(reply) as Record<string, unknown> | null;
-  if (!raw || typeof raw !== 'object' || raw.readable === false) return null;
+  const raw = (extractJson(reply) as Record<string, unknown> | null) ?? {};
 
   const serving = raw.serving as Record<string, unknown> | null | undefined;
   const grams = numberOf(serving?.grams);
@@ -65,14 +127,21 @@ export function parseLabelReply(reply: string): LabelValues | null {
       ? { label: textOf(serving?.label, 40) ?? `${grams} g`, grams: round(grams, 1) }
       : null;
 
-  // Per 100 g first; a value only per serving is scaled with the serving size.
-  const p100 = (raw.per_100g ?? {}) as Record<string, unknown>;
-  const pServ = (raw.per_serving ?? {}) as Record<string, unknown>;
+  // Per 100 g first (the per_100g object, or the top level), then per serving scaled, then text.
+  const p100 = (raw.per_100g ??
+    raw.per100g ??
+    raw.per_100 ??
+    raw.per100 ??
+    raw.nutrition ??
+    raw) as Record<string, unknown>;
+  const pServ = (raw.per_serving ?? raw.per_portion) as Record<string, unknown> | undefined;
+  const text = fromText(reply);
   const valueOf = (k: string): number | null => {
-    const direct = numberOf(p100[k]);
+    const direct = pick(p100, k);
     if (direct != null) return direct;
-    const s = numberOf(pServ[k]);
-    return s != null && portion ? (s * 100) / portion.grams : null;
+    const s = pick(pServ, k);
+    if (s != null && portion) return (s * 100) / portion.grams;
+    return Object.keys(raw).length ? null : (text[k] ?? null);
   };
 
   const per100 = Object.fromEntries(KEYS.map((k) => [k, null])) as LabelValues['per100'];
@@ -81,6 +150,10 @@ export function parseLabelReply(reply: string): LabelValues | null {
     if (k === 'kcal' && v == null) {
       const kj = valueOf('kj');
       v = kj != null ? kj / 4.184 : null;
+    }
+    if (k === 'salt' && v == null) {
+      const sodium = valueOf('sodium');
+      v = sodium != null ? sodium * 2.5 : null;
     }
     per100[k] = v != null && v <= MAX[k] ? round(v, k === 'kcal' ? 0 : k === 'salt' ? 2 : 1) : null;
   }

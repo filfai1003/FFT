@@ -35,6 +35,24 @@ describe('reading a nutrition label (the AI reply)', () => {
     expect(v?.portion).toEqual({ label: '1 bar', grams: 30 });
   });
 
+  it('partial and loose answers: other names, top-level values, plain text, sodium', () => {
+    const loose = parseLabelReply(
+      '{"energy_kcal": 120, "Total Fat": "4,5 g", "Carbohydrates": 15, "sodium": 0.4, "readable": false}',
+    );
+    expect(loose?.per100).toMatchObject({ kcal: 120, fat: 4.5, carbs: 15, salt: 1 });
+    expect(loose?.per100.protein).toBeNull();
+    const text = parseLabelReply(
+      'Per 100 g: Energy 1521 kJ / 359 kcal\nFat 2 g\nof which saturates 0.5 g\nCarbohydrate 71.2 g\nProtein 12.5 g\nSalt 0.01 g',
+    );
+    expect(text?.per100).toMatchObject({
+      kcal: 359,
+      fat: 2,
+      saturates: 0.5,
+      carbs: 71.2,
+      protein: 12.5,
+    });
+  });
+
   it('nothing to fill: not a label, unreadable, or no values; impossible values are dropped', () => {
     expect(parseLabelReply('I cannot read this photo.')).toBeNull();
     expect(parseLabelReply('{"readable": false}')).toBeNull();

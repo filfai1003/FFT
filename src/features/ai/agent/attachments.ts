@@ -3,6 +3,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { bytesToBase64 } from '@/lib/base64';
 import { localFileUrl, readLocalFile, writeLocalFile } from '@/lib/local-db';
+import { readUri } from '@/lib/read-uri';
 import { newId } from '@/lib/uuid';
 
 /**
@@ -28,8 +29,26 @@ const TEXT_EXT = /\.(txt|csv|tsv|json|md|markdown|xml|ya?ml|log)$/i;
 
 export class AttachmentError extends Error {}
 
-/** A photo taken elsewhere in the app (e.g. a nutrition label), kept like a chat attachment. */
-export const attachPhoto = (uri: string, width?: number) => saveImage(uri, width, 'photo.jpg');
+/**
+ * A photo taken elsewhere in the app (e.g. a nutrition label), ready for the model: resized and
+ * encoded right away, not stored on the device.
+ */
+export async function photoForModel(uri: string, width?: number): Promise<LoadedAttachment> {
+  const scaled =
+    width && width > MAX_SIDE
+      ? ImageManipulator.ImageManipulator.manipulate(uri).resize({ width: MAX_SIDE })
+      : ImageManipulator.ImageManipulator.manipulate(uri);
+  const image = await (
+    await scaled.renderAsync()
+  ).saveAsync({
+    format: ImageManipulator.SaveFormat.JPEG,
+    compress: 0.8,
+    base64: true,
+  });
+  const base64 = image.base64 || bytesToBase64(await readUri(image.uri));
+  if (!base64) throw new AttachmentError('empty photo');
+  return { id: newId(), kind: 'image', name: 'photo.jpg', mime: 'image/jpeg', base64 };
+}
 
 async function saveImage(uri: string, width: number | undefined, name: string) {
   const scaled =
@@ -42,7 +61,7 @@ async function saveImage(uri: string, width: number | undefined, name: string) {
     format: ImageManipulator.SaveFormat.JPEG,
     compress: 0.8,
   });
-  const bytes = new Uint8Array(await (await fetch(image.uri)).arrayBuffer());
+  const bytes = await readUri(image.uri);
   const a: Attachment = { id: newId(), kind: 'image', name, mime: 'image/jpeg' };
   await writeLocalFile(fileKey(a.id), bytes, a.mime);
   return a;
@@ -66,7 +85,7 @@ export async function pickFile(): Promise<Attachment | null> {
   const mime = asset.mimeType ?? '';
   if (mime.startsWith('image/')) return saveImage(asset.uri, undefined, asset.name);
 
-  const bytes = new Uint8Array(await (await fetch(asset.uri)).arrayBuffer());
+  const bytes = await readUri(asset.uri);
   let a: Attachment;
   if (mime === 'application/pdf' || /\.pdf$/i.test(asset.name)) {
     if (bytes.length > MAX_PDF_BYTES) throw new AttachmentError('too big');

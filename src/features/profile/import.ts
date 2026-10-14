@@ -2,6 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { strFromU8, unzipSync } from 'fflate';
 import { SYNC_ORDER } from '@/features/premium/sync';
 import { columns, pkOf, writeLocalFile, type Row } from '@/lib/local-db';
+import { readUri } from '@/lib/read-uri';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -20,8 +21,7 @@ export async function pickExportFile(): Promise<Uint8Array | null> {
     copyToCacheDirectory: true,
   });
   if (res.canceled || !res.assets?.[0]) return null;
-  const bytes = await (await fetch(res.assets[0].uri)).arrayBuffer();
-  return new Uint8Array(bytes);
+  return readUri(res.assets[0].uri);
 }
 
 /** The rows of an export, by table (throws when the file is not an FFT export). */

@@ -44,6 +44,10 @@ export const kv: Kv = {
     const f = fileFor(key, 'file');
     return f.exists ? f.uri : null;
   },
+  async readFile(key) {
+    const f = fileFor(key, 'file');
+    return f.exists ? await f.bytes() : null;
+  },
   async removeFile(key) {
     const f = fileFor(key, 'file');
     if (f.exists) f.delete();

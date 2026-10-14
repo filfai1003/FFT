@@ -12,6 +12,7 @@ function memoryKv(): Kv & { texts: Map<string, string> } {
     setText: async (k, v) => void texts.set(k, v),
     putFile: async (k, b) => void files.set(k, b),
     fileUrl: async (k) => (files.has(k) ? `blob:${k}` : null),
+    readFile: async (k: string) => files.get(k) ?? null,
     removeFile: async (k) => void files.delete(k),
     clearAll: async () => {
       texts.clear();

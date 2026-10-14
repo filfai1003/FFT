@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 import { LABEL_PROMPT, parseLabelReply, type LabelValues } from '@/domain/label';
-import { attachPhoto } from '@/features/ai/agent/attachments';
+import { photoForModel } from '@/features/ai/agent/attachments';
 import { callModel } from '@/features/ai/agent/provider';
 import type { AiSettings } from '@/features/ai/settings-store';
 import { newId } from '@/lib/uuid';
@@ -31,12 +31,15 @@ export async function readLabel(
   photo: { uri: string; width?: number },
   settings: AiSettings,
 ): Promise<LabelValues | null> {
-  const attachment = await attachPhoto(photo.uri, photo.width);
+  const image = await photoForModel(photo.uri, photo.width);
+  const { base64: _bytes, ...attachment } = image;
   const reply = await callModel(
     settings,
     LABEL_PROMPT,
     [{ id: newId(), role: 'user', text: 'Read this label.', attachments: [attachment] }],
     [],
+    undefined,
+    new Map([[image.id, image]]),
   );
   return parseLabelReply(reply.text);
 }

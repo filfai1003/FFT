@@ -248,7 +248,16 @@ export const columns: Record<string, string[]> = {
     'deleted_at',
   ],
   water_logs: ['id', 'user_id', 'day', 'ml', 'created_at', 'updated_at', 'deleted_at'],
-  supplements: ['id', 'user_id', 'name', 'dose', 'position', 'created_at', 'updated_at', 'deleted_at'],
+  supplements: [
+    'id',
+    'user_id',
+    'name',
+    'dose',
+    'position',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+  ],
   supplement_logs: [
     'id',
     'user_id',

@@ -175,10 +175,13 @@ export async function callModel(
   messages: AgentMessage[],
   tools: ToolSpec[],
   signal?: AbortSignal,
+  /** Attachments already in memory (not stored on the device), by id. */
+  preloaded?: Map<string, LoadedAttachment>,
 ): Promise<ModelReply> {
   const key = settings.apiKey.trim();
   const recent = recentMessages(messages);
   const files = await loadFiles(recent);
+  for (const [id, a] of preloaded ?? []) files.set(id, a);
   const openAiTools = tools.map((t) => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.schema },
