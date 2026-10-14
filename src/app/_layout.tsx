@@ -1,6 +1,7 @@
 import '@/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { KeyboardProvider } from '@/components/ui/keyboard';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,10 +45,12 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppNavigator />
-      <ToastHost />
-    </QueryClientProvider>
+    <KeyboardProvider>
+      <QueryClientProvider client={queryClient}>
+        <AppNavigator />
+        <ToastHost />
+      </QueryClientProvider>
+    </KeyboardProvider>
   );
 }
 

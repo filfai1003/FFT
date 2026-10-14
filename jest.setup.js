@@ -2,6 +2,11 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+// Native module: the library ships plain-View stand-ins for tests.
+jest.mock('react-native-keyboard-controller', () =>
+  require('react-native-keyboard-controller/jest'),
+);
+
 jest.mock('expo-crypto', () => ({
   randomUUID: () => require('crypto').randomUUID(),
   digestStringAsync: async (_algo, text) =>

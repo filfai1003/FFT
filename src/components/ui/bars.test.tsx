@@ -47,10 +47,11 @@ describe('BottomActionBar', () => {
         <Text testID="action">go</Text>
       </BottomActionBar>,
     );
+    // The bar sits in a keyboard-following wrapper pinned to the bottom of the screen.
     const bar = screen.getByTestId('action').parent!;
-    const style = flat(bar.props.style);
-    expect(style.position).toBe('absolute');
-    expect(style.bottom).toBe(0);
-    expect(style.paddingBottom).toBe(12 + 34); // 12px + bottom inset of the test device
+    expect(flat(bar.props.style).paddingBottom).toBe(12 + 34); // 12px + bottom inset of the test device
+    const wrapper = flat(bar.parent!.props.style);
+    expect(wrapper.position).toBe('absolute');
+    expect(wrapper.bottom).toBe(0);
   });
 });

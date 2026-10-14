@@ -54,6 +54,7 @@ Free accounts and the account-less mode keep ALL user data on the device: `getSu
 - On web, native-only a11y props (`accessibilityElementsHidden`, `importantForAccessibility`) log errors: use `aria-hidden`; set `aria-selected` explicitly.
 - Prettier ignores `docs/` and `CLAUDE.md` on purpose (the design HTML must stay untouched).
 - Bash tool: avoid heredocs containing quotes/backticks; use the Write tool for file contents.
+- Keyboard: Android draws edge to edge, so the window does not shrink for the keyboard. `Screen` (scroll) and `Sheet` use `KeyboardAwareScrollView`, `BottomActionBar` uses `KeyboardStickyView` (react-native-keyboard-controller, through `components/ui/keyboard.tsx`; the web version uses plain views). New scrollable containers with inputs must do the same.
 - The OTA fingerprint (`fingerprint.config.js`) also hashes the ROOT `.gitignore`, `app.json`/`app.config.js` and native packages: changing any of them means a new APK, and installed apps stop receiving updates until it is installed. Put new ignore rules in a `.gitignore` inside the folder concerned.
 
 ## Workflow

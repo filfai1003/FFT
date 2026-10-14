@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAwareScrollView } from './keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -40,14 +41,16 @@ export function Screen({
     <FieldChain>
       <View style={[styles.root, { backgroundColor: colors.bg }]}>
         {scroll ? (
-          <ScrollView
+          // Scrolls the focused field above the keyboard (and above a fixed action bar).
+          <KeyboardAwareScrollView
             style={styles.fill}
+            bottomOffset={bottomBarHeight > 0 ? bottomBarHeight + space.gapM : space.gapXL}
             contentContainerStyle={[padding, style]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
             {children}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         ) : (
           <View style={[styles.fill, padding, style]}>{children}</View>
         )}
