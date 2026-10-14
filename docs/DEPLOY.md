@@ -17,7 +17,7 @@ Services, all on Railway's private network, one public URL (Kong):
 | `rest`     | postgrest/postgrest:v14.12         |                                                 |
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `backend`  | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
-| `api`      | this repo (`server/Dockerfile`)    | functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
+| `api`      | this repo (`server/Dockerfile`)    | public domain `api-fft`: the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `supabase/migrations/` or `supabase/functions/` |
 | `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
 | `admin`    | this repo (`admin/`)               | admin panel, public domain `admin-fft`            |

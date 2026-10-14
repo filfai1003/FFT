@@ -28,6 +28,7 @@ const shapes = {
   camera: ['M4 8h4l2-3h4l2 3h4v11H4z', [12, 13, 3.5]],
   scan: ['M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M8 8v8M12 8v8M16 8v8'],
   copy: ['M9 9h11v11H9z', 'M15 9V4H4v11h5'],
+  code: ['M8.5 7l-5 5 5 5', 'M15.5 7l5 5-5 5', 'M13.5 4.5l-3 15'],
   archive: ['M3 5h18v4H3zM5 9v11h14V9M10 13h4'],
   lock: ['M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3'],
   swap: ['M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7'],

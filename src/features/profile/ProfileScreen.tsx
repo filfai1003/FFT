@@ -121,6 +121,11 @@ export function ProfileScreen() {
               name: t('profile.menu.premium'),
               onPress: () => router.push('/profile/premium'),
             },
+            {
+              icon: 'code' as IconName,
+              name: t('profile.menu.api'),
+              onPress: () => router.push('/profile/api'),
+            },
           ]),
     ],
     [

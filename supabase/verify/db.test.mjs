@@ -9,6 +9,7 @@ import { before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
+import { createApi, hashToken } from '../../server/api.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const supabaseDir = path.join(here, '..');
@@ -624,5 +625,146 @@ describe('plans and AI credit', () => {
       `insert into public.user_plans (user_id, plan) values ('${C}', 'premium')`,
       '42501',
     );
+  });
+});
+
+describe('personal API and MCP (server/api.js)', () => {
+  // The api service, on this database: each call runs as the token's user (RLS applies).
+  const testDb = {
+    async userForToken(hash) {
+      await admin();
+      return (await one('select public.api_token_user($1) as u', [hash])).u;
+    },
+    async asUser(uid, fn) {
+      await admin();
+      await db.exec('begin');
+      try {
+        await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+          JSON.stringify({ sub: uid, role: 'authenticated' }),
+        ]);
+        await db.exec('set local role authenticated');
+        const result = await fn(async (sql, params) => (await db.query(sql, params)).rows);
+        await db.exec('commit');
+        return result;
+      } catch (e) {
+        await db.exec('rollback');
+        throw e;
+      }
+    },
+  };
+  const api = createApi(testDb);
+  let token = '';
+  const D = '2026-10-16';
+  const call = (method, path, body, t = token, query = {}) =>
+    api({ method, path, query, body, headers: t ? { authorization: `Bearer ${t}` } : {} });
+  let rpcId = 0;
+  const mcp = async (method, params) =>
+    (await call('POST', '/mcp', { jsonrpc: '2.0', id: ++rpcId, method, params })).body;
+  const tool = async (name, args) => {
+    const r = (await mcp('tools/call', { name, arguments: args })).result;
+    return r.isError ? { error: r.content[0].text } : JSON.parse(r.content[0].text);
+  };
+
+  it('free accounts cannot make a token; paid accounts get one, shown once (only its hash is kept)', async () => {
+    await as(C);
+    await rejects(`select public.create_api_token('mine')`, '42501');
+    await as(A);
+    token = (await one(`select public.create_api_token('Claude') as t`)).t;
+    assert.match(token, /^fft_[0-9a-f]{64}$/);
+    const row = await one(`select name, prefix, token_hash from public.api_tokens`);
+    assert.equal(row.name, 'Claude');
+    assert.equal(row.prefix, token.slice(0, 10));
+    assert.equal(row.token_hash, hashToken(token));
+    await rejects(`select public.api_token_user('${hashToken(token)}')`, '42501');
+    await rejects(
+      `insert into public.api_tokens (name, prefix, token_hash) values ('x', 'x', 'x')`,
+      '42501',
+    );
+  });
+
+  it('no token or a wrong one is refused', async () => {
+    assert.equal((await call('GET', '/v1/me', undefined, '')).status, 401);
+    assert.equal((await call('GET', '/v1/me', undefined, 'fft_nope')).status, 401);
+    assert.equal(
+      (await call('POST', '/mcp', { jsonrpc: '2.0', id: 1, method: 'ping' }, '')).status,
+      401,
+    );
+  });
+
+  it('REST: logs water and reads it back, as the token owner', async () => {
+    const r = await call('POST', '/v1/water', { day: D, ml: 300 });
+    assert.equal(r.status, 201, JSON.stringify(r.body));
+    assert.deepEqual(r.body, { day: D, added_ml: 300, total_ml: 300 });
+    const list = await call('GET', '/v1/water', undefined, token, { from: D, to: D });
+    assert.deepEqual(list.body, [{ day: D, ml: 300 }]);
+    await admin();
+    assert.equal(
+      await count(
+        `select count(*) as n from public.water_logs where day = '${D}' and user_id = '${A}'`,
+      ),
+      1,
+    );
+  });
+
+  it('MCP: initialize, list the tools, log a generic food by id and see it in the day', async () => {
+    const init = (await mcp('initialize', { protocolVersion: '2025-06-18', capabilities: {} }))
+      .result;
+    assert.equal(init.protocolVersion, '2025-06-18');
+    assert.equal(init.serverInfo.name, 'fft');
+    const names = (await mcp('tools/list')).result.tools.map((t) => t.name);
+    assert.ok(names.includes('log_food') && names.includes('get_day'));
+
+    const found = await tool('search_foods', { query: 'apple' });
+    assert.ok(found.length > 0);
+    const logged = await tool('log_food', {
+      day: D,
+      meal: 'snack',
+      food_id: 'cf000000-0000-4000-8000-000000013039', // Apple, 52 kcal / 100 g
+      grams: 200,
+    });
+    assert.equal(logged.kcal, 104);
+    const summary = await tool('get_day', { day: D });
+    assert.equal(summary.eaten.kcal, 104);
+    assert.equal(summary.water_ml, 300);
+    assert.equal(summary.food_logs.length, 1);
+
+    assert.equal((await tool('delete_food_log', { id: logged.id })).deleted, logged.id);
+    assert.equal((await tool('get_day', { day: D })).eaten.kcal, 0);
+  });
+
+  it('a day keeps one body entry: new values replace that day, the others stay', async () => {
+    await tool('log_body_metrics', { day: D, weight_kg: 80.5 });
+    await tool('log_body_metrics', { day: D, body_fat_pct: 18 });
+    const rows = (await call('GET', '/v1/body', undefined, token, { from: D, to: D })).body;
+    assert.deepEqual(rows, [{ day: D, weight_kg: 80.5, body_fat_pct: 18 }]);
+  });
+
+  it('bad input and database rules come back as clear errors, nothing is written', async () => {
+    assert.match(
+      (await tool('log_food', { meal: 'brunch', name: 'x', kcal: 1 })).error,
+      /meal must be/,
+    );
+    assert.match((await tool('log_body_metrics', { day: D, weight_kg: 900 })).error, /weight_kg/);
+    assert.equal((await call('GET', '/v1/nope')).status, 404);
+    assert.equal((await mcp('nope/nope')).error.code, -32601);
+  });
+
+  it('a revoked token stops at once', async () => {
+    await as(A);
+    const id = (await one(`select id from public.api_tokens limit 1`)).id;
+    await db.query('select public.set_api_token_revoked($1, true)', [id]);
+    assert.equal((await call('GET', '/v1/me')).status, 401);
+    await as(A);
+    await db.query('select public.set_api_token_revoked($1, false)', [id]);
+    assert.equal((await call('GET', '/v1/me')).status, 200);
+  });
+
+  it('too many requests in a minute are refused', async () => {
+    const strict = createApi(testDb, { perMinute: 2 });
+    const go = () =>
+      strict({ method: 'GET', path: '/v1/goals', headers: { authorization: `Bearer ${token}` } });
+    assert.equal((await go()).status, 200);
+    assert.equal((await go()).status, 200);
+    assert.equal((await go()).status, 429);
   });
 });

@@ -4,7 +4,7 @@ FROM node:24-slim
 WORKDIR /app
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
-COPY server/index.js server/migrate.js ./
+COPY server/index.js server/migrate.js server/api.js ./
 COPY supabase/functions ./fn
 COPY supabase/migrations ./migrations
 # The exercise catalogue, applied at every start (the service also redeploys when it changes).
