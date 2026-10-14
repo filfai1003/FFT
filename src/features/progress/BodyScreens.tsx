@@ -18,7 +18,7 @@ import { useTheme } from '@/design/use-theme';
 import { dotsOn } from '@/domain/dots';
 import { relativeDay, shortDateLabel, weekdayName, dayOfMonth } from '@/domain/day';
 import { parseDecimal } from '@/domain/numbers';
-import { goalProgress } from '@/domain/progress';
+import { goalProgress, goalStartValue } from '@/domain/progress';
 import { cmToFeetInches, displayWeight, storedWeight } from '@/domain/units';
 import { usePrivacyStore } from '@/features/profile/privacy-store';
 import { useToday } from '@/features/profile/use-today';
@@ -131,8 +131,36 @@ export function BodyScreen() {
 
   const [goalSheet, setGoalSheet] = useState(false);
   const [goalInput, setGoalInput] = useState('');
+  const [fatGoalInput, setFatGoalInput] = useState('');
 
   const target = goal.data?.targetWeightKg ?? null;
+  const fatTarget = goal.data?.targetBodyFatPct ?? null;
+  const fatNow = b.latestPct;
+  const fatStart = goal.data
+    ? goalStartValue(
+        (entries.data ?? []).map((e) => ({ day: e.day, value: e.bodyFatPct })),
+        goal.data.validFrom,
+      )
+    : null;
+  const fatToGo = fatTarget != null && fatNow != null ? Math.abs(fatNow - fatTarget) : null;
+  const fatProgress =
+    fatTarget != null && fatNow != null && fatStart != null
+      ? goalProgress(fatStart, fatNow, fatTarget)
+      : 0;
+  const hasGoal = target != null || fatTarget != null;
+  const openGoal = () => {
+    setGoalInput(target != null ? String(shown(target)) : '');
+    setFatGoalInput(fatTarget != null ? String(fatTarget) : '');
+    setGoalSheet(true);
+  };
+  // Either field may stay empty, but what is typed must be a real value (DB ranges).
+  const goalWeight = goalInput.trim() === '' ? null : parseDecimal(goalInput);
+  const goalWeightKg = goalWeight != null ? storedWeight(goalWeight, unit) : null;
+  const goalFat = fatGoalInput.trim() === '' ? null : parseDecimal(fatGoalInput);
+  const weightBad =
+    goalInput.trim() !== '' && (goalWeightKg == null || goalWeightKg < 20 || goalWeightKg > 500);
+  const fatBad = fatGoalInput.trim() !== '' && (goalFat == null || goalFat < 2 || goalFat > 70);
+  const canSaveGoal = !weightBad && !fatBad && (goalWeightKg != null || goalFat != null);
   const start = goal.data?.startWeightKg ?? weights[0]?.weightKg ?? null;
   const toGo = target != null && current != null ? Math.abs(current - target) : null;
   const progress =
@@ -209,16 +237,20 @@ export function BodyScreen() {
             </Text>
           ) : null}
           <View style={[{ gap: 8 }, divider]}>
-            {target != null && toGo != null ? (
-              <>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text variant="label" muted>
-                    {t('progress.goal', { value: shown(target), unit: u })}
-                  </Text>
+            {target != null ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text variant="label" muted>
+                  {t('progress.goal', { value: shown(target), unit: u })}
+                </Text>
+                {toGo != null ? (
                   <Text variant="label">
                     {t('progress.toGo', { value: fmt(shown(toGo)), unit: u })}
                   </Text>
-                </View>
+                ) : null}
+              </View>
+            ) : null}
+            {target != null && toGo != null ? (
+              <>
                 <DotBar
                   shape="segment"
                   total={20}
@@ -231,11 +263,8 @@ export function BodyScreen() {
             ) : null}
             <Button
               variant="ghost"
-              label={target != null ? t('progress.changeGoal') : t('progress.setGoal')}
-              onPress={() => {
-                setGoalInput(target != null ? String(shown(target)) : '');
-                setGoalSheet(true);
-              }}
+              label={hasGoal ? t('progress.changeGoal') : t('progress.setGoal')}
+              onPress={openGoal}
             />
           </View>
         </Card>
@@ -274,6 +303,35 @@ export function BodyScreen() {
               </View>
             </View>
           ) : null}
+          <View style={[{ gap: 8 }, divider]}>
+            {fatTarget != null ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text variant="label" muted>
+                  {t('progress.goalFat', { value: Math.round(fatTarget * 10) / 10 })}
+                </Text>
+                {fatToGo != null ? (
+                  <Text variant="label">{t('progress.toGoFat', { value: fmt(fatToGo) })}</Text>
+                ) : null}
+              </View>
+            ) : null}
+            {fatTarget != null && fatToGo != null ? (
+              <>
+                <DotBar
+                  shape="segment"
+                  total={20}
+                  on={dotsOn(fatProgress, 1, 20)}
+                  size={6}
+                  gap={3}
+                  accessibilityLabel={t('progress.goalFatBar')}
+                />
+              </>
+            ) : null}
+            <Button
+              variant="ghost"
+              label={hasGoal ? t('progress.changeGoal') : t('progress.setGoal')}
+              onPress={openGoal}
+            />
+          </View>
           <View style={[{ gap: 10 }, divider]}>
             <Text variant="label" muted>
               {t('progress.measuredWith')}
@@ -383,24 +441,36 @@ export function BodyScreen() {
           <Button
             size="large"
             label={t('common.save')}
-            disabled={parseDecimal(goalInput) == null}
+            disabled={!canSaveGoal || setGoal.isPending}
             onPress={async () => {
               await setGoal.mutateAsync({
                 day: today,
                 startWeightKg: current,
-                targetWeightKg: storedWeight(parseDecimal(goalInput)!, unit),
+                targetWeightKg: goalWeightKg,
+                targetBodyFatPct: goalFat,
               });
               setGoalSheet(false);
             }}
           />
         }
       >
+        <Text variant="bodyS" muted>
+          {t('progress.goalHint')}
+        </Text>
         <Input
           label={t('progress.goalWeight', { unit: u })}
           value={goalInput}
           onChangeText={setGoalInput}
           keyboardType="decimal-pad"
+          error={weightBad ? t('progress.goalWeightError') : undefined}
           autoFocus
+        />
+        <Input
+          label={t('progress.goalBodyFat')}
+          value={fatGoalInput}
+          onChangeText={setFatGoalInput}
+          keyboardType="decimal-pad"
+          error={fatBad ? t('progress.goalBodyFatError') : undefined}
         />
       </Sheet>
     </>

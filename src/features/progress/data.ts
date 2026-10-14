@@ -87,6 +87,8 @@ export type BodyGoal = {
   id: string;
   startWeightKg: number | null;
   targetWeightKg: number | null;
+  /** A goal can be a weight, a body-fat percentage, or both. */
+  targetBodyFatPct: number | null;
   validFrom: string;
 };
 
@@ -107,6 +109,7 @@ export function useBodyGoal() {
             id: g.id,
             startWeightKg: n(g.start_weight_kg),
             targetWeightKg: n(g.target_weight_kg),
+            targetBodyFatPct: n(g.target_body_fat_pct),
             validFrom: g.valid_from,
           }
         : null;
@@ -129,14 +132,17 @@ export function useSetBodyGoal() {
     mutationFn: async (g: {
       day: string;
       startWeightKg: number | null;
-      targetWeightKg: number;
+      targetWeightKg: number | null;
+      targetBodyFatPct: number | null;
     }) => {
+      if (g.targetWeightKg == null && g.targetBodyFatPct == null) throw new Error('empty goal');
       const { error } = await getSupabase().from('body_goals').insert({
         id: newId(),
         user_id: userId!,
         valid_from: g.day,
         start_weight_kg: g.startWeightKg,
         target_weight_kg: g.targetWeightKg,
+        target_body_fat_pct: g.targetBodyFatPct,
       });
       if (error) throw error;
     },

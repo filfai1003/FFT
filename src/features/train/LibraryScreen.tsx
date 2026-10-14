@@ -15,7 +15,7 @@ export function LibraryScreen({
   const { t } = useTranslation();
   const router = useRouter();
   return (
-    <Screen scroll bottomBarHeight={24} gap={14}>
+    <Screen gap={14} style={{ paddingBottom: 0 }}>
       <TopBar
         onBack={() =>
           goBack(router, exerciseRoute.startsWith('/progress') ? '/progress' : '/train')

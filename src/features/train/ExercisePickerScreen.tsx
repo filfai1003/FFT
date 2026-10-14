@@ -68,7 +68,7 @@ export function ExercisePickerScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
+      <Screen gap={14} style={{ paddingBottom: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconButton
             icon="close"
@@ -89,6 +89,7 @@ export function ExercisePickerScreen() {
           searchLabel={t('picker.search')}
           selected={selected}
           already={already}
+          bottomInset={barHeight + 24}
           onToggle={toggle}
         />
       </Screen>

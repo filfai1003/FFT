@@ -5,6 +5,7 @@ import {
   change,
   exerciseChanges,
   goalProgress,
+  goalStartValue,
   groupScores,
   periodStart,
   scoreSeries,
@@ -73,6 +74,18 @@ describe('series helpers', () => {
     expect(goalProgress(70, 75, 80)).toBe(0.5); // gaining works too
     expect(goalProgress(70, 60, 80)).toBe(0); // clamped
     expect(goalProgress(70, 70, 70)).toBe(1);
+  });
+
+  it('a body-fat goal starts from the reading closest before the goal day', () => {
+    const r = [
+      { day: '2026-09-01', value: 20 },
+      { day: '2026-09-10', value: null },
+      { day: '2026-09-20', value: 19 },
+      { day: '2026-10-05', value: 18 },
+    ];
+    expect(goalStartValue(r, '2026-09-25')).toBe(19);
+    expect(goalStartValue(r, '2026-08-01')).toBe(20); // none before: the first one after
+    expect(goalStartValue([], '2026-09-25')).toBeNull();
   });
 
   it('lean and fat mass from the body fat mockup (78.4 kg, 16.8%)', () => {

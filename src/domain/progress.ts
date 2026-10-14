@@ -77,6 +77,19 @@ export function goalProgress(start: number, current: number, target: number): nu
   return Math.min(1, Math.max(0, p));
 }
 
+/**
+ * Where a body-fat goal starts from: the last reading on or before the day the goal was set, or
+ * (if there was none yet) the first one after it. Null without any reading.
+ */
+export function goalStartValue(
+  readings: readonly { day: string; value: number | null }[],
+  goalDay: string,
+): number | null {
+  const known = readings.filter((r) => r.value != null).sort((a, b) => a.day.localeCompare(b.day));
+  const before = known.filter((r) => r.day <= goalDay);
+  return (before.length > 0 ? before[before.length - 1] : known[0])?.value ?? null;
+}
+
 // --- body composition --------------------------------------------------------------------------
 
 /** Lean and fat mass from weight and body-fat percentage. */

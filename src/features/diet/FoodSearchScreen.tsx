@@ -2,11 +2,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
+import { KeyboardAwareScrollView } from '@/components/ui/keyboard';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
@@ -25,6 +27,7 @@ type Tab = 'results' | 'recent' | 'mine';
 export function FoodSearchScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { bottom } = useSafeAreaInsets();
   const router = useRouter();
   const today = useToday();
   const params = useLocalSearchParams<{ meal?: string; day?: string }>();
@@ -66,7 +69,8 @@ export function FoodSearchScreen() {
 
   return (
     <>
-      <Screen scroll gap={14}>
+      {/* Header, search and tabs stay put; only the results scroll. */}
+      <Screen gap={14} style={{ paddingBottom: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <IconButton
             icon="chevronLeft"
@@ -126,7 +130,14 @@ export function FoodSearchScreen() {
           ))}
         </View>
 
-        <View>
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 24 + bottom }}
+          bottomOffset={24}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
           {loading ? <Text muted>{t('diet.searching')}</Text> : null}
           {!loading && list.length === 0 ? (
             <Text muted>
@@ -180,14 +191,13 @@ export function FoodSearchScreen() {
               />
             </View>
           ))}
-        </View>
-
-        <Button
-          label={t('diet.createFood')}
-          variant="ghost"
-          onPress={() => router.push({ pathname: '/food/new', params: { meal, day } })}
-        />
-        <View style={{ height: 24 }} />
+          <Button
+            label={t('diet.createFood')}
+            variant="ghost"
+            onPress={() => router.push({ pathname: '/food/new', params: { meal, day } })}
+            style={{ marginTop: 14 }}
+          />
+        </KeyboardAwareScrollView>
       </Screen>
 
       <MealSheet

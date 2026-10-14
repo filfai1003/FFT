@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { Chip } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
+import { KeyboardAwareScrollView } from '@/components/ui/keyboard';
 import { ListRow } from '@/components/ui/ListRow';
 import { Section } from '@/components/ui/Section';
 import { Text } from '@/components/ui/Text';
@@ -31,10 +32,23 @@ type Props = {
   /** Exercises already in the day/session: marked "IN DAY". */
   already?: ReadonlySet<string>;
   searchLabel: string;
+  /** Space under the last row (a fixed bar over the list, the bottom safe area). */
+  bottomInset?: number;
 };
 
-/** Search + muscle chips + exercises grouped by muscle. Shared by Library and the picker. */
-export function ExerciseBrowser({ mode, onOpen, selected, onToggle, already, searchLabel }: Props) {
+/**
+ * Search + muscle chips + exercises grouped by muscle. Shared by Library and the picker. Fills the
+ * rest of the page: search and chips stay put, only the list scrolls.
+ */
+export function ExerciseBrowser({
+  mode,
+  onOpen,
+  selected,
+  onToggle,
+  already,
+  searchLabel,
+  bottomInset = 24,
+}: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const unit = usePreferencesStore((s) => s.weightUnit);
@@ -64,7 +78,7 @@ export function ExerciseBrowser({ mode, onOpen, selected, onToggle, already, sea
   };
 
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ flex: 1, gap: 14 }}>
       <Input
         variant="search"
         accessibilityLabel={searchLabel}
@@ -85,53 +99,62 @@ export function ExerciseBrowser({ mode, onOpen, selected, onToggle, already, sea
         ))}
       </View>
 
-      {exercises.isPending ? null : groups.length === 0 ? (
-        <Text muted>{t('library.noResults')}</Text>
-      ) : (
-        groups.map((g) => (
-          <Section key={g.muscle} title={t(`library.muscle.${g.muscle}`)}>
-            {g.items.map((e) => {
-              const isSelected = selected?.has(e.id) ?? false;
-              return (
-                <ListRow
-                  key={e.id}
-                  title={e.name}
-                  info={infoFor(e)}
-                  badge={
-                    e.ownerId != null
-                      ? t('library.mine')
-                      : mode === 'select' && already?.has(e.id)
-                        ? t('library.inDay')
-                        : undefined
-                  }
-                  leading={<ExerciseThumb exercise={e} size={40} />}
-                  accessibilityRole={mode === 'select' ? 'checkbox' : 'button'}
-                  accessibilityState={mode === 'select' ? { checked: isSelected } : undefined}
-                  onPress={() => (mode === 'select' ? onToggle?.(e) : onOpen?.(e))}
-                  right={
-                    mode === 'select' ? (
-                      <View
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          borderWidth: isSelected ? 0 : 1,
-                          borderColor: colors.borderControl,
-                          backgroundColor: isSelected ? colors.text : 'transparent',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {isSelected ? <Icon name="check" size={16} color={colors.bg} /> : null}
-                      </View>
-                    ) : undefined
-                  }
-                />
-              );
-            })}
-          </Section>
-        ))
-      )}
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ gap: 14, paddingBottom: bottomInset }}
+        bottomOffset={bottomInset}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
+        {exercises.isPending ? null : groups.length === 0 ? (
+          <Text muted>{t('library.noResults')}</Text>
+        ) : (
+          groups.map((g) => (
+            <Section key={g.muscle} title={t(`library.muscle.${g.muscle}`)}>
+              {g.items.map((e) => {
+                const isSelected = selected?.has(e.id) ?? false;
+                return (
+                  <ListRow
+                    key={e.id}
+                    title={e.name}
+                    info={infoFor(e)}
+                    badge={
+                      e.ownerId != null
+                        ? t('library.mine')
+                        : mode === 'select' && already?.has(e.id)
+                          ? t('library.inDay')
+                          : undefined
+                    }
+                    leading={<ExerciseThumb exercise={e} size={40} />}
+                    accessibilityRole={mode === 'select' ? 'checkbox' : 'button'}
+                    accessibilityState={mode === 'select' ? { checked: isSelected } : undefined}
+                    onPress={() => (mode === 'select' ? onToggle?.(e) : onOpen?.(e))}
+                    right={
+                      mode === 'select' ? (
+                        <View
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
+                            borderWidth: isSelected ? 0 : 1,
+                            borderColor: colors.borderControl,
+                            backgroundColor: isSelected ? colors.text : 'transparent',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {isSelected ? <Icon name="check" size={16} color={colors.bg} /> : null}
+                        </View>
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
+            </Section>
+          ))
+        )}
+      </KeyboardAwareScrollView>
     </View>
   );
 }

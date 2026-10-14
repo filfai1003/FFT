@@ -8,7 +8,6 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Reveal } from '@/components/ui/motion';
-import { ReminderRow } from '@/features/settings/ReminderRow';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { Text } from '@/components/ui/Text';
@@ -129,18 +128,16 @@ export function TrainScreen() {
                   </View>
                 ))}
               </View>
-              <Text variant="bodyS" muted>
-                {outOfOrder ?? t('train.cycleHelp')}
-              </Text>
+              {outOfOrder ? (
+                <Text variant="bodyS" muted>
+                  {outOfOrder}
+                </Text>
+              ) : null}
             </Section>
           </Reveal>
         ) : null}
 
         <Reveal index={3}>
-          <ReminderRow kind="workout" />
-        </Reveal>
-
-        <Reveal index={4}>
           <Section title={t('train.explore')} gap={8}>
             <NavRow
               icon="search"
