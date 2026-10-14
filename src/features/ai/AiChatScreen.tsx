@@ -206,7 +206,18 @@ export function AiChatScreen() {
             />
           </Card>
         ) : messages.length === 0 ? (
-          <Text muted>{t('ai.chatEmpty')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(['day', 'week', 'strength', 'plan'] as const).map((k) => (
+              <Button
+                key={k}
+                label={t(`ai.suggest.${k}`)}
+                variant="secondary"
+                block={false}
+                disabled={sending}
+                onPress={() => void send(t(`ai.suggest.${k}`))}
+              />
+            ))}
+          </View>
         ) : null}
 
         {messages.map((m) => {

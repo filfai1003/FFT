@@ -113,8 +113,8 @@ export function ProgressScreen() {
             ) : null}
           </>
         ) : (
-          <Text variant="bodyS" muted>
-            {t('progress.strengthEmpty')}
+          <Text variant="displayL" numeric muted>
+            {'—'}
           </Text>
         )}
       </Card>
@@ -226,9 +226,6 @@ export function ProgressScreen() {
         disabled={photoDays < 2}
         onPress={() => router.push('/progress/photos/compare')}
       />
-      <Text variant="bodyS" muted>
-        {photoDays < 2 ? t('progress.compareNeedsTwo') : t('progress.compareInfo')}
-      </Text>
       <Text variant="label" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
         {t('progress.today', { date: shortDateLabel(today) })}
       </Text>

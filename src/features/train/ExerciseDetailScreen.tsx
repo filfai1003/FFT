@@ -191,8 +191,8 @@ export function ExerciseDetailScreen({
                   />
                 </>
               ) : (
-                <Text variant="bodyS" muted>
-                  {t('exerciseDetail.chartEmpty')}
+                <Text variant="displayL" numeric muted>
+                  {'—'}
                 </Text>
               )}
             </Card>

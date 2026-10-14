@@ -219,7 +219,7 @@ export function BodyScreen() {
           />
         </View>
 
-        <BlockTitle title={t('progress.tabWeight')} hint={t('progress.weightExplain')} />
+        <BlockTitle title={t('progress.tabWeight')} />
         <Card gap={14}>
           {p.weight.buckets.some((v) => v != null) ? (
             <DotColumnChart
@@ -228,11 +228,7 @@ export function BodyScreen() {
               stretch
               accessibilityLabel={t('progress.weightChart')}
             />
-          ) : (
-            <Text variant="bodyS" muted>
-              {t('progress.weightEmpty')}
-            </Text>
-          )}
+          ) : null}
           {p.weight.sevenDayKg != null ? (
             <Text variant="label" muted>
               {t('progress.sevenDay', { value: shown(p.weight.sevenDayKg) })}
@@ -280,11 +276,7 @@ export function BodyScreen() {
               stretch
               accessibilityLabel={t('progress.bodyFatChart')}
             />
-          ) : (
-            <Text variant="bodyS" muted>
-              {t('progress.bodyFatEmpty')}
-            </Text>
-          )}
+          ) : null}
           {b.leanKg != null && b.fatKg != null ? (
             <View style={[{ flexDirection: 'row' }, divider]}>
               <View style={{ flex: 1, gap: 2 }}>
@@ -355,9 +347,6 @@ export function BodyScreen() {
         <BlockTitle title={t('progress.measurements', { date: since })} />
         {measureKeys.every((k) => !p.measures[k]) ? (
           <Card size="small" gap={8}>
-            <Text variant="bodyS" muted>
-              {t('progress.measurementsEmpty')}
-            </Text>
             <Button
               variant="ghost"
               label={t('progress.logMeasurements')}
@@ -456,9 +445,6 @@ export function BodyScreen() {
           />
         }
       >
-        <Text variant="bodyS" muted>
-          {t('progress.goalHint')}
-        </Text>
         <Input
           label={t('progress.goalWeight', { unit: u })}
           value={goalInput}

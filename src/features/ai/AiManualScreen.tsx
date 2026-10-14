@@ -75,7 +75,6 @@ export function AiManualScreen() {
     <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.manualTitle')}</Text>
-      <Text muted>{t('ai.manualIntro')}</Text>
 
       <Card gap={12}>
         <Text variant="label" muted>
@@ -89,9 +88,6 @@ export function AiManualScreen() {
           multiline
         />
         <Button label={t('ai.copyPrompt')} icon="copy" disabled={!ctx.ready} onPress={copy} />
-        <Text variant="bodyS" muted>
-          {t('ai.copyHint')}
-        </Text>
       </Card>
 
       <Card gap={12}>

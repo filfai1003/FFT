@@ -54,7 +54,6 @@ export function LinkAccountScreen() {
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
         <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('link.title')}</Text>
-        <Text muted>{t('link.intro')}</Text>
         <Card gap={12}>
           <Input
             label={t('auth.email')}
@@ -79,9 +78,6 @@ export function LinkAccountScreen() {
             onSubmitEditing={() => void submit()}
           />
         </Card>
-        <Text variant="bodyS" muted>
-          {t('link.dataNote')}
-        </Text>
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}

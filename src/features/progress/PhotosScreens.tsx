@@ -89,8 +89,6 @@ export function PhotosScreen() {
         ))}
       </View>
 
-      {days.length === 0 && !photos.isPending ? <Text muted>{t('photos.empty')}</Text> : null}
-
       <View style={{ gap: 14 }}>
         {days.map((day) => {
           const set = (photos.data ?? []).filter((p) => p.day === day);
@@ -212,9 +210,7 @@ export function ComparePhotosScreen() {
         ))}
       </View>
 
-      {days.length < 2 ? (
-        <Text muted>{t('photos.needTwo')}</Text>
-      ) : (
+      {days.length < 2 ? null : (
         <>
           {mode === 'side' ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -285,9 +281,6 @@ export function ComparePhotosScreen() {
               </View>
             </Card>
           ) : null}
-          <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
-            {t('photos.fairTip')}
-          </Text>
         </>
       )}
 

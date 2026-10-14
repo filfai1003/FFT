@@ -78,13 +78,10 @@ export function StrengthScreen() {
               stretch
               accessibilityLabel={t('progress.strengthChart', { pct: signed(s.overall) })}
             />
-            <Text variant="bodyS" muted>
-              {t('progress.strengthExplain')}
-            </Text>
           </>
         ) : (
-          <Text variant="bodyS" muted>
-            {t('progress.strengthEmpty')}
+          <Text variant="displayL" numeric muted>
+            {'—'}
           </Text>
         )}
       </Card>
@@ -130,11 +127,6 @@ export function StrengthScreen() {
           })}
         </Section>
       )}
-      {s.groups.length === 0 && !s.isPending ? (
-        <Text variant="bodyS" muted>
-          {t('progress.groupsEmpty')}
-        </Text>
-      ) : null}
     </Screen>
   );
 }
@@ -250,8 +242,8 @@ export function MuscleGroupScreen() {
             />
           </>
         ) : (
-          <Text variant="bodyS" muted>
-            {t('progress.groupsEmpty')}
+          <Text variant="displayL" numeric muted>
+            {'—'}
           </Text>
         )}
         <View

@@ -102,7 +102,6 @@ export function ApiScreen() {
       <Screen scroll bottomBarHeight={allowed ? barHeight + 24 : 24} gap={14}>
         <TopBar onBack={goBack} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('api.title')}</Text>
-        <Text muted>{t('api.intro')}</Text>
 
         {!allowed ? (
           <Card gap={10}>
@@ -121,55 +120,43 @@ export function ApiScreen() {
               {address(t('api.restAddress'), REST_URL)}
             </Card>
 
-            <Card size="small" gap={0}>
-              <Text variant="label" muted style={{ paddingBottom: 4 }}>
-                {t('api.tokens')}
-              </Text>
-              {tokens.data?.length === 0 ? (
-                <Text variant="bodyS" muted style={{ paddingVertical: 12 }}>
-                  {t('api.noTokens')}
+            {tokens.data?.length ? (
+              <Card size="small" gap={0}>
+                <Text variant="label" muted style={{ paddingBottom: 4 }}>
+                  {t('api.tokens')}
                 </Text>
-              ) : null}
-              {(tokens.data ?? []).map((tok, i) => (
-                <View
-                  key={tok.id}
-                  style={{
-                    minHeight: 60,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12,
-                    borderTopWidth: i === 0 ? 0 : 1,
-                    borderColor: colors.borderDecorative,
-                  }}
-                >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text variant="bodyS">{tok.name}</Text>
-                    <Text variant="label" muted>
-                      {`${tok.prefix}… · ${
-                        tok.lastUsedAt
-                          ? t('api.lastUsed', { date: date(tok.lastUsedAt) })
-                          : t('api.neverUsed')
-                      }`}
-                    </Text>
+                {tokens.data.map((tok, i) => (
+                  <View
+                    key={tok.id}
+                    style={{
+                      minHeight: 60,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      borderTopWidth: i === 0 ? 0 : 1,
+                      borderColor: colors.borderDecorative,
+                    }}
+                  >
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text variant="bodyS">{tok.name}</Text>
+                      <Text variant="label" muted>
+                        {`${tok.prefix}… · ${
+                          tok.lastUsedAt
+                            ? t('api.lastUsed', { date: date(tok.lastUsedAt) })
+                            : t('api.neverUsed')
+                        }`}
+                      </Text>
+                    </View>
+                    <Button
+                      label={t('api.revoke')}
+                      block={false}
+                      variant="secondary"
+                      onPress={() => revoke(tok.id, tok.name)}
+                    />
                   </View>
-                  <Button
-                    label={t('api.revoke')}
-                    block={false}
-                    variant="secondary"
-                    onPress={() => revoke(tok.id, tok.name)}
-                  />
-                </View>
-              ))}
-            </Card>
-
-            <Card gap={8}>
-              <Text variant="label" muted>
-                {t('api.howTitle')}
-              </Text>
-              <Text variant="bodyS" muted>
-                {t('api.howBody')}
-              </Text>
-            </Card>
+                ))}
+              </Card>
+            ) : null}
           </>
         )}
       </Screen>

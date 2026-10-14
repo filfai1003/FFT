@@ -102,7 +102,6 @@ export function OnboardingFlow() {
           <Text variant="displayM" accessibilityRole="header">
             {t(`onboarding.${id}.title`)}
           </Text>
-          <Text muted>{t(`onboarding.${id}.subtitle`)}</Text>
         </View>
 
         {id === 'goal' ? <GoalStep draft={draft} patch={patch} /> : null}

@@ -200,9 +200,6 @@ export function ReminderRow({ kind, bare = false }: { kind: ReminderKind; bare?:
             />
           </>
         ) : null}
-        <Text variant="bodyS" muted>
-          {t('reminders.localNote')}
-        </Text>
       </Sheet>
 
       <Sheet

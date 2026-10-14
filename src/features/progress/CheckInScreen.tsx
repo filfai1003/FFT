@@ -209,9 +209,6 @@ export function CheckInScreen() {
           value={notes}
           onChangeText={setNotes}
         />
-        <Text variant="bodyS" muted>
-          {t('checkIn.tip')}
-        </Text>
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}

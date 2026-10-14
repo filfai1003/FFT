@@ -37,7 +37,7 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
       )}
       <View style={{ gap: 6 }}>
         <Text variant="screenTitle">{t('premium.plansTitle')}</Text>
-        <Text muted>{gate ? t('premium.gateIntro') : t('premium.plansIntro')}</Text>
+        {gate ? <Text muted>{t('premium.gateIntro')}</Text> : null}
       </View>
 
       {PLANS.map(({ plan, perks }) => {

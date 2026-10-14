@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { FormHeader } from '@/components/ui/FormHeader';
 import { Input } from '@/components/ui/Input';
@@ -233,9 +232,6 @@ export function PersonalInfoScreen() {
           }))}
         />
 
-        <Card size="small" tone="alt">
-          <Text variant="bodyS">{t('profile.personalNote')}</Text>
-        </Card>
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}

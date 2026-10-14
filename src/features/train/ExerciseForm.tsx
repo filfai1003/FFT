@@ -148,9 +148,6 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
           options={equipment.map((e) => ({ value: e, label: t(`exerciseForm.gear.${e}`) }))}
         />
 
-        <Text variant="bodyS" muted>
-          {t('exerciseForm.privacy')}
-        </Text>
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}

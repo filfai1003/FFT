@@ -47,16 +47,12 @@ export function AiHubScreen() {
     <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={goBack} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('ai.title')}</Text>
-      <Text muted>{t('ai.intro')}</Text>
 
       <IncludedCard />
 
       <Card gap={10}>
         <Text variant="label" muted>
           {t('ai.manualCardTitle')}
-        </Text>
-        <Text variant="bodyS" muted>
-          {t('ai.manualCardBody')}
         </Text>
         <Button
           label={t('ai.openManual')}
@@ -180,9 +176,7 @@ function IncludedCard() {
           })}
         </Text>
       ) : null}
-      {inUse ? (
-        <Text variant="bodyS">{t('ai.includedInUse')}</Text>
-      ) : (
+      {inUse ? null : (
         <Button
           label={t('ai.useIncluded')}
           variant="secondary"

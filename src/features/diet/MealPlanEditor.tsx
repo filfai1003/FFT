@@ -298,9 +298,6 @@ export function MealPlanEditor({
           />
         </View>
       </Card>
-      <Text variant="bodyS" muted>
-        {t('fixed.autoSplitNote')}
-      </Text>
 
       <ChipGroup
         legend={t('fixed.workoutWhere')}

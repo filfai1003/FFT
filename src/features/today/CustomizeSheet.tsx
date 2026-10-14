@@ -72,7 +72,6 @@ export function CustomizeSheet({ visible, onClose }: { visible: boolean; onClose
       title={t('today.customize')}
       closeLabel={t('common.close')}
     >
-      <Text muted>{t('today.customizeHint')}</Text>
       <View>
         {widgets.map((w, i) => {
           const name = t(`today.widget.${w.id}`);

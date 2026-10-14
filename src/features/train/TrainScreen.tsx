@@ -13,7 +13,7 @@ import { Section } from '@/components/ui/Section';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { relativeDay, weekdayName, localDay, deviceTimeZone } from '@/domain/day';
+import { relativeDay } from '@/domain/day';
 import { useToday } from '@/features/profile/use-today';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
 import { useStartWorkout } from '@/features/session/start';
@@ -48,8 +48,6 @@ export function TrainScreen() {
   const openPlan = () =>
     plan && router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } });
 
-  const outOfOrder = plan && rotation ? outOfOrderNote(plan, rotation, t as Translate) : null;
-
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
@@ -75,7 +73,6 @@ export function TrainScreen() {
         {!isPending && !plan ? (
           <Card gap={12}>
             <Text variant="titleM">{t('train.emptyTitle')}</Text>
-            <Text muted>{t('train.emptyBody')}</Text>
             <Button label={t('train.createPlan')} onPress={() => setCreating(true)} />
             <Button
               label={t('train.emptyWorkout')}
@@ -128,11 +125,6 @@ export function TrainScreen() {
                   </View>
                 ))}
               </View>
-              {outOfOrder ? (
-                <Text variant="bodyS" muted>
-                  {outOfOrder}
-                </Text>
-              ) : null}
             </Section>
           </Reveal>
         ) : null}
@@ -275,26 +267,4 @@ function whenLabel(day: string, today: string, t: T): string {
   if (r.kind === 'yesterday') return t('common.yesterday');
   if (r.kind === 'daysAgo') return t('common.daysAgo', { count: r.days });
   return r.label;
-}
-
-/** "Legs was done out of order on Wednesday, so Push is still up next." */
-function outOfOrderNote(
-  plan: PlanView,
-  rotation: NonNullable<ReturnType<typeof useRotation>>,
-  t: T,
-) {
-  const next = plan.days.find((d) => d.id === rotation.state.upNextDayId);
-  if (!next) return null;
-  const tz = deviceTimeZone();
-  for (const day of plan.days) {
-    const s = rotation.doneThisCycle.get(day.id);
-    if (s?.out_of_order) {
-      return t('train.outOfOrderNote', {
-        done: day.name,
-        weekday: weekdayName(localDay(new Date(s.started_at), tz)),
-        next: next.name,
-      });
-    }
-  }
-  return null;
 }

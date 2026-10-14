@@ -166,9 +166,6 @@ export function LookScreen() {
         </View>
         <View style={{ gap: 8 }}>
           <Text>{t('settings.workoutTheme')}</Text>
-          <Text variant="bodyS" muted>
-            {t('settings.workoutThemeHint')}
-          </Text>
           <Segmented
             accessibilityLabel={t('settings.workoutTheme')}
             value={prefs.workoutTheme}
