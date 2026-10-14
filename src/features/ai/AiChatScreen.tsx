@@ -207,7 +207,7 @@ export function AiChatScreen() {
           </Card>
         ) : messages.length === 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {(['day', 'week', 'strength', 'plan'] as const).map((k) => (
+            {(['day', 'week', 'strength'] as const).map((k) => (
               <Button
                 key={k}
                 label={t(`ai.suggest.${k}`)}

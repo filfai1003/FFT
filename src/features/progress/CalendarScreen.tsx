@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
@@ -9,14 +9,12 @@ import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { addDays, monthYearLabel, shortDateLabel, weekOf } from '@/domain/day';
-import { dietDayStatus, goalForDay, targetForDay } from '@/domain/diet';
-import { useGoals, useDayTotals } from '@/features/diet/log';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { monthGrid, shiftMonth } from '@/features/train/HistoryScreen';
-import { type SessionView } from '@/features/train/history';
 import { goBack as goBackTo } from '@/lib/navigation';
 import { CalendarGrid, CalendarLegend, useCalendarData } from './CalendarGrid';
+import { DayDetail } from './DayDetail';
 
 export type CalendarMode = 'week' | 'month';
 
@@ -106,98 +104,7 @@ export function CalendarScreen() {
         <CalendarLegend />
       </Card>
 
-      <DayDetail day={selected} today={today} sessions={data.sessionsByDay.get(selected) ?? []} />
+      <DayDetail day={selected} sessions={data.sessionsByDay.get(selected) ?? []} />
     </Screen>
-  );
-}
-
-/** What happened on the selected day: workouts and the diet against its target. */
-function DayDetail({
-  day,
-  today,
-  sessions,
-}: {
-  day: string;
-  today: string;
-  sessions: SessionView[];
-}) {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const goals = useGoals();
-  const totals = useDayTotals(day);
-  const goal = goalForDay(goals.data ?? [], day);
-  const target = goal ? targetForDay(goal, sessions.length > 0) : null;
-  const eaten = totals.data;
-  const status = target && eaten ? dietDayStatus(eaten.kcal, target.kcal) : 'none';
-  const future = day > today;
-
-  return (
-    <Card gap={12}>
-      <Text variant="label" muted>
-        {shortDateLabel(day)}
-      </Text>
-
-      <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
-          {t('calendar.workouts')}
-        </Text>
-        {sessions.length === 0 ? (
-          <Text variant="bodyS" muted>
-            {future ? t('calendar.future') : t('calendar.noWorkout')}
-          </Text>
-        ) : (
-          sessions.map((s) => (
-            <Pressable
-              key={s.id}
-              accessibilityRole="button"
-              accessibilityLabel={s.name || t('train.emptyWorkout')}
-              onPress={() =>
-                router.push({
-                  pathname: '/progress/history/[sessionId]',
-                  params: { sessionId: s.id },
-                })
-              }
-              style={{ minHeight: 44, justifyContent: 'center' }}
-            >
-              <Text variant="body">{s.name || t('train.emptyWorkout')}</Text>
-              <Text variant="label" muted>
-                {t('calendar.workoutInfo', { sets: s.stats.sets })}
-              </Text>
-            </Pressable>
-          ))
-        )}
-      </View>
-
-      <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
-          {t('calendar.diet')}
-        </Text>
-        {future || !eaten || eaten.kcal <= 0 ? (
-          <Text variant="bodyS" muted>
-            {future ? t('calendar.future') : t('calendar.noDiet')}
-          </Text>
-        ) : (
-          <>
-            <Text variant="body">
-              {t('calendar.dietLine', {
-                eaten: Math.round(eaten.kcal),
-                target: Math.round(target?.kcal ?? 0),
-              })}
-            </Text>
-            <Text variant="label" muted>
-              {t('diet.mealLine', {
-                kcal: Math.round(eaten.kcal),
-                p: Math.round(eaten.protein),
-                c: Math.round(eaten.carbs),
-                f: Math.round(eaten.fat),
-              })}
-            </Text>
-            <Text variant="label" muted>
-              {status === 'onTarget' ? t('calendar.dietOnTarget') : t('calendar.dietOff')}
-            </Text>
-          </>
-        )}
-      </View>
-    </Card>
   );
 }

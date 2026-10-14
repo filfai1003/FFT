@@ -8,6 +8,12 @@ import { dietDayStatus, goalForDay, targetForDay, type DietDayStatus } from '@/d
 import { useGoals } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
 import { useMonthSessions, type SessionView } from '@/features/train/history';
+import {
+  supplementDay,
+  useSupplementLogs,
+  useSupplements,
+  type SupplementDay,
+} from '@/features/supplements/data';
 import { getSupabase } from '@/lib/supabase';
 
 /** Calories eaten on each day of a month (from the same view as Today and the diary). */
@@ -34,6 +40,7 @@ function useMonthKcal(ym: string) {
 export type CalendarData = {
   sessionsByDay: Map<string, SessionView[]>;
   statusOf: (day: string) => DietDayStatus;
+  supplementsOf: (day: string) => SupplementDay;
 };
 
 /** Workouts and diet status per day for the given months (a week can span two). */
@@ -44,6 +51,11 @@ export function useCalendarData(yms: readonly [string, string]): CalendarData {
   const kcalA = useMonthKcal(yms[0]);
   const kcalB = useMonthKcal(yms[1]);
   const goals = useGoals();
+  const lastDay = new Date(
+    Date.UTC(Number(yms[1].slice(0, 4)), Number(yms[1].slice(5, 7)), 0),
+  ).getUTCDate();
+  const supplements = useSupplements();
+  const taken = useSupplementLogs(`${yms[0]}-01`, `${yms[1]}-${String(lastDay).padStart(2, '0')}`);
 
   const sessionsByDay = new Map<string, SessionView[]>();
   for (const s of [...(first.data ?? []), ...(yms[1] === yms[0] ? [] : (second.data ?? []))]) {
@@ -59,7 +71,9 @@ export function useCalendarData(yms: readonly [string, string]): CalendarData {
     const kcal = (day.slice(0, 7) === yms[0] ? kcalA : kcalB).data?.get(day) ?? 0;
     return dietDayStatus(kcal, target.kcal);
   };
-  return { sessionsByDay, statusOf };
+  const supplementsOf = (day: string): SupplementDay =>
+    supplementDay(taken.data?.get(day), supplements.data ?? []);
+  return { sessionsByDay, statusOf, supplementsOf };
 }
 
 /** Rows of 7 days (null = empty cell) with the weekday letters on top. */
@@ -83,14 +97,7 @@ export function CalendarGrid({
   const letters =
     weekStart === 'mon' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const dot = (filled: boolean, ring: boolean) => ({
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: filled ? colors.dotOn : 'transparent',
-    borderWidth: filled ? 0 : 1,
-    borderColor: ring ? colors.text : colors.dotOff,
-  });
+  const dot = trackDot(colors);
 
   return (
     <>
@@ -106,6 +113,7 @@ export function CalendarGrid({
           const future = day != null && day > today;
           const trained = day != null && data.sessionsByDay.has(day);
           const status = day != null && !future ? data.statusOf(day) : 'none';
+          const supps = day != null && !future ? data.supplementsOf(day) : 'none';
           const isSelected = day === selected;
           const isToday = day === today;
           return (
@@ -120,6 +128,11 @@ export function CalendarGrid({
                       ? t('calendar.dietOnTarget')
                       : status === 'off'
                         ? t('calendar.dietOff')
+                        : null,
+                    supps === 'all'
+                      ? t('calendar.supplementsAll')
+                      : supps === 'some'
+                        ? t('calendar.supplementsSome')
                         : null,
                   ]
                     .filter(Boolean)
@@ -143,9 +156,20 @@ export function CalendarGrid({
                   }}
                 >
                   <Text variant="label">{dayOfMonth(day)}</Text>
-                  <View style={{ flexDirection: 'row', gap: 4 }}>
-                    <View style={dot(trained, trained)} />
-                    <View style={dot(status === 'onTarget', status === 'off')} />
+                  <View style={{ flexDirection: 'row', gap: 3 }}>
+                    <View style={dot(colors.track.workout, trained ? 'full' : 'empty')} />
+                    <View
+                      style={dot(
+                        colors.track.diet,
+                        status === 'onTarget' ? 'full' : status === 'off' ? 'ring' : 'empty',
+                      )}
+                    />
+                    <View
+                      style={dot(
+                        colors.track.supplement,
+                        supps === 'all' ? 'full' : supps === 'some' ? 'ring' : 'empty',
+                      )}
+                    />
                   </View>
                 </Pressable>
               ) : null}
@@ -157,21 +181,30 @@ export function CalendarGrid({
   );
 }
 
+/**
+ * One calendar dot: `full` = done / on target, `ring` = off target / only part, `empty` = nothing.
+ * The shape always tells the state; the colour only tells which of the three it is.
+ */
+function trackDot(colors: { dotOff: string }) {
+  return (color: string, state: 'full' | 'ring' | 'empty') => ({
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: state === 'full' ? color : 'transparent',
+    borderWidth: state === 'full' ? 0 : 1.5,
+    borderColor: state === 'ring' ? color : colors.dotOff,
+  });
+}
+
 export function CalendarLegend() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const dot = (filled: boolean, ring: boolean) => ({
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: filled ? colors.dotOn : 'transparent',
-    borderWidth: filled ? 0 : 1,
-    borderColor: ring ? colors.text : colors.dotOff,
-  });
+  const dot = trackDot(colors);
   const items = [
-    [dot(true, true), t('calendar.legendWorkout')],
-    [dot(true, false), t('calendar.legendDietOn')],
-    [dot(false, true), t('calendar.legendDietOff')],
+    [dot(colors.track.workout, 'full'), t('calendar.legendWorkout')],
+    [dot(colors.track.diet, 'full'), t('calendar.legendDietOn')],
+    [dot(colors.track.supplement, 'full'), t('calendar.legendSupplements')],
+    [dot(colors.textMuted, 'ring'), t('calendar.legendPartly')],
   ] as const;
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingTop: 4 }}>

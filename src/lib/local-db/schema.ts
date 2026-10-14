@@ -248,6 +248,17 @@ export const columns: Record<string, string[]> = {
     'deleted_at',
   ],
   water_logs: ['id', 'user_id', 'day', 'ml', 'created_at', 'updated_at', 'deleted_at'],
+  supplements: ['id', 'user_id', 'name', 'dose', 'position', 'created_at', 'updated_at', 'deleted_at'],
+  supplement_logs: [
+    'id',
+    'user_id',
+    'day',
+    'supplement_id',
+    'taken_at',
+    'created_at',
+    'updated_at',
+    'deleted_at',
+  ],
   body_metrics: [
     'id',
     'user_id',
@@ -308,6 +319,8 @@ const userOwned = new Set([
   'body_metrics',
   'body_goals',
   'progress_photos',
+  'supplements',
+  'supplement_logs',
 ]);
 
 const specific: Record<string, () => Row> = {
@@ -332,6 +345,8 @@ const specific: Record<string, () => Row> = {
     checked_at: new Date().toISOString(),
   }),
   consents: () => ({ granted_at: new Date().toISOString() }),
+  supplements: () => ({ position: 0 }),
+  supplement_logs: () => ({ taken_at: new Date().toISOString() }),
   profiles: () => ({ timezone: 'UTC', diet_mode: 'tracking' }),
   user_settings: () => ({
     weight_unit: 'kg',
@@ -470,6 +485,13 @@ export const uniques: Record<string, Unique[]> = {
     {
       name: 'fixed_meal_checks_one_per_day_idx',
       cols: ['user_id', 'day', 'fixed_meal_id'],
+      when: alive,
+    },
+  ],
+  supplement_logs: [
+    {
+      name: 'supplement_logs_one_per_day_idx',
+      cols: ['user_id', 'day', 'supplement_id'],
       when: alive,
     },
   ],

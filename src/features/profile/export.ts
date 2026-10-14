@@ -45,6 +45,8 @@ const TABLES = [
   'body_metrics',
   'body_goals',
   'progress_photos',
+  'supplements',
+  'supplement_logs',
 ] as const;
 
 export type ExportData = Record<(typeof TABLES)[number], Row[]>;

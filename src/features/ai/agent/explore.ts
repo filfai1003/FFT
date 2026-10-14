@@ -29,6 +29,8 @@ const ABOUT: Record<string, string> = {
   food_logs: 'Foods eaten (tracking mode): day, meal, name, grams, kcal and macros.',
   daily_nutrition_totals: 'Calories and macros eaten per day (food logs + done fixed meals).',
   water_logs: 'Water drunk: day and ml (several entries a day).',
+  supplements: 'The supplements the user takes (creatine, vitamins…): name and dose.',
+  supplement_logs: 'Each day a supplement was taken (day, supplement_id).',
   fixed_meal_plans: 'Set-meal plans (fixed meals mode); one is active.',
   fixed_meals: 'The meals of a fixed meal plan, with kcal and macros.',
   fixed_meal_checks: 'Each day a fixed meal was done / adjusted / skipped.',

@@ -47,6 +47,8 @@ const light = {
   exerciseBorderEmpty: '#C9C4BC',
   accentDefault: accentOptions.red,
   macroSplit: { protein: '#2F6FE4', carbs: '#E8890C', fat: '#1F9D63' },
+  /** Calendar dots: training, nutrition, supplements (always with a shape too, never colour alone). */
+  track: { workout: '#2F6FE4', diet: '#1A8A57', supplement: '#8A4FD8' },
   macroSoft: { protein: '#E4ECFB', carbs: '#FBEBD3', fat: '#DDF1E7' },
   overlay: 'rgba(25,25,23,0.45)',
 } as const;
@@ -86,6 +88,7 @@ const dark: Palette = {
   exerciseBorderEmpty: '#5A5752',
   accentDefault: accentOptions.red,
   macroSplit: { protein: '#5B8DEF', carbs: '#F0A23B', fat: '#3DBE84' },
+  track: { workout: '#5B8DEF', diet: '#3DBE84', supplement: '#B48CF2' },
   macroSoft: { protein: '#1B2638', carbs: '#2B2114', fat: '#16251D' },
   overlay: 'rgba(0,0,0,0.6)',
 };

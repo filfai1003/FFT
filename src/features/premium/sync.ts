@@ -46,6 +46,8 @@ export const SYNC_ORDER = [
   'body_metrics',
   'body_goals',
   'progress_photos',
+  'supplements',
+  'supplement_logs',
 ] as const;
 
 const PHOTOS = 'progress-photos';

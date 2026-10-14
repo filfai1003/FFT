@@ -985,6 +985,74 @@ export type Database = {
         };
         Relationships: [];
       };
+      supplements: {
+        Row: {
+          created_at: string;
+          deleted_at: string | null;
+          dose: string | null;
+          id: string;
+          name: string;
+          position: number;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          deleted_at?: string | null;
+          dose?: string | null;
+          id?: string;
+          name: string;
+          position?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          deleted_at?: string | null;
+          dose?: string | null;
+          id?: string;
+          name?: string;
+          position?: number;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      supplement_logs: {
+        Row: {
+          created_at: string;
+          day: string;
+          deleted_at: string | null;
+          id: string;
+          supplement_id: string;
+          taken_at: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          day: string;
+          deleted_at?: string | null;
+          id?: string;
+          supplement_id: string;
+          taken_at?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          day?: string;
+          deleted_at?: string | null;
+          id?: string;
+          supplement_id?: string;
+          taken_at?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       workout_plans: {
         Row: {
           created_at: string;

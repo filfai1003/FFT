@@ -33,6 +33,7 @@ describe('tokens match docs/design/tokens.json', () => {
     for (const key of keys) expect(color[key]).toBe(json.color[key]);
     expect(color.divider).toBe(json.color.divider.color);
     expect(color.macroSplit).toEqual(json.color.macroSplit);
+    expect(color.track).toEqual(json.color.track);
     expect(accentOptions).toEqual(json.color.accentOptions);
   });
 
@@ -79,6 +80,8 @@ describe('theme', () => {
         expect(contrast(normal.text, ground)).toBeGreaterThanOrEqual(4.5);
         expect(contrast(normal.textMuted, ground)).toBeGreaterThanOrEqual(4.5);
         expect(contrast(normal.borderControl, ground)).toBeGreaterThanOrEqual(3);
+        for (const dot of Object.values(normal.track))
+          expect(contrast(dot, ground)).toBeGreaterThanOrEqual(3);
       }
       expect(contrast(high.borderControl, normal.surface)).toBeGreaterThan(
         contrast(normal.borderControl, normal.surface),
