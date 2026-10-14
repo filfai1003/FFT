@@ -46,3 +46,5 @@ example
 .idea/
 .secrets/
 /build
+tools/exercise-images/raw/
+tools/exercise-images/meshy_output/

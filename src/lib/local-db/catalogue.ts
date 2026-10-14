@@ -27,7 +27,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders', 'triceps'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'incline-bench-press.png',
   },
   {
     slug: 'decline-bench-press',
@@ -36,7 +36,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'decline-bench-press.png',
   },
   {
     slug: 'db-bench-press',
@@ -45,7 +45,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders', 'triceps'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'db-bench-press.png',
   },
   {
     slug: 'incline-db-press',
@@ -54,7 +54,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders', 'triceps'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'incline-db-press.png',
   },
   {
     slug: 'db-fly',
@@ -63,7 +63,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'db-fly.png',
   },
   {
     slug: 'cable-fly',
@@ -72,7 +72,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'cable-fly.png',
   },
   {
     slug: 'pec-deck',
@@ -81,7 +81,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'pec-deck.png',
   },
   {
     slug: 'chest-press-machine',
@@ -90,7 +90,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders', 'triceps'],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'chest-press-machine.png',
   },
   {
     slug: 'push-up',
@@ -99,7 +99,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders', 'triceps'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'push-up.png',
   },
   {
     slug: 'chest-dip',
@@ -108,7 +108,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps', 'shoulders'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'chest-dip.png',
   },
   {
     slug: 'pull-up',
@@ -117,7 +117,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'pull-up.png',
   },
   {
     slug: 'chin-up',
@@ -126,7 +126,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'chin-up.png',
   },
   {
     slug: 'lat-pulldown',
@@ -135,7 +135,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'lat-pulldown.png',
   },
   {
     slug: 'barbell-row',
@@ -144,7 +144,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps', 'shoulders'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'barbell-row.png',
   },
   {
     slug: 'db-row',
@@ -153,7 +153,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'db-row.png',
   },
   {
     slug: 'seated-cable-row',
@@ -162,7 +162,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'seated-cable-row.png',
   },
   {
     slug: 't-bar-row',
@@ -171,7 +171,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 't-bar-row.png',
   },
   {
     slug: 'chest-supported-row',
@@ -180,7 +180,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'chest-supported-row.png',
   },
   {
     slug: 'straight-arm-pulldown',
@@ -189,7 +189,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'straight-arm-pulldown.png',
   },
   {
     slug: 'face-pull',
@@ -198,7 +198,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'face-pull.png',
   },
   {
     slug: 'deadlift',
@@ -216,7 +216,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'rack-pull.png',
   },
   {
     slug: 'back-extension',
@@ -225,7 +225,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes', 'legs'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'back-extension.png',
   },
   {
     slug: 'inverted-row',
@@ -234,7 +234,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'inverted-row.png',
   },
   {
     slug: 'overhead-press',
@@ -243,7 +243,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'overhead-press.png',
   },
   {
     slug: 'seated-db-shoulder-press',
@@ -252,7 +252,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'seated-db-shoulder-press.png',
   },
   {
     slug: 'arnold-press',
@@ -261,7 +261,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'arnold-press.png',
   },
   {
     slug: 'machine-shoulder-press',
@@ -270,7 +270,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['triceps'],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'machine-shoulder-press.png',
   },
   {
     slug: 'lateral-raise',
@@ -279,7 +279,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'lateral-raise.png',
   },
   {
     slug: 'cable-lateral-raise',
@@ -288,7 +288,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'cable-lateral-raise.png',
   },
   {
     slug: 'front-raise',
@@ -297,7 +297,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'front-raise.png',
   },
   {
     slug: 'rear-delt-fly',
@@ -306,7 +306,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['back'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'rear-delt-fly.png',
   },
   {
     slug: 'upright-row',
@@ -315,7 +315,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['biceps'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'upright-row.png',
   },
   {
     slug: 'db-shrug',
@@ -324,7 +324,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['back'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'db-shrug.png',
   },
   {
     slug: 'biceps-curl',
@@ -333,7 +333,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'biceps-curl.png',
   },
   {
     slug: 'barbell-curl',
@@ -342,7 +342,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'barbell-curl.png',
   },
   {
     slug: 'hammer-curl',
@@ -351,7 +351,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'hammer-curl.png',
   },
   {
     slug: 'incline-db-curl',
@@ -360,7 +360,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'incline-db-curl.png',
   },
   {
     slug: 'preacher-curl',
@@ -369,7 +369,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'preacher-curl.png',
   },
   {
     slug: 'cable-curl',
@@ -378,7 +378,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'cable-curl.png',
   },
   {
     slug: 'pushdown',
@@ -387,7 +387,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'pushdown.png',
   },
   {
     slug: 'rope-pushdown',
@@ -396,7 +396,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'rope-pushdown.png',
   },
   {
     slug: 'skull-crusher',
@@ -405,7 +405,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'skull-crusher.png',
   },
   {
     slug: 'overhead-triceps-extension',
@@ -414,7 +414,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'overhead-triceps-extension.png',
   },
   {
     slug: 'close-grip-bench-press',
@@ -423,7 +423,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['chest', 'shoulders'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'close-grip-bench-press.png',
   },
   {
     slug: 'bench-dip',
@@ -432,7 +432,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'bench-dip.png',
   },
   {
     slug: 'back-squat',
@@ -450,7 +450,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes', 'abs'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'front-squat.png',
   },
   {
     slug: 'goblet-squat',
@@ -459,7 +459,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'goblet-squat.png',
   },
   {
     slug: 'hack-squat',
@@ -468,7 +468,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'hack-squat.png',
   },
   {
     slug: 'leg-press',
@@ -477,7 +477,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'leg-press.png',
   },
   {
     slug: 'romanian-deadlift',
@@ -486,7 +486,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes', 'back'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'romanian-deadlift.png',
   },
   {
     slug: 'leg-extension',
@@ -495,7 +495,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'leg-extension.png',
   },
   {
     slug: 'lying-leg-curl',
@@ -504,7 +504,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'lying-leg-curl.png',
   },
   {
     slug: 'seated-leg-curl',
@@ -513,7 +513,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'seated-leg-curl.png',
   },
   {
     slug: 'walking-lunge',
@@ -522,7 +522,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'walking-lunge.png',
   },
   {
     slug: 'bulgarian-split-squat',
@@ -531,7 +531,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['glutes'],
     equipment: 'dumbbells',
     log: 'weight_reps',
-    image: null,
+    image: 'bulgarian-split-squat.png',
   },
   {
     slug: 'standing-calf-raise',
@@ -540,7 +540,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'standing-calf-raise.png',
   },
   {
     slug: 'seated-calf-raise',
@@ -549,7 +549,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'weight_reps',
-    image: null,
+    image: 'seated-calf-raise.png',
   },
   {
     slug: 'hip-thrust',
@@ -558,7 +558,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['legs'],
     equipment: 'barbell',
     log: 'weight_reps',
-    image: null,
+    image: 'hip-thrust.png',
   },
   {
     slug: 'glute-bridge',
@@ -567,7 +567,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['legs'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'glute-bridge.png',
   },
   {
     slug: 'cable-kickback',
@@ -576,7 +576,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'cable-kickback.png',
   },
   {
     slug: 'plank',
@@ -585,7 +585,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'bodyweight',
     log: 'time',
-    image: null,
+    image: 'plank.png',
   },
   {
     slug: 'side-plank',
@@ -594,7 +594,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'bodyweight',
     log: 'time',
-    image: null,
+    image: 'side-plank.png',
   },
   {
     slug: 'crunch',
@@ -603,7 +603,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'crunch.png',
   },
   {
     slug: 'cable-crunch',
@@ -612,7 +612,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'cables',
     log: 'weight_reps',
-    image: null,
+    image: 'cable-crunch.png',
   },
   {
     slug: 'hanging-leg-raise',
@@ -621,7 +621,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'hanging-leg-raise.png',
   },
   {
     slug: 'ab-wheel-rollout',
@@ -630,7 +630,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['shoulders'],
     equipment: 'bodyweight',
     log: 'reps',
-    image: null,
+    image: 'ab-wheel-rollout.png',
   },
   {
     slug: 'treadmill-run',
@@ -639,7 +639,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'distance_time',
-    image: null,
+    image: 'treadmill-run.png',
   },
   {
     slug: 'rowing-machine',
@@ -648,7 +648,7 @@ export const catalogue: CatalogueExercise[] = [
     secondary: ['legs'],
     equipment: 'machine',
     log: 'distance_time',
-    image: null,
+    image: 'rowing-machine.png',
   },
   {
     slug: 'stationary-bike',
@@ -657,13 +657,83 @@ export const catalogue: CatalogueExercise[] = [
     secondary: [],
     equipment: 'machine',
     log: 'distance_time',
-    image: null,
+    image: 'stationary-bike.png',
   },
 ];
 
 /** Images bundled with the app, by the file name stored in `image_path`. */
 export const catalogueImages: Record<string, number> = {
+  'ab-wheel-rollout.png': require('../../../assets/exercise-images/ab-wheel-rollout.png'),
+  'arnold-press.png': require('../../../assets/exercise-images/arnold-press.png'),
+  'back-extension.png': require('../../../assets/exercise-images/back-extension.png'),
   'back-squat.png': require('../../../assets/exercise-images/back-squat.png'),
+  'barbell-curl.png': require('../../../assets/exercise-images/barbell-curl.png'),
+  'barbell-row.png': require('../../../assets/exercise-images/barbell-row.png'),
+  'bench-dip.png': require('../../../assets/exercise-images/bench-dip.png'),
   'bench-press.png': require('../../../assets/exercise-images/bench-press.png'),
+  'biceps-curl.png': require('../../../assets/exercise-images/biceps-curl.png'),
+  'bulgarian-split-squat.png': require('../../../assets/exercise-images/bulgarian-split-squat.png'),
+  'cable-crunch.png': require('../../../assets/exercise-images/cable-crunch.png'),
+  'cable-curl.png': require('../../../assets/exercise-images/cable-curl.png'),
+  'cable-fly.png': require('../../../assets/exercise-images/cable-fly.png'),
+  'cable-kickback.png': require('../../../assets/exercise-images/cable-kickback.png'),
+  'cable-lateral-raise.png': require('../../../assets/exercise-images/cable-lateral-raise.png'),
+  'chest-dip.png': require('../../../assets/exercise-images/chest-dip.png'),
+  'chest-press-machine.png': require('../../../assets/exercise-images/chest-press-machine.png'),
+  'chest-supported-row.png': require('../../../assets/exercise-images/chest-supported-row.png'),
+  'chin-up.png': require('../../../assets/exercise-images/chin-up.png'),
+  'close-grip-bench-press.png': require('../../../assets/exercise-images/close-grip-bench-press.png'),
+  'crunch.png': require('../../../assets/exercise-images/crunch.png'),
+  'db-bench-press.png': require('../../../assets/exercise-images/db-bench-press.png'),
+  'db-fly.png': require('../../../assets/exercise-images/db-fly.png'),
+  'db-row.png': require('../../../assets/exercise-images/db-row.png'),
+  'db-shrug.png': require('../../../assets/exercise-images/db-shrug.png'),
   'deadlift.png': require('../../../assets/exercise-images/deadlift.png'),
+  'decline-bench-press.png': require('../../../assets/exercise-images/decline-bench-press.png'),
+  'default.png': require('../../../assets/exercise-images/default.png'),
+  'face-pull.png': require('../../../assets/exercise-images/face-pull.png'),
+  'front-raise.png': require('../../../assets/exercise-images/front-raise.png'),
+  'front-squat.png': require('../../../assets/exercise-images/front-squat.png'),
+  'glute-bridge.png': require('../../../assets/exercise-images/glute-bridge.png'),
+  'goblet-squat.png': require('../../../assets/exercise-images/goblet-squat.png'),
+  'hack-squat.png': require('../../../assets/exercise-images/hack-squat.png'),
+  'hammer-curl.png': require('../../../assets/exercise-images/hammer-curl.png'),
+  'hanging-leg-raise.png': require('../../../assets/exercise-images/hanging-leg-raise.png'),
+  'hip-thrust.png': require('../../../assets/exercise-images/hip-thrust.png'),
+  'incline-bench-press.png': require('../../../assets/exercise-images/incline-bench-press.png'),
+  'incline-db-curl.png': require('../../../assets/exercise-images/incline-db-curl.png'),
+  'incline-db-press.png': require('../../../assets/exercise-images/incline-db-press.png'),
+  'inverted-row.png': require('../../../assets/exercise-images/inverted-row.png'),
+  'lat-pulldown.png': require('../../../assets/exercise-images/lat-pulldown.png'),
+  'lateral-raise.png': require('../../../assets/exercise-images/lateral-raise.png'),
+  'leg-extension.png': require('../../../assets/exercise-images/leg-extension.png'),
+  'leg-press.png': require('../../../assets/exercise-images/leg-press.png'),
+  'lying-leg-curl.png': require('../../../assets/exercise-images/lying-leg-curl.png'),
+  'machine-shoulder-press.png': require('../../../assets/exercise-images/machine-shoulder-press.png'),
+  'overhead-press.png': require('../../../assets/exercise-images/overhead-press.png'),
+  'overhead-triceps-extension.png': require('../../../assets/exercise-images/overhead-triceps-extension.png'),
+  'pec-deck.png': require('../../../assets/exercise-images/pec-deck.png'),
+  'plank.png': require('../../../assets/exercise-images/plank.png'),
+  'preacher-curl.png': require('../../../assets/exercise-images/preacher-curl.png'),
+  'pull-up.png': require('../../../assets/exercise-images/pull-up.png'),
+  'push-up.png': require('../../../assets/exercise-images/push-up.png'),
+  'pushdown.png': require('../../../assets/exercise-images/pushdown.png'),
+  'rack-pull.png': require('../../../assets/exercise-images/rack-pull.png'),
+  'rear-delt-fly.png': require('../../../assets/exercise-images/rear-delt-fly.png'),
+  'romanian-deadlift.png': require('../../../assets/exercise-images/romanian-deadlift.png'),
+  'rope-pushdown.png': require('../../../assets/exercise-images/rope-pushdown.png'),
+  'rowing-machine.png': require('../../../assets/exercise-images/rowing-machine.png'),
+  'seated-cable-row.png': require('../../../assets/exercise-images/seated-cable-row.png'),
+  'seated-calf-raise.png': require('../../../assets/exercise-images/seated-calf-raise.png'),
+  'seated-db-shoulder-press.png': require('../../../assets/exercise-images/seated-db-shoulder-press.png'),
+  'seated-leg-curl.png': require('../../../assets/exercise-images/seated-leg-curl.png'),
+  'side-plank.png': require('../../../assets/exercise-images/side-plank.png'),
+  'skull-crusher.png': require('../../../assets/exercise-images/skull-crusher.png'),
+  'standing-calf-raise.png': require('../../../assets/exercise-images/standing-calf-raise.png'),
+  'stationary-bike.png': require('../../../assets/exercise-images/stationary-bike.png'),
+  'straight-arm-pulldown.png': require('../../../assets/exercise-images/straight-arm-pulldown.png'),
+  't-bar-row.png': require('../../../assets/exercise-images/t-bar-row.png'),
+  'treadmill-run.png': require('../../../assets/exercise-images/treadmill-run.png'),
+  'upright-row.png': require('../../../assets/exercise-images/upright-row.png'),
+  'walking-lunge.png': require('../../../assets/exercise-images/walking-lunge.png'),
 };

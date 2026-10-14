@@ -40,6 +40,12 @@ export function useExerciseImageUri(e: ImageSource | null | undefined): string |
   return getMode() === 'cloud' && base ? exerciseImageUrl(base, path) : null;
 }
 
+/** The generic picture (same style as the catalogue) for exercises without their own image. */
+const fallback = catalogueImages['default.png'];
+
 export function ExerciseThumb({ exercise, size }: { exercise: ImageSource; size?: number }) {
-  return <ExerciseImage uri={useExerciseImageUri(exercise)} size={size} />;
+  const uri = useExerciseImageUri(exercise);
+  return (
+    <ExerciseImage uri={uri ?? (fallback ? Asset.fromModule(fallback).uri : null)} size={size} />
+  );
 }
