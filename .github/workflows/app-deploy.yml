@@ -45,4 +45,6 @@ jobs:
         with:
           profile: preview
           branch: preview
+          # Loads the EAS environment variables (backend URL and anon key) into the update bundle.
+          environment: preview
           platform: android

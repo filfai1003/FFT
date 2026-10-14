@@ -35,7 +35,12 @@ export function LinkAccountScreen() {
     setError(null);
     if (problems.length > 0 || busy) return;
     setBusy(true);
-    const result = await linkAccount({ email, password }, queryClient);
+    let result: Awaited<ReturnType<typeof linkAccount>>;
+    try {
+      result = await linkAccount({ email, password }, queryClient);
+    } catch {
+      result = { ok: false, error: 'failed' };
+    }
     setBusy(false);
     if (!result.ok) {
       setError(result.error === 'taken' ? t('link.taken') : (result.message ?? t('link.failed')));

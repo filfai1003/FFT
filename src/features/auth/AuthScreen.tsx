@@ -31,18 +31,24 @@ export function AuthScreen() {
     setMessage(null);
     if (problems.length > 0) return;
     setBusy(true);
-    if (mode === 'signIn') {
-      const error = await signIn({ email, password });
-      if (error) setMessage({ text: error, isError: true });
-    } else {
-      const result = await signUp({ email, password });
-      if (result.error) setMessage({ text: result.error, isError: true });
-      else if (result.needsConfirmation) {
-        setMessage({ text: t('auth.confirmEmail'), isError: false });
-        setMode('signIn');
+    try {
+      if (mode === 'signIn') {
+        const error = await signIn({ email, password });
+        if (error) setMessage({ text: error, isError: true });
+      } else {
+        const result = await signUp({ email, password });
+        if (result.error) setMessage({ text: result.error, isError: true });
+        else if (result.needsConfirmation) {
+          setMessage({ text: t('auth.confirmEmail'), isError: false });
+          setMode('signIn');
+        }
       }
+    } catch (e) {
+      // No server configured or no connection: say so instead of spinning forever.
+      setMessage({ text: e instanceof Error ? e.message : String(e), isError: true });
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   const forgot = async () => {
