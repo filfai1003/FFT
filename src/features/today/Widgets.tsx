@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
+import { Toggle } from '@/components/ui/Toggle';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
@@ -24,12 +25,7 @@ import { useMonthSessions } from '@/features/train/history';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
-import {
-  supplementDay,
-  useSetTaken,
-  useSupplementLogs,
-  useSupplements,
-} from '@/features/supplements/data';
+import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
 import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import type { WidgetId, WidgetSize } from './layout-store';
 
@@ -514,41 +510,16 @@ export function WeightWidget({ size }: Props) {
 }
 
 /**
- * Supplements of today (the same list and ticks as the calendar): how many were taken, the last
- * seven days, and one tap to mark them all. Tap the card to tick them one by one or edit the list.
+ * Today's supplements: the list (same as the calendar) with an on/off for each one taken.
+ * The pencil opens the list to add or remove supplements.
  */
 export function SupplementsWidget({ size }: Props) {
   const { t } = useTranslation();
-  const barHeight = useTabBarHeight();
   const today = useToday();
-  const showToast = useToastStore((s) => s.show);
   const [open, setOpen] = useState(false);
   const list = useSupplements().data ?? [];
-  const logs = useSupplementLogs(addDays(today, -6), today).data;
+  const taken = useSupplementLogs(today, today).data?.get(today);
   const setTaken = useSetTaken();
-  const takenToday = list.filter((s) => logs?.get(today)?.has(s.id)).length;
-  const all = list.length > 0 && takenToday === list.length;
-  const week = Array.from({ length: 7 }, (_, i) => addDays(today, -i)).filter(
-    (d) => supplementDay(logs?.get(d), list) === 'all',
-  ).length;
-
-  /** Marks every supplement of today (or, when all were taken, none); UNDO restores the ticks. */
-  const toggleAll = async () => {
-    const before = new Set(logs?.get(today) ?? []);
-    await Promise.all(
-      list.map((s) => setTaken.mutateAsync({ day: today, supplementId: s.id, taken: !all })),
-    );
-    confirm();
-    showToast({
-      message: all ? t('today.supplementsRemoved') : t('today.supplementsTaken'),
-      actionLabel: t('common.undo'),
-      bottomOffset: barHeight,
-      onAction: () =>
-        list.forEach((s) =>
-          setTaken.mutate({ day: today, supplementId: s.id, taken: before.has(s.id) }),
-        ),
-    });
-  };
 
   return (
     <>
@@ -556,44 +527,44 @@ export function SupplementsWidget({ size }: Props) {
         size={size}
         label={t('today.supplements')}
         right={
-          list.length ? (
-            <IconButton
-              icon="edit"
-              size={36}
-              accessibilityLabel={t('calendar.editSupplements')}
-              onPress={() => setOpen(true)}
-            />
-          ) : undefined
-        }
-      >
-        {list.length === 0 ? (
           <IconButton
-            icon="plus"
-            accessibilityLabel={t('today.supplementsAdd')}
+            icon={list.length ? 'edit' : 'plus'}
+            size={36}
+            accessibilityLabel={
+              list.length ? t('calendar.editSupplements') : t('today.supplementsAdd')
+            }
             onPress={() => setOpen(true)}
           />
-        ) : (
-          <>
-            <Text variant="displayS" numeric>
-              {t('today.supplementsCount', { taken: takenToday, total: list.length })}
-            </Text>
-            <DotBar
-              total={7}
-              on={week}
-              size={8}
-              gap={3}
-              off="outline"
-              accessibilityLabel={t('today.supplementsWeek', { n: week })}
-            />
-            <IconButton
-              icon={all ? 'close' : 'check'}
-              accessibilityLabel={
-                all ? t('today.supplementsUndoAll') : t('today.supplementsMarkAll')
-              }
-              onPress={() => void toggleAll()}
-            />
-          </>
-        )}
+        }
+      >
+        {list.map((s) => {
+          const label = s.dose ? `${s.name} · ${s.dose}` : s.name;
+          return (
+            <View
+              key={s.id}
+              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyS" numberOfLines={1}>
+                  {s.name}
+                </Text>
+                {s.dose ? (
+                  <Text variant="label" muted numberOfLines={1}>
+                    {s.dose}
+                  </Text>
+                ) : null}
+              </View>
+              <Toggle
+                value={taken?.has(s.id) ?? false}
+                accessibilityLabel={label}
+                onValueChange={(v) => {
+                  if (v) confirm();
+                  setTaken.mutate({ day: today, supplementId: s.id, taken: v });
+                }}
+              />
+            </View>
+          );
+        })}
       </Frame>
       <SupplementsSheet visible={open} onClose={() => setOpen(false)} day={today} />
     </>

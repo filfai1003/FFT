@@ -80,12 +80,6 @@
     "weightOn": "Logged {{day}}",
     "noWeight": "No weight yet. Tap to log it.",
     "supplements": "Supplements",
-    "supplementsCount": "{{taken}} of {{total}}",
-    "supplementsWeek": "All taken on {{n}} of the last 7 days",
-    "supplementsMarkAll": "Mark all supplements as taken",
-    "supplementsUndoAll": "Mark supplements as not taken",
-    "supplementsTaken": "Supplements taken",
-    "supplementsRemoved": "Supplements unmarked",
     "supplementsAdd": "Add a supplement"
   },
   "app": {
