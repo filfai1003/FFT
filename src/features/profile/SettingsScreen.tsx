@@ -18,45 +18,30 @@ import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ensurePermission } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
-import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
 import { ReminderRow } from '@/features/settings/ReminderRow';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 
-/** Settings: units, theme (app and workout), accent colour and notifications. */
-export function SettingsScreen() {
+/** One settings page (from Profile): back, title, content. */
+function SettingsPage({ title, children }: { title: string; children: React.ReactNode }) {
   const { t } = useTranslation();
-  const { colors, mode } = useTheme();
   const router = useRouter();
-  const prefs = usePreferencesStore();
-  const accent = useAppearanceStore((s) => s.accent);
-  const setAppearance = useAppearanceStore((s) => s.set);
-  const [denied, setDenied] = useState(false);
-
-  const toggleRestTimer = async (value: boolean) => {
-    // Switching it on asks the system first; without its permission nothing can be on.
-    if (value && !(await ensurePermission())) {
-      setDenied(true);
-      return;
-    }
-    prefs.set('notifications', { ...prefs.notifications, rest_timer: value });
-  };
-
-  const themeOptions = [
-    { value: 'light' as const, label: t('settings.themeLight') },
-    { value: 'dark' as const, label: t('settings.themeDark') },
-    { value: 'system' as const, label: t('settings.themeSystem') },
-  ];
-
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
-      <Text variant="screenTitle">{t('settings.title')}</Text>
+      <Text variant="screenTitle">{title}</Text>
+      {children}
+    </Screen>
+  );
+}
 
+/** Units: weight, length, energy, first day of the week. */
+export function UnitsScreen() {
+  const { t } = useTranslation();
+  const prefs = usePreferencesStore();
+  return (
+    <SettingsPage title={t('settings.units')}>
       <Card gap={0}>
-        <Text variant="label" muted style={{ paddingBottom: 8 }}>
-          {t('settings.units')}
-        </Text>
-        <UnitRow label={t('settings.weight')}>
+        <UnitRow label={t('settings.weight')} first>
           <Segmented
             accessibilityLabel={t('settings.weight')}
             value={prefs.weightUnit}
@@ -101,11 +86,25 @@ export function SettingsScreen() {
           />
         </UnitRow>
       </Card>
+    </SettingsPage>
+  );
+}
 
+/** Look: accent colour, app theme and workout theme. */
+export function LookScreen() {
+  const { t } = useTranslation();
+  const { colors, mode } = useTheme();
+  const prefs = usePreferencesStore();
+  const accent = useAppearanceStore((s) => s.accent);
+  const setAppearance = useAppearanceStore((s) => s.set);
+  const themeOptions = [
+    { value: 'light' as const, label: t('settings.themeLight') },
+    { value: 'dark' as const, label: t('settings.themeDark') },
+    { value: 'system' as const, label: t('settings.themeSystem') },
+  ];
+  return (
+    <SettingsPage title={t('settings.look')}>
       <Card gap={14}>
-        <Text variant="label" muted>
-          {t('settings.appearance')}
-        </Text>
         <View style={{ gap: 10 }}>
           <Text>{t('settings.accent')}</Text>
           <View
@@ -178,11 +177,29 @@ export function SettingsScreen() {
           />
         </View>
       </Card>
+    </SettingsPage>
+  );
+}
 
+/** Notifications: the rest timer and every reminder (the only place they are set). */
+export function NotificationsScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const prefs = usePreferencesStore();
+  const [denied, setDenied] = useState(false);
+
+  const toggleRestTimer = async (value: boolean) => {
+    // Switching it on asks the system first; without its permission nothing can be on.
+    if (value && !(await ensurePermission())) {
+      setDenied(true);
+      return;
+    }
+    prefs.set('notifications', { ...prefs.notifications, rest_timer: value });
+  };
+
+  return (
+    <SettingsPage title={t('settings.notifications')}>
       <Card gap={0}>
-        <Text variant="label" muted style={{ paddingBottom: 4 }}>
-          {t('settings.notifications')}
-        </Text>
         <View
           style={{
             minHeight: 56,
@@ -221,8 +238,6 @@ export function SettingsScreen() {
         ))}
       </Card>
 
-      <AppUpdateCard />
-
       <Sheet
         visible={denied}
         onClose={() => setDenied(false)}
@@ -238,7 +253,7 @@ export function SettingsScreen() {
           }}
         />
       </Sheet>
-    </Screen>
+    </SettingsPage>
   );
 }
 
@@ -246,10 +261,12 @@ function UnitRow({
   label,
   children,
   last,
+  first,
 }: {
   label: string;
   children: React.ReactNode;
   last?: boolean;
+  first?: boolean;
 }) {
   const { colors } = useTheme();
   return (
@@ -257,7 +274,7 @@ function UnitRow({
       style={{
         gap: 8,
         paddingVertical: 10,
-        borderTopWidth: 1,
+        borderTopWidth: first ? 0 : 1,
         borderColor: colors.borderDecorative,
         borderBottomWidth: 0,
         marginBottom: last ? -4 : 0,

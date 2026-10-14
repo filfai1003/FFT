@@ -28,7 +28,7 @@ Public URL: `https://your-backend.example.com` (the `backend` service domain, Ko
 (tracked in `public.app_migrations`), then `supabase/seed.sql` (the exercise catalogue, an idempotent
 upsert with the same ids as the app), and serves `off` and `delete-account` (the Deno files in
 `supabase/functions/`, run on Node by `server/index.js`). So a new migration or a function change
-reaches the server just by pushing to `main` (a catalogue-only change needs a redeploy of `api`).
+reaches the server just by pushing to `main` (`supabase/seed.sql` is in the watch patterns of `api` too).
 
 Secrets (`JWT_SECRET`, the anon and service-role keys, the database password) live only in Railway
 variables and in `.secrets/` (git-ignored). The anon key is public by design and is in the EAS env.

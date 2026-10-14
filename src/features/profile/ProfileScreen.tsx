@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
 import { goBack } from '@/lib/navigation';
 import { TopBar } from '@/components/ui/TopBar';
@@ -17,6 +17,7 @@ import { fontFamily } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ageInYears } from '@/domain/nutrition';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
+import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
@@ -70,22 +71,64 @@ export function ProfileScreen() {
     : '';
 
   const offline = getMode() === 'offline';
-  const groups: { name: string; value?: string; onPress: () => void }[][] = [
+  // Most used first: you and your units, then how the app talks to you and looks, the coach and
+  // the plan; privacy and help at the end, on their own.
+  const themeName = t(
+    prefs.theme === 'dark'
+      ? 'settings.themeDark'
+      : prefs.theme === 'system'
+        ? 'settings.themeSystem'
+        : 'settings.themeLight',
+  );
+  const groups: { icon: IconName; name: string; value?: string; onPress: () => void }[][] = [
     [
       {
-        name: t('profile.settings'),
-        value: `${prefs.weightUnit} · ${prefs.lengthUnit === 'cm' ? 'cm' : 'ft·in'}`,
-        onPress: () => router.push('/profile/settings'),
+        icon: 'user',
+        name: t('profile.menu.profile'),
+        onPress: () => router.push('/profile-edit'),
       },
-      { name: t('profile.accessibility'), onPress: () => router.push('/profile/accessibility') },
+      {
+        icon: 'scale',
+        name: t('profile.menu.units'),
+        value: `${prefs.weightUnit} · ${prefs.lengthUnit === 'cm' ? 'cm' : 'ft·in'}`,
+        onPress: () => router.push('/profile/units'),
+      },
+      {
+        icon: 'bell',
+        name: t('profile.menu.notifications'),
+        onPress: () => router.push('/profile/notifications'),
+      },
+      {
+        icon: 'palette',
+        name: t('profile.menu.look'),
+        value: themeName,
+        onPress: () => router.push('/profile/look'),
+      },
+      {
+        icon: 'eye',
+        name: t('profile.menu.accessibility'),
+        onPress: () => router.push('/profile/accessibility'),
+      },
     ],
     [
+      { icon: 'sparkle', name: t('profile.menu.ai'), onPress: () => router.push('/profile/ai') },
       ...(offline
         ? []
-        : [{ name: t('premium.title'), onPress: () => router.push('/profile/premium') }]),
-      { name: t('profile.ai'), onPress: () => router.push('/profile/ai') },
-      { name: t('profile.privacy'), onPress: () => router.push('/profile/privacy') },
-      { name: t('profile.help'), onPress: () => setHelp(true) },
+        : [
+            {
+              icon: 'trophy' as IconName,
+              name: t('profile.menu.premium'),
+              onPress: () => router.push('/profile/premium'),
+            },
+          ]),
+    ],
+    [
+      {
+        icon: 'shield',
+        name: t('profile.menu.privacy'),
+        onPress: () => router.push('/profile/privacy'),
+      },
+      { icon: 'info', name: t('profile.menu.help'), onPress: () => setHelp(true) },
     ],
   ];
 
@@ -210,6 +253,7 @@ export function ProfileScreen() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
+                <Icon name={r.icon} size={20} color={colors.text} />
                 <Text style={{ flex: 1 }}>{r.name}</Text>
                 {r.value ? (
                   <Text variant="bodyS" muted>
@@ -244,6 +288,7 @@ export function ProfileScreen() {
         <Text variant="label" muted>
           {t('profile.version', { version: Constants.expoConfig?.version ?? '1.0.0' })}
         </Text>
+        <AppUpdateCard />
       </Sheet>
 
       <Sheet

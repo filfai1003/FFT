@@ -29,7 +29,6 @@ import { useLatestWeight, useProfile, useUpdateProfile } from '@/features/profil
 import { useToday } from '@/features/profile/use-today';
 import { starterMeals } from '@/features/onboarding/logic';
 import { useFixedPlan, useSaveFixedPlan } from './fixed';
-import { ReminderRow } from '@/features/settings/ReminderRow';
 import { MacroSplitCard } from './MacroSplitCard';
 import { MealPlanEditor, type MealDraft } from './MealPlanEditor';
 import { useGoalForDay, useSaveGoal } from './log';
@@ -303,8 +302,6 @@ export function DietGoalsScreen() {
             />
           </View>
         ) : null}
-
-        <ReminderRow kind="meals" />
 
         <Text variant="bodyS" muted>
           {t('onboarding.target.safety')}

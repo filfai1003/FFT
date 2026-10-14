@@ -848,7 +848,17 @@
     "free": "Free",
     "personalInfo": "Personal info",
     "dietGoals": "Diet goals & mode",
-    "settings": "Units, look & alerts",
+    "menu": {
+      "profile": "Profile",
+      "units": "Units",
+      "notifications": "Notifications",
+      "look": "Look",
+      "accessibility": "Accessibility",
+      "ai": "AI coach",
+      "premium": "Premium",
+      "privacy": "Privacy & data",
+      "help": "Help & feedback"
+    },
     "accessibility": "Accessibility",
     "privacy": "Privacy & data",
     "help": "Help & feedback",
@@ -882,6 +892,7 @@
     "energy": "Energy",
     "weekStarts": "Week starts",
     "appearance": "Appearance",
+    "look": "Look",
     "accent": "Accent color",
     "color": {
       "red": "Red",
