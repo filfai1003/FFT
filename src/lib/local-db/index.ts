@@ -126,6 +126,11 @@ export async function readLocalFile(key: string, store: Kv = kv): Promise<ArrayB
   }
 }
 
+/** A URL the app can show (an image), or null when the file is not on this device. */
+export async function localFileUrl(key: string, store: Kv = kv): Promise<string | null> {
+  return store.fileUrl(key);
+}
+
 export async function writeLocalFile(
   key: string,
   bytes: Uint8Array,

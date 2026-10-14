@@ -1224,7 +1224,10 @@
       "log_water": "Log water",
       "set_meal_status": "Mark a meal",
       "set_nutrition_goal": "Change the calorie target",
-      "propose_plans": "Create or change plans"
+      "propose_plans": "Create or change plans",
+      "list_data": "Data map",
+      "query_data": "Query",
+      "get_strength": "Strength"
     },
     "actionsTitle": "Changes it suggests",
     "applyActions": "Apply these changes",
@@ -1236,7 +1239,13 @@
       "day": "How is my day going?",
       "week": "How was my week?",
       "strength": "Am I getting stronger?"
-    }
+    },
+    "attach": "Attach",
+    "attachPhoto": "Photo",
+    "attachFile": "File (PDF, picture, CSV, text)",
+    "attachRemove": "Remove {{name}}",
+    "attachTooBig": "This file is too big (10 MB at most).",
+    "attachUnsupported": "This kind of file cannot be sent: use a PDF, a picture or a text file."
   },
   "reminders": {
     "dailyAt": "Every day at {{time}}",

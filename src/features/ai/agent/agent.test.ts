@@ -55,6 +55,45 @@ describe('provider formats', () => {
     expect(out[3]).toEqual({ role: 'tool', tool_call_id: 'c1', content: '{"ok":true}' });
   });
 
+  it('attachments: pictures, PDFs and text files in each format; old ones become a note', () => {
+    const img = { id: 'a1', kind: 'image' as const, name: 'meal.jpg', mime: 'image/jpeg' };
+    const pdf = { id: 'a2', kind: 'pdf' as const, name: 'blood.pdf', mime: 'application/pdf' };
+    const csv = { id: 'a3', kind: 'text' as const, name: 'log.csv', mime: 'text/csv' };
+    const old = { id: 'a4', kind: 'image' as const, name: 'old.jpg', mime: 'image/jpeg' };
+    const messages: AgentMessage[] = [
+      { id: 'u0', role: 'user', text: 'earlier', attachments: [old] },
+      { id: 'u1', role: 'user', text: 'Look', attachments: [img, pdf, csv] },
+    ];
+    const files = new Map([
+      ['a1', { ...img, base64: 'SU1H' }],
+      ['a2', { ...pdf, base64: 'UERG' }],
+      ['a3', { ...csv, text: 'day,kcal' }],
+    ]);
+    expect(toOpenAiMessages('s', messages, files)[2]).toEqual({
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,SU1H' } },
+        {
+          type: 'file',
+          file: { filename: 'blood.pdf', file_data: 'data:application/pdf;base64,UERG' },
+        },
+        { type: 'text', text: 'File log.csv:\nday,kcal' },
+        { type: 'text', text: 'Look' },
+      ],
+    });
+    const anthropic = toAnthropicMessages(messages, files);
+    expect(anthropic[0].content).toEqual([
+      { type: 'text', text: '(old.jpg was attached earlier)' },
+      { type: 'text', text: 'earlier' },
+    ]);
+    expect(anthropic[1].content).toEqual([
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'SU1H' } },
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: 'UERG' } },
+      { type: 'text', text: 'File log.csv:\nday,kcal' },
+      { type: 'text', text: 'Look' },
+    ]);
+  });
+
   it('long conversations are cut at a user message, never between a call and its result', () => {
     const many: AgentMessage[] = [];
     for (let i = 0; i < 40; i++)

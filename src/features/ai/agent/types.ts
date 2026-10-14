@@ -1,3 +1,5 @@
+import type { Attachment } from './attachments';
+
 /** One tool the assistant asked to use. */
 export type ToolCall = { id: string; name: string; input: Record<string, unknown> };
 
@@ -16,7 +18,7 @@ export type ToolResult = {
 
 /** A conversation message in a provider-neutral shape (converted for each provider when sent). */
 export type AgentMessage =
-  | { id: string; role: 'user'; text: string }
+  | { id: string; role: 'user'; text: string; attachments?: Attachment[] }
   | { id: string; role: 'assistant'; text: string; toolCalls: ToolCall[] }
   | { id: string; role: 'tool'; results: ToolResult[] };
 

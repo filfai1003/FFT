@@ -6,6 +6,9 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
+import { IconButton } from '@/components/ui/IconButton';
+import { Markdown } from '@/components/ui/Markdown';
+import { Sheet } from '@/components/ui/Sheet';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
@@ -21,6 +24,8 @@ import { useAiContext } from './context';
 import { sortedConversations, useConversations } from './agent/conversations';
 import { buildAgentPrompt } from './agent/prompt';
 import { canUndo, repairMessages, runAgent, undoCall, type Approval } from './agent/run';
+import { AttachmentChip } from './agent/AttachmentChip';
+import { AttachmentError, pickFile, pickPhoto, type Attachment } from './agent/attachments';
 import { ToolCard } from './agent/ToolCard';
 import type { AgentMessage, ToolCall, ToolDef, ToolResult } from './agent/types';
 import { useAgentTools } from './agent/use-tools';
@@ -78,10 +83,36 @@ export function AiChatScreen() {
   const plan = usePlanStore((s) => s.plan);
   const ready = aiReady(settings, plan);
 
+  const [files, setFiles] = useState<Attachment[]>([]);
+  const [attaching, setAttaching] = useState(false);
+  const attach = async (pick: () => Promise<Attachment | null>) => {
+    setAttaching(false);
+    try {
+      const a = await pick();
+      if (a) setFiles((f) => [...f, a]);
+    } catch (e) {
+      setError({
+        message:
+          e instanceof AttachmentError && e.message === 'too big'
+            ? t('ai.attachTooBig')
+            : e instanceof AttachmentError
+              ? t('ai.attachUnsupported')
+              : e instanceof Error
+                ? e.message
+                : String(e),
+        key: false,
+      });
+    }
+  };
+
   const send = async (draft?: string) => {
     const content = (draft ?? text).trim();
-    if (!content || sending || !ctx.ready || !userId) return;
-    if (draft === undefined) setText('');
+    const attachments = draft === undefined ? files : [];
+    if ((!content && attachments.length === 0) || sending || !ctx.ready || !userId) return;
+    if (draft === undefined) {
+      setText('');
+      setFiles([]);
+    }
     setError(null);
 
     const store = useConversations.getState();
@@ -90,7 +121,12 @@ export function AiChatScreen() {
     const saved = store.conversations[id]?.messages ?? [];
     const repaired = repairMessages(saved);
     if (repaired.length !== saved.length) store.setMessages(id, repaired);
-    const user: AgentMessage = { id: newId(), role: 'user', text: content };
+    const user: AgentMessage = {
+      id: newId(),
+      role: 'user',
+      text: content,
+      ...(attachments.length ? { attachments } : {}),
+    };
     store.append(id, user);
 
     setSending(true);
@@ -235,9 +271,25 @@ export function AiChatScreen() {
                     backgroundColor: colors.text,
                   }}
                 >
-                  <Text selectable style={{ color: colors.bg }}>
-                    {m.text}
-                  </Text>
+                  {m.attachments?.length ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 6,
+                        paddingBottom: m.text ? 6 : 0,
+                      }}
+                    >
+                      {m.attachments.map((a) => (
+                        <AttachmentChip key={a.id} attachment={a} inverted />
+                      ))}
+                    </View>
+                  ) : null}
+                  {m.text ? (
+                    <Text selectable style={{ color: colors.bg }}>
+                      {m.text}
+                    </Text>
+                  ) : null}
                 </View>
               </View>
             );
@@ -256,7 +308,7 @@ export function AiChatScreen() {
                     backgroundColor: colors.surface,
                   }}
                 >
-                  <Text selectable>{m.text}</Text>
+                  <Markdown text={m.text} />
                 </View>
               ) : null}
               {m.toolCalls.map((call) => (
@@ -318,7 +370,24 @@ export function AiChatScreen() {
       </Screen>
 
       <BottomActionBar>
+        {files.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {files.map((a) => (
+              <AttachmentChip
+                key={a.id}
+                attachment={a}
+                onRemove={() => setFiles((f) => f.filter((x) => x.id !== a.id))}
+              />
+            ))}
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-end' }}>
+          <IconButton
+            icon="plus"
+            accessibilityLabel={t('ai.attach')}
+            disabled={!ready || sending}
+            onPress={() => setAttaching(true)}
+          />
           <View style={{ flex: 1 }}>
             <Input
               accessibilityLabel={t('ai.message')}
@@ -332,11 +401,33 @@ export function AiChatScreen() {
           <Button
             label={t('ai.send')}
             block={false}
-            disabled={!ready || sending || !text.trim() || !ctx.ready}
+            disabled={!ready || sending || (!text.trim() && files.length === 0) || !ctx.ready}
             onPress={() => void send()}
           />
         </View>
       </BottomActionBar>
+
+      <Sheet
+        visible={attaching}
+        onClose={() => setAttaching(false)}
+        title={t('ai.attach')}
+        closeLabel={t('common.close')}
+      >
+        <View style={{ gap: 8 }}>
+          <Button
+            variant="secondary"
+            icon="image"
+            label={t('ai.attachPhoto')}
+            onPress={() => void attach(pickPhoto)}
+          />
+          <Button
+            variant="secondary"
+            icon="copy"
+            label={t('ai.attachFile')}
+            onPress={() => void attach(pickFile)}
+          />
+        </View>
+      </Sheet>
     </>
   );
 }
