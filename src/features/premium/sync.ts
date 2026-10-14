@@ -106,6 +106,9 @@ async function pushRows(table: string, rows: Row[], deletes: { id: string; at: s
 }
 
 /** Sends the outbox. Rows the server refuses for good (e.g. a rule) are dropped, not retried forever. */
+/** Rows the server refused in the last push (0 = everything arrived). */
+let refusedLastPush = 0;
+
 export async function push(userId: string): Promise<number> {
   const db = getLocalDb(userId);
   await db.ready;
@@ -114,6 +117,7 @@ export async function push(userId: string): Promise<number> {
   const byTable = new Map<string, Pending[]>();
   for (const p of pending) byTable.set(p.table, [...(byTable.get(p.table) ?? []), p]);
   const sent: Pending[] = [];
+  refusedLastPush = 0;
 
   for (const table of SYNC_ORDER) {
     const ups = (byTable.get(table) ?? []).filter((p) => p.op === 'upsert');
@@ -147,6 +151,7 @@ export async function push(userId: string): Promise<number> {
         const e = await pushRows(table, [r.row], []);
         if (e && isNetworkError(e)) throw new Error(e.message);
         // Left out for good: say so (a row lost without a trace is how a breakfast went missing).
+        if (e) refusedLastPush += 1;
         if (e) console.warn(`sync: the server refused ${table} ${r.p.key}: ${e.message}`);
         sent.push(r.p);
       }
@@ -224,7 +229,9 @@ export async function syncOnce(userId: string): Promise<boolean> {
   const resend = await AsyncStorage.getItem(resendKey(userId));
   if (!resend) db.markAllDirty();
   await push(userId);
-  if (!resend) await AsyncStorage.setItem(resendKey(userId), new Date().toISOString());
+  // Done only when the server took everything (otherwise: again at the next sync).
+  if (!resend && refusedLastPush === 0)
+    await AsyncStorage.setItem(resendKey(userId), new Date().toISOString());
   return (await pull(userId)) || recovered;
 }
 
