@@ -1,3 +1,4 @@
+import { genericFoodRows } from './generic-foods';
 import type { LocalDb } from './engine';
 import {
   checkRow,
@@ -211,9 +212,10 @@ export class LocalQuery implements PromiseLike<Result> {
   }
 
   private source(): Row[] {
-    return isView(this.table)
-      ? computeView(this.table, this.db.tables, this.db.userId)
-      : (this.db.tables[this.table] ?? []);
+    if (isView(this.table)) return computeView(this.table, this.db.tables, this.db.userId);
+    // Generic foods ship with the app: readable like any food, never stored or written.
+    if (this.table === 'foods') return [...(this.db.tables.foods ?? []), ...genericFoodRows()];
+    return this.db.tables[this.table] ?? [];
   }
 
   /** The row a filter path reads: `col`, or `relation.col` through an embedded relation. */

@@ -331,3 +331,21 @@ describe('offline database', () => {
     expect((await old.from('profiles').select('name').single()).data).toEqual({ name: null });
   });
 });
+
+describe('generic foods (CIQUAL)', () => {
+  it('are readable like any food, never stored in the user database', async () => {
+    const { db, c } = setup();
+    const res = await c
+      .from('foods')
+      .select('id, name, source, kcal_100g')
+      .ilike('name', '%apple, pulp and peel, raw%');
+    const apple = (res.data as { id: string; source: string; kcal_100g: number }[])[0];
+    expect(apple).toMatchObject({
+      id: 'cf000000-0000-4000-8000-000000013039',
+      source: 'ciqual',
+      kcal_100g: 52,
+    });
+    await db.ready;
+    expect(db.tables.foods.some((f) => f.source === 'ciqual')).toBe(false);
+  });
+});

@@ -127,9 +127,12 @@ describe('the assistant changing data (after approval)', () => {
     expect(found.foods[0]).toMatchObject({ mine: true, per_100g: { kcal: 420, protein_g: 10 } });
 
     expect((await call('delete_food', { food_id: foodId })).outcome).toBe('done');
-    expect(JSON.parse((await call('search_foods', { query: 'oat' })).content).foods).toHaveLength(
-      0,
-    );
+    // Gone from the search (generic foods like "Oat, raw" are still there).
+    const left = JSON.parse((await call('search_foods', { query: 'oat' })).content).foods as {
+      food_id: string;
+      mine: boolean;
+    }[];
+    expect(left.some((f) => f.food_id === foodId || f.mine)).toBe(false);
     // the entry already logged keeps its values
     const after = JSON.parse((await call('get_day', { day: '2026-10-12' })).content);
     expect(after.food_log).toHaveLength(1);

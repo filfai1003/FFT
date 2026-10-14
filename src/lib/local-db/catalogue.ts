@@ -12,653 +12,759 @@ export type CatalogueExercise = {
 
 export const catalogue: CatalogueExercise[] = [
   {
-    slug: 'bench-press',
-    name: 'Barbell bench press',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'bench-press.png',
-  },
-  {
-    slug: 'incline-bench-press',
-    name: 'Incline barbell bench press',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'incline-bench-press.png',
-  },
-  {
-    slug: 'decline-bench-press',
-    name: 'Decline barbell bench press',
-    primary: 'chest',
-    secondary: ['triceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'decline-bench-press.png',
-  },
-  {
-    slug: 'db-bench-press',
-    name: 'Dumbbell bench press',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'db-bench-press.png',
-  },
-  {
-    slug: 'incline-db-press',
-    name: 'Incline dumbbell press',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'incline-db-press.png',
-  },
-  {
-    slug: 'db-fly',
-    name: 'Dumbbell fly',
-    primary: 'chest',
-    secondary: ['shoulders'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'db-fly.png',
-  },
-  {
-    slug: 'cable-fly',
-    name: 'Cable fly',
-    primary: 'chest',
-    secondary: ['shoulders'],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'cable-fly.png',
-  },
-  {
-    slug: 'pec-deck',
-    name: 'Pec deck',
-    primary: 'chest',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'pec-deck.png',
-  },
-  {
-    slug: 'chest-press-machine',
-    name: 'Chest press machine',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'chest-press-machine.png',
-  },
-  {
-    slug: 'push-up',
-    name: 'Push-up',
-    primary: 'chest',
-    secondary: ['shoulders', 'triceps'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'push-up.png',
-  },
-  {
-    slug: 'chest-dip',
-    name: 'Chest dip',
-    primary: 'chest',
-    secondary: ['triceps', 'shoulders'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'chest-dip.png',
-  },
-  {
-    slug: 'pull-up',
-    name: 'Pull-up',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'pull-up.png',
-  },
-  {
-    slug: 'chin-up',
-    name: 'Chin-up',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'chin-up.png',
-  },
-  {
-    slug: 'lat-pulldown',
-    name: 'Lat pulldown',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'lat-pulldown.png',
-  },
-  {
-    slug: 'barbell-row',
-    name: 'Barbell row',
-    primary: 'back',
-    secondary: ['biceps', 'shoulders'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'barbell-row.png',
-  },
-  {
-    slug: 'db-row',
-    name: 'One-arm dumbbell row',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'db-row.png',
-  },
-  {
-    slug: 'seated-cable-row',
-    name: 'Seated cable row',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'seated-cable-row.png',
-  },
-  {
-    slug: 't-bar-row',
-    name: 'T-bar row',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 't-bar-row.png',
-  },
-  {
-    slug: 'chest-supported-row',
-    name: 'Chest-supported row machine',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'chest-supported-row.png',
-  },
-  {
-    slug: 'straight-arm-pulldown',
-    name: 'Straight-arm pulldown',
-    primary: 'back',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'straight-arm-pulldown.png',
-  },
-  {
-    slug: 'face-pull',
-    name: 'Face pull',
-    primary: 'back',
-    secondary: ['shoulders'],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'face-pull.png',
-  },
-  {
-    slug: 'deadlift',
-    name: 'Deadlift',
-    primary: 'back',
-    secondary: ['legs', 'glutes'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'deadlift.png',
-  },
-  {
-    slug: 'rack-pull',
-    name: 'Rack pull',
-    primary: 'back',
-    secondary: ['glutes'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'rack-pull.png',
-  },
-  {
-    slug: 'back-extension',
-    name: 'Back extension',
-    primary: 'back',
-    secondary: ['glutes', 'legs'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'back-extension.png',
-  },
-  {
-    slug: 'inverted-row',
-    name: 'Inverted row',
-    primary: 'back',
-    secondary: ['biceps'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'inverted-row.png',
-  },
-  {
-    slug: 'overhead-press',
-    name: 'Overhead press',
-    primary: 'shoulders',
-    secondary: ['triceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'overhead-press.png',
-  },
-  {
-    slug: 'seated-db-shoulder-press',
-    name: 'Seated dumbbell shoulder press',
-    primary: 'shoulders',
-    secondary: ['triceps'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'seated-db-shoulder-press.png',
-  },
-  {
-    slug: 'arnold-press',
-    name: 'Arnold press',
-    primary: 'shoulders',
-    secondary: ['triceps'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'arnold-press.png',
-  },
-  {
-    slug: 'machine-shoulder-press',
-    name: 'Machine shoulder press',
-    primary: 'shoulders',
-    secondary: ['triceps'],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'machine-shoulder-press.png',
-  },
-  {
-    slug: 'lateral-raise',
-    name: 'Lateral raise',
-    primary: 'shoulders',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'lateral-raise.png',
-  },
-  {
-    slug: 'cable-lateral-raise',
-    name: 'Cable lateral raise',
-    primary: 'shoulders',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'cable-lateral-raise.png',
-  },
-  {
-    slug: 'front-raise',
-    name: 'Front raise',
-    primary: 'shoulders',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'front-raise.png',
-  },
-  {
-    slug: 'rear-delt-fly',
-    name: 'Rear delt fly',
-    primary: 'shoulders',
-    secondary: ['back'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'rear-delt-fly.png',
-  },
-  {
-    slug: 'upright-row',
-    name: 'Upright row',
-    primary: 'shoulders',
-    secondary: ['biceps'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'upright-row.png',
-  },
-  {
-    slug: 'db-shrug',
-    name: 'Dumbbell shrug',
-    primary: 'shoulders',
-    secondary: ['back'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'db-shrug.png',
-  },
-  {
-    slug: 'biceps-curl',
-    name: 'Dumbbell biceps curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'biceps-curl.png',
-  },
-  {
-    slug: 'barbell-curl',
-    name: 'Barbell curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'barbell-curl.png',
-  },
-  {
-    slug: 'hammer-curl',
-    name: 'Hammer curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'hammer-curl.png',
-  },
-  {
-    slug: 'incline-db-curl',
-    name: 'Incline dumbbell curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'incline-db-curl.png',
-  },
-  {
-    slug: 'preacher-curl',
-    name: 'Preacher curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'preacher-curl.png',
-  },
-  {
-    slug: 'cable-curl',
-    name: 'Cable curl',
-    primary: 'biceps',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'cable-curl.png',
-  },
-  {
-    slug: 'pushdown',
-    name: 'Triceps pushdown',
-    primary: 'triceps',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'pushdown.png',
-  },
-  {
-    slug: 'rope-pushdown',
-    name: 'Rope pushdown',
-    primary: 'triceps',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'rope-pushdown.png',
-  },
-  {
-    slug: 'skull-crusher',
-    name: 'Skull crusher',
-    primary: 'triceps',
-    secondary: [],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'skull-crusher.png',
-  },
-  {
-    slug: 'overhead-triceps-extension',
-    name: 'Overhead triceps extension',
-    primary: 'triceps',
-    secondary: [],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'overhead-triceps-extension.png',
-  },
-  {
-    slug: 'close-grip-bench-press',
-    name: 'Close-grip bench press',
-    primary: 'triceps',
-    secondary: ['chest', 'shoulders'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'close-grip-bench-press.png',
-  },
-  {
-    slug: 'bench-dip',
-    name: 'Bench dip',
-    primary: 'triceps',
-    secondary: ['shoulders'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'bench-dip.png',
-  },
-  {
-    slug: 'back-squat',
-    name: 'Back squat',
-    primary: 'legs',
-    secondary: ['glutes', 'abs'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'back-squat.png',
-  },
-  {
-    slug: 'front-squat',
-    name: 'Front squat',
-    primary: 'legs',
-    secondary: ['glutes', 'abs'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'front-squat.png',
-  },
-  {
-    slug: 'goblet-squat',
-    name: 'Goblet squat',
-    primary: 'legs',
-    secondary: ['glutes'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'goblet-squat.png',
-  },
-  {
-    slug: 'hack-squat',
-    name: 'Hack squat',
-    primary: 'legs',
-    secondary: ['glutes'],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'hack-squat.png',
-  },
-  {
-    slug: 'leg-press',
-    name: 'Leg press',
-    primary: 'legs',
-    secondary: ['glutes'],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'leg-press.png',
-  },
-  {
-    slug: 'romanian-deadlift',
-    name: 'Romanian deadlift',
-    primary: 'legs',
-    secondary: ['glutes', 'back'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'romanian-deadlift.png',
-  },
-  {
-    slug: 'leg-extension',
-    name: 'Leg extension',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'leg-extension.png',
-  },
-  {
-    slug: 'lying-leg-curl',
-    name: 'Lying leg curl',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'lying-leg-curl.png',
-  },
-  {
-    slug: 'seated-leg-curl',
-    name: 'Seated leg curl',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'seated-leg-curl.png',
-  },
-  {
-    slug: 'walking-lunge',
-    name: 'Walking lunge',
-    primary: 'legs',
-    secondary: ['glutes'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'walking-lunge.png',
-  },
-  {
-    slug: 'bulgarian-split-squat',
-    name: 'Bulgarian split squat',
-    primary: 'legs',
-    secondary: ['glutes'],
-    equipment: 'dumbbells',
-    log: 'weight_reps',
-    image: 'bulgarian-split-squat.png',
-  },
-  {
-    slug: 'standing-calf-raise',
-    name: 'Standing calf raise',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'standing-calf-raise.png',
-  },
-  {
-    slug: 'seated-calf-raise',
-    name: 'Seated calf raise',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'weight_reps',
-    image: 'seated-calf-raise.png',
-  },
-  {
-    slug: 'hip-thrust',
-    name: 'Barbell hip thrust',
-    primary: 'glutes',
-    secondary: ['legs'],
-    equipment: 'barbell',
-    log: 'weight_reps',
-    image: 'hip-thrust.png',
-  },
-  {
-    slug: 'glute-bridge',
-    name: 'Glute bridge',
-    primary: 'glutes',
-    secondary: ['legs'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'glute-bridge.png',
-  },
-  {
-    slug: 'cable-kickback',
-    name: 'Cable glute kickback',
-    primary: 'glutes',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'cable-kickback.png',
-  },
-  {
-    slug: 'plank',
-    name: 'Plank',
-    primary: 'abs',
-    secondary: ['shoulders'],
-    equipment: 'bodyweight',
-    log: 'time',
-    image: 'plank.png',
-  },
-  {
-    slug: 'side-plank',
-    name: 'Side plank',
-    primary: 'abs',
-    secondary: ['shoulders'],
-    equipment: 'bodyweight',
-    log: 'time',
-    image: 'side-plank.png',
-  },
-  {
-    slug: 'crunch',
-    name: 'Crunch',
-    primary: 'abs',
-    secondary: [],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'crunch.png',
-  },
-  {
-    slug: 'cable-crunch',
-    name: 'Cable crunch',
-    primary: 'abs',
-    secondary: [],
-    equipment: 'cables',
-    log: 'weight_reps',
-    image: 'cable-crunch.png',
-  },
-  {
-    slug: 'hanging-leg-raise',
-    name: 'Hanging leg raise',
-    primary: 'abs',
-    secondary: [],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'hanging-leg-raise.png',
-  },
-  {
-    slug: 'ab-wheel-rollout',
-    name: 'Ab wheel rollout',
-    primary: 'abs',
-    secondary: ['shoulders'],
-    equipment: 'bodyweight',
-    log: 'reps',
-    image: 'ab-wheel-rollout.png',
-  },
-  {
-    slug: 'treadmill-run',
-    name: 'Treadmill run',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'distance_time',
-    image: 'treadmill-run.png',
-  },
-  {
-    slug: 'rowing-machine',
-    name: 'Rowing machine',
-    primary: 'back',
-    secondary: ['legs'],
-    equipment: 'machine',
-    log: 'distance_time',
-    image: 'rowing-machine.png',
-  },
-  {
-    slug: 'stationary-bike',
-    name: 'Stationary bike',
-    primary: 'legs',
-    secondary: [],
-    equipment: 'machine',
-    log: 'distance_time',
-    image: 'stationary-bike.png',
-  },
+    "slug": "bench-press",
+    "name": "Barbell bench press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "bench-press.png"
+  },
+  {
+    "slug": "incline-bench-press",
+    "name": "Incline barbell bench press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "incline-bench-press.png"
+  },
+  {
+    "slug": "decline-bench-press",
+    "name": "Decline barbell bench press",
+    "primary": "chest",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "decline-bench-press.png"
+  },
+  {
+    "slug": "db-bench-press",
+    "name": "Dumbbell bench press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "db-bench-press.png"
+  },
+  {
+    "slug": "incline-db-press",
+    "name": "Incline dumbbell press",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "incline-db-press.png"
+  },
+  {
+    "slug": "db-fly",
+    "name": "Dumbbell fly",
+    "primary": "chest",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "db-fly.png"
+  },
+  {
+    "slug": "cable-fly",
+    "name": "Cable fly",
+    "primary": "chest",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "cable-fly.png"
+  },
+  {
+    "slug": "pec-deck",
+    "name": "Pec deck",
+    "primary": "chest",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "pec-deck.png"
+  },
+  {
+    "slug": "chest-press-machine",
+    "name": "Chest press machine",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "chest-press-machine.png"
+  },
+  {
+    "slug": "push-up",
+    "name": "Push-up",
+    "primary": "chest",
+    "secondary": [
+      "shoulders",
+      "triceps"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "push-up.png"
+  },
+  {
+    "slug": "chest-dip",
+    "name": "Chest dip",
+    "primary": "chest",
+    "secondary": [
+      "triceps",
+      "shoulders"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "chest-dip.png"
+  },
+  {
+    "slug": "pull-up",
+    "name": "Pull-up",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "pull-up.png"
+  },
+  {
+    "slug": "chin-up",
+    "name": "Chin-up",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "chin-up.png"
+  },
+  {
+    "slug": "lat-pulldown",
+    "name": "Lat pulldown",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "lat-pulldown.png"
+  },
+  {
+    "slug": "barbell-row",
+    "name": "Barbell row",
+    "primary": "back",
+    "secondary": [
+      "biceps",
+      "shoulders"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "barbell-row.png"
+  },
+  {
+    "slug": "db-row",
+    "name": "One-arm dumbbell row",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "db-row.png"
+  },
+  {
+    "slug": "seated-cable-row",
+    "name": "Seated cable row",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "seated-cable-row.png"
+  },
+  {
+    "slug": "t-bar-row",
+    "name": "T-bar row",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "t-bar-row.png"
+  },
+  {
+    "slug": "chest-supported-row",
+    "name": "Chest-supported row machine",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "chest-supported-row.png"
+  },
+  {
+    "slug": "straight-arm-pulldown",
+    "name": "Straight-arm pulldown",
+    "primary": "back",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "straight-arm-pulldown.png"
+  },
+  {
+    "slug": "face-pull",
+    "name": "Face pull",
+    "primary": "back",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "face-pull.png"
+  },
+  {
+    "slug": "deadlift",
+    "name": "Deadlift",
+    "primary": "back",
+    "secondary": [
+      "legs",
+      "glutes"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "deadlift.png"
+  },
+  {
+    "slug": "rack-pull",
+    "name": "Rack pull",
+    "primary": "back",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "rack-pull.png"
+  },
+  {
+    "slug": "back-extension",
+    "name": "Back extension",
+    "primary": "back",
+    "secondary": [
+      "glutes",
+      "legs"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "back-extension.png"
+  },
+  {
+    "slug": "inverted-row",
+    "name": "Inverted row",
+    "primary": "back",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "inverted-row.png"
+  },
+  {
+    "slug": "overhead-press",
+    "name": "Overhead press",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "overhead-press.png"
+  },
+  {
+    "slug": "seated-db-shoulder-press",
+    "name": "Seated dumbbell shoulder press",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "seated-db-shoulder-press.png"
+  },
+  {
+    "slug": "arnold-press",
+    "name": "Arnold press",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "arnold-press.png"
+  },
+  {
+    "slug": "machine-shoulder-press",
+    "name": "Machine shoulder press",
+    "primary": "shoulders",
+    "secondary": [
+      "triceps"
+    ],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "machine-shoulder-press.png"
+  },
+  {
+    "slug": "lateral-raise",
+    "name": "Lateral raise",
+    "primary": "shoulders",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "lateral-raise.png"
+  },
+  {
+    "slug": "cable-lateral-raise",
+    "name": "Cable lateral raise",
+    "primary": "shoulders",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "cable-lateral-raise.png"
+  },
+  {
+    "slug": "front-raise",
+    "name": "Front raise",
+    "primary": "shoulders",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "front-raise.png"
+  },
+  {
+    "slug": "rear-delt-fly",
+    "name": "Rear delt fly",
+    "primary": "shoulders",
+    "secondary": [
+      "back"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "rear-delt-fly.png"
+  },
+  {
+    "slug": "upright-row",
+    "name": "Upright row",
+    "primary": "shoulders",
+    "secondary": [
+      "biceps"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "upright-row.png"
+  },
+  {
+    "slug": "db-shrug",
+    "name": "Dumbbell shrug",
+    "primary": "shoulders",
+    "secondary": [
+      "back"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "db-shrug.png"
+  },
+  {
+    "slug": "biceps-curl",
+    "name": "Dumbbell biceps curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "biceps-curl.png"
+  },
+  {
+    "slug": "barbell-curl",
+    "name": "Barbell curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "barbell-curl.png"
+  },
+  {
+    "slug": "hammer-curl",
+    "name": "Hammer curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "hammer-curl.png"
+  },
+  {
+    "slug": "incline-db-curl",
+    "name": "Incline dumbbell curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "incline-db-curl.png"
+  },
+  {
+    "slug": "preacher-curl",
+    "name": "Preacher curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "preacher-curl.png"
+  },
+  {
+    "slug": "cable-curl",
+    "name": "Cable curl",
+    "primary": "biceps",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "cable-curl.png"
+  },
+  {
+    "slug": "pushdown",
+    "name": "Triceps pushdown",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "pushdown.png"
+  },
+  {
+    "slug": "rope-pushdown",
+    "name": "Rope pushdown",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "rope-pushdown.png"
+  },
+  {
+    "slug": "skull-crusher",
+    "name": "Skull crusher",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "skull-crusher.png"
+  },
+  {
+    "slug": "overhead-triceps-extension",
+    "name": "Overhead triceps extension",
+    "primary": "triceps",
+    "secondary": [],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "overhead-triceps-extension.png"
+  },
+  {
+    "slug": "close-grip-bench-press",
+    "name": "Close-grip bench press",
+    "primary": "triceps",
+    "secondary": [
+      "chest",
+      "shoulders"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "close-grip-bench-press.png"
+  },
+  {
+    "slug": "bench-dip",
+    "name": "Bench dip",
+    "primary": "triceps",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "bench-dip.png"
+  },
+  {
+    "slug": "back-squat",
+    "name": "Back squat",
+    "primary": "legs",
+    "secondary": [
+      "glutes",
+      "abs"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "back-squat.png"
+  },
+  {
+    "slug": "front-squat",
+    "name": "Front squat",
+    "primary": "legs",
+    "secondary": [
+      "glutes",
+      "abs"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "front-squat.png"
+  },
+  {
+    "slug": "goblet-squat",
+    "name": "Goblet squat",
+    "primary": "legs",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "goblet-squat.png"
+  },
+  {
+    "slug": "hack-squat",
+    "name": "Hack squat",
+    "primary": "legs",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "hack-squat.png"
+  },
+  {
+    "slug": "leg-press",
+    "name": "Leg press",
+    "primary": "legs",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "leg-press.png"
+  },
+  {
+    "slug": "romanian-deadlift",
+    "name": "Romanian deadlift",
+    "primary": "legs",
+    "secondary": [
+      "glutes",
+      "back"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "romanian-deadlift.png"
+  },
+  {
+    "slug": "leg-extension",
+    "name": "Leg extension",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "leg-extension.png"
+  },
+  {
+    "slug": "lying-leg-curl",
+    "name": "Lying leg curl",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "lying-leg-curl.png"
+  },
+  {
+    "slug": "seated-leg-curl",
+    "name": "Seated leg curl",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "seated-leg-curl.png"
+  },
+  {
+    "slug": "walking-lunge",
+    "name": "Walking lunge",
+    "primary": "legs",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "walking-lunge.png"
+  },
+  {
+    "slug": "bulgarian-split-squat",
+    "name": "Bulgarian split squat",
+    "primary": "legs",
+    "secondary": [
+      "glutes"
+    ],
+    "equipment": "dumbbells",
+    "log": "weight_reps",
+    "image": "bulgarian-split-squat.png"
+  },
+  {
+    "slug": "standing-calf-raise",
+    "name": "Standing calf raise",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "standing-calf-raise.png"
+  },
+  {
+    "slug": "seated-calf-raise",
+    "name": "Seated calf raise",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "weight_reps",
+    "image": "seated-calf-raise.png"
+  },
+  {
+    "slug": "hip-thrust",
+    "name": "Barbell hip thrust",
+    "primary": "glutes",
+    "secondary": [
+      "legs"
+    ],
+    "equipment": "barbell",
+    "log": "weight_reps",
+    "image": "hip-thrust.png"
+  },
+  {
+    "slug": "glute-bridge",
+    "name": "Glute bridge",
+    "primary": "glutes",
+    "secondary": [
+      "legs"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "glute-bridge.png"
+  },
+  {
+    "slug": "cable-kickback",
+    "name": "Cable glute kickback",
+    "primary": "glutes",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "cable-kickback.png"
+  },
+  {
+    "slug": "plank",
+    "name": "Plank",
+    "primary": "abs",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "bodyweight",
+    "log": "time",
+    "image": "plank.png"
+  },
+  {
+    "slug": "side-plank",
+    "name": "Side plank",
+    "primary": "abs",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "bodyweight",
+    "log": "time",
+    "image": "side-plank.png"
+  },
+  {
+    "slug": "crunch",
+    "name": "Crunch",
+    "primary": "abs",
+    "secondary": [],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "crunch.png"
+  },
+  {
+    "slug": "cable-crunch",
+    "name": "Cable crunch",
+    "primary": "abs",
+    "secondary": [],
+    "equipment": "cables",
+    "log": "weight_reps",
+    "image": "cable-crunch.png"
+  },
+  {
+    "slug": "hanging-leg-raise",
+    "name": "Hanging leg raise",
+    "primary": "abs",
+    "secondary": [],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "hanging-leg-raise.png"
+  },
+  {
+    "slug": "ab-wheel-rollout",
+    "name": "Ab wheel rollout",
+    "primary": "abs",
+    "secondary": [
+      "shoulders"
+    ],
+    "equipment": "bodyweight",
+    "log": "reps",
+    "image": "ab-wheel-rollout.png"
+  },
+  {
+    "slug": "treadmill-run",
+    "name": "Treadmill run",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "distance_time",
+    "image": "treadmill-run.png"
+  },
+  {
+    "slug": "rowing-machine",
+    "name": "Rowing machine",
+    "primary": "back",
+    "secondary": [
+      "legs"
+    ],
+    "equipment": "machine",
+    "log": "distance_time",
+    "image": "rowing-machine.png"
+  },
+  {
+    "slug": "stationary-bike",
+    "name": "Stationary bike",
+    "primary": "legs",
+    "secondary": [],
+    "equipment": "machine",
+    "log": "distance_time",
+    "image": "stationary-bike.png"
+  }
 ];
 
 /** Images bundled with the app, by the file name stored in `image_path`. */

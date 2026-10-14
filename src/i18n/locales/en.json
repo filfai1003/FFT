@@ -581,6 +581,7 @@
     "foodDeleted": "{{name}} deleted",
     "verifiedOff": "Verified · Open Food Facts",
     "fromOff": "Open Food Facts",
+    "fromCiqual": "Ciqual (ANSES) · generic food",
     "forGrams": "For {{g}} g",
     "ofGoal": "{{pct}}% of goal",
     "amount": "Amount",

@@ -11,7 +11,7 @@ export type Food = {
   name: string;
   brand: string | null;
   per100: Per100;
-  source: 'off' | 'custom';
+  source: 'off' | 'ciqual' | 'custom';
   verified: boolean;
   servings: Portion[];
 };
@@ -77,6 +77,32 @@ export function likePattern(q: string): string {
   return `%${q.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
+/**
+^ * Closest names first: the food itself ("apple" -> "Apple, raw"), then names starting with the words, then a word
+ * of the name starting with them ("Pineapple" after), then shorter names; your own foods first.
+ */
+export function rankFoods(foods: Food[], query: string): Food[] {
+  const q = query.trim().toLowerCase();
+  const score = (f: Food) => {
+    const name = f.name.toLowerCase();
+    // "Apple, raw" (the food itself) before "Apple juice", before "Cake, apple".
+    const starts =
+      name.split(',')[0].trim() === q
+        ? 0
+        : name.startsWith(q)
+          ? 1
+          : name.split(/[\s,()/-]+/).some((w) => w.startsWith(q))
+            ? 2
+            : 3;
+    return [f.source === 'custom' ? 0 : 1, starts, name.length] as const;
+  };
+  return [...foods].sort((a, b) => {
+    const x = score(a);
+    const y = score(b);
+    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2] || a.name.localeCompare(b.name);
+  });
+}
+
 export function useFoodSearch(query: string) {
   const q = query.trim();
   return useQuery({
@@ -90,9 +116,9 @@ export function useFoodSearch(query: string) {
         .ilike('name', likePattern(q))
         .order('verified', { ascending: false })
         .order('name')
-        .limit(30);
+        .limit(200);
       if (error) throw error;
-      return (data as unknown as FoodRow[]).map(toFood);
+      return rankFoods((data as unknown as FoodRow[]).map(toFood), q).slice(0, 30);
     },
   });
 }

@@ -536,3 +536,22 @@ describe('premium sync (last change wins)', () => {
     await rejects(`select public.sync_push('vip_users', '[]', '[]')`, '22023');
   });
 });
+
+describe('generic foods (CIQUAL)', () => {
+  it('are seeded with the same ids as the app, readable by everyone and writable by no user', async () => {
+    await admin();
+    assert.ok(
+      (await count(`select count(*) as n from public.foods where source = 'ciqual'`)) >= 3000,
+    );
+    await as(C);
+    const apple = await one(
+      `select name, kcal_100g from public.foods where id = 'cf000000-0000-4000-8000-000000013039'`,
+    );
+    assert.equal(apple.name, 'Apple, pulp and peel, raw');
+    assert.equal(Number(apple.kcal_100g), 52);
+    await rejects(
+      `insert into public.foods (name, kcal_100g, source, owner_id) values ('Fake', 1, 'ciqual', null)`,
+      '42501',
+    );
+  });
+});

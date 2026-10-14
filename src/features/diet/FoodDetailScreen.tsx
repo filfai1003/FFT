@@ -175,9 +175,11 @@ export function FoodDetailScreen() {
             <Text variant="label" muted>
               {food.data.source === 'custom'
                 ? t('diet.yourFood')
-                : food.data.verified
-                  ? t('diet.verifiedOff')
-                  : t('diet.fromOff')}
+                : food.data.source === 'ciqual'
+                  ? t('diet.fromCiqual')
+                  : food.data.verified
+                    ? t('diet.verifiedOff')
+                    : t('diet.fromOff')}
               {food.data.brand ? ` · ${food.data.brand}` : ''}
             </Text>
           </View>

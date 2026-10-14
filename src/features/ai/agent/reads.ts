@@ -1,4 +1,5 @@
 import { addDays, localDay } from '@/domain/day';
+import { rankFoods, type Food } from '@/features/diet/foods';
 import { dietDayStatus, goalForDay, targetForDay } from '@/domain/diet';
 import { fetchFixedPlan } from '@/features/diet/fixed';
 import { fetchGoals } from '@/features/diet/log';
@@ -283,7 +284,11 @@ export async function readFoods(query: string | undefined, ownerId: string | nul
     .is('deleted_at', null);
   if (query) q = q.ilike('name', `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
   else if (ownerId) q = q.eq('owner_id', ownerId);
-  const list = await rows(q.order('name').limit(25));
+  const found = await rows(q.order('name').limit(query ? 200 : 25));
+  // Same order as the app's search: the user's own foods, then the closest names.
+  const list = query
+    ? (rankFoods(found as unknown as Food[], query) as unknown as typeof found).slice(0, 25)
+    : found;
   return {
     foods: list.map((f) => ({
       food_id: f.id,
