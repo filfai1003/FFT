@@ -491,6 +491,12 @@ describe('premium sync (last change wins)', () => {
     await push([row(500, '2026-10-14T12:00:00Z')]);
     assert.equal(await count(`select count(*) as n from public.water_logs where id = '${W}'`), 1);
     assert.equal(await ml(), 500);
+    const r = await one(`select updated_at from public.water_logs where id = '${W}'`);
+    assert.equal(
+      new Date(r.updated_at).toISOString(),
+      '2026-10-14T12:00:00.000Z',
+      'a repeated change does not become newer',
+    );
   });
 
   it('pull returns own changes since a time, not the catalogue', async () => {

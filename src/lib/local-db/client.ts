@@ -49,7 +49,7 @@ export function createLocalClient(db: LocalDb) {
           await db.wipe();
           return { data: { ok: true }, error: null };
         }
-        // Online-only helpers (Open Food Facts search): no internet lookups in offline mode.
+        // Server-only helpers: Open Food Facts is then asked straight from the device (diet/off.ts).
         return { data: null, error: { message: 'Not available offline' } };
       },
     },
