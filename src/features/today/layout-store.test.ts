@@ -17,6 +17,19 @@ describe('home layout', () => {
     expect(saved.aiDock).toBe(false);
   });
 
+  it('a saved Creatine widget becomes Supplements in its place; the old calendar widget is gone', () => {
+    const saved = mergeLayout({
+      widgets: [
+        { id: 'creatine', size: 'large', visible: false },
+        { id: 'calendar', size: 'large', visible: true },
+        { id: 'water', size: 'small', visible: true },
+      ],
+    });
+    expect(saved.widgets[0]).toEqual({ id: 'supplements', size: 'large', visible: false });
+    expect(saved.widgets.map((w) => w.id)).not.toContain('calendar');
+    expect(saved.widgets).toHaveLength(defaultWidgets.length);
+  });
+
   it('moves a widget and stays inside the list', () => {
     expect(moveWidget(defaultWidgets, 0, 1)[1]?.id).toBe(defaultWidgets[0]?.id);
     expect(moveWidget(defaultWidgets, 0, -1)).toBe(defaultWidgets);

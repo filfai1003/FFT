@@ -5,7 +5,6 @@ import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
-import { Input } from '@/components/ui/Input';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
@@ -13,13 +12,8 @@ import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
 import { dietDayStatus, goalForDay, targetForDay } from '@/domain/diet';
 import { useDayTotals, useGoals } from '@/features/diet/log';
-import {
-  useSaveSupplement,
-  useSetSupplementDeleted,
-  useSetTaken,
-  useSupplementLogs,
-  useSupplements,
-} from '@/features/supplements/data';
+import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
+import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import { type SessionView } from '@/features/train/history';
 import { useMarkWorkoutDone, useSetWorkoutDeleted } from '@/features/train/mark-done';
 import { useActivePlan, useRotation } from '@/features/train/plans';
@@ -234,90 +228,5 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
 
       <SupplementsSheet visible={editing} onClose={() => setEditing(false)} />
     </>
-  );
-}
-
-/** The user's list: add (name, dose) and remove (with UNDO). */
-function SupplementsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const showToast = useToastStore((s) => s.show);
-  const supplements = useSupplements();
-  const save = useSaveSupplement();
-  const setDeleted = useSetSupplementDeleted();
-  const [name, setName] = useState('');
-  const [dose, setDose] = useState('');
-  const list = supplements.data ?? [];
-
-  const add = async () => {
-    await save.mutateAsync({ name, dose, position: list.length });
-    setName('');
-    setDose('');
-  };
-
-  return (
-    <Sheet
-      visible={visible}
-      onClose={onClose}
-      title={t('calendar.supplements')}
-      closeLabel={t('common.close')}
-      footer={
-        <Button
-          size="large"
-          icon="plus"
-          label={t('calendar.addSupplement')}
-          disabled={name.trim() === '' || save.isPending}
-          onPress={() => void add()}
-        />
-      }
-    >
-      {list.map((s, i) => (
-        <View
-          key={s.id}
-          style={{
-            minHeight: 52,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            borderTopWidth: i === 0 ? 0 : 1,
-            borderColor: colors.borderDecorative,
-          }}
-        >
-          <Text style={{ flex: 1 }}>{s.dose ? `${s.name} · ${s.dose}` : s.name}</Text>
-          <IconButton
-            icon="trash"
-            accessibilityLabel={t('calendar.supplementRemove', { name: s.name })}
-            onPress={() =>
-              setDeleted.mutate(
-                { id: s.id, deleted: true },
-                {
-                  onSuccess: () =>
-                    showToast({
-                      message: t('calendar.supplementRemoved', { name: s.name }),
-                      actionLabel: t('common.undo'),
-                      onAction: () => setDeleted.mutate({ id: s.id, deleted: false }),
-                    }),
-                },
-              )
-            }
-          />
-        </View>
-      ))}
-      <Input
-        label={t('calendar.supplementName')}
-        placeholder={t('calendar.supplementNameHint')}
-        value={name}
-        onChangeText={setName}
-        maxLength={60}
-      />
-      <Input
-        label={t('calendar.supplementDose')}
-        placeholder={t('calendar.supplementDoseHint')}
-        value={dose}
-        onChangeText={setDose}
-        maxLength={40}
-        onSubmitEditing={() => name.trim() && void add()}
-      />
-    </Sheet>
   );
 }

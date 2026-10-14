@@ -43,14 +43,6 @@
     "workoutDoneInfo": "{{names}} · {{sets}} sets",
     "trainAgain": "Train another day",
     "waterLabel": "Water",
-    "creatine": "Creatine",
-    "creatineYes": "Taken today",
-    "creatineNo": "Not yet today",
-    "creatineWeek": "Taken {{n}} of the last 7 days",
-    "creatineMark": "Mark creatine as taken",
-    "creatineUndo": "Mark creatine as not taken",
-    "creatineTaken": "Creatine taken",
-    "creatineRemoved": "Creatine unmarked",
     "customize": "Customize Today",
     "moveUp": "Move {{name}} up",
     "moveDown": "Move {{name}} down",
@@ -63,10 +55,9 @@
       "nutrition": "Calories and meals",
       "workout": "Workout",
       "water": "Water",
-      "creatine": "Creatine",
-      "calendar": "Calendar",
       "ai": "AI coach bar",
-      "weight": "Weight"
+      "weight": "Weight",
+      "supplements": "Supplements"
     },
     "reorderHint": "Hold and slide to reorder",
     "focus": {
@@ -87,7 +78,15 @@
     "kg": "{{kg}} kg",
     "weightChange": "{{kg}} kg this week",
     "weightOn": "Logged {{day}}",
-    "noWeight": "No weight yet. Tap to log it."
+    "noWeight": "No weight yet. Tap to log it.",
+    "supplements": "Supplements",
+    "supplementsCount": "{{taken}} of {{total}}",
+    "supplementsWeek": "All taken on {{n}} of the last 7 days",
+    "supplementsMarkAll": "Mark all supplements as taken",
+    "supplementsUndoAll": "Mark supplements as not taken",
+    "supplementsTaken": "Supplements taken",
+    "supplementsRemoved": "Supplements unmarked",
+    "supplementsAdd": "Add a supplement"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -1081,7 +1080,7 @@
     "creditLeft": "{{amount}} € left",
     "creditRule": "+{{monthly}} € on {{date}}. What you do not use carries over, up to {{cap}} €.",
     "useIncluded": "Use the included AI",
-    "title": "AI plans & import",
+    "title": "AI coach",
     "chatTitle": "Chat with your AI",
     "chatNeedsKey": "Add your own API key to use the chat.",
     "openChat": "Open the chat",
@@ -1245,7 +1244,13 @@
     "attachFile": "File (PDF, picture, CSV, text)",
     "attachRemove": "Remove {{name}}",
     "attachTooBig": "This file is too big (10 MB at most).",
-    "attachUnsupported": "This kind of file cannot be sent: use a PDF, a picture or a text file."
+    "attachUnsupported": "This kind of file cannot be sent: use a PDF, a picture or a text file.",
+    "premiumTitle": "Your coach, ready to go",
+    "perkNoKey": "No API key, no setup",
+    "perkCredit": "10 € of AI every month, unused carries over",
+    "perkData": "Sees all your training, diet and progress",
+    "getPremium": "Get Premium",
+    "ownKeyToggle": "Use your own API key"
   },
   "reminders": {
     "dailyAt": "Every day at {{time}}",

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, View } from 'react-native';
-import { KeyboardAvoidingView, KeyboardAwareScrollView } from './keyboard';
+import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView } from './keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { radius, space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -33,7 +33,11 @@ export function Sheet({ visible, onClose, title, closeLabel, children, footer }:
       statusBarTranslucent
       navigationBarTranslucent
     >
-      {/* The sheet rises with the keyboard; its content scrolls the focused field into view. */}
+      {/*
+        The whole sheet rises with the keyboard, so its content needs a plain scroll view: a
+        keyboard-aware one would add the keyboard's height a second time (empty space under the
+        last field).
+      */}
       <KeyboardAvoidingView
         behavior="padding"
         style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay }}
@@ -77,8 +81,7 @@ export function Sheet({ visible, onClose, title, closeLabel, children, footer }:
             <IconButton icon="close" accessibilityLabel={closeLabel} onPress={onClose} />
           </View>
           <FieldChain>
-            <KeyboardAwareScrollView
-              bottomOffset={space.gapL}
+            <ScrollView
               style={{ flexGrow: 0 }}
               contentContainerStyle={{
                 paddingHorizontal: space.screenX,
@@ -88,7 +91,7 @@ export function Sheet({ visible, onClose, title, closeLabel, children, footer }:
               keyboardShouldPersistTaps="handled"
             >
               {children}
-            </KeyboardAwareScrollView>
+            </ScrollView>
           </FieldChain>
           {footer ? <View style={{ paddingHorizontal: space.screenX }}>{footer}</View> : null}
         </View>

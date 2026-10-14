@@ -6,29 +6,31 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
-import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
-import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, deviceTimeZone, localDay, weekOf } from '@/domain/day';
+import { addDays, deviceTimeZone, localDay } from '@/domain/day';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
 import { useAddWater, useDayTotals, useRemoveWater, useWater } from '@/features/diet/log';
-import { CalendarGrid, CalendarLegend, useCalendarData } from '@/features/progress/CalendarGrid';
 import { useProfile } from '@/features/profile/api';
 import { useBodyEntries } from '@/features/progress/data';
 import { useToday } from '@/features/profile/use-today';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
-import { monthGrid } from '@/features/train/HistoryScreen';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
-import { useCreatine } from './creatine-store';
+import {
+  supplementDay,
+  useSetTaken,
+  useSupplementLogs,
+  useSupplements,
+} from '@/features/supplements/data';
+import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import type { WidgetId, WidgetSize } from './layout-store';
 
 type Props = { size: WidgetSize };
@@ -511,110 +513,90 @@ export function WeightWidget({ size }: Props) {
   );
 }
 
-/** One tick a day: did you take your creatine? */
-export function CreatineWidget({ size }: Props) {
+/**
+ * Supplements of today (the same list and ticks as the calendar): how many were taken, the last
+ * seven days, and one tap to mark them all. Tap the card to tick them one by one or edit the list.
+ */
+export function SupplementsWidget({ size }: Props) {
   const { t } = useTranslation();
   const barHeight = useTabBarHeight();
   const today = useToday();
   const showToast = useToastStore((s) => s.show);
-  const days = useCreatine((s) => s.days);
-  const setTaken = useCreatine((s) => s.setTaken);
-  const taken = days.includes(today);
-  const week = Array.from({ length: 7 }, (_, i) => addDays(today, -i)).filter((d) =>
-    days.includes(d),
+  const [open, setOpen] = useState(false);
+  const list = useSupplements().data ?? [];
+  const logs = useSupplementLogs(addDays(today, -6), today).data;
+  const setTaken = useSetTaken();
+  const takenToday = list.filter((s) => logs?.get(today)?.has(s.id)).length;
+  const all = list.length > 0 && takenToday === list.length;
+  const week = Array.from({ length: 7 }, (_, i) => addDays(today, -i)).filter(
+    (d) => supplementDay(logs?.get(d), list) === 'all',
   ).length;
 
-  const toggle = () => {
-    setTaken(today, !taken);
+  /** Marks every supplement of today (or, when all were taken, none); UNDO restores the ticks. */
+  const toggleAll = async () => {
+    const before = new Set(logs?.get(today) ?? []);
+    await Promise.all(
+      list.map((s) => setTaken.mutateAsync({ day: today, supplementId: s.id, taken: !all })),
+    );
     confirm();
     showToast({
-      message: taken ? t('today.creatineRemoved') : t('today.creatineTaken'),
+      message: all ? t('today.supplementsRemoved') : t('today.supplementsTaken'),
       actionLabel: t('common.undo'),
       bottomOffset: barHeight,
-      onAction: () => setTaken(today, taken),
+      onAction: () =>
+        list.forEach((s) =>
+          setTaken.mutate({ day: today, supplementId: s.id, taken: before.has(s.id) }),
+        ),
     });
   };
 
   return (
-    <Frame size={size} label={t('today.creatine')}>
-      <Text variant="displayS">{taken ? t('today.creatineYes') : t('today.creatineNo')}</Text>
-      <DotBar
-        total={7}
-        on={week}
-        size={8}
-        gap={3}
-        off="outline"
-        accessibilityLabel={t('today.creatineWeek', { n: week })}
-      />
-      <IconButton
-        icon={taken ? 'close' : 'check'}
-        accessibilityLabel={taken ? t('today.creatineUndo') : t('today.creatineMark')}
-        onPress={toggle}
-      />
-    </Frame>
-  );
-}
-
-/** The calendar: this week or this month, with workouts and diet days. Tap a day to open it. */
-export function CalendarWidget({ size }: Props) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const router = useRouter();
-  const today = useToday();
-  const weekStart = usePreferencesStore((s) => s.weekStart);
-  const [mode, setMode] = useState<'week' | 'month'>('week');
-  const open = () => router.push('/calendar');
-
-  const cells: (string | null)[] =
-    mode === 'week' || size === 'small'
-      ? weekOf(today, weekStart)
-      : monthGrid(today.slice(0, 7), weekStart);
-  const days = cells.filter((d): d is string => d != null);
-  const data = useCalendarData([days[0]!.slice(0, 7), days[days.length - 1]!.slice(0, 7)]);
-  const past = days.filter((d) => d <= today);
-
-  if (size === 'small') {
-    return (
-      <Frame size="small" label={t('calendar.title')} onPress={open}>
-        <Icon name="calendar" size={24} color={colors.text} />
-        <Text variant="bodyS">
-          {t('calendar.summary', {
-            workouts: past.filter((d) => data.sessionsByDay.has(d)).length,
-            diet: past.filter((d) => data.statusOf(d) === 'onTarget').length,
-          })}
-        </Text>
-        <Text variant="label" muted>
-          {t('calendar.week')}
-        </Text>
+    <>
+      <Frame
+        size={size}
+        label={t('today.supplements')}
+        right={
+          list.length ? (
+            <IconButton
+              icon="edit"
+              size={36}
+              accessibilityLabel={t('calendar.editSupplements')}
+              onPress={() => setOpen(true)}
+            />
+          ) : undefined
+        }
+      >
+        {list.length === 0 ? (
+          <IconButton
+            icon="plus"
+            accessibilityLabel={t('today.supplementsAdd')}
+            onPress={() => setOpen(true)}
+          />
+        ) : (
+          <>
+            <Text variant="displayS" numeric>
+              {t('today.supplementsCount', { taken: takenToday, total: list.length })}
+            </Text>
+            <DotBar
+              total={7}
+              on={week}
+              size={8}
+              gap={3}
+              off="outline"
+              accessibilityLabel={t('today.supplementsWeek', { n: week })}
+            />
+            <IconButton
+              icon={all ? 'close' : 'check'}
+              accessibilityLabel={
+                all ? t('today.supplementsUndoAll') : t('today.supplementsMarkAll')
+              }
+              onPress={() => void toggleAll()}
+            />
+          </>
+        )}
       </Frame>
-    );
-  }
-
-  return (
-    <Frame
-      size="large"
-      label={t('calendar.title')}
-      right={<IconButton icon="calendar" accessibilityLabel={t('calendar.open')} onPress={open} />}
-    >
-      <Segmented
-        accessibilityLabel={t('calendar.view')}
-        value={mode}
-        onChange={setMode}
-        options={[
-          { value: 'week', label: t('calendar.week') },
-          { value: 'month', label: t('calendar.month') },
-        ]}
-      />
-      <CalendarGrid
-        cells={cells}
-        today={today}
-        selected={today}
-        onSelect={open}
-        weekStart={weekStart}
-        data={data}
-      />
-      <CalendarLegend />
-    </Frame>
+      <SupplementsSheet visible={open} onClose={() => setOpen(false)} day={today} />
+    </>
   );
 }
 
@@ -623,6 +605,5 @@ export const widgetComponents: Record<WidgetId, (p: Props) => ReactNode> = {
   workout: WorkoutWidget,
   water: WaterWidget,
   weight: WeightWidget,
-  creatine: CreatineWidget,
-  calendar: CalendarWidget,
+  supplements: SupplementsWidget,
 };

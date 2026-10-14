@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'creatine' | 'calendar';
+export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'supplements';
 export type WidgetSize = 'small' | 'large';
 export type WidgetItem = { id: WidgetId; size: WidgetSize; visible: boolean };
 
@@ -10,8 +10,7 @@ export const defaultWidgets: readonly WidgetItem[] = [
   { id: 'workout', size: 'large', visible: true },
   { id: 'water', size: 'small', visible: true },
   { id: 'weight', size: 'small', visible: true },
-  { id: 'creatine', size: 'small', visible: true },
-  { id: 'calendar', size: 'large', visible: false },
+  { id: 'supplements', size: 'small', visible: true },
 ];
 
 type HomeLayout = { widgets: readonly WidgetItem[]; aiDock: boolean };
@@ -24,7 +23,9 @@ export function mergeLayout(saved: unknown): HomeLayout {
   const known = new Map(defaultWidgets.map((w) => [w.id, w]));
   const out: WidgetItem[] = [];
   for (const w of raw.widgets ?? []) {
-    const base = w.id ? known.get(w.id) : undefined;
+    // The Creatine widget became Supplements (same place, same size); the calendar one is gone.
+    const id = (w.id as string | undefined) === 'creatine' ? 'supplements' : w.id;
+    const base = id ? known.get(id) : undefined;
     if (!base || out.some((o) => o.id === base.id)) continue;
     out.push({
       id: base.id,

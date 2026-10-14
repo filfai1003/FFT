@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +18,9 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { Reveal } from '@/components/ui/motion';
 import { tick } from '@/lib/haptics';
 import { CustomizeSheet } from './CustomizeSheet';
-import { useCreatine } from './creatine-store';
+import { useSessionStore } from '@/features/auth/session-store';
+import { supplementKeys } from '@/features/supplements/data';
+import { migrateCreatineDays } from '@/features/supplements/migrate-creatine';
 import { useHomeLayout } from './layout-store';
 import { widgetComponents } from './Widgets';
 
@@ -98,7 +101,7 @@ function WeekStrip() {
   );
 }
 
-/** Home: calories on top, then the widgets you chose (workout, water, weight, creatine, calendar). */
+/** Home: calories on top, then the widgets you chose (workout, water, weight, supplements). */
 export function TodayScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -106,14 +109,20 @@ export function TodayScreen() {
   const today = useToday();
   const profile = useProfile();
   const { widgets, aiDock, loaded, load } = useHomeLayout();
-  const creatineLoaded = useCreatine((s) => s.loaded);
-  const loadCreatine = useCreatine((s) => s.load);
+  const userId = useSessionStore((s) => s.userId);
+  const queryClient = useQueryClient();
   const [customizing, setCustomizing] = useState(false);
 
   useEffect(() => {
     if (!loaded) void load();
-    if (!creatineLoaded) void loadCreatine();
-  }, [loaded, load, creatineLoaded, loadCreatine]);
+  }, [loaded, load]);
+  // The old Creatine widget's days become ticks of the Supplements list (once).
+  useEffect(() => {
+    if (!userId) return;
+    void migrateCreatineDays(userId).then((moved) => {
+      if (moved) void queryClient.invalidateQueries({ queryKey: supplementKeys.all });
+    });
+  }, [userId, queryClient]);
 
   const [width, setWidth] = useState(0);
   // Two small widgets side by side leave the same gap as the rows above and below.
