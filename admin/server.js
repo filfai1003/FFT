@@ -1,4 +1,4 @@
-// FFT admin panel: browse the data, run SQL, edit in sudo mode, make accounts VIP.
+// FFT admin panel: browse the data, run SQL, edit in sudo mode, set the accounts' plans.
 import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -286,9 +286,15 @@ async function api(req, res, url) {
   if (route === 'GET /api/users') {
     const q = (url.searchParams.get('q') ?? '').trim();
     const out = await db.run(
-      `select u.id, u.email, u.created_at, u.last_sign_in_at, v.note,
-              (v.user_id is not null and v.deleted_at is null) as vip
-       from auth.users u left join public.vip_users v on v.user_id = u.id
+      `select u.id, u.email, u.created_at, u.last_sign_in_at,
+              -- same rule as public.plan_of (computed here: the read-only role cannot call it)
+              coalesce(p.plan, case when v.user_id is not null then 'premium' end, 'free') as plan,
+              coalesce(p.note, v.note) as note,
+              round(c.balance_micros / 1000000.0, 2) as ai_credit_eur
+       from auth.users u
+       left join public.user_plans p on p.user_id = u.id and p.deleted_at is null
+       left join public.vip_users v on v.user_id = u.id and v.deleted_at is null
+       left join public.ai_credit c on c.user_id = u.id
        where ($1::text = '' or u.email ilike $2)
        order by u.created_at desc limit 300`,
       { params: [q, `%${q.replace(/[\\%_]/g, '\\$&')}%`] },
@@ -296,27 +302,38 @@ async function api(req, res, url) {
     return send(res, 200, out);
   }
 
-  if (route === 'POST /api/vip') {
+  if (route === 'POST /api/plan') {
+    // free / supporter / premium (DECISIONS 42). Old VIP rows are cleared: plans replace them.
     needSudo();
-    const { userId, vip, note } = await readBody(req);
+    const { userId, plan, note } = await readBody(req);
     if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
-    const out = vip
-      ? await db.run(
-          `insert into public.vip_users (user_id, note) values ($1, $2)
-           on conflict (user_id) do update set note = excluded.note, deleted_at = null returning user_id`,
-          {
-            sudo: true,
-            commit: true,
-            params: [userId, note ? String(note).slice(0, 200) : null],
-            audit: { action: 'vip.grant', detail: { userId, note } },
-          },
-        )
-      : await db.run('delete from public.vip_users where user_id = $1 returning user_id', {
-          sudo: true,
-          commit: true,
-          params: [userId],
-          audit: { action: 'vip.revoke', detail: { userId } },
-        });
+    if (!['free', 'supporter', 'premium'].includes(plan)) throw new HttpError(400, 'Bad plan');
+    const out =
+      plan === 'free'
+        ? await db.run(
+            `with a as (delete from public.user_plans where user_id = $1 returning user_id),
+                  b as (delete from public.vip_users where user_id = $1 returning user_id)
+             select $1::uuid as user_id`,
+            {
+              sudo: true,
+              commit: true,
+              params: [userId],
+              audit: { action: 'plan.set', detail: { userId, plan } },
+            },
+          )
+        : await db.run(
+            `with b as (delete from public.vip_users where user_id = $1 returning user_id)
+             insert into public.user_plans (user_id, plan, note) values ($1, $2, $3)
+             on conflict (user_id) do update
+               set plan = excluded.plan, note = excluded.note, deleted_at = null
+             returning user_id`,
+            {
+              sudo: true,
+              commit: true,
+              params: [userId, plan, note ? String(note).slice(0, 200) : null],
+              audit: { action: 'plan.set', detail: { userId, plan, note } },
+            },
+          );
     return send(res, 200, out);
   }
 

@@ -62,9 +62,9 @@ check(
   (await call('/api/sql', { sql: 'select 1', commit: true })).status === 403,
 );
 check(
-  'vip refused without sudo',
-  (await call('/api/vip', { userId: '00000000-0000-0000-0000-000000000000', vip: true })).status ===
-    403,
+  'plan change refused without sudo',
+  (await call('/api/plan', { userId: '00000000-0000-0000-0000-000000000000', plan: 'premium' }))
+    .status === 403,
 );
 check(
   'row update refused without sudo',
@@ -119,12 +119,25 @@ const users = await call('/api/users');
 check('users list', users.status === 200, JSON.stringify(users.data));
 const first = users.data.rows?.[0];
 if (first) {
-  const grant = await call('/api/vip', { userId: first[0], vip: true, note: 'smoke test' });
-  check('vip grant', grant.status === 200, JSON.stringify(grant.data));
+  // Restores the plan the account had, whatever it was.
+  const before = first[4];
+  const grant = await call('/api/plan', {
+    userId: first[0],
+    plan: 'supporter',
+    note: 'smoke test',
+  });
+  check('plan set', grant.status === 200, JSON.stringify(grant.data));
   const after = await call('/api/users');
-  check('vip shows in the list', after.data.rows.find((r) => r[0] === first[0])?.[5] === true);
-  const revoke = await call('/api/vip', { userId: first[0], vip: false });
-  check('vip revoke', revoke.status === 200, JSON.stringify(revoke.data));
+  check(
+    'plan shows in the list',
+    after.data.rows.find((r) => r[0] === first[0])?.[4] === 'supporter',
+  );
+  const back = await call('/api/plan', { userId: first[0], plan: before });
+  check('plan restored', back.status === 200, JSON.stringify(back.data));
+  check(
+    'bad plan refused',
+    (await call('/api/plan', { userId: first[0], plan: 'gold' })).status === 400,
+  );
 }
 const audit = await call('/api/audit');
 check(

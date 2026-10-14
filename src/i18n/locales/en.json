@@ -856,7 +856,7 @@
       "look": "Look",
       "accessibility": "Accessibility",
       "ai": "AI coach",
-      "premium": "Premium",
+      "premium": "Plans",
       "privacy": "Privacy & data",
       "help": "Help & feedback"
     },
@@ -883,7 +883,8 @@
     "localBadge": "Free account · data stays on this device",
     "ai": "AI plans & import",
     "premium": "Premium",
-    "premiumBadge": "Premium · data saved online"
+    "supporter": "Supporter",
+    "premiumBadge": "Data synced online"
   },
   "settings": {
     "title": "Settings",
@@ -1063,6 +1064,13 @@
     "nextWeek": "Next week"
   },
   "ai": {
+    "includedTitle": "AI included with Premium",
+    "includedUpsell": "With Premium the coach works right away, no API key needed: 10 € of AI use every month.",
+    "seePlans": "See the plans",
+    "creditLeft": "{{amount}} € left",
+    "creditRule": "+{{monthly}} € on {{date}}. What you do not use carries over, up to {{cap}} €.",
+    "includedInUse": "The coach uses the included AI. Add a key of your own below to use your account instead.",
+    "useIncluded": "Use the included AI",
     "title": "AI plans & import",
     "intro": "Create and change your plans and diet with an AI, or ask it how you are doing. Use your own AI account in the chat (it can look at your data and change it, with your approval), or copy and paste with any AI chat.",
     "chatTitle": "Chat with your AI",
@@ -1288,17 +1296,26 @@
     "done": "Account created. Your data is in it."
   },
   "premium": {
-    "title": "FFT Premium",
-    "intro": "Premium keeps your data online, so it is the same on your phone and on the web.",
-    "gateIntro": "The web version of FFT is part of Premium. Your account is free: your data stays on your phone.",
-    "perkWeb": "Use FFT from any browser, with all your data",
-    "perkDevices": "The same workouts, food and progress on every device",
-    "perkSafe": "Nothing lost if you change or lose your phone",
-    "activeTitle": "Premium is active",
-    "activeBody": "Your data is saved online. You can also open FFT from a browser with this account.",
-    "soonTitle": "Coming soon",
-    "soonBody": "Premium cannot be bought yet. For now it is given by invitation.",
-    "freeNote": "Free accounts keep everything on the phone: only the email and password are saved online.",
+    "plansTitle": "Plans",
+    "plansIntro": "Everything in FFT is free. Supporter keeps your data online; Premium adds the AI coach with no key needed.",
+    "gateIntro": "The web version of FFT comes with Supporter and Premium. Your account is free: your data stays on your phone.",
+    "plan": { "free": "Free", "supporter": "Supporter", "premium": "Premium" },
+    "priceFree": "0 €",
+    "pricePerMonth": "{{price}} € / month",
+    "yourPlan": "Your plan",
+    "perks": {
+      "everything": "Every feature: workouts, diet, progress, photos",
+      "onPhone": "Your data stays on your phone",
+      "ownKey": "The AI coach with your own API key",
+      "sync": "Your data synced online, on every device",
+      "web": "FFT in any browser",
+      "safe": "Nothing lost if you change or lose your phone",
+      "apiMcp": "API and MCP access for your own tools (coming soon)",
+      "supporterAll": "Everything in Supporter",
+      "aiIncluded": "The AI coach in the app, no API key needed",
+      "aiCredit": "10 € of AI use every month; what you do not use carries over, up to 15 €"
+    },
+    "howToGet": "Plans cannot be bought in the app yet: for now they are given by invitation.",
     "moving": "Moving your data",
     "upTitle": "Moving your data online",
     "upBody": "Premium is on: your workouts, food, weight and photos are being saved online. Keep the app open.",

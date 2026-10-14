@@ -24,7 +24,7 @@ import { usePlanStore } from '@/lib/plan';
 import { logOut, logOutAnyway } from './account';
 import { useLatestWeight, useProfile } from './api';
 
-/** Profile: who you are, premium showcase, and the settings sections. */
+/** Profile: who you are, your plan, and the settings sections. */
 export function ProfileScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -32,6 +32,7 @@ export function ProfileScreen() {
   const queryClient = useQueryClient();
   const profile = useProfile();
   const premium = usePlanStore((s) => s.premium === true && s.home === 'online');
+  const plan = usePlanStore((s) => s.plan ?? 'free');
   const weight = useLatestWeight();
   const today = useToday();
   const prefs = usePreferencesStore();
@@ -203,7 +204,7 @@ export function ProfileScreen() {
                   borderColor: colors.borderControl,
                 }}
               >
-                <Text variant="label">{premium ? t('profile.premium') : t('profile.free')}</Text>
+                <Text variant="label">{t(`profile.${plan}`)}</Text>
               </View>
             </View>
             <Text variant="label" muted>

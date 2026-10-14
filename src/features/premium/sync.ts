@@ -10,6 +10,7 @@ import {
   type Pending,
   type Row,
 } from '@/lib/local-db';
+import { isPlan, type Plan } from '@/lib/plan';
 import { getAuthClient } from '@/lib/supabase';
 
 /**
@@ -242,11 +243,11 @@ export async function stopSync(userId: string) {
 }
 
 /** What the server says about the account; null when it cannot be reached. */
-export async function fetchPremium(): Promise<boolean | null> {
+export async function fetchPlan(): Promise<Plan | null> {
   try {
-    const res = await server().rpc('is_premium');
+    const res = await server().rpc('my_plan');
     if (res.error) return null;
-    return res.data === true;
+    return isPlan(res.data) ? res.data : null;
   } catch {
     return null;
   }

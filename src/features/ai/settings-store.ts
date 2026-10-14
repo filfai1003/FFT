@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { authStorage } from '@/lib/secure-storage';
 
-export type AiProvider = 'anthropic' | 'openai';
+/** 'included' = the AI included with Premium (through our server, no key). */
+export type AiProvider = 'anthropic' | 'openai' | 'included';
 
 export type AiSettings = {
   provider: AiProvider;

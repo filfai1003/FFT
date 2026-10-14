@@ -24,7 +24,9 @@ import { canUndo, repairMessages, runAgent, undoCall, type Approval } from './ag
 import { ToolCard } from './agent/ToolCard';
 import type { AgentMessage, ToolCall, ToolDef, ToolResult } from './agent/types';
 import { useAgentTools } from './agent/use-tools';
-import { hasAiKey, useAiSettings } from './settings-store';
+import { aiReady, effectiveAiSettings } from './included';
+import { useAiSettings } from './settings-store';
+import { usePlanStore } from '@/lib/plan';
 
 type Pending = { call: ToolCall; resolve: (a: Approval) => void };
 
@@ -73,7 +75,8 @@ export function AiChatScreen() {
     };
   }, [settings]);
 
-  const ready = hasAiKey(settings) && settings.model.trim() !== '';
+  const plan = usePlanStore((s) => s.plan);
+  const ready = aiReady(settings, plan);
 
   const send = async (draft?: string) => {
     const content = (draft ?? text).trim();
@@ -94,7 +97,7 @@ export function AiChatScreen() {
     abort.current = new AbortController();
     try {
       await runAgent({
-        settings,
+        settings: effectiveAiSettings(settings, plan),
         system: buildAgentPrompt({ today, profile: ctx.profileText }),
         messages: [...repaired, user],
         tools,

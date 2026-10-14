@@ -1,0 +1,76 @@
+// The AI coach included with Premium: the app sends an OpenAI-style chat request (messages and
+// tools); this checks the plan and the credit, forwards it to OpenRouter with the server's key
+// (never in the app), charges the real cost to the user's AI credit and returns the reply.
+// Variables: OPENROUTER_API_KEY, optional AI_MODEL (default below) and EUR_PER_USD (cost rate).
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { ...cors, 'content-type': 'application/json' } });
+
+const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+/** One answer can never cost more than this many output tokens. */
+const MAX_TOKENS = 2048;
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  const key = Deno.env.get('OPENROUTER_API_KEY');
+  if (!key) return json({ error: 'The included AI is not set up on this server yet.' }, 503);
+
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const token = (req.headers.get('Authorization') ?? '').replace('Bearer ', '');
+  const { data: auth } = await admin.auth.getUser(token);
+  const user = auth.user;
+  if (!user) return json({ error: 'unauthorized' }, 401);
+
+  const plan = await admin.rpc('plan_of', { p_user: user.id });
+  if (plan.data !== 'premium') return json({ error: 'The included AI is part of Premium.' }, 403);
+  const credit = await admin.rpc('ai_refresh_credit', { p_user: user.id });
+  const balance = Number(credit.data ?? 0);
+  if (credit.error || balance <= 0)
+    return json({ error: 'Your AI credit for this month is used up.', balance_micros: balance }, 402);
+
+  let body: { messages?: unknown[]; tools?: unknown[] };
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'bad request' }, 400);
+  }
+  if (!Array.isArray(body.messages) || body.messages.length === 0) return json({ error: 'bad request' }, 400);
+
+  const model = Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${key}`,
+      'X-Title': 'FFT',
+    },
+    body: JSON.stringify({
+      model,
+      messages: body.messages,
+      ...(Array.isArray(body.tools) && body.tools.length > 0 ? { tools: body.tools } : {}),
+      max_tokens: MAX_TOKENS,
+      usage: { include: true },
+    }),
+  });
+  const reply = await res.json().catch(() => ({}));
+  if (!res.ok) return json({ error: reply?.error?.message ?? `AI error ${res.status}` }, 502);
+
+  // OpenRouter reports the real cost of the request in US dollars.
+  const usage = reply.usage ?? {};
+  const eurPerUsd = Number(Deno.env.get('EUR_PER_USD') || '0.92');
+  const costMicros = Math.ceil(Number(usage.cost ?? 0) * eurPerUsd * 1_000_000);
+  const left = await admin.rpc('ai_charge', {
+    p_user: user.id,
+    p_model: String(reply.model ?? model),
+    p_prompt: Number(usage.prompt_tokens ?? 0),
+    p_completion: Number(usage.completion_tokens ?? 0),
+    p_cost_micros: costMicros,
+  });
+
+  return json({ choices: reply.choices ?? [], balance_micros: Number(left.data ?? balance - costMicros) });
+});

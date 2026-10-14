@@ -555,3 +555,74 @@ describe('generic foods (CIQUAL)', () => {
     );
   });
 });
+
+describe('plans and AI credit', () => {
+  const S = 'dddddddd-0000-0000-0000-00000000000d';
+
+  before(async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email)
+        values ('${S}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 's@test.dev');
+      insert into public.user_plans (user_id, plan) values ('${S}', 'supporter');
+    `);
+  });
+
+  it('VIP accounts are premium, others free unless the admin set a plan', async () => {
+    await as(A);
+    assert.equal((await one('select public.my_plan() as p')).p, 'premium');
+    await as(C);
+    assert.equal((await one('select public.my_plan() as p')).p, 'free');
+    await as(S);
+    assert.equal((await one('select public.my_plan() as p')).p, 'supporter');
+  });
+
+  it('supporters keep data online too', async () => {
+    await as(S);
+    assert.equal((await one('select public.is_premium() as p')).p, true);
+    await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-15', 250)`);
+  });
+
+  it('premium gets 10 € of AI credit a month, carried over up to 15 €; supporters none', async () => {
+    await as(A);
+    const first = (await one('select public.my_ai_credit() as c')).c;
+    assert.equal(first.plan, 'premium');
+    assert.equal(Number(first.balance_micros), 10_000_000);
+    // Three months go by without using it: the balance stops at the cap.
+    await admin();
+    await db.exec(
+      `update public.ai_credit set next_grant = current_date - interval '3 months' where user_id = '${A}'`,
+    );
+    await as(A);
+    assert.equal(
+      Number((await one('select public.my_ai_credit() as c')).c.balance_micros),
+      15_000_000,
+    );
+    await as(S);
+    assert.equal(Number((await one('select public.my_ai_credit() as c')).c.balance_micros), 0);
+  });
+
+  it('only the server can charge or top up the credit', async () => {
+    await as(A);
+    await rejects(`select public.ai_charge('${A}', 'x', 1, 1, -100000000)`, '42501');
+    await rejects(`select public.ai_refresh_credit('${A}')`, '42501');
+    await rejects(`select public.plan_of('${C}')`, '42501');
+    await admin();
+    const left = Number(
+      (await one(`select public.ai_charge('${A}', 'm', 100, 50, 1500000) as b`)).b,
+    );
+    assert.equal(left, 13_500_000);
+    assert.equal(
+      await count(`select count(*) as n from public.ai_usage where user_id = '${A}'`),
+      1,
+    );
+  });
+
+  it('a user cannot give themselves a plan', async () => {
+    await as(C);
+    await rejects(
+      `insert into public.user_plans (user_id, plan) values ('${C}', 'premium')`,
+      '42501',
+    );
+  });
+});

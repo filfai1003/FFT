@@ -70,7 +70,8 @@ const mockServer = (() => {
     table,
     setOffline: (v: boolean) => (offline = v),
     /** Another device's change, already on the server. */
-    put: (t: string, row: Row) => table(t).set(String(row[pkOf(t)]), { ...row, server_at: clock++ }),
+    put: (t: string, row: Row) =>
+      table(t).set(String(row[pkOf(t)]), { ...row, server_at: clock++ }),
     client: {
       rpc,
       storage: {
@@ -96,7 +97,9 @@ beforeAll(async () => {
 
 describe('premium sync', () => {
   it('works on the device first, then sends the change in the background', async () => {
-    await phone().from('water_logs').insert({ id: id(1), day: '2026-10-14', ml: 250 });
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(1), day: '2026-10-14', ml: 250 });
     expect(localWater(id(1))?.ml).toBe(250); // instant, no server involved
     expect(water(id(1))).toBeUndefined();
     await syncOnce(U);
@@ -151,7 +154,9 @@ describe('premium sync', () => {
     await syncOnce(U);
     expect(water(id(1))).toBeUndefined();
 
-    await phone().from('water_logs').insert({ id: id(2), day: '2026-10-14', ml: 300 });
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(2), day: '2026-10-14', ml: 300 });
     await syncOnce(U);
     // Another device deletes it.
     mockServer.table('water_logs').delete(id(2));

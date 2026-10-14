@@ -1,4 +1,5 @@
 import { AiError, readError } from '../client';
+import { callIncluded } from '../included';
 import type { AiSettings } from '../settings-store';
 import type { AgentMessage, ToolCall, ToolSpec } from './types';
 
@@ -105,6 +106,18 @@ export async function callModel(
 ): Promise<ModelReply> {
   const key = settings.apiKey.trim();
   const recent = recentMessages(messages);
+  const openAiTools = tools.map((t) => ({
+    type: 'function',
+    function: { name: t.name, description: t.description, parameters: t.schema },
+  }));
+
+  if (settings.provider === 'included') {
+    const data = await callIncluded({
+      messages: toOpenAiMessages(system, recent),
+      tools: openAiTools,
+    });
+    return fromOpenAi(data);
+  }
 
   if (settings.provider === 'anthropic') {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -153,14 +166,16 @@ export async function callModel(
     body: JSON.stringify({
       model: settings.model.trim(),
       messages: toOpenAiMessages(system, recent),
-      tools: tools.map((t) => ({
-        type: 'function',
-        function: { name: t.name, description: t.description, parameters: t.schema },
-      })),
+      tools: openAiTools,
     }),
   });
   if (!res.ok) throw new AiError(await readError(res), res.status);
-  const data = (await res.json()) as {
+  return fromOpenAi(await res.json());
+}
+
+/** An OpenAI-style reply (OpenAI, OpenRouter, our included AI) -> text and tool calls. */
+function fromOpenAi(raw: unknown): ModelReply {
+  const data = raw as {
     choices?: {
       message?: {
         content?: string | null;

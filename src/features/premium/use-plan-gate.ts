@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
 import { loadPlan, resetPlan, savePlan } from '@/lib/plan';
-import { fetchPremium, startSync, stopSync } from './sync';
+import { fetchPlan, startSync, stopSync } from './sync';
 
 export type PlanPhase =
   | { kind: 'checking' }
@@ -41,16 +41,22 @@ export function usePlanGate() {
       set({ kind: 'checking' });
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
-      const asking = fetchPremium();
+      // "premium" here = the plan keeps data online (supporter or premium).
+      const asking = fetchPlan().then((plan) =>
+        plan == null ? null : { plan, online: plan !== 'free' },
+      );
       let fetched: boolean | null = null;
-      if (saved.premium == null) {
-        fetched = await withTimeout(asking, 8000, null);
-        if (fetched != null) await savePlan(userId, { premium: fetched });
+      if (saved.premium == null || saved.plan == null) {
+        const answer = await withTimeout(asking, 8000, null);
+        if (answer) {
+          fetched = answer.online;
+          await savePlan(userId, { plan: answer.plan, premium: answer.online });
+        }
       } else {
         void asking.then(async (answer) => {
           if (answer == null || !live) return;
-          await savePlan(userId, { premium: answer });
-          if (answer !== saved.premium) setAttempt((n) => n + 1);
+          await savePlan(userId, { plan: answer.plan, premium: answer.online });
+          if (answer.online !== saved.premium) setAttempt((n) => n + 1);
         });
       }
       const premium = fetched ?? saved.premium ?? false;

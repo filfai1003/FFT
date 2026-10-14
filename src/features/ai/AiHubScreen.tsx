@@ -11,7 +11,9 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
+import { euros, effectiveAiSettings, fetchAiCredit, useAiCredit } from './included';
 import { hasAiKey, useAiSettings, type AiProvider, type AiSettings } from './settings-store';
+import { usePlanStore } from '@/lib/plan';
 
 /** AI plans: the chat with your own AI key, the manual copy-and-paste mode, and the key settings. */
 export function AiHubScreen() {
@@ -47,6 +49,8 @@ export function AiHubScreen() {
       <Text variant="screenTitle">{t('ai.title')}</Text>
       <Text muted>{t('ai.intro')}</Text>
 
+      <IncludedCard />
+
       <Card gap={10}>
         <Text variant="label" muted>
           {t('ai.manualCardTitle')}
@@ -67,7 +71,7 @@ export function AiHubScreen() {
         </Text>
         <Segmented
           accessibilityLabel={t('ai.provider')}
-          value={value.provider}
+          value={value.provider === 'included' ? 'anthropic' : value.provider}
           onChange={switchProvider}
           options={[
             { value: 'anthropic', label: t('ai.providerAnthropic') },
@@ -126,5 +130,72 @@ export function AiHubScreen() {
         ) : null}
       </Card>
     </Screen>
+  );
+}
+
+/** Premium: the AI included in the plan and the credit left. Other plans: where to get it. */
+function IncludedCard() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const plan = usePlanStore((s) => s.plan);
+  const settings = useAiSettings();
+  const credit = useAiCredit((s) => s.credit);
+
+  useEffect(() => {
+    if (plan === 'premium') void fetchAiCredit();
+  }, [plan]);
+
+  if (plan !== 'premium')
+    return (
+      <Card gap={10}>
+        <Text variant="label" muted>
+          {t('ai.includedTitle')}
+        </Text>
+        <Text variant="bodyS" muted>
+          {t('ai.includedUpsell')}
+        </Text>
+        <Button
+          label={t('ai.seePlans')}
+          variant="secondary"
+          onPress={() => router.push('/profile/premium')}
+        />
+      </Card>
+    );
+
+  const inUse = effectiveAiSettings(settings, plan).provider === 'included';
+  return (
+    <Card gap={10}>
+      <Text variant="label" muted>
+        {t('ai.includedTitle')}
+      </Text>
+      <Text variant="titleM" numeric>
+        {credit ? t('ai.creditLeft', { amount: euros(credit.balanceMicros) }) : '—'}
+      </Text>
+      {credit ? (
+        <Text variant="bodyS" muted>
+          {t('ai.creditRule', {
+            monthly: euros(credit.monthlyMicros),
+            cap: euros(credit.capMicros),
+            date: credit.nextGrant ?? '',
+          })}
+        </Text>
+      ) : null}
+      {inUse ? (
+        <Text variant="bodyS">{t('ai.includedInUse')}</Text>
+      ) : (
+        <Button
+          label={t('ai.useIncluded')}
+          variant="secondary"
+          onPress={() =>
+            void settings.save({
+              provider: 'included',
+              apiKey: settings.apiKey,
+              model: settings.model,
+              baseUrl: settings.baseUrl,
+            })
+          }
+        />
+      )}
+    </Card>
   );
 }

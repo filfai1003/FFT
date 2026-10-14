@@ -1,5 +1,5 @@
 // The small server next to Supabase: it runs the database migrations at start and serves the two
-// Edge Functions (`off`, `delete-account`) that Kong exposes at /functions/v1/<name>.
+// Edge Functions (`off`, `delete-account`, `ai`) that Kong exposes at /functions/v1/<name>.
 import { Buffer } from 'node:buffer';
 import http from 'node:http';
 import { migrate } from './migrate.js';
@@ -13,7 +13,7 @@ globalThis.Deno = {
     handlers[loading] = handler;
   },
 };
-for (const name of ['off', 'delete-account']) {
+for (const name of ['off', 'delete-account', 'ai']) {
   loading = name;
   await import(`./fn/${name}/index.ts`);
 }

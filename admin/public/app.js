@@ -456,25 +456,29 @@ async function loadUsers() {
   });
   if (!r) return;
   $('userCount').textContent = `${r.rows.length} accounts`;
-  const [id, email, created, last, note, vip] = [0, 1, 2, 3, 4, 5];
+  const [id, email, created, last, plan, note, credit] = [0, 1, 2, 3, 4, 5, 6];
   const body = r.rows.map((row) => {
-    const toggle = h('button', {
-      class: `toggle${row[vip] ? ' on' : ''}`,
-      role: 'switch',
-      'aria-checked': String(row[vip]),
-      'aria-label': `VIP for ${row[email]}`,
-      title: inSudo() ? 'Make VIP or remove VIP' : 'Enter sudo mode to change this',
-      onclick: () => setVip(row[id], row[email], !row[vip]),
-    });
-    if (!inSudo()) toggle.setAttribute('aria-disabled', 'true');
+    // free / supporter / premium: changes go through sudo mode (DECISIONS 42).
+    const select = h(
+      'select',
+      {
+        'aria-label': `Plan of ${row[email]}`,
+        title: inSudo() ? 'Change the plan' : 'Enter sudo mode to change this',
+        onchange: (e) => setPlan(row[id], row[email], e.target.value, e.target, row[plan]),
+      },
+      ['free', 'supporter', 'premium'].map((p) =>
+        h('option', { value: p, ...(p === row[plan] ? { selected: '' } : {}) }, p),
+      ),
+    );
     return h(
       'tr',
       {},
       h('td', {}, row[email] ?? '(no email)'),
       h('td', {}, row[created] ? new Date(row[created]).toLocaleString() : ''),
       h('td', {}, row[last] ? new Date(row[last]).toLocaleString() : 'never'),
+      h('td', {}, select),
+      h('td', {}, row[credit] != null ? `${row[credit]} €` : ''),
       h('td', {}, row[note] ?? ''),
-      h('td', {}, toggle),
     );
   });
   $('userGrid').replaceChildren(
@@ -488,7 +492,9 @@ async function loadUsers() {
             h(
               'tr',
               {},
-              ['Email', 'Created', 'Last sign-in', 'VIP note', 'VIP'].map((c) => h('th', {}, c)),
+              ['Email', 'Created', 'Last sign-in', 'Plan', 'AI credit', 'Note'].map((c) =>
+                h('th', {}, c),
+              ),
             ),
           ),
           h('tbody', {}, body),
@@ -497,17 +503,25 @@ async function loadUsers() {
   );
 }
 
-async function setVip(userId, email, vip) {
-  if (!inSudo()) return openSudo();
+async function setPlan(userId, email, plan, select, previous) {
+  const undo = () => (select.value = previous);
+  if (!inSudo()) {
+    undo();
+    return openSudo();
+  }
   let note = null;
-  if (vip) {
-    note = prompt(`Make ${email} VIP. A note for yourself (optional):`, '');
-    if (note === null) return;
-  } else if (!confirm(`Remove VIP from ${email}?`)) return;
+  if (plan !== 'free') {
+    note = prompt(`Give ${email} the ${plan} plan. A note for yourself (optional):`, '');
+    if (note === null) return undo();
+  } else if (
+    !confirm(`Move ${email} back to the free plan? Their online data comes back to their phone.`)
+  )
+    return undo();
   try {
-    await api('/api/vip', { userId, vip, note });
+    await api('/api/plan', { userId, plan, note });
     await loadUsers();
   } catch (e) {
+    undo();
     alert(e.message);
   }
 }
