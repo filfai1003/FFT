@@ -680,7 +680,14 @@ export function pgDatabase(pool) {
           [JSON.stringify({ sub: userId, role: 'authenticated' }), userId],
         );
         await client.query('set local role authenticated');
-        const result = await fn(async (sql, params) => (await client.query(sql, params)).rows);
+        // One connection, one query at a time: tools that ask in parallel are queued here.
+        let queue = Promise.resolve();
+        const q = (sql, params) => {
+          const run = queue.then(() => client.query(sql, params));
+          queue = run.catch(() => undefined);
+          return run.then((r) => r.rows);
+        };
+        const result = await fn(q);
         await client.query('commit');
         return result;
       } catch (e) {
