@@ -101,6 +101,8 @@ export function useBodyGoal() {
         .select('*')
         .is('deleted_at', null)
         .order('valid_from', { ascending: false })
+        // Several changes on the same day: the last one counts.
+        .order('created_at', { ascending: false })
         .limit(1);
       if (error) throw error;
       const g = data[0];
@@ -135,7 +137,7 @@ export function useSetBodyGoal() {
       targetWeightKg: number | null;
       targetBodyFatPct: number | null;
     }) => {
-      if (g.targetWeightKg == null && g.targetBodyFatPct == null) throw new Error('empty goal');
+      // Both empty = no goal any more (the newest row decides; older ones stay as history).
       const { error } = await getSupabase().from('body_goals').insert({
         id: newId(),
         user_id: userId!,

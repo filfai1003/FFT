@@ -160,7 +160,9 @@ export function BodyScreen() {
   const weightBad =
     goalInput.trim() !== '' && (goalWeightKg == null || goalWeightKg < 20 || goalWeightKg > 500);
   const fatBad = fatGoalInput.trim() !== '' && (goalFat == null || goalFat < 2 || goalFat > 70);
-  const canSaveGoal = !weightBad && !fatBad && (goalWeightKg != null || goalFat != null);
+  const clearsGoal = goalWeightKg == null && goalFat == null;
+  // Empty fields are fine: one goal, both, or none (removes the goals you had).
+  const canSaveGoal = !weightBad && !fatBad && (!clearsGoal || hasGoal);
   const start = goal.data?.startWeightKg ?? weights[0]?.weightKg ?? null;
   const toGo = target != null && current != null ? Math.abs(current - target) : null;
   const progress =
@@ -440,7 +442,7 @@ export function BodyScreen() {
         footer={
           <Button
             size="large"
-            label={t('common.save')}
+            label={clearsGoal && hasGoal ? t('progress.removeGoals') : t('common.save')}
             disabled={!canSaveGoal || setGoal.isPending}
             onPress={async () => {
               await setGoal.mutateAsync({
