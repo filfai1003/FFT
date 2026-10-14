@@ -187,7 +187,7 @@ export async function callModel(
   if (settings.provider === 'included') {
     const data = await callIncluded({
       messages: toOpenAiMessages(system, recent, files),
-      tools: openAiTools,
+      ...(openAiTools.length ? { tools: openAiTools } : {}),
     });
     return fromOpenAi(data);
   }
@@ -208,11 +208,16 @@ export async function callModel(
         max_tokens: 4096,
         system,
         messages: toAnthropicMessages(recent, files),
-        tools: tools.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.schema,
-        })),
+        // A plain question (e.g. reading a label) has no tools: some providers refuse an empty list.
+        ...(tools.length
+          ? {
+              tools: tools.map((t) => ({
+                name: t.name,
+                description: t.description,
+                input_schema: t.schema,
+              })),
+            }
+          : {}),
       }),
     });
     if (!res.ok) throw new AiError(await readError(res), res.status);
@@ -239,7 +244,7 @@ export async function callModel(
     body: JSON.stringify({
       model: settings.model.trim(),
       messages: toOpenAiMessages(system, recent, files),
-      tools: openAiTools,
+      ...(openAiTools.length ? { tools: openAiTools } : {}),
     }),
   });
   if (!res.ok) throw new AiError(await readError(res), res.status);

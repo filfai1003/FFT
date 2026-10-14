@@ -591,7 +591,14 @@
     "addPortion": "+ Add portion",
     "privacy": "Only visible to you. You'll find it under Mine.",
     "save": "Save food",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "labelPhoto": "Fill from a photo of the label",
+    "labelReading": "Reading the label…",
+    "labelFilled": "Filled from the label. Check the values, then save.",
+    "labelUnreadable": "Could not read a nutrition table in that photo. Try again closer, with good light.",
+    "labelFailed": "The label could not be read right now. Try again, or fill in the values.",
+    "labelNeedsAi": "Reading labels uses the AI coach: Premium, or your own AI key.",
+    "labelAiSettings": "AI coach"
   },
   "scanner": {
     "close": "Close scanner",
@@ -610,7 +617,8 @@
     "found": "Barcode {{code}}",
     "chooseAmount": "Choose amount",
     "createFood": "Create this food",
-    "search": "Look up"
+    "search": "Look up",
+    "photoLabel": "Photograph the label"
   },
   "goals": {
     "title": "Diet goals",

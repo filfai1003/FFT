@@ -28,6 +28,9 @@ const TEXT_EXT = /\.(txt|csv|tsv|json|md|markdown|xml|ya?ml|log)$/i;
 
 export class AttachmentError extends Error {}
 
+/** A photo taken elsewhere in the app (e.g. a nutrition label), kept like a chat attachment. */
+export const attachPhoto = (uri: string, width?: number) => saveImage(uri, width, 'photo.jpg');
+
 async function saveImage(uri: string, width: number | undefined, name: string) {
   const scaled =
     width && width > MAX_SIDE
