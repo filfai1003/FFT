@@ -54,6 +54,16 @@ export function Stepper({
     onChange(stepValue(value, delta, min, max));
   };
 
+  // Typed numbers count at once (a button tapped right after typing must see them), not only
+  // when the field loses focus; the text stays as typed ("12." while writing 12.5).
+  const type = (text: string) => {
+    setDraft(text);
+    const n = parseDecimal(text);
+    if (n == null || n < min || n > max || n === value) return;
+    setSyncedValue(n);
+    onChange(n);
+  };
+
   const commit = () => {
     const n = parseDecimal(draft);
     if (n == null) return setDraft(String(value));
@@ -113,7 +123,7 @@ export function Stepper({
           <TextInput
             accessibilityLabel={valueLabel}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={type}
             onEndEditing={commit}
             onBlur={commit}
             keyboardType="decimal-pad"

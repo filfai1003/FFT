@@ -94,4 +94,23 @@ describe('Stepper', () => {
     await fireEvent(input, 'endEditing');
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('amount variant: an exact number counts while typing (no need to leave the field)', async () => {
+    const onChange = jest.fn();
+    await renderUI(
+      <Stepper
+        variant="amount"
+        value={150}
+        onChange={onChange}
+        min={1}
+        max={2000}
+        unit="g"
+        valueLabel="Amount in grams"
+        decreaseLabel="Decrease portion"
+        increaseLabel="Increase portion"
+      />,
+    );
+    await fireEvent.changeText(screen.getByLabelText('Amount in grams'), '137');
+    expect(onChange).toHaveBeenLastCalledWith(137);
+  });
 });

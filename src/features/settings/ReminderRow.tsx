@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { Icon } from '@/components/ui/Icon';
+import { IconButton } from '@/components/ui/IconButton';
 import { Sheet } from '@/components/ui/Sheet';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
 import type { ReminderKind } from '@/lib/notifications';
-import { formatClock, type Clock, type ReminderTimes } from '@/lib/reminder-times';
+import { formatClock, nextMealTime, type Clock, type ReminderTimes } from '@/lib/reminder-times';
 import { useReminder } from './use-reminder';
 
 // The system numbers weekdays 1 = Sunday … 7 = Saturday; the chips start on Monday.
@@ -80,7 +81,11 @@ export function reminderSummary(
       day: t(`reminders.weekday.${times.checkin.weekday}`),
       time: formatClock(times.checkin),
     });
-  return times.meals.map(formatClock).join(' · ');
+  if (times.meals.length === 0) return t('reminders.noMealTimesShort');
+  return [...times.meals]
+    .sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute))
+    .map(formatClock)
+    .join(' · ');
 }
 
 /**
@@ -159,22 +164,42 @@ export function ReminderRow({ kind, bare = false }: { kind: ReminderKind; bare?:
             />
           </>
         ) : null}
-        {kind === 'meals'
-          ? times.meals.map((meal, i) => (
-              <ClockEditor
-                key={i}
-                label={t(
-                  i === 0 ? 'reminders.meal.0' : i === 1 ? 'reminders.meal.1' : 'reminders.meal.2',
-                )}
-                value={meal}
-                onChange={(next) => {
-                  const meals = [...times.meals] as ReminderTimes['meals'];
-                  meals[i] = next;
-                  void changeTimes({ meals });
-                }}
-              />
-            ))
-          : null}
+        {kind === 'meals' ? (
+          <>
+            {times.meals.length === 0 ? (
+              <Text variant="bodyS" muted>
+                {t('reminders.noMealTimes')}
+              </Text>
+            ) : null}
+            {times.meals.map((meal, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <ClockEditor
+                    label={t('reminders.mealTime', { n: i + 1 })}
+                    value={meal}
+                    onChange={(next) => {
+                      const meals = [...times.meals];
+                      meals[i] = next;
+                      void changeTimes({ meals });
+                    }}
+                  />
+                </View>
+                <IconButton
+                  icon="trash"
+                  accessibilityLabel={t('reminders.removeMealTime', { n: i + 1 })}
+                  onPress={() => void changeTimes({ meals: times.meals.filter((_, j) => j !== i) })}
+                />
+              </View>
+            ))}
+            <Button
+              variant="secondary"
+              label={t('reminders.addMealTime')}
+              onPress={() =>
+                void changeTimes({ meals: [...times.meals, nextMealTime(times.meals)] })
+              }
+            />
+          </>
+        ) : null}
         <Text variant="bodyS" muted>
           {t('reminders.localNote')}
         </Text>

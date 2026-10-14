@@ -1,4 +1,4 @@
-import { defaultReminderTimes, formatClock, sanitizeTimes } from './reminder-times';
+import { defaultReminderTimes, formatClock, nextMealTime, sanitizeTimes } from './reminder-times';
 
 describe('reminder times', () => {
   it('formats a clock with two digits', () => {
@@ -15,11 +15,7 @@ describe('reminder times', () => {
     });
     expect(t.workout).toEqual({ hour: 18, minute: 30 });
     expect(t.checkin).toEqual({ weekday: 5, hour: 7, minute: 15 });
-    expect(t.meals).toEqual([
-      { hour: 9, minute: 0 },
-      { hour: 13, minute: 0 },
-      { hour: 20, minute: 0 },
-    ]);
+    expect(t.meals).toEqual([{ hour: 9, minute: 0 }]); // a saved list is kept, any length
   });
 
   it('keeps valid saved times', () => {
@@ -33,5 +29,22 @@ describe('reminder times', () => {
       ],
     };
     expect(sanitizeTimes(saved)).toEqual(saved);
+  });
+
+  it('meal reminders: none, a few or many; a new one comes 3 hours after the latest', () => {
+    expect(sanitizeTimes({ meals: [] }).meals).toEqual([]);
+    const ten = Array.from({ length: 10 }, (_, i) => ({ hour: 8 + i, minute: 0 }));
+    expect(sanitizeTimes({ meals: ten }).meals).toHaveLength(10);
+    expect(sanitizeTimes({ meals: [{ hour: 30, minute: 0 }] }).meals).toEqual([
+      { hour: 12, minute: 0 },
+    ]);
+    expect(nextMealTime([])).toEqual({ hour: 12, minute: 0 });
+    expect(
+      nextMealTime([
+        { hour: 8, minute: 0 },
+        { hour: 13, minute: 30 },
+      ]),
+    ).toEqual({ hour: 16, minute: 30 });
+    expect(nextMealTime([{ hour: 22, minute: 0 }])).toEqual({ hour: 1, minute: 0 });
   });
 });

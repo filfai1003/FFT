@@ -7,8 +7,8 @@ export type ReminderTimes = {
   workout: Clock;
   /** Once a week; weekday 1 = Sunday … 7 = Saturday (the system's numbering). */
   checkin: Clock & { weekday: number };
-  /** Breakfast, lunch, dinner. */
-  meals: [Clock, Clock, Clock];
+  /** As many times a day as the user wants (none, one, ten…); three by default. */
+  meals: Clock[];
 };
 
 export const defaultReminderTimes: ReminderTimes = {
@@ -22,6 +22,14 @@ export const defaultReminderTimes: ReminderTimes = {
 };
 
 const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The time offered for a new meal reminder: 3 hours after the latest one (noon for the first). */
+export function nextMealTime(meals: Clock[]): Clock {
+  if (meals.length === 0) return { hour: 12, minute: 0 };
+  const last = Math.max(...meals.map((m) => m.hour * 60 + m.minute));
+  const next = (last + 180) % (24 * 60);
+  return { hour: Math.floor(next / 60), minute: next % 60 };
+}
 export const formatClock = (c: Clock) => `${pad(c.hour)}:${pad(c.minute)}`;
 
 const clock = (raw: unknown, fallback: Clock): Clock => {
@@ -39,7 +47,7 @@ export function sanitizeTimes(raw: unknown): ReminderTimes {
   const r = (raw ?? {}) as Partial<ReminderTimes> & { checkin?: { weekday?: unknown } };
   const d = defaultReminderTimes;
   const weekday = Number(r.checkin?.weekday);
-  const meals = Array.isArray(r.meals) ? r.meals : [];
+  const meals: unknown[] = Array.isArray(r.meals) ? r.meals : [];
   return {
     workout: clock(r.workout, d.workout),
     checkin: {
@@ -47,7 +55,8 @@ export function sanitizeTimes(raw: unknown): ReminderTimes {
       weekday:
         Number.isInteger(weekday) && weekday >= 1 && weekday <= 7 ? weekday : d.checkin.weekday,
     },
-    meals: [clock(meals[0], d.meals[0]), clock(meals[1], d.meals[1]), clock(meals[2], d.meals[2])],
+    // A saved list is kept as it is (also empty); a damaged entry falls back to noon.
+    meals: Array.isArray(r.meals) ? meals.map((m) => clock(m, { hour: 12, minute: 0 })) : d.meals,
   };
 }
 
