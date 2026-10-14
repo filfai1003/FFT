@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalClient, getLocalDb, type Row } from '@/lib/local-db';
-import { push, pull, startSync, syncOnce } from './sync';
+import { checkSync, push, pull, resendAll, startSync, syncOnce } from './sync';
 
 const U = '11111111-2222-4333-8444-555555555555';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -60,6 +60,12 @@ const mockServer = (() => {
           .map(({ server_at: _s, ...r }) => r);
       out.tombstones = tombstones.filter((x) => x.server_at > since);
       cursorBase = clock;
+      return { data: out, error: null };
+    }
+    if (name === 'sync_counts') {
+      const out: Record<string, number> = {};
+      for (const [t, store] of tables)
+        out[t] = [...store.values()].filter((r) => r.deleted_at == null).length;
       return { data: out, error: null };
     }
     return { data: null, error: { message: name, code: '42883' } };
@@ -183,6 +189,17 @@ describe('premium sync', () => {
     expect(water(id(900))).toBeUndefined(); // already resent on this device: not again
     await AsyncStorage.removeItem(`fft.sync.resent-2.${U}`);
     await syncOnce(U);
+    expect(water(id(900))).toMatchObject({ ml: 330 });
+  });
+
+  it('check sync: says when this phone and the server agree, finds what is missing, sends it again', async () => {
+    expect((await checkSync(U)).differences).toEqual([]);
+    mockServer.table('water_logs').delete(id(900)); // lost on the server
+    const check = await checkSync(U);
+    expect(check.differences).toEqual([
+      expect.objectContaining({ table: 'water_logs', device: expect.any(Number) }),
+    ]);
+    expect((await resendAll(U)).differences).toEqual([]);
     expect(water(id(900))).toMatchObject({ ml: 330 });
   });
 

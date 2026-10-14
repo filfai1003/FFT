@@ -19,6 +19,7 @@ import { activeConsent, deleteAccount, useConsents, useSetConsent } from './acco
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
 import { importExport, pickExportFile } from './import';
 import { useSessionStore } from '@/features/auth/session-store';
+import { SyncCard } from '@/features/premium/SyncCard';
 import { usePrivacyStore } from './privacy-store';
 
 /** Privacy & data: export, photo privacy, sharing, consent, delete account. */
@@ -222,6 +223,8 @@ export function PrivacyScreen() {
             </Text>
           ) : null}
         </Card>
+
+        {userId ? <SyncCard userId={userId} /> : null}
 
         <Card size="small" gap={0}>
           <Text variant="label" muted style={{ paddingBottom: 4 }}>

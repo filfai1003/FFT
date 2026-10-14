@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   columns,
@@ -232,10 +233,58 @@ export async function syncOnce(userId: string): Promise<boolean> {
   // Done only when the server took everything (otherwise: again at the next sync).
   if (!resend && refusedLastPush === 0)
     await AsyncStorage.setItem(resendKey(userId), new Date().toISOString());
-  return (await pull(userId)) || recovered;
+  const changed = (await pull(userId)) || recovered;
+  useSyncStatus.setState({ lastAt: new Date().toISOString(), refused: refusedLastPush });
+  return changed;
 }
 
 const resendKey = (userId: string) => `fft.sync.resent-2.${userId}`;
+
+/** When this device last finished a sync, and how many rows the server refused then. */
+export const useSyncStatus = create<{ lastAt: string | null; refused: number }>(() => ({
+  lastAt: null,
+  refused: 0,
+}));
+
+export type SyncCheck = {
+  /** Tables whose number of items differs between this device and the server. */
+  differences: { table: string; device: number; server: number }[];
+  /** Changes still waiting to be sent. */
+  pending: number;
+  refused: number;
+};
+
+/**
+ * "Check sync": syncs now, then counts the user's items table by table here and on the server.
+ * Everything in sync = no differences and nothing waiting.
+ */
+export async function checkSync(userId: string): Promise<SyncCheck> {
+  await syncOnce(userId);
+  const db = getLocalDb(userId);
+  const { data, error } = await server().rpc('sync_counts');
+  if (error) throw new Error(error.message);
+  const online = data as Record<string, number>;
+  const differences = SYNC_ORDER.flatMap((table) => {
+    const device = (db.tables[table] ?? []).filter(
+      (r) => r.deleted_at == null && isOwn(db, table, r, userId),
+    ).length;
+    const serverCount = Number(online[table] ?? 0);
+    return device === serverCount ? [] : [{ table, device, server: serverCount }];
+  });
+  return {
+    differences,
+    pending: Object.keys(db.outbox).length,
+    refused: useSyncStatus.getState().refused,
+  };
+}
+
+/** Sends every item of this device again (the server keeps the newest version of each). */
+export async function resendAll(userId: string): Promise<SyncCheck> {
+  const db = getLocalDb(userId);
+  await db.ready;
+  db.markAllDirty();
+  return checkSync(userId);
+}
 
 /** Premium starts on this device: everything here goes up, then the account's data comes down. */
 export async function startSync(userId: string) {

@@ -1128,3 +1128,21 @@ describe('food logs of products only on the phone', () => {
     assert.equal(Number(saved.kcal), 351);
   });
 });
+
+describe('check sync (sync_counts)', () => {
+  it('counts only the caller rows that are not deleted, per synced table', async () => {
+    await as(A);
+    const mine = (await one('select public.sync_counts() as c')).c;
+    assert.equal(mine.profiles, 1);
+    assert.equal(
+      Number(mine.food_logs),
+      await count(`select count(*) as n from public.food_logs where deleted_at is null`),
+    );
+    await as(B);
+    const theirs = (await one('select public.sync_counts() as c')).c;
+    assert.equal(theirs.profiles, 1);
+    assert.ok(Number(theirs.food_logs) < Number(mine.food_logs) || Number(mine.food_logs) === 0);
+    await admin();
+    await rejects(`set role anon; select public.sync_counts()`, '42501');
+  });
+});
