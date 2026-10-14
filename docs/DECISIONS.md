@@ -70,6 +70,8 @@ before the phase that depends on it.
 
 44. **Sign in with FFT for AI apps.** Claude and ChatGPT add remote MCP servers only through OAuth (no fixed token header), so the api service is also an OAuth 2.1 server: discovery (.well-known), dynamic client registration, a sign-in page of its own (FFT email + password, checked by the auth service; free accounts are refused), PKCE S256, access tokens of 7 days with refresh. A connection is an api_tokens row (named after the app, revocable in the app); signing in again from the same app replaces the old connection. In the app the buttons Add to Claude / Add to ChatGPT copy the address and open the connectors page (neither app has an install link, so pasting stays one step). Personal tokens remain for other tools (Claude Code, scripts).
 
+45. **Sign in with Google only.** No passwords to forget and no email service to run: the app, the web app and the MCP sign-in (Claude, ChatGPT) use Google through the auth service (PKCE). Accounts made before with email and password keep their data: the auth service links a Google sign-in to the account with the same email; for a different email, Profile → Link Google account (while still signed in). Email + password sign-in is switched off. The two browser-facing auth routes are relayed by the api service. Use without an account stays; creating an account from it signs in with Google and merges this phone's data into the account (newest version of each item wins). The web cannot create an account from offline mode (the page reloads on the way to Google).
+
 ## Still open
 
 - Apple / Google sign-in, light theme, "How to perform" section of exercise detail.

@@ -29,6 +29,8 @@ export function getAuthClient(): SupabaseClient<Database> {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // Sign in with Google returns a one-time code (PKCE), turned into the session by the app.
+      flowType: 'pkce',
     },
   });
   return client;

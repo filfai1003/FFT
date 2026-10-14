@@ -7,6 +7,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const ACCESS_DAYS = 7;
 const CODE_MINUTES = 5;
+/** Time to sign in on Google before the request expires. */
+const PENDING_MINUTES = 15;
 /** Sign-in attempts per address and minute (passwords are not to be guessed). */
 const LOGINS_PER_MINUTE = 10;
 
@@ -29,10 +31,10 @@ const allowedRedirect = (u) => {
 };
 
 /**
- * `sql(text, params)` runs as the tables' owner (the api service). `signIn(email, password)`
- * returns the user id or null. `planOf(userId)` returns the plan. `base` = the public address.
+ * `sql(text, params)` runs as the tables' owner (the api service). `googleUser(code, verifier)`
+ * turns the auth service's Google sign-in code into the user id (or null). `planOf(userId)` returns the plan. `base` = the public address.
  */
-export function createOAuth({ sql, signIn, planOf, base }) {
+export function createOAuth({ sql, googleUser, planOf, base }) {
   const attempts = new Map();
   const tooMany = (ip) => {
     const minute = Math.floor(Date.now() / 60000);
@@ -114,7 +116,7 @@ export function createOAuth({ sql, signIn, planOf, base }) {
     return c ?? null;
   }
 
-  /** The sign-in page (also shown again with a message after a wrong password). */
+  /** The sign-in page: the app asking, and Continue with Google (again with a message on a problem). */
   function page(p, client, message) {
     const hidden = [
       'client_id',
@@ -136,18 +138,14 @@ export function createOAuth({ sql, signIn, planOf, base }) {
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px}
 main{width:100%;max-width:380px;background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:28px}
 h1{font-size:26px;margin:0 0 6px}p{margin:0 0 20px;color:var(--muted)}b{color:var(--text)}
-label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
-input[type=email],input[type=password]{width:100%;font-size:16px;padding:14px;border:1px solid var(--control);border-radius:14px;background:var(--surface);color:var(--text)}
 button{width:100%;margin-top:22px;padding:15px;font-size:16px;font-weight:600;border:0;border-radius:16px;background:var(--accent);color:#fff;cursor:pointer}
 .err{color:var(--danger);margin:14px 0 0}
 </style></head><body><main>
 <h1>FFT</h1>
 <p><b>${esc(client.name)}</b> wants to read and change your FFT data: training, diet, body and supplements.</p>
 <form method="post" action="/oauth/authorize">${hidden}
-<label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required autofocus value="${esc(p.email)}">
-<label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required>
 ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
-<button type="submit">Sign in and allow</button>
+<button type="submit">Continue with Google</button>
 </form></main></body></html>`;
     return {
       status: message ? 400 : 200,
@@ -185,25 +183,82 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     const { client, error } = await checkRequest(p);
     if (error) return error;
     if (tooMany(ip)) return page(p, client, 'Too many attempts. Wait a minute and try again.');
-    const userId = await signIn(String(p.email ?? '').trim(), String(p.password ?? ''));
-    if (!userId) return page(p, client, 'Wrong email or password.');
+    // The auth service signs in with Google (PKCE): its code comes back to /oauth/google.
+    const pending = randomBytes(16).toString('hex');
+    const verifier = b64url(randomBytes(32));
+    await sql(
+      `insert into public.oauth_pending (id, client_id, redirect_uri, state, code_challenge, verifier, expires_at)
+       values ($1, $2, $3, $4, $5, $6, now() + make_interval(mins => $7))`,
+      [
+        pending,
+        client.id,
+        p.redirect_uri,
+        p.state ?? null,
+        p.code_challenge,
+        verifier,
+        PENDING_MINUTES,
+      ],
+    );
+    const google = new URL(`${base}/auth/v1/authorize`);
+    google.searchParams.set('provider', 'google');
+    google.searchParams.set('redirect_to', `${base}/oauth/google?req=${pending}`);
+    google.searchParams.set(
+      'code_challenge',
+      b64url(createHash('sha256').update(verifier).digest()),
+    );
+    google.searchParams.set('code_challenge_method', 's256');
+    return {
+      status: 302,
+      headers: { location: google.toString(), 'cache-control': 'no-store' },
+      body: '',
+    };
+  }
+
+  /** Back from Google: the user is known; the app gets its one-time code. */
+  async function googleReturn(q) {
+    const [pending] = await sql(
+      `update public.oauth_pending set deleted_at = now()
+       where id = $1 and deleted_at is null and expires_at > now()
+       returning client_id, redirect_uri, state, code_challenge, verifier`,
+      [String(q.req ?? '')],
+    );
+    const client = pending ? await clientOf(pending.client_id) : null;
+    if (!pending || !client)
+      return htmlMessage('This sign-in has expired. Go back to the app and connect FFT again.');
+    const again = {
+      client_id: client.id,
+      redirect_uri: pending.redirect_uri,
+      state: pending.state,
+      code_challenge: pending.code_challenge,
+      code_challenge_method: 'S256',
+    };
+    const userId = q.code ? await googleUser(String(q.code), pending.verifier) : null;
+    if (!userId) return page(again, client, 'Google sign-in did not complete. Try again.');
     const plan = await planOf(userId);
     if (plan !== 'supporter' && plan !== 'premium')
-      return page(p, client, 'Connecting AI apps is part of Supporter and Premium.');
+      return page(again, client, 'Connecting AI apps is part of Supporter and Premium.');
     const code = secret('fftac_');
     await sql(
       `insert into public.oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
        values ($1, $2, $3, $4, $5, now() + make_interval(mins => $6))`,
-      [sha256(code), client.id, userId, p.redirect_uri, p.code_challenge, CODE_MINUTES],
+      [sha256(code), client.id, userId, pending.redirect_uri, pending.code_challenge, CODE_MINUTES],
     );
-    const back = new URL(p.redirect_uri);
+    const back = new URL(pending.redirect_uri);
     back.searchParams.set('code', code);
-    if (p.state) back.searchParams.set('state', p.state);
+    if (pending.state) back.searchParams.set('state', pending.state);
     back.searchParams.set('iss', base);
     return {
       status: 302,
       headers: { location: back.toString(), 'cache-control': 'no-store' },
       body: '',
+    };
+  }
+
+  function htmlMessage(text) {
+    return {
+      status: 400,
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+      body: `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FFT</title><p style="font:16px system-ui;padding:24px">${esc(text)}</p>`,
     };
   }
 
@@ -300,6 +355,7 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     if (path === '/oauth/register' && method === 'POST') return register(body ?? {});
     if (path === '/oauth/authorize' && method === 'GET') return authorizeForm(query);
     if (path === '/oauth/authorize' && method === 'POST') return authorizeSubmit(body ?? {}, ip);
+    if (path === '/oauth/google' && method === 'GET') return googleReturn(query ?? {});
     if (path === '/oauth/token' && method === 'POST') return token(body ?? {}, headers);
     return null;
   };

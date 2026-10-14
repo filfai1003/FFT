@@ -331,6 +331,30 @@ describe('offline database', () => {
     expect((await old.from('water_logs').select('id')).data).toEqual([]);
     expect((await old.from('profiles').select('name').single()).data).toEqual({ name: null });
   });
+
+  it('moving into an account that already has data on this phone keeps it and adds the rest', async () => {
+    const { kv, db, c } = setup();
+    const OLD = 'cccccccc-0000-4000-8000-00000000000c';
+    const oldDb = new LocalDb(kv, OLD);
+    const existing = createLocalClient(oldDb);
+    await existing.from('water_logs').insert({ id: id(80), day: '2026-10-10', ml: 250 });
+    await existing.from('profiles').update({ name: 'Account' }).eq('id', OLD);
+    await oldDb.save();
+    await c.from('water_logs').insert({ id: id(81), day: '2026-10-14', ml: 500 });
+    await db.save();
+
+    await moveLocalData(LOCAL_USER_ID, OLD, kv);
+    const after = createLocalClient(new LocalDb(kv, OLD));
+    const water = await after.from('water_logs').select('id, ml').order('id');
+    expect(water.data).toEqual([
+      { id: id(80), ml: 250 },
+      { id: id(81), ml: 500 },
+    ]);
+    // The account's own profile (changed later than the offline one) stays.
+    expect((await after.from('profiles').select('name').single()).data).toEqual({
+      name: 'Account',
+    });
+  });
 });
 
 describe('generic foods (CIQUAL)', () => {

@@ -924,8 +924,12 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       await admin();
       return (await db.query(text, params)).rows;
     },
-    // The auth service checks passwords; here: the right one is "right".
-    signIn: async (email, password) => (password === 'right' ? (users[email] ?? null) : null),
+    // The auth service's Google sign-in: here the "code" Google gives back is the user's email,
+    // accepted only with the verifier that matches the challenge sent to Google (PKCE).
+    googleUser: async (code, verifier) =>
+      b64url(createHash('sha256').update(verifier).digest()) === googleChallenge
+        ? (users[code] ?? null)
+        : null,
     planOf: async (uid) => {
       await admin();
       return (await one('select public.plan_of($1) as p', [uid])).p;
@@ -954,17 +958,28 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
   let clientId = '';
   let refresh = '';
   let access = '';
-  const authorize = (email, password, extra = {}) =>
-    go('POST', '/oauth/authorize', {
+  let googleChallenge = '';
+  /** Continue with Google: off to Google, then back with Google's answer ("right" = signed in). */
+  const authorize = async (email, password, extra = {}) => {
+    const r = await go('POST', '/oauth/authorize', {
       client_id: clientId,
       redirect_uri: REDIRECT,
       state: 'xyz',
       code_challenge: challenge,
       code_challenge_method: 'S256',
-      email,
-      password,
       ...extra,
     });
+    if (r.status !== 302) return r;
+    const google = new URL(r.headers.location);
+    assert.equal(google.origin + google.pathname, `${BASE}/auth/v1/authorize`);
+    assert.equal(google.searchParams.get('provider'), 'google');
+    googleChallenge = google.searchParams.get('code_challenge');
+    const back = new URL(google.searchParams.get('redirect_to'));
+    return go('GET', back.pathname, undefined, {
+      req: back.searchParams.get('req'),
+      code: password === 'right' ? email : 'nobody',
+    });
+  };
 
   it('the app finds the sign-in and registers itself', async () => {
     const meta = JSON.parse((await go('GET', '/.well-known/oauth-authorization-server')).body);
@@ -984,7 +999,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     clientId = JSON.parse(reg.body).client_id;
   });
 
-  it('the sign-in page names the app; a wrong password or a free account gets no code', async () => {
+  it('the sign-in page names the app and goes to Google; a failed Google sign-in or a free account gets no code', async () => {
     const pageRes = await go('GET', '/oauth/authorize', undefined, {
       response_type: 'code',
       client_id: clientId,
@@ -1005,7 +1020,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       ).status,
       400,
     );
-    assert.match((await authorize('a@test.dev', 'wrong')).body, /Wrong email or password/);
+    assert.match((await authorize('a@test.dev', 'wrong')).body, /Google sign-in did not complete/);
     assert.match((await authorize('c@test.dev', 'right')).body, /part of Supporter and Premium/);
   });
 

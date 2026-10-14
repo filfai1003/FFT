@@ -18,24 +18,51 @@ pg.types.setTypeParser(1700, (v) => Number(v));
 const BASE = (process.env.PUBLIC_URL ?? 'https://fft-api.up.railway.app').replace(/\/+$/, '');
 const api = createApi(pgDatabase(pool), { base: BASE });
 
-/** Email + password checked by the auth service itself (the same sign-in as the app). */
-async function signIn(email, password) {
-  if (!email || !password) return null;
-  const res = await fetch(`${process.env.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+/** The auth service inside Railway's network (its Google sign-in routes are relayed below). */
+const AUTH_URL = (process.env.AUTH_INTERNAL_URL ?? '').replace(/\/+$/, '');
+
+/** The auth service's Google sign-in code (PKCE) → the user id. */
+async function googleUser(code, verifier) {
+  const res = await fetch(`${AUTH_URL}/token?grant_type=pkce`, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    },
-    body: JSON.stringify({ email, password }),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
   }).catch(() => null);
   if (!res?.ok) return null;
   const data = await res.json().catch(() => null);
   return data?.user?.id ?? null;
 }
+
+/**
+ * Sign in with Google goes through the browser: /auth/v1/authorize (to Google) and
+ * /auth/v1/callback (back from Google) must be reachable without the app's key, which the gateway
+ * asks for. They are relayed here as they are, redirects included; nothing else of the auth
+ * service is reachable this way.
+ */
+async function relayAuth(req, res, url, raw) {
+  const target = `${AUTH_URL}${url.pathname.replace(/^\/auth\/v1/, '')}${url.search}`;
+  const out = await fetch(target, {
+    method: req.method,
+    redirect: 'manual',
+    headers: {
+      ...(req.headers['content-type'] ? { 'content-type': req.headers['content-type'] } : {}),
+      ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
+    },
+    body: ['GET', 'HEAD'].includes(req.method) ? undefined : raw,
+  });
+  const headers = {};
+  for (const name of ['location', 'content-type', 'cache-control']) {
+    const v = out.headers.get(name);
+    if (v) headers[name] = v;
+  }
+  const cookies = out.headers.getSetCookie?.() ?? [];
+  if (cookies.length) headers['set-cookie'] = cookies;
+  res.writeHead(out.status, headers);
+  res.end(Buffer.from(await out.arrayBuffer()));
+}
 const oauth = createOAuth({
   sql: async (text, params) => (await pool.query(text, params)).rows,
-  signIn,
+  googleUser,
   planOf: async (userId) =>
     (await pool.query('select public.plan_of($1) as p', [userId])).rows[0]?.p ?? 'free',
   base: BASE,
@@ -121,13 +148,16 @@ http
     if (path === '/health') return void res.writeHead(200).end('ok');
     const isApi = path === '/mcp' || path === '/v1' || path.startsWith('/v1/');
     const isOAuth = path.startsWith('/oauth/') || path.startsWith('/.well-known/');
+    const isAuthRelay = path === '/auth/v1/authorize' || path === '/auth/v1/callback';
     const handler = handlers[path.split('/').pop() ?? ''];
-    if (!isApi && !isOAuth && !handler) return void res.writeHead(404).end('not found');
+    if (!isApi && !isOAuth && !isAuthRelay && !handler)
+      return void res.writeHead(404).end('not found');
     try {
       const chunks = [];
       for await (const c of req) chunks.push(c);
       if (isApi) return void (await serveApi(req, res, url, Buffer.concat(chunks)));
       if (isOAuth) return void (await serveOAuth(req, res, url, Buffer.concat(chunks)));
+      if (isAuthRelay) return void (await relayAuth(req, res, url, Buffer.concat(chunks)));
       const hasBody = !['GET', 'HEAD'].includes(req.method);
       const request = new Request(`http://localhost${req.url}`, {
         method: req.method,

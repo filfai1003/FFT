@@ -13,11 +13,11 @@ Services, all on Railway's private network, one public URL (Kong):
 | Service    | Image / source                     | Notes                                           |
 |------------|------------------------------------|-------------------------------------------------|
 | `Postgres` | supabase/postgres:17.6.1.136       | volume `/var/lib/postgresql`                    |
-| `auth`     | supabase/gotrue:v2.189.0           | email + password, `GOTRUE_MAILER_AUTOCONFIRM=true` (no SMTP yet) |
+| `auth`     | supabase/gotrue:v2.189.0           | sign in with **Google only** (`GOTRUE_EXTERNAL_GOOGLE_*`, redirect URI `https://fft-api.up.railway.app/auth/v1/callback`; `GOTRUE_EXTERNAL_EMAIL_ENABLED=false`); `GOTRUE_URI_ALLOW_LIST` has the app (`fft://**`), the web app and `fft-api`; `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true` (Profile → Link Google account) |
 | `rest`     | postgrest/postgrest:v14.12         |                                                 |
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `backend`  | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
-| `api`      | this repo (`server/Dockerfile`)    | public domain `fft-api`: the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `src/domain/` (the coach rules the API runs), `supabase/migrations/`, `supabase/functions/` or `supabase/seed.sql` |
+| `api`      | this repo (`server/Dockerfile`)    | public domain `fft-api`: relays `/auth/v1/authorize` and `/auth/v1/callback` to the auth service (`AUTH_INTERNAL_URL`) for Sign in with Google (the gateway asks for the key, a browser cannot send it); the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `src/domain/` (the coach rules the API runs), `supabase/migrations/`, `supabase/functions/` or `supabase/seed.sql` |
 | `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
 | `admin`    | this repo (`admin/`)               | admin panel, public domain `admin-fft`            |

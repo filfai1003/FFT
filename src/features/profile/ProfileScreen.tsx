@@ -21,6 +21,7 @@ import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
+import { LinkGoogleCard } from '@/features/auth/LinkGoogleCard';
 import { logOut, logOutAnyway } from './account';
 import { useLatestWeight, useProfile } from './api';
 
@@ -218,7 +219,9 @@ export function ProfileScreen() {
               onPress={() => router.push('/profile/link-account')}
             />
           </Card>
-        ) : null}
+        ) : (
+          <LinkGoogleCard />
+        )}
 
         {groups.map((rows, i) => (
           <View
