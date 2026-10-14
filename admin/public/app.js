@@ -134,6 +134,7 @@ $('tabs').addEventListener('click', (e) => {
   for (const p of document.querySelectorAll('.panel')) p.hidden = p.id !== `tab-${tab}`;
   if (tab === 'users') loadUsers();
   if (tab === 'audit') loadAudit();
+  if (tab === 'ai') loadAi();
 });
 
 // ---------------------------------------------------------------- grids
@@ -525,6 +526,35 @@ async function setPlan(userId, email, plan, select, previous) {
     alert(e.message);
   }
 }
+
+// ---------------------------------------------------------------- AI tab
+async function loadAi() {
+  $('aiModelError').textContent = '';
+  try {
+    const r = await api('/api/ai');
+    $('aiModelNow').textContent = r.model ?? `${r.defaultModel} (default)`;
+    $('aiModelSince').textContent = r.updatedAt
+      ? `since ${new Date(r.updatedAt).toLocaleString()}`
+      : '';
+    $('aiModel').value = r.model ?? '';
+    if (r.usage.rows.length) renderGrid($('aiUsageGrid'), r.usage.columns, r.usage.rows);
+    else $('aiUsageGrid').replaceChildren(h('div', { class: 'empty' }, 'No AI requests yet.'));
+  } catch (e) {
+    $('aiModelError').textContent = e.message;
+  }
+}
+$('aiModelForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!inSudo()) return openSudo();
+  const model = $('aiModel').value.trim();
+  if (!confirm(model ? `Use ${model} for the AI coach?` : 'Go back to the default model?')) return;
+  try {
+    await api('/api/ai-model', { model });
+    await loadAi();
+  } catch (err) {
+    $('aiModelError').textContent = err.message;
+  }
+});
 
 // ---------------------------------------------------------------- audit tab
 async function loadAudit() {

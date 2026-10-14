@@ -67,6 +67,11 @@ check(
     .status === 403,
 );
 check(
+  'AI model change refused without sudo',
+  (await call('/api/ai-model', { model: 'anthropic/claude-haiku-4.5' })).status === 403,
+);
+check('AI tab readable', (await call('/api/ai')).status === 200);
+check(
   'row update refused without sudo',
   (
     await call('/api/row/update', {

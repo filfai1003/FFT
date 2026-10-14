@@ -37,6 +37,8 @@ class HttpError extends Error {
 
 const quote = (id) => `"${String(id).replace(/"/g, '""')}"`;
 const SCHEMAS = ['public', 'auth', 'storage'];
+// Same as DEFAULT_MODEL in supabase/functions/ai/index.ts (used when no model is set here).
+const AI_DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
 
 const TABLES_SQL = `
   select n.nspname as schema, c.relname as name, c.relkind as kind, greatest(c.reltuples, 0)::bigint as estimate,
@@ -334,6 +336,52 @@ async function api(req, res, url) {
               audit: { action: 'plan.set', detail: { userId, plan, note } },
             },
           );
+    return send(res, 200, out);
+  }
+
+  if (route === 'GET /api/ai') {
+    // The coach model (public.app_settings) and what the included AI cost in the last 30 days.
+    const setting = await db.run(
+      `select value, updated_at from public.app_settings where key = 'ai_model' and deleted_at is null`,
+    );
+    const usage = await db.run(
+      `select model, count(*) as requests, count(distinct user_id) as users,
+              sum(prompt_tokens + completion_tokens) as tokens,
+              round(sum(cost_micros) / 1000000.0, 4) as cost_eur
+       from public.ai_usage where created_at > now() - interval '30 days'
+       group by model order by sum(cost_micros) desc`,
+    );
+    return send(res, 200, {
+      model: setting.rows[0]?.[0] ?? null,
+      updatedAt: setting.rows[0]?.[1] ?? null,
+      defaultModel: AI_DEFAULT_MODEL,
+      usage,
+    });
+  }
+
+  if (route === 'POST /api/ai-model') {
+    // An OpenRouter model id ("provider/model"); empty = back to the default.
+    needSudo();
+    const model = String((await readBody(req)).model ?? '').trim();
+    if (model && !/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(model))
+      throw new HttpError(400, 'Use an OpenRouter model id, like anthropic/claude-haiku-4.5');
+    const out = model
+      ? await db.run(
+          `insert into public.app_settings (key, value) values ('ai_model', $1)
+           on conflict (key) do update set value = excluded.value, deleted_at = null
+           returning value`,
+          {
+            sudo: true,
+            commit: true,
+            params: [model],
+            audit: { action: 'ai.model', detail: { model } },
+          },
+        )
+      : await db.run(`delete from public.app_settings where key = 'ai_model' returning key`, {
+          sudo: true,
+          commit: true,
+          audit: { action: 'ai.model', detail: { model: null } },
+        });
     return send(res, 200, out);
   }
 

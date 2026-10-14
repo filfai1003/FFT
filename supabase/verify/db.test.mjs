@@ -628,6 +628,19 @@ describe('plans and AI credit', () => {
   });
 });
 
+describe('server settings (admin panel)', () => {
+  it('the AI model setting is hidden from users and only one known key can exist', async () => {
+    await admin();
+    await db.exec(`insert into public.app_settings (key, value) values ('ai_model', 'x/y')`);
+    await rejects(`insert into public.app_settings (key, value) values ('other', 'x')`, '23514');
+    await as(A);
+    await rejects(`select * from public.app_settings`, '42501');
+    await rejects(`update public.app_settings set value = 'a/b'`, '42501');
+    await admin();
+    await db.exec(`delete from public.app_settings`);
+  });
+});
+
 describe('personal API and MCP (server/api.js)', () => {
   // The api service, on this database: each call runs as the token's user (RLS applies).
   const testDb = {

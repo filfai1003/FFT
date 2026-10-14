@@ -2,6 +2,7 @@
 // tools); this checks the plan and the credit, forwards it to OpenRouter with the server's key
 // (never in the app), charges the real cost to the user's AI credit and returns the reply.
 // Variables: OPENROUTER_API_KEY, optional AI_MODEL (default below) and EUR_PER_USD (cost rate).
+// The model set in the admin panel (public.app_settings, key ai_model) wins over AI_MODEL.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const cors = {
@@ -41,7 +42,14 @@ Deno.serve(async (req) => {
   }
   if (!Array.isArray(body.messages) || body.messages.length === 0) return json({ error: 'bad request' }, 400);
 
-  const model = Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
+  // Set in the admin panel (AI tab); otherwise the AI_MODEL variable, otherwise the default.
+  const setting = await admin
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'ai_model')
+    .is('deleted_at', null)
+    .maybeSingle();
+  const model = (setting.data?.value as string | undefined) || Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {

@@ -38,6 +38,7 @@
         <button data-tab="data" class="tab active">Data</button>
         <button data-tab="sql" class="tab">SQL</button>
         <button data-tab="users" class="tab">Users</button>
+        <button data-tab="ai" class="tab">AI</button>
         <button data-tab="audit" class="tab">Audit</button>
         <button data-tab="backup" class="tab">Backup</button>
       </nav>
@@ -103,6 +104,35 @@
           <div id="userGrid" class="grid-wrap"></div>
         </section>
 
+        <section id="tab-ai" class="panel" hidden>
+          <div class="card">
+            <h3>AI coach model</h3>
+            <p class="muted">
+              The OpenRouter model of the AI coach included with Premium. It applies to the next
+              message, no redeploy. Model ids are on openrouter.ai/models (like
+              anthropic/claude-haiku-4.5). Leave empty to use the default.
+            </p>
+            <p>
+              Now: <strong id="aiModelNow"></strong> <span id="aiModelSince" class="muted"></span>
+            </p>
+            <form id="aiModelForm" class="toolbar">
+              <input id="aiModel" list="aiModels" placeholder="provider/model" size="40" />
+              <datalist id="aiModels">
+                <option value="anthropic/claude-haiku-4.5"></option>
+                <option value="anthropic/claude-sonnet-4.5"></option>
+                <option value="openai/gpt-5-mini"></option>
+                <option value="google/gemini-2.5-flash"></option>
+              </datalist>
+              <button type="submit" class="btn primary">Save</button>
+            </form>
+            <p id="aiModelError" class="error"></p>
+          </div>
+          <div class="card">
+            <h3>Last 30 days</h3>
+            <div id="aiUsageGrid" class="grid-wrap"></div>
+          </div>
+        </section>
+
         <section id="tab-audit" class="panel" hidden>
           <div class="toolbar">
             <strong>Sudo log</strong>
@@ -126,8 +156,8 @@
             <h3>Reset the database</h3>
             <p class="muted">
               Deletes <strong>every account and everything that belongs to it</strong> (profiles,
-              plan, and the data the server holds for them). The tables and the catalogue (exercises,
-              foods) stay. This cannot be undone: download a backup first.
+              plan, and the data the server holds for them). The tables and the catalogue
+              (exercises, foods) stay. This cannot be undone: download a backup first.
             </p>
             <button id="resetButton" class="btn danger">Reset the database…</button>
           </div>
