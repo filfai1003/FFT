@@ -137,16 +137,38 @@ export function useSetBodyGoal() {
       targetWeightKg: number | null;
       targetBodyFatPct: number | null;
     }) => {
-      // Both empty = no goal any more (the newest row decides; older ones stay as history).
-      const { error } = await getSupabase().from('body_goals').insert({
-        id: newId(),
-        user_id: userId!,
-        valid_from: g.day,
+      // One goal per day: changing it again the same day replaces it (the earlier one did not
+      // count); goals of earlier days stay as history. Both empty = no goal from today.
+      const supabase = getSupabase();
+      const fields = {
         start_weight_kg: g.startWeightKg,
         target_weight_kg: g.targetWeightKg,
         target_body_fat_pct: g.targetBodyFatPct,
-      });
-      if (error) throw error;
+      };
+      const same = await supabase
+        .from('body_goals')
+        .select('id')
+        .eq('valid_from', g.day)
+        .is('deleted_at', null);
+      if (same.error) throw same.error;
+      const [keep, ...extra] = same.data.map((r) => r.id);
+      if (keep) {
+        const { error } = await supabase.from('body_goals').update(fields).eq('id', keep);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('body_goals')
+          .insert({ id: newId(), user_id: userId!, valid_from: g.day, ...fields });
+        if (error) throw error;
+      }
+      // Rows saved twice the same day before this rule: keep only one.
+      if (extra.length > 0) {
+        const { error } = await supabase
+          .from('body_goals')
+          .update({ deleted_at: new Date().toISOString() })
+          .in('id', extra);
+        if (error) throw error;
+      }
     },
     onSuccess: invalidate,
   });
