@@ -10,7 +10,7 @@ import { getAuthClient } from '@/lib/supabase';
 
 /** The api service. EXPO_PUBLIC_FFT_API_URL overrides it (a local server, for instance). */
 export const API_URL = (
-  process.env.EXPO_PUBLIC_FFT_API_URL ?? 'https://api-fft.up.railway.app'
+  process.env.EXPO_PUBLIC_FFT_API_URL ?? 'https://fft-api.up.railway.app'
 ).replace(/\/+$/, '');
 export const MCP_URL = `${API_URL}/mcp`;
 export const REST_URL = `${API_URL}/v1`;

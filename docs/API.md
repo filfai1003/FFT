@@ -3,7 +3,7 @@
 For Supporter and Premium accounts (their data is online). Code: `server/api.js` (api service),
 tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & MCP.
 
-- Base: `https://api-fft.up.railway.app`
+- Base: `https://fft-api.up.railway.app`
 - Auth: `Authorization: Bearer fft_…` (a personal token made in the app; shown once, only its
   SHA-256 is stored; revoke it in the app). Every request runs as the token's user with row level
   security, like the app.
@@ -19,7 +19,7 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
 Claude Code:
 
 ```
-claude mcp add --transport http fft https://api-fft.up.railway.app/mcp --header "Authorization: Bearer fft_…"
+claude mcp add --transport http fft https://fft-api.up.railway.app/mcp --header "Authorization: Bearer fft_…"
 ```
 
 ## Tools and REST endpoints
