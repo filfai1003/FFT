@@ -122,7 +122,12 @@ export function TodayScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={aiDock ? AI_DOCK_HEIGHT + 8 : 24} gap={14}>
+      <Screen
+        scroll
+        keyboardAware={false}
+        bottomBarHeight={aiDock ? AI_DOCK_HEIGHT + 8 : 24}
+        gap={14}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable
             accessibilityRole="button"

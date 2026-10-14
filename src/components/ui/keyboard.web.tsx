@@ -8,8 +8,9 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
 export function KeyboardAwareScrollView({
   bottomOffset: _bottomOffset,
+  enabled: _enabled,
   ...props
-}: ScrollViewProps & { bottomOffset?: number }) {
+}: ScrollViewProps & { bottomOffset?: number; enabled?: boolean }) {
   return <ScrollView {...props} />;
 }
 

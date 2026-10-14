@@ -12,6 +12,12 @@ export type ScreenProps = {
   scroll?: boolean;
   /** Space reserved at the bottom for a fixed bar (tab bar, action bar), on top of the safe area. */
   bottomBarHeight?: number;
+  /**
+   * Scroll the focused field above the keyboard (default). Off for pages whose only field lives
+   * outside the scroll (Home: the coach bar follows the keyboard by itself), so no empty space
+   * the size of the keyboard is added under the content.
+   */
+  keyboardAware?: boolean;
   /** Set when a native header already covers the top safe area. */
   noTopInset?: boolean;
   gap?: number;
@@ -24,6 +30,7 @@ export function Screen({
   scroll = false,
   bottomBarHeight = 0,
   noTopInset = false,
+  keyboardAware = true,
   gap = 16,
   style,
 }: ScreenProps) {
@@ -43,6 +50,7 @@ export function Screen({
         {scroll ? (
           // Scrolls the focused field above the keyboard (and above a fixed action bar).
           <KeyboardAwareScrollView
+            enabled={keyboardAware}
             style={styles.fill}
             bottomOffset={bottomBarHeight > 0 ? bottomBarHeight + space.gapM : space.gapXL}
             contentContainerStyle={[padding, style]}
