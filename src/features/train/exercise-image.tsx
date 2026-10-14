@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { ExerciseImage } from '@/components/ui/ExerciseImage';
-import { Asset } from 'expo-asset';
 import { catalogueImages } from '@/lib/local-db/catalogue';
 import { getMode } from '@/lib/mode';
 import { getSupabase } from '@/lib/supabase';
@@ -14,7 +13,7 @@ const SIGNED_URL_TTL_S = 60 * 60;
  * Where to load an exercise image from: catalogue images are public, the user's own images live
  * in a private bucket and need a signed URL.
  */
-export function useExerciseImageUri(e: ImageSource | null | undefined): string | null {
+export function useExerciseImageUri(e: ImageSource | null | undefined): string | number | null {
   const path = e?.imagePath ?? null;
   const own = e?.ownerId != null;
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -34,9 +33,10 @@ export function useExerciseImageUri(e: ImageSource | null | undefined): string |
 
   if (!path) return null;
   if (own) return signed.data ?? null;
-  // Catalogue images ship with the app; the server's public copy is only a fallback.
+  // Catalogue images ship with the app (passed as the bundled module, not a URL: on Android
+  // release builds they are native resources); the server's public copy is only a fallback.
   const asset = catalogueImages[path];
-  if (asset) return Asset.fromModule(asset).uri;
+  if (asset) return asset;
   return getMode() === 'cloud' && base ? exerciseImageUrl(base, path) : null;
 }
 
@@ -45,7 +45,5 @@ const fallback = catalogueImages['default.png'];
 
 export function ExerciseThumb({ exercise, size }: { exercise: ImageSource; size?: number }) {
   const uri = useExerciseImageUri(exercise);
-  return (
-    <ExerciseImage uri={uri ?? (fallback ? Asset.fromModule(fallback).uri : null)} size={size} />
-  );
+  return <ExerciseImage uri={uri ?? fallback ?? null} size={size} />;
 }

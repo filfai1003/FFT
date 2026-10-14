@@ -4,8 +4,12 @@ import { useTheme } from '@/design/use-theme';
 import { Icon } from './Icon';
 
 export type ExerciseImageProps = {
-  /** Square image (512×512 PNG). Without it the dashed placeholder tile is shown. */
-  uri?: string | null;
+  /**
+   * Square image (512×512 PNG): a URL, or an image bundled with the app (the number `require()`
+   * returns: on Android release builds a bundled image has no URL). Without it the dashed
+   * placeholder tile is shown.
+   */
+  uri?: string | number | null;
   size?: number;
 };
 
@@ -36,7 +40,8 @@ export function ExerciseImage({ uri, size = 52 }: ExerciseImageProps) {
     >
       {hasImage ? (
         <Image
-          source={{ uri }}
+          // A bundled image is a number on devices and an object on the web: pass it as it is.
+          source={typeof uri === 'string' ? { uri } : uri}
           contentFit="cover"
           style={{ width: '100%', height: '100%' }}
           accessible={false}
