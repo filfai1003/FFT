@@ -55,7 +55,7 @@ Package name: `com.filfai1003.fft`.
   is public by design (it is inside the APK): the real protection is the user's signed token (JWT)
   plus row level security on every table (a test fails if a table has none). A user only sees their
   own rows; the anon key alone sees nothing.
-- The service-role key never leaves Railway (`api`, `kong`, `storage`) and `.secrets/`.
+- The service-role key never leaves Railway (`api`, `backend`, `storage`) and `.secrets/`.
 - Rate limits per IP (per minute): auth 60, functions 60, rest and storage 600; request bodies on
   auth/rest/functions are capped at 1 MB. Passwords need 8+ characters, refresh tokens rotate.
 - REST exposes the `public` schema only.
