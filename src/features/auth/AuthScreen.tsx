@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
-import { credentialProblems, resetPassword, signIn, signUp } from './api';
+import { credentialProblems, signIn, signUp } from './api';
 import { OfflineChoice } from './OfflineChoice';
 
 type Mode = 'signIn' | 'signUp';
@@ -49,15 +49,6 @@ export function AuthScreen() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const forgot = async () => {
-    setSubmitted(true);
-    if (problems.includes('email')) return;
-    const error = await resetPassword(email);
-    setMessage(
-      error ? { text: error, isError: true } : { text: t('auth.resetSent'), isError: false },
-    );
   };
 
   return (
@@ -117,13 +108,11 @@ export function AuthScreen() {
           </Text>
         ) : null}
 
-        {mode === 'signIn' ? (
-          <Button label={t('auth.forgot')} variant="ghost" onPress={forgot} />
-        ) : (
+        {mode === 'signUp' ? (
           <Text variant="bodyS" muted>
             {t('auth.legal')}
           </Text>
-        )}
+        ) : null}
 
         <Text variant="bodyS" muted>
           {t('auth.dataNote')}

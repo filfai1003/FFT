@@ -109,8 +109,6 @@
     "errorPassword": "Use at least 8 characters.",
     "continueSignIn": "Sign in",
     "continueSignUp": "Create account",
-    "forgot": "Forgot password?",
-    "resetSent": "If that address has an account, a reset link is on its way.",
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
     "legal": "By continuing you accept the terms and the privacy policy.",
     "useOffline": "Use without an account",

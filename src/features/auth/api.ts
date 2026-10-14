@@ -34,11 +34,6 @@ export async function signUp({ email, password }: Credentials) {
   return { error: null, needsConfirmation: data.session == null };
 }
 
-export async function resetPassword(email: string) {
-  const { error } = await getAuthClient().auth.resetPasswordForEmail(email.trim());
-  return error?.message ?? null;
-}
-
 export async function signOut() {
   if (getMode() === 'offline') {
     await leaveOfflineMode();
