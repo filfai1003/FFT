@@ -6,6 +6,7 @@ import {
   type LoggedSet,
 } from '@/domain/strength';
 import { parseDecimal } from '@/domain/numbers';
+import { suggestNextWeight, type Suggestion } from '@/domain/progression';
 import { displayWeight, storedWeight, type WeightUnit } from '@/domain/units';
 import type { LogType } from '@/features/train/exercises';
 import { newId } from '@/lib/uuid';
@@ -36,6 +37,11 @@ export type SessionExercise = {
   restS: number;
   /** Reps planned for each set ("8-12"), from the plan day; absent for exercises added on the go. */
   targetReps?: string;
+  /**
+   * Next weight suggestion from the last session (domain/progression.ts); the sets start at
+   * `to`. `kept`: the user chose last time's weight instead.
+   */
+  suggestion?: Suggestion & { kept?: boolean };
   sets: SessionSet[];
 };
 
@@ -119,10 +125,28 @@ export type NewExercise = {
   restS: number;
   targetSets: number;
   targetReps?: string;
+  /** Equipment of the exercise: decides the step of the suggested weight. */
+  equipment?: string;
   previous: PreviousSet[];
 };
 
 export function buildExercise(e: NewExercise, unit: WeightUnit): SessionExercise {
+  const targetReps = e.targetReps?.trim() || undefined;
+  const suggestion =
+    e.logType === 'weight_reps'
+      ? (suggestNextWeight({
+          previous: e.previous.map((p) => ({
+            weight: p.weightKg != null ? displayWeight(p.weightKg, unit) : null,
+            reps: p.reps,
+          })),
+          targetReps,
+          equipment: e.equipment,
+          unit,
+        }) ?? undefined)
+      : undefined;
+  const sets = Array.from({ length: e.targetSets }, (_, i) =>
+    emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit),
+  );
   return {
     rowId: newId(),
     exerciseId: e.exerciseId,
@@ -130,11 +154,30 @@ export function buildExercise(e: NewExercise, unit: WeightUnit): SessionExercise
     logType: e.logType,
     imagePath: e.imagePath,
     restS: e.restS,
-    targetReps: e.targetReps?.trim() || undefined,
-    sets: Array.from({ length: e.targetSets }, (_, i) =>
-      emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit),
-    ),
+    targetReps,
+    suggestion,
+    // Working sets start at the suggested weight (warm-ups at a lighter one stay as they were).
+    sets: suggestion ? withWeight(sets, suggestion.from, suggestion.to) : sets,
   };
+}
+
+/** Sets not done yet that are at `from` move to `to`. */
+function withWeight(sets: SessionSet[], from: number, to: number): SessionSet[] {
+  const a = trimNumber(from);
+  return sets.map((x) => (!x.done && x.weight === a ? { ...x, weight: trimNumber(to) } : x));
+}
+
+/** "Keep 80": back to last time's weight on the sets not done yet (and again for UNDO). */
+export function keepLastWeight(s: ActiveSession, exerciseIndex: number, keep = true) {
+  return mapExercise(s, exerciseIndex, (e) => {
+    const g = e.suggestion;
+    if (!g || g.from === g.to || (g.kept ?? false) === keep) return e;
+    return {
+      ...e,
+      suggestion: { ...g, kept: keep },
+      sets: keep ? withWeight(e.sets, g.to, g.from) : withWeight(e.sets, g.from, g.to),
+    };
+  });
 }
 
 export function buildSession(args: {

@@ -76,6 +76,8 @@ before the phase that depends on it.
 
 47. **No more Supporter: every account is online.** Instead of a weekly backup for free accounts, the Supporter plan (2 €) is removed and what it gave goes to everyone: data synced online (every device, web app, nothing lost when changing phone), API and MCP (tokens and Add to Claude / ChatGPT). Premium (20 €) keeps only the AI coach included in the app with its monthly credit. Supporter rows became free (`user_plans` now only holds premium); `is_premium()` (the name the row level security rules use) now means any signed-in account; the token and OAuth checks no longer look at the plan. On the device the plan gate treats every account as online, so a free account that kept its data on the phone queues it all for upload at the next start (nothing is erased, DECISIONS 40). The account-less mode stays on the phone only.
 
+48. **Next weight suggestion** (version A of the mock-up: already filled in). When a workout starts, each weighted exercise with target reps looks at its last session (`domain/progression.ts`): every working set at the top of the range ("6-8" -> 8) = one step up (2.5 kg / 5 lb; dumbbells 2 kg / 5 lb, rounded to a loadable weight); every working set below the bottom = about 5% down (at least one step); otherwise the same weight and one more rep. Working sets = the heaviest weight of last time (lighter warm-ups are left alone). The sets start at the suggested weight and a card above them says why, with Keep <last weight> (and back). No suggestion for bodyweight and bands, without target reps (exercises added on the go) or without history. No setting for the step yet.
+
 ## Still open
 
 - Apple / Google sign-in, light theme, "How to perform" section of exercise detail.

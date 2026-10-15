@@ -6,6 +6,7 @@ import {
   exerciseState,
   formatClock,
   goTo,
+  keepLastWeight,
   moveExercise,
   parseDuration,
   removeExercise,
@@ -315,5 +316,52 @@ describe('undo', () => {
     const back = restoreExercise(without, removed, 0);
     expect(back.exercises.map((e) => e.exerciseId)).toEqual(['incline', 'plank']);
     expect(restoreExercise(back, removed, 0)).toBe(back);
+  });
+});
+
+describe('next weight suggestion', () => {
+  const bench: NewExercise = {
+    exerciseId: 'bench',
+    name: 'Bench press',
+    logType: 'weight_reps',
+    imagePath: null,
+    restS: 120,
+    targetSets: 3,
+    targetReps: '6-8',
+    equipment: 'barbell',
+    previous: [40, 80, 80, 80].map((w, i) => ({
+      weightKg: w,
+      reps: i === 0 ? 10 : 8,
+      durationS: null,
+      distanceM: null,
+    })),
+  };
+  const build = (e: NewExercise) =>
+    buildSession({
+      planId: null,
+      planDayId: null,
+      dayName: 'Push',
+      cycleNumber: null,
+      outOfOrder: false,
+      weightUnit: 'kg',
+      now,
+      exercises: [e],
+    });
+
+  it('working sets start at the suggested weight; Keep goes back and forth', () => {
+    const s = build({ ...bench, targetSets: 4 });
+    expect(s.exercises[0].suggestion).toMatchObject({ kind: 'up', from: 80, to: 82.5 });
+    expect(s.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '82.5', '82.5', '82.5']);
+    const kept = keepLastWeight(s, 0);
+    expect(kept.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '80', '80', '80']);
+    expect(kept.exercises[0].suggestion?.kept).toBe(true);
+    const back = keepLastWeight(kept, 0, false);
+    expect(back.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '82.5', '82.5', '82.5']);
+  });
+
+  it('no suggestion without a rep target', () => {
+    const s = build({ ...bench, targetReps: undefined });
+    expect(s.exercises[0].suggestion).toBeUndefined();
+    expect(s.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '80', '80']);
   });
 });

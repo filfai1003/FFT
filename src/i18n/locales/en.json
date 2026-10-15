@@ -434,7 +434,21 @@
     "nextExercise": "Next exercise",
     "previousNamed": "Previous: {{name}}",
     "nextNamed": "Next: {{name}}",
-    "restOf": "of {{time}}"
+    "restOf": "of {{time}}",
+    "suggest": {
+      "up": "+{{step}} {{unit}} today",
+      "down": "Go down to {{weight}} today",
+      "same": "Same weight, one more rep",
+      "kept": "Staying at {{weight}}",
+      "last": "Last time {{weight}} × {{reps}}",
+      "reached": "target reached",
+      "short": "below the target",
+      "oneMore": "aim for one more rep",
+      "keep": "Keep {{weight}}",
+      "use": "Use {{weight}}",
+      "keepLabel": "Keep last time's weight, {{weight}}",
+      "useLabel": "Use the suggested weight, {{weight}}"
+    }
   },
   "summary": {
     "done": "Done",

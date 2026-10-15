@@ -50,6 +50,7 @@ export function newExerciseFromCatalogue(
     restS: defaults.restS ?? (exercise.logType === 'weight_reps' ? 90 : 60),
     targetSets: defaults.targetSets ?? 3,
     targetReps: defaults.targetReps,
+    equipment: exercise.equipment,
     previous,
   };
 }

@@ -19,12 +19,14 @@ import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
+import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
 import {
   addSet,
   exerciseState,
   formatClock,
   goTo,
+  keepLastWeight,
   moveExercise,
   removeExercise,
   removeSet,
@@ -243,6 +245,12 @@ export function SessionScreen() {
                 onPress={() => setMenu(true)}
               />
             </View>
+
+            <SuggestionCard
+              exercise={exercise}
+              unit={active.weightUnit}
+              onKeep={(keep) => update((s) => keepLastWeight(s, index, keep))}
+            />
 
             <Card size="small" gap={0}>
               <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 8 }}>
