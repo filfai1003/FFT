@@ -3,30 +3,49 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
+import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
-import { signInWithGoogle } from './google';
+import { credentialProblems, signIn, signUp } from './api';
 import { OfflineChoice } from './OfflineChoice';
 
-/**
- * Sign in: with Google only (new and older accounts alike: an account made before with email and
- * password opens with the Google account of the same email). Or use the app without an account.
- */
+type Mode = 'signIn' | 'signUp';
+
 export function AuthScreen() {
   const { t } = useTranslation();
   const barHeight = useActionBarHeight();
+  const [mode, setMode] = useState<Mode>('signIn');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
-  const google = async () => {
+  const problems = credentialProblems({ email, password });
+  const showEmailError = submitted && problems.includes('email');
+  const showPasswordError = submitted && problems.includes('password');
+
+  const submit = async () => {
+    setSubmitted(true);
+    setMessage(null);
+    if (problems.length > 0) return;
     setBusy(true);
-    setError(null);
     try {
-      const r = await signInWithGoogle();
-      if (!r.ok && !r.cancelled) setError(r.message ?? t('auth.googleFailed'));
+      if (mode === 'signIn') {
+        const error = await signIn({ email, password });
+        if (error) setMessage({ text: error, isError: true });
+      } else {
+        const result = await signUp({ email, password });
+        if (result.error) setMessage({ text: result.error, isError: true });
+        else if (result.needsConfirmation) {
+          setMessage({ text: t('auth.confirmEmail'), isError: false });
+          setMode('signIn');
+        }
+      }
     } catch (e) {
       // No server configured or no connection: say so instead of spinning forever.
-      setError(e instanceof Error ? e.message : String(e));
+      setMessage({ text: e instanceof Error ? e.message : String(e), isError: true });
     } finally {
       setBusy(false);
     }
@@ -43,25 +62,67 @@ export function AuthScreen() {
           <Text muted>{t('auth.tagline')}</Text>
         </View>
 
-        {error ? (
-          <Text variant="bodyS" danger accessibilityRole="alert">
-            {error}
+        <Segmented
+          accessibilityLabel={t('auth.modeLabel')}
+          value={mode}
+          onChange={(m) => {
+            setMode(m);
+            setMessage(null);
+          }}
+          options={[
+            { value: 'signIn', label: t('auth.modeSignIn') },
+            { value: 'signUp', label: t('auth.modeSignUp') },
+          ]}
+        />
+
+        <Input
+          label={t('auth.email')}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+          error={showEmailError ? t('auth.errorEmail') : undefined}
+        />
+        <Input
+          label={t('auth.password')}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+          textContentType={mode === 'signIn' ? 'password' : 'newPassword'}
+          error={showPasswordError ? t('auth.errorPassword') : undefined}
+          onSubmitEditing={submit}
+        />
+
+        {message ? (
+          <Text
+            variant="bodyS"
+            accessibilityRole={message.isError ? 'alert' : 'text'}
+            danger={message.isError}
+          >
+            {message.text}
           </Text>
         ) : null}
 
-        <Text variant="bodyS" muted>
-          {t('auth.legal')}
-        </Text>
+        {mode === 'signUp' ? (
+          <Text variant="bodyS" muted>
+            {t('auth.legal')}
+          </Text>
+        ) : null}
 
         <OfflineChoice />
       </Screen>
 
       <BottomActionBar>
         <Button
-          label={busy ? t('auth.googleOpening') : t('auth.google')}
+          label={mode === 'signIn' ? t('auth.continueSignIn') : t('auth.continueSignUp')}
           size="large"
           disabled={busy}
-          onPress={() => void google()}
+          onPress={submit}
         />
       </BottomActionBar>
     </>

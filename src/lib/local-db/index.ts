@@ -1,5 +1,5 @@
 import { createLocalClient, type LocalClient } from './client';
-import { LocalDb, pkOf, type Kv } from './engine';
+import { LocalDb, type Kv } from './engine';
 import { kv } from './kv';
 import { columns, withDefaults, type Row } from './schema';
 
@@ -55,24 +55,8 @@ function reassign<T>(value: T, from: string, to: string): T {
 export async function moveLocalData(from: string, to: string, store: Kv = kv): Promise<number> {
   const source = dbs.get(from) ?? new LocalDb(store, from);
   await source.ready;
-  const moved = reassign(source.tables, from, to);
-  // The account may already have data on this device (signed in before): both are kept; for the
-  // same item (e.g. the profile) the most recent version wins, as in the sync. An account opened
-  // here for the first time only has the empty profile the app makes, dated 1970: it loses.
-  const target = dbs.get(to) ?? new LocalDb(store, to);
-  await target.ready;
-  const tables: Record<string, Row[]> = {};
-  for (const name of new Set([...Object.keys(target.tables), ...Object.keys(moved)])) {
-    const pk = pkOf(name);
-    const byKey = new Map<string, Row>();
-    for (const r of [...(target.tables[name] ?? []), ...(moved[name] ?? [])]) {
-      const key = String(r[pk]);
-      const old = byKey.get(key);
-      if (!old || String(r.updated_at ?? '') > String(old.updated_at ?? '')) byKey.set(key, r);
-    }
-    tables[name] = [...byKey.values()];
-  }
-  const rows = Object.values(moved).reduce((n, list) => n + list.length, 0);
+  const tables = reassign(source.tables, from, to);
+  const rows = Object.values(tables).reduce((n, list) => n + list.length, 0);
   await store.setText(`database-${to}.json`, JSON.stringify({ format: 1, tables }));
   // The new account starts from the moved file the first time it is opened.
   dbs.delete(to);

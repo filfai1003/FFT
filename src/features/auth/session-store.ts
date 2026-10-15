@@ -4,7 +4,6 @@ import { LOCAL_USER_ID } from '@/lib/local-db';
 import { setCurrentUserId } from '@/lib/current-user';
 import { getMode, loadMode, setMode } from '@/lib/mode';
 import { getAuthClient, isSupabaseConfigured } from '@/lib/supabase';
-import { finishWebSignIn } from './google';
 
 export type AuthStatus = 'loading' | 'unconfigured' | 'signedOut' | 'signedIn';
 
@@ -55,8 +54,6 @@ async function connectCloud() {
       if (getMode() === 'cloud') apply(session);
     });
   }
-  // Web: back from Google with a code in the address.
-  await finishWebSignIn().catch(() => undefined);
   const { data } = await supabase.auth.getSession();
   apply(data.session);
 }

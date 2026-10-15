@@ -92,12 +92,19 @@
     "kicker": "Training and diet",
     "title": "Welcome",
     "tagline": "Train, eat and track your progress in one place.",
+    "modeLabel": "Sign in or create an account",
+    "modeSignIn": "Sign in",
+    "modeSignUp": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "errorEmail": "Enter a valid email address.",
+    "errorPassword": "Use at least 8 characters.",
+    "continueSignIn": "Sign in",
+    "continueSignUp": "Create account",
+    "confirmEmail": "Check your inbox to confirm your email, then sign in.",
     "legal": "By continuing you accept the terms and the privacy policy.",
     "useOffline": "Use without an account",
-    "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up.",
-    "google": "Continue with Google",
-    "googleOpening": "Opening Google…",
-    "googleFailed": "Google sign-in did not complete. Try again."
+    "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up."
   },
   "onboarding": {
     "signOut": "Sign out",
@@ -850,14 +857,7 @@
     "leaveOffline": "Leave offline mode",
     "ai": "AI plans & import",
     "premium": "Premium",
-    "supporter": "Supporter",
-    "google": {
-      "title": "Sign in with Google",
-      "body": "From now on you sign in with Google. Link it to this account to keep your data.",
-      "button": "Link Google account",
-      "done": "Google linked. Sign in with it from now on.",
-      "failed": "Google could not be linked. Try again."
-    }
+    "supporter": "Supporter"
   },
   "settings": {
     "title": "Settings",
@@ -1316,10 +1316,12 @@
     "cardTitle": "Keep your data with an account",
     "cardButton": "Create an account",
     "title": "Create an account",
+    "submit": "Create account and move my data",
     "working": "Creating…",
+    "taken": "This email already has an account. Use another one.",
     "failed": "The account could not be created. Check your connection and try again.",
-    "done": "Account created. Your data is in it.",
-    "phoneOnly": "Create the account in the phone app: the data on that phone moves into it."
+    "confirm": "Confirm your email, then sign in with it: your data is waiting in the account.",
+    "done": "Account created. Your data is in it."
   },
   "premium": {
     "plansTitle": "Plans",
