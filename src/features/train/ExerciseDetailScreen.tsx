@@ -20,6 +20,7 @@ import { useProfile } from '@/features/profile/api';
 import { formatClock, trimNumber } from '@/features/session/logic';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { ExerciseThumb } from './exercise-image';
+import { HowToCard } from './HowToCard';
 import { useExerciseTrend, useRecords } from './exercise-stats';
 import { useExerciseSessions } from './history';
 import { useDeleteExercise, useExercises, type Exercise } from './exercises';
@@ -109,6 +110,8 @@ export function ExerciseDetailScreen({
             </Text>
           </View>
         </View>
+
+        <HowToCard exerciseId={exercise.id} />
 
         {weighted ? (
           <>

@@ -80,8 +80,10 @@ before the phase that depends on it.
 
 49. **Same as yesterday** (count-foods diary): an empty meal whose meal the day before has entries shows one row, Same as yesterday, with the foods and the calories; one tap copies them into the shown day as new entries (values as logged, like every log), with UNDO in the toast. Only the day before and only while the meal is empty, so the row never gets in the way.
 
+50. **How to perform.** Every catalogue exercise has three or four short steps and one or two common mistakes (`src/features/train/how-to.json`, by slug; catalogue data in English like the exercise names, so not in i18n), shown first in the exercise page (also reached from the workout with the info button). A test checks that every catalogue exercise has one. The user's own exercises have none.
+
 ## Still open
 
-- Apple / Google sign-in, light theme, "How to perform" section of exercise detail.
+- Apple / Google sign-in.
 - Email verification: not built. It needs an email-sending service (Railway blocks SMTP below the Pro plan, and mail from a server without a verified domain lands in spam). Until then sign-up is auto-confirmed and forgotten passwords go through the admin (45).
 - Verified on a device: local notifications, camera / photo capture, biometrics, barcode scanner.

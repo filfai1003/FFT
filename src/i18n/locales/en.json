@@ -374,7 +374,9 @@
     "delete": "Delete exercise",
     "deleteTitle": "Delete this exercise?",
     "deleteBody": "It disappears from the library and from plans. Past workouts keep their sets.",
-    "deleteConfirm": "Delete exercise"
+    "deleteConfirm": "Delete exercise",
+    "howTo": "How to perform",
+    "avoid": "Avoid"
   },
   "session": {
     "inProgress": "Workout in progress",
