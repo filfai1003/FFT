@@ -10,12 +10,12 @@ describe('the AI included with Premium', () => {
     expect(effectiveAiSettings({ ...own, provider: 'included' }, 'premium').provider).toBe(
       'included',
     );
-    expect(effectiveAiSettings(defaultAiSettings, 'supporter').provider).toBe('anthropic');
+    expect(effectiveAiSettings(defaultAiSettings, 'free').provider).toBe('anthropic');
   });
 
   it('is ready only for Premium; other plans need a key and a model', () => {
     expect(aiReady(defaultAiSettings, 'premium')).toBe(true);
-    expect(aiReady(defaultAiSettings, 'supporter')).toBe(false);
+    expect(aiReady(defaultAiSettings, 'free')).toBe(false);
     expect(aiReady({ ...defaultAiSettings, provider: 'included' }, 'free')).toBe(false);
     expect(aiReady(own, 'free')).toBe(true);
   });

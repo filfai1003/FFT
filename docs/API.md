@@ -1,6 +1,6 @@
 # FFT API and MCP server
 
-For Supporter and Premium accounts (their data is online). Code: `server/api.js` (api service),
+For every account (all accounts keep their data online, DECISIONS 47). Code: `server/api.js` (api service),
 tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & MCP.
 
 - Base: `https://fft-api.up.railway.app`
@@ -18,7 +18,7 @@ AI apps add FFT as a connector by its MCP address and a sign-in, with no token: 
 Without a token `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata=…`; the app
 reads `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
 registers at `/oauth/register`, opens `/oauth/authorize` (FFT email and password, checked by the
-auth service; Supporter and Premium only) and gets tokens at `/oauth/token` (access 7 days, then
+auth service; any account) and gets tokens at `/oauth/token` (access 7 days, then
 renewed with the refresh token). Each connection is a token row named after the app, listed and
 revocable in the app. In the app, Settings → API & MCP → Add to Claude / Add to ChatGPT copies the
 address and opens that app's connectors page.

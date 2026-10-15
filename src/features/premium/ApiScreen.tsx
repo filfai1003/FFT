@@ -39,7 +39,7 @@ const date = (iso: string) =>
     new Date(iso),
   );
 
-/** API & MCP: the addresses, the user's tokens, making and revoking them (Supporter, Premium). */
+/** API & MCP: the addresses, the user's tokens, making and revoking them (every account). */
 export function ApiScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -47,8 +47,8 @@ export function ApiScreen() {
   const goBack = useBack('/profile');
   const barHeight = useActionBarHeight();
   const showToast = useToastStore((s) => s.show);
-  const plan = usePlanStore((s) => s.plan);
-  const allowed = plan === 'supporter' || plan === 'premium';
+  // Every account (DECISIONS 47); the account-less mode has no server account to connect.
+  const allowed = usePlanStore((s) => s.userId != null);
   const tokens = useApiTokens(allowed);
   const create = useCreateApiToken();
   const setRevoked = useSetApiTokenRevoked();

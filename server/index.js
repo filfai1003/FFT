@@ -36,8 +36,6 @@ async function signIn(email, password) {
 const oauth = createOAuth({
   sql: async (text, params) => (await pool.query(text, params)).rows,
   signIn,
-  planOf: async (userId) =>
-    (await pool.query('select public.plan_of($1) as p', [userId])).rows[0]?.p ?? 'free',
   base: BASE,
 });
 

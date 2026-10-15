@@ -2,29 +2,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 /**
- * The account's plan and where its data lives (DECISIONS 42).
- * - free: everything on the device (the server holds only the email and password)
- * - supporter: + the data synced online, so the web app and every device see the same data
+ * The account's plan and where its data lives (DECISIONS 42, 47).
+ * - free: every feature, the data synced online (web app, every device), API and MCP
  * - premium: + the AI coach included in the app, paid from a monthly AI credit
- * The app always works on the device; features/premium/sync.ts keeps the server up to date in the
- * background. Plans are set by the admin panel for now; the server decides (`my_plan()`), and only
- * supporter and premium accounts can write data online (row level security).
+ * Every account keeps its data online; only the account-less mode stays on the phone. The app
+ * always works on the device; features/premium/sync.ts keeps the server up to date in the
+ * background. Plans are set by the admin panel for now; the server decides (`my_plan()`).
  */
 export type DataHome = 'device' | 'online';
 
-export type Plan = 'free' | 'supporter' | 'premium';
-export const isPlan = (v: unknown): v is Plan =>
-  v === 'free' || v === 'supporter' || v === 'premium';
+export type Plan = 'free' | 'premium';
+// 'supporter' (saved before DECISIONS 47) is no longer a plan: read as unknown, asked again.
+export const isPlan = (v: unknown): v is Plan => v === 'free' || v === 'premium';
 
 /** Monthly prices (shown on the plans page; payments come later). */
-export const PLAN_PRICES_EUR: Record<Exclude<Plan, 'free'>, number> = { supporter: 2, premium: 20 };
+export const PLAN_PRICES_EUR: Record<Exclude<Plan, 'free'>, number> = { premium: 20 };
 
 type PlanState = {
   /** The account these values belong to. */
   userId: string | null;
   /** Last answer of the server; null = never asked on this device. */
   plan: Plan | null;
-  /** The plan keeps data online (supporter or premium); null = never asked. */
+  /** The data is kept online (every account since DECISIONS 47); null = never asked. */
   premium: boolean | null;
   home: DataHome;
 };
@@ -50,7 +49,15 @@ export async function loadPlan(userId: string): Promise<PlanState> {
   const state: PlanState = {
     userId,
     // Saved before plans existed: "premium" meant the data was online.
-    plan: isPlan(saved.plan) ? saved.plan : premium ? 'premium' : premium === false ? 'free' : null,
+    plan: isPlan(saved.plan)
+      ? saved.plan
+      : saved.plan != null
+        ? null
+        : premium
+          ? 'premium'
+          : premium === false
+            ? 'free'
+            : null,
     premium,
     home: saved.home === 'online' ? 'online' : 'device',
   };

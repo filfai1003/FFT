@@ -869,8 +869,7 @@
     "keepTarget": "Keep my current target",
     "leaveOffline": "Leave offline mode",
     "ai": "AI plans & import",
-    "premium": "Premium",
-    "supporter": "Supporter"
+    "premium": "Premium"
   },
   "settings": {
     "title": "Settings",
@@ -1338,10 +1337,9 @@
   },
   "premium": {
     "plansTitle": "Plans",
-    "gateIntro": "The web version comes with Supporter and Premium.",
+    "gateIntro": "Sign in again to open FFT in the browser.",
     "plan": {
       "free": "Free",
-      "supporter": "Supporter",
       "premium": "Premium"
     },
     "priceFree": "0 €",
@@ -1349,22 +1347,21 @@
     "yourPlan": "Your plan",
     "perks": {
       "everything": "Every feature",
-      "onPhone": "Data on your phone",
       "ownKey": "AI coach with your own key",
       "sync": "Data synced on every device",
       "web": "FFT in the browser",
       "safe": "Nothing lost if you change phone",
       "apiMcp": "API and MCP for your own tools",
-      "supporterAll": "Everything in Supporter",
       "aiIncluded": "AI coach included, no key",
-      "aiCredit": "10 € of AI a month, unused carries over (max 15 €)"
+      "aiCredit": "10 € of AI a month, unused carries over (max 15 €)",
+      "freeAll": "Everything in Free"
     },
     "howToGet": "By invitation for now.",
     "moving": "Moving your data",
     "upTitle": "Moving your data online",
-    "upBody": "Premium is on: your workouts, food, weight and photos are being saved online. Keep the app open.",
+    "upBody": "Your workouts, food, weight and photos are being saved online, so every device and the web app see them. Keep the app open.",
     "downTitle": "Bringing your data to this phone",
-    "downBody": "Premium has ended: your data is coming back to this phone and then removed from the server. Keep the app open.",
+    "downBody": "Your data is coming back to this phone and then removed from the server. Keep the app open.",
     "moveFailedTitle": "Your data could not be moved",
     "moveFailedBody": "Nothing was lost. Check your connection and try again.",
     "later": "Keep using this phone for now"

@@ -41,10 +41,8 @@ export function usePlanGate() {
       set({ kind: 'checking' });
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
-      // "premium" here = the plan keeps data online (supporter or premium).
-      const asking = fetchPlan().then((plan) =>
-        plan == null ? null : { plan, online: plan !== 'free' },
-      );
+      // "premium" here = the data is kept online: every account (DECISIONS 47).
+      const asking = fetchPlan().then((plan) => (plan == null ? null : { plan, online: true }));
       let fetched: boolean | null = null;
       if (saved.premium == null || saved.plan == null) {
         const answer = await withTimeout(asking, 8000, null);

@@ -18,7 +18,7 @@ const supabaseDir = path.join(here, '..');
 
 const A = 'aaaaaaaa-0000-0000-0000-00000000000a';
 const B = 'bbbbbbbb-0000-0000-0000-00000000000b';
-// A and B are premium (data online); C is a free account (data on the phone only).
+// A and B are premium (VIP); C is a free account (data online too since DECISIONS 47).
 const C = 'cccccccc-0000-0000-0000-00000000000c';
 
 let db;
@@ -385,42 +385,22 @@ describe('vip users and admin audit', () => {
   });
 });
 
-describe('only premium accounts keep data on the server', () => {
-  it('is_premium() is true for VIP accounts only', async () => {
+describe('every account keeps its data on the server (DECISIONS 47)', () => {
+  it('is_premium() ("can keep data online") is true for any account, false without one', async () => {
     await as(A);
     assert.equal((await one('select public.is_premium() as p')).p, true);
     await as(C);
+    assert.equal((await one('select public.is_premium() as p')).p, true);
+    await admin();
+    await db.exec('set role anon');
     assert.equal((await one('select public.is_premium() as p')).p, false);
   });
 
-  it('a free account cannot write any data online', async () => {
+  it('a free account writes, changes and deletes its own data online', async () => {
     await as(C);
-    await rejects(
-      `insert into public.food_logs (day, meal, name, grams, kcal) values ('2026-10-08', 'lunch', 'x', 1, 1)`,
-      '42501',
-    );
-    await rejects(
-      `insert into public.body_metrics (day, weight_kg) values ('2026-10-08', 80)`,
-      '42501',
-    );
-    await rejects(
-      `insert into public.exercises (name, primary_muscle, equipment, owner_id)
-       values ('Mine', 'back', 'cables', '${C}')`,
-      '42501',
-    );
-    const r = await db.query(`update public.profiles set name = 'C' returning id`);
-    assert.equal(r.rows.length, 0, 'not even its own profile');
-  });
-
-  it('after premium ends, the data can still be read and deleted (taken back to the phone)', async () => {
-    await admin();
-    await db.exec(
-      `insert into public.water_logs (user_id, day, ml) values ('${C}', '2026-10-08', 250)`,
-    );
-    await as(C);
-    assert.equal(await count('select count(*) as n from public.water_logs'), 1);
+    await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-08', 250)`);
     const changed = await db.query('update public.water_logs set ml = 500 returning id');
-    assert.equal(changed.rows.length, 0);
+    assert.equal(changed.rows.length, 1);
     const removed = await db.query('delete from public.water_logs returning id');
     assert.equal(removed.rows.length, 1);
   });
@@ -525,15 +505,10 @@ describe('premium sync (last change wins)', () => {
     assert.ok(r.tombstones.some((t) => t.table === 'water_logs' && t.id === W));
   });
 
-  it("nobody can push into someone else's data, and free accounts cannot push", async () => {
+  it("nobody can push into someone else's data", async () => {
     await as(B);
     await rejects(
       `select public.sync_push('water_logs', '[{"id":"55555555-0000-0000-0000-000000000002","user_id":"${A}","day":"2026-10-14","ml":1,"updated_at":"2026-10-14T00:00:00Z"}]', '[]')`,
-      '42501',
-    );
-    await as(C);
-    await rejects(
-      `select public.sync_push('water_logs', '[{"id":"55555555-0000-0000-0000-000000000003","user_id":"${C}","day":"2026-10-14","ml":1,"updated_at":"2026-10-14T00:00:00Z"}]', '[]')`,
       '42501',
     );
     await rejects(`select public.sync_push('vip_users', '[]', '[]')`, '22023');
@@ -567,7 +542,6 @@ describe('plans and AI credit', () => {
     await db.exec(`
       insert into auth.users (id, instance_id, aud, role, email)
         values ('${S}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 's@test.dev');
-      insert into public.user_plans (user_id, plan) values ('${S}', 'supporter');
     `);
   });
 
@@ -576,11 +550,14 @@ describe('plans and AI credit', () => {
     assert.equal((await one('select public.my_plan() as p')).p, 'premium');
     await as(C);
     assert.equal((await one('select public.my_plan() as p')).p, 'free');
-    await as(S);
-    assert.equal((await one('select public.my_plan() as p')).p, 'supporter');
+    await admin();
+    await rejects(
+      `insert into public.user_plans (user_id, plan) values ('${S}', 'supporter')`,
+      '23514',
+    );
   });
 
-  it('supporters keep data online too', async () => {
+  it('free accounts keep data online too', async () => {
     await as(S);
     assert.equal((await one('select public.is_premium() as p')).p, true);
     await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-15', 250)`);
@@ -682,9 +659,9 @@ describe('personal API and MCP (server/api.js)', () => {
     return r.isError ? { error: r.content[0].text } : JSON.parse(r.content[0].text);
   };
 
-  it('free accounts cannot make a token; paid accounts get one, shown once (only its hash is kept)', async () => {
+  it('every account can make a token, shown once (only its hash is kept)', async () => {
     await as(C);
-    await rejects(`select public.create_api_token('mine')`, '42501');
+    assert.match((await one(`select public.create_api_token('mine') as t`)).t, /^fft_/);
     await as(A);
     token = (await one(`select public.create_api_token('Claude') as t`)).t;
     assert.match(token, /^fft_[0-9a-f]{64}$/);
@@ -926,10 +903,6 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     },
     // The auth service checks passwords; here: the right one is "right".
     signIn: async (email, password) => (password === 'right' ? (users[email] ?? null) : null),
-    planOf: async (uid) => {
-      await admin();
-      return (await one('select public.plan_of($1) as p', [uid])).p;
-    },
     base: BASE,
   });
   const api = createApi(
@@ -984,7 +957,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     clientId = JSON.parse(reg.body).client_id;
   });
 
-  it('the sign-in page names the app; a wrong password or a free account gets no code', async () => {
+  it('the sign-in page names the app; a wrong password gets no code', async () => {
     const pageRes = await go('GET', '/oauth/authorize', undefined, {
       response_type: 'code',
       client_id: clientId,
@@ -1006,7 +979,6 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       400,
     );
     assert.match((await authorize('a@test.dev', 'wrong')).body, /Wrong email or password/);
-    assert.match((await authorize('c@test.dev', 'right')).body, /part of Supporter and Premium/);
   });
 
   it('right password: code, then a token that works on MCP; the code works once', async () => {

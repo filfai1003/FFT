@@ -14,9 +14,8 @@ import { PLAN_PRICES_EUR, usePlanStore, type Plan } from '@/lib/plan';
 
 /** What each plan adds to the one before (keys under premium.perks). */
 const PLANS = [
-  { plan: 'free', perks: ['everything', 'onPhone', 'ownKey'] },
-  { plan: 'supporter', perks: ['sync', 'web', 'safe', 'apiMcp'] },
-  { plan: 'premium', perks: ['supporterAll', 'aiIncluded', 'aiCredit'] },
+  { plan: 'free', perks: ['everything', 'sync', 'web', 'safe', 'apiMcp', 'ownKey'] },
+  { plan: 'premium', perks: ['freeAll', 'aiIncluded', 'aiCredit'] },
 ] as const satisfies readonly { plan: Plan; perks: readonly string[] }[];
 
 /**

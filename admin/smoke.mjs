@@ -139,14 +139,14 @@ if (first) {
   const before = first[4];
   const grant = await call('/api/plan', {
     userId: first[0],
-    plan: 'supporter',
+    plan: 'premium',
     note: 'smoke test',
   });
   check('plan set', grant.status === 200, JSON.stringify(grant.data));
   const after = await call('/api/users');
   check(
     'plan shows in the list',
-    after.data.rows.find((r) => r[0] === first[0])?.[4] === 'supporter',
+    after.data.rows.find((r) => r[0] === first[0])?.[4] === 'premium',
   );
   const back = await call('/api/plan', { userId: first[0], plan: before });
   check('plan restored', back.status === 200, JSON.stringify(back.data));

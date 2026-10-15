@@ -30,9 +30,9 @@ const allowedRedirect = (u) => {
 
 /**
  * `sql(text, params)` runs as the tables' owner (the api service). `signIn(email, password)`
- * returns the user id or null. `planOf(userId)` returns the plan. `base` = the public address.
+ * returns the user id or null (any account can connect AI apps). `base` = the public address.
  */
-export function createOAuth({ sql, signIn, planOf, base }) {
+export function createOAuth({ sql, signIn, base }) {
   const attempts = new Map();
   const tooMany = (ip) => {
     const minute = Math.floor(Date.now() / 60000);
@@ -187,9 +187,6 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     if (tooMany(ip)) return page(p, client, 'Too many attempts. Wait a minute and try again.');
     const userId = await signIn(String(p.email ?? '').trim(), String(p.password ?? ''));
     if (!userId) return page(p, client, 'Wrong email or password.');
-    const plan = await planOf(userId);
-    if (plan !== 'supporter' && plan !== 'premium')
-      return page(p, client, 'Connecting AI apps is part of Supporter and Premium.');
     const code = secret('fftac_');
     await sql(
       `insert into public.oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
@@ -279,9 +276,6 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
         [sha256(String(p.refresh_token ?? '')), client.id],
       );
       if (!row) return oauthError('invalid_grant', 'the refresh token was revoked or is wrong');
-      const plan = await planOf(row.user_id);
-      if (plan !== 'supporter' && plan !== 'premium')
-        return oauthError('invalid_grant', 'the plan no longer includes connected apps');
       return issue(row);
     }
     return oauthError('unsupported_grant_type', 'authorization_code or refresh_token');

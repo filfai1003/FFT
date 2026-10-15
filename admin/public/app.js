@@ -467,7 +467,7 @@ async function loadUsers() {
   $('userCount').textContent = `${r.rows.length} accounts`;
   const [id, email, created, last, plan, note, credit] = [0, 1, 2, 3, 4, 5, 6];
   const body = r.rows.map((row) => {
-    // free / supporter / premium: changes go through sudo mode (DECISIONS 42).
+    // free / premium: changes go through sudo mode (DECISIONS 42, 47).
     const select = h(
       'select',
       {
@@ -475,7 +475,7 @@ async function loadUsers() {
         title: inSudo() ? 'Change the plan' : 'Enter sudo mode to change this',
         onchange: (e) => setPlan(row[id], row[email], e.target.value, e.target, row[plan]),
       },
-      ['free', 'supporter', 'premium'].map((p) =>
+      ['free', 'premium'].map((p) =>
         h('option', { value: p, ...(p === row[plan] ? { selected: '' } : {}) }, p),
       ),
     );
@@ -523,7 +523,9 @@ async function setPlan(userId, email, plan, select, previous) {
     note = prompt(`Give ${email} the ${plan} plan. A note for yourself (optional):`, '');
     if (note === null) return undo();
   } else if (
-    !confirm(`Move ${email} back to the free plan? Their online data comes back to their phone.`)
+    !confirm(
+      `Move ${email} back to the free plan? They keep their data; only the included AI coach stops.`,
+    )
   )
     return undo();
   try {
