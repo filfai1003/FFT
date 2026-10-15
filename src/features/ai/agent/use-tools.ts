@@ -94,6 +94,29 @@ async function fetchFood(id: string): Promise<Food> {
   return toFood(data as unknown as Parameters<typeof toFood>[0]);
 }
 
+/** A food as people read it ("Salmon, raw, farmed" or "Light · Philadelphia"); the id if unknown. */
+async function foodName(id: unknown): Promise<string | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const food = await fetchFood(id).catch(() => null);
+  if (!food) return id;
+  return food.brand ? `${food.name} · ${food.brand}` : food.name;
+}
+
+/** A food log entry as people read it: "Salmon, raw, farmed · 100 g · dinner". */
+async function logName(id: unknown): Promise<string | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const { data } = await getSupabase()
+    .from('food_logs')
+    .select('name, grams, meal, day')
+    .eq('id', id)
+    .maybeSingle();
+  const row = data as { name: string; grams: number | null; meal: string; day: string } | null;
+  if (!row) return id;
+  return [row.name, row.grams != null ? `${Number(row.grams)} g` : null, row.meal, row.day]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 const per100Of = (f: Food) => ({
   kcal: f.per100.kcal,
   protein: f.per100.protein,
@@ -510,7 +533,7 @@ export function useAgentTools(): ToolDef[] {
       description:
         'Change a food the user created (only their own). Send food_id and only the fields to change. If you send portions they replace the old ones.',
       schema: obj({ food_id: text('Id from search_foods.'), ...foodProps }, ['food_id']),
-      describe: (input) => [
+      describe: async (input) => [
         ...line('name', input.name),
         ...line('brand', input.brand),
         ...line(
@@ -524,7 +547,7 @@ export function useAgentTools(): ToolDef[] {
             .filter(Boolean)
             .join(' · '),
         ),
-        ...line('food', input.food_id),
+        ...line('food', await foodName(input.food_id)),
       ],
       run: async (input) => {
         const before = await ownFood(str(input, 'food_id', 60));
@@ -563,7 +586,7 @@ export function useAgentTools(): ToolDef[] {
       description:
         'Delete a food the user created. Entries already in the food log keep their values.',
       schema: obj({ food_id: text('Id from search_foods.') }, ['food_id']),
-      describe: (input) => line('food', input.food_id),
+      describe: async (input) => line('food', await foodName(input.food_id)),
       run: async (input) => {
         const food = await ownFood(str(input, 'food_id', 60));
         await setFoodDeleted.mutateAsync({ id: food.id, deleted: true });
@@ -594,13 +617,33 @@ export function useAgentTools(): ToolDef[] {
         },
         ['meal'],
       ),
-      describe: (input) => [
-        ...line('day', input.day ?? today),
-        ...line('meal', input.meal),
-        ...line('food', input.name ?? input.food_id),
-        ...line('amount', input.grams != null ? `${input.grams} g` : null),
-        ...line('kcal', input.kcal),
-      ],
+      describe: async (input) => {
+        // A saved food: its name and the calories of this amount, not its id.
+        const food =
+          typeof input.food_id === 'string' && !input.name
+            ? await fetchFood(input.food_id).catch(() => null)
+            : null;
+        const grams = typeof input.grams === 'number' ? input.grams : null;
+        return [
+          ...line('day', input.day ?? today),
+          ...line('meal', input.meal),
+          ...line(
+            'food',
+            food
+              ? food.brand
+                ? `${food.name} · ${food.brand}`
+                : food.name
+              : (input.name ?? input.food_id),
+          ),
+          ...line('amount', grams != null ? `${grams} g` : null),
+          ...line(
+            'kcal',
+            food && grams != null
+              ? `${Math.round(scaleNutrition(food.per100, grams).kcal)} kcal`
+              : input.kcal,
+          ),
+        ];
+      },
       run: async (input) => {
         const day = dayArg(input, 'day', today);
         const meal = str(input, 'meal', 12) as Meal;
@@ -645,7 +688,7 @@ export function useAgentTools(): ToolDef[] {
       write: true,
       description: 'Remove one entry from the food log (log_id comes from get_day).',
       schema: obj({ log_id: text('Id of the entry, from get_day.') }, ['log_id']),
-      describe: (input) => line('food', input.log_id),
+      describe: async (input) => line('food', await logName(input.log_id)),
       run: async (input) => {
         const id = str(input, 'log_id', 60);
         await setLogDeleted.mutateAsync({ id, deleted: true });

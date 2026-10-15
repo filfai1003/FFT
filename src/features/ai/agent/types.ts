@@ -53,7 +53,7 @@ export type ChangeLine = { label: string; value: string };
 export type ToolDef = ToolSpec & {
   /** Writes change the user's data: they are shown first and run only after an approval. */
   write?: boolean;
-  /** Lines for the approval card: what will change. */
-  describe?: (input: Record<string, unknown>) => ChangeLine[];
+  /** Lines for the approval card: what will change (may look up names, e.g. a food from its id). */
+  describe?: (input: Record<string, unknown>) => ChangeLine[] | Promise<ChangeLine[]>;
   run: (input: Record<string, unknown>) => Promise<ToolRun>;
 };

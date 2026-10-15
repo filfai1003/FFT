@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
@@ -57,12 +58,7 @@ export function ActionsPreview({ actions }: { actions: ParsedAction[] }) {
       {actions.map((a, i) => (
         <View key={i} style={{ gap: 2 }}>
           <Text variant="body">{t(`ai.tool.${a.tool.name}`)}</Text>
-          {(a.tool.describe?.(a.input) ?? []).map((l, j) => (
-            <Text key={j} variant="label" muted>
-              {t(`ai.field.${l.label}`)} · {l.value}
-              {results?.[i]?.outcome === 'error' ? ' ✕' : ''}
-            </Text>
-          ))}
+          <ActionLines id={ids[i]} action={a} failed={results?.[i]?.outcome === 'error'} t={t} />
         </View>
       ))}
       {results ? (
@@ -88,4 +84,28 @@ export function ActionsPreview({ actions }: { actions: ParsedAction[] }) {
       )}
     </Card>
   );
+}
+
+function ActionLines({
+  id,
+  action,
+  failed,
+  t,
+}: {
+  id: string;
+  action: ParsedAction;
+  failed: boolean;
+  t: Translate;
+}) {
+  const lines = useQuery({
+    queryKey: ['ai-change', id],
+    staleTime: Infinity,
+    queryFn: async () => (await action.tool.describe?.(action.input)) ?? [],
+  });
+  return (lines.data ?? []).map((l, j) => (
+    <Text key={j} variant="label" muted>
+      {t(`ai.field.${l.label}`)} · {l.value}
+      {failed ? ' ✕' : ''}
+    </Text>
+  ));
 }
