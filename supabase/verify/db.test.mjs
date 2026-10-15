@@ -1166,3 +1166,27 @@ describe('forgot password (request_password_reset)', () => {
     assert.equal(r.note, 'hi');
   });
 });
+
+describe('error reporting (report_error)', () => {
+  it('anyone can report; the same problem gets the same fingerprint; users cannot read them', async () => {
+    await as(A);
+    await db.query(
+      `select public.report_error('crash', 'TypeError: x of 12 is undefined', 'at a (b.js:1:200)')`,
+    );
+    await db.query(
+      `select public.report_error('crash', 'TypeError: x of 34 is undefined', 'at a (b.js:1:999)')`,
+    );
+    await rejects(`select * from public.app_errors`, '42501');
+    await admin();
+    await db.exec('set role anon');
+    await db.query(`select public.report_error('render', 'boom')`);
+    await admin();
+    const groups = await db.query(
+      `select fingerprint, count(*) as n, count(user_id) as users from public.app_errors group by 1 order by 2 desc`,
+    );
+    assert.equal(groups.rows.length, 2);
+    assert.equal(Number(groups.rows[0].n), 2);
+    assert.equal(Number(groups.rows[0].users), 2);
+    assert.equal(Number(groups.rows[1].users), 0);
+  });
+});

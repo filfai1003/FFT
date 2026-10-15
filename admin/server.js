@@ -385,6 +385,41 @@ async function api(req, res, url) {
     return send(res, 200, out);
   }
 
+  if (route === 'GET /api/errors') {
+    // App errors (report_error), grouped: the same message and stack = one problem.
+    const days = Math.min(60, Math.max(1, Number(url.searchParams.get('days')) || 7));
+    const out = await db.run(
+      `select fingerprint, max(kind) as kind, count(*)::int as times,
+              count(distinct coalesce(user_id::text, 'anon'))::int as accounts,
+              min(created_at) as first_seen, max(created_at) as last_seen,
+              (array_agg(message order by created_at desc))[1] as message,
+              (array_agg(stack order by created_at desc))[1] as stack,
+              (array_agg(context order by created_at desc))[1] as context,
+              string_agg(distinct platform, ', ') as platforms,
+              string_agg(distinct coalesce(update_id, app_version), ', ') as versions
+       from public.app_errors
+       where created_at > now() - make_interval(days => $1)
+       group by fingerprint
+       order by max(created_at) desc limit 200`,
+      { params: [days] },
+    );
+    return send(res, 200, out);
+  }
+
+  if (route === 'POST /api/errors/clear') {
+    // A problem fixed: its reports go, so a new one shows up as new.
+    needSudo();
+    const { fingerprint } = await readBody(req);
+    if (!/^[0-9a-f]{32}$/.test(String(fingerprint))) throw new HttpError(400, 'Bad fingerprint');
+    const out = await db.run(`delete from public.app_errors where fingerprint = $1`, {
+      sudo: true,
+      commit: true,
+      params: [fingerprint],
+      audit: { action: 'errors.clear', detail: { fingerprint } },
+    });
+    return send(res, 200, out);
+  }
+
   if (route === 'GET /api/password-resets') {
     // Forgot password requests from the sign-in screen: open first, then the last week's.
     const out = await db.run(

@@ -72,6 +72,11 @@ check(
 );
 check('AI tab readable', (await call('/api/ai')).status === 200);
 check('password resets readable', (await call('/api/password-resets')).status === 200);
+check('errors readable', (await call('/api/errors')).status === 200);
+check(
+  'clearing errors refused without sudo',
+  (await call('/api/errors/clear', { fingerprint: '0'.repeat(32) })).status === 403,
+);
 check(
   'temporary password refused without sudo',
   (await call('/api/password-reset', { id: '00000000-0000-0000-0000-000000000000' })).status ===

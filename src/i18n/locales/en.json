@@ -86,7 +86,9 @@
     "loadErrorTitle": "Can't load your data",
     "loadErrorBody": "Check your connection and try again.",
     "setupTitle": "Backend not configured",
-    "setupBody": "Copy .env.example to .env.local, start Supabase (npm run db:start) and fill in the URL and the anon key from npx supabase status."
+    "setupBody": "Copy .env.example to .env.local, start Supabase (npm run db:start) and fill in the URL and the anon key from npx supabase status.",
+    "crashTitle": "Something went wrong",
+    "crashBody": "This screen stopped working. The problem was reported automatically."
   },
   "auth": {
     "kicker": "Training and diet",

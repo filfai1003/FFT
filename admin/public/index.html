@@ -39,6 +39,7 @@
         <button data-tab="sql" class="tab">SQL</button>
         <button data-tab="users" class="tab">Users</button>
         <button data-tab="resets" class="tab">Password resets <span id="resetsBadge" class="badge" hidden></span></button>
+        <button data-tab="errors" class="tab">Errors <span id="errorsBadge" class="badge" hidden></span></button>
         <button data-tab="ai" class="tab">AI</button>
         <button data-tab="audit" class="tab">Audit</button>
         <button data-tab="backup" class="tab">Backup</button>
@@ -114,6 +115,22 @@
           </div>
           <div id="resetResult" class="card" hidden></div>
           <div id="resetsGrid" class="grid-wrap"></div>
+        </section>
+
+        <section id="tab-errors" class="panel" hidden>
+          <div class="toolbar">
+            <strong>App errors</strong>
+            <span class="muted">Crashes and failures sent by the app, grouped. Clear one when it is fixed (sudo).</span>
+            <span class="spacer"></span>
+            <select id="errorDays">
+              <option value="1">Last day</option>
+              <option value="7" selected>Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="60">Last 60 days</option>
+            </select>
+            <button id="refreshErrors" class="btn">Refresh</button>
+          </div>
+          <div id="errorsGrid" class="grid-wrap"></div>
         </section>
 
         <section id="tab-ai" class="panel" hidden>

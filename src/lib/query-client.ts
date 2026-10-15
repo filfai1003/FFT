@@ -1,4 +1,5 @@
-import { QueryClient } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
+import { reportError } from './error-report';
 
 /**
  * Server state lives in TanStack Query. The workout session itself is local-first and does NOT
@@ -6,6 +7,14 @@ import { QueryClient } from '@tanstack/react-query';
  */
 export function createQueryClient() {
   return new QueryClient({
+    // Failures nobody expected end up in the admin panel (Errors), with the query that failed.
+    queryCache: new QueryCache({
+      onError: (error, query) => reportError(error, 'query', { key: String(query.queryKey[0]) }),
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _v, _c, mutation) =>
+        reportError(error, 'mutation', { key: String(mutation.options.mutationKey?.[0] ?? '') }),
+    }),
     defaultOptions: {
       queries: {
         staleTime: 30_000,

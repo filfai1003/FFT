@@ -114,9 +114,14 @@ export function Button({
       ]}
     >
       {icon ? <Icon name={icon} size={20} color={fg} /> : null}
+      {/*
+        One line: Android measures the semibold font a little short and wrapped the last word onto
+        a second line that the button's fixed height cut off ("Add to ChatGPT" showed "Add to").
+      */}
       <Text
         variant={large ? 'bodyL' : 'body'}
-        style={{ color: fg, fontFamily: fontFamily.bodySemiBold }}
+        numberOfLines={1}
+        style={{ color: fg, fontFamily: fontFamily.bodySemiBold, flexShrink: 1 }}
       >
         {label}
       </Text>

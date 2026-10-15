@@ -47,7 +47,11 @@ function showApp() {
   $('app').hidden = false;
   loadTables();
   void countResets();
-  setInterval(() => void countResets(), 60_000);
+  void countErrors();
+  setInterval(() => {
+    void countResets();
+    void countErrors();
+  }, 60_000);
 }
 
 function renderMode() {
@@ -138,6 +142,7 @@ $('tabs').addEventListener('click', (e) => {
   if (tab === 'audit') loadAudit();
   if (tab === 'ai') loadAi();
   if (tab === 'resets') loadResets();
+  if (tab === 'errors') loadErrors();
 });
 
 // ---------------------------------------------------------------- grids
@@ -674,6 +679,103 @@ async function dismissReset(id) {
   }
 }
 $('refreshResets').addEventListener('click', loadResets);
+
+// ---------------------------------------------------------------- errors tab
+// Crashes and failures from the app (report_error), one row per problem.
+async function countErrors() {
+  const r = await api('/api/errors?days=1').catch(() => null);
+  if (!r) return;
+  $('errorsBadge').hidden = r.rows.length === 0;
+  $('errorsBadge').textContent = String(r.rows.length);
+}
+
+async function loadErrors() {
+  const r = await api(`/api/errors?days=${$('errorDays').value}`).catch((e) => {
+    $('errorsGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
+    return null;
+  });
+  if (!r) return;
+  const col = Object.fromEntries(r.columns.map((c, i) => [c, i]));
+  const body = r.rows.map((row) =>
+    h(
+      'tr',
+      {},
+      h('td', {}, new Date(row[col.last_seen]).toLocaleString()),
+      h('td', {}, row[col.kind]),
+      h(
+        'td',
+        { class: 'error-message', title: 'Show the details', onclick: () => showError(row, col) },
+        row[col.message],
+      ),
+      h('td', {}, String(row[col.times])),
+      h('td', {}, String(row[col.accounts])),
+      h('td', {}, row[col.platforms] ?? ''),
+      h(
+        'td',
+        { class: 'actions' },
+        h(
+          'button',
+          { class: 'btn ghost', onclick: () => clearError(row[col.fingerprint]) },
+          'Fixed',
+        ),
+      ),
+    ),
+  );
+  $('errorsGrid').replaceChildren(
+    r.rows.length
+      ? h(
+          'table',
+          {},
+          h(
+            'thead',
+            {},
+            h(
+              'tr',
+              {},
+              ['Last seen', 'Kind', 'Error', 'Times', 'Accounts', 'Platforms', ''].map((c) =>
+                h('th', {}, c),
+              ),
+            ),
+          ),
+          h('tbody', {}, body),
+        )
+      : h('div', { class: 'empty' }, 'No errors. Nice.'),
+  );
+}
+
+function showError(row, col) {
+  $('detailTitle').textContent = row[col.message];
+  $('detailBody').replaceChildren(
+    h(
+      'p',
+      { class: 'muted' },
+      `${row[col.times]} times, ${row[col.accounts]} accounts. First ${new Date(row[col.first_seen]).toLocaleString()}, last ${new Date(row[col.last_seen]).toLocaleString()}.`,
+    ),
+    h('p', { class: 'muted' }, `Versions: ${row[col.versions] ?? 'unknown'}`),
+    row[col.context] ? h('pre', {}, JSON.stringify(row[col.context], null, 2)) : null,
+    h('pre', {}, row[col.stack] ?? '(no stack)'),
+  );
+  $('detailDialog').showModal();
+}
+
+async function clearError(fingerprint) {
+  if (!inSudo()) return openSudo();
+  if (
+    !confirm(
+      'Mark this problem as fixed? Its reports are deleted; if it happens again it shows up as new.',
+    )
+  )
+    return;
+  try {
+    await api('/api/errors/clear', { fingerprint });
+    await loadErrors();
+    await countErrors();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+$('refreshErrors').addEventListener('click', loadErrors);
+$('errorDays').addEventListener('change', loadErrors);
 
 // ---------------------------------------------------------------- audit tab
 async function loadAudit() {

@@ -12,6 +12,7 @@ import {
   type Row,
 } from '@/lib/local-db';
 import { isPlan, type Plan } from '@/lib/plan';
+import { reportError } from '@/lib/error-report';
 import { getAuthClient } from '@/lib/supabase';
 
 /**
@@ -154,6 +155,7 @@ export async function push(userId: string): Promise<number> {
         // Left out for good: say so (a row lost without a trace is how a breakfast went missing).
         if (e) refusedLastPush += 1;
         if (e) console.warn(`sync: the server refused ${table} ${r.p.key}: ${e.message}`);
+        if (e) reportError(new Error(`refused ${table}: ${e.message}`), 'sync', { table });
         sent.push(r.p);
       }
     }

@@ -27,8 +27,27 @@ import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/design/use-theme';
 import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
+import { installErrorReporting, reportError } from '@/lib/error-report';
+import type { ErrorBoundaryProps } from 'expo-router';
 
 void SplashScreen.preventAutoHideAsync();
+installErrorReporting();
+
+/** A screen that crashed while drawing: reported, and the user can try again. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const { t } = useTranslation();
+  const [reported] = useState(() => {
+    reportError(error, 'render');
+    return true;
+  });
+  return (
+    <Screen gap={16}>
+      <Text variant="screenTitle">{t('app.crashTitle')}</Text>
+      <Text muted>{reported ? t('app.crashBody') : null}</Text>
+      <Button label={t('common.retry')} onPress={() => void retry()} />
+    </Screen>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();

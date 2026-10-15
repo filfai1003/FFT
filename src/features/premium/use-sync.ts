@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { getLocalDb } from '@/lib/local-db';
 import { syncOnce } from './sync';
+import { reportError } from '@/lib/error-report';
 
 /** How often to look for changes from other devices while the app is open. */
 const EVERY_MS = 30_000;
@@ -36,8 +37,9 @@ export function useSync(userId: string | null, enabled: boolean) {
       running = true;
       try {
         if (await syncOnce(userId)) await queryClient.invalidateQueries();
-      } catch {
+      } catch (e) {
         // Offline or the server is busy: the outbox keeps everything for the next try.
+        reportError(e, 'sync');
       } finally {
         running = false;
         if (again && !stopped) {
