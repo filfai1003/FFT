@@ -10,6 +10,7 @@ import { useAppearanceStore } from '@/design/appearance-store';
 import { useTheme } from '@/design/use-theme';
 import { confirm } from '@/lib/haptics';
 import { cancelRestEnd, scheduleRestEnd } from '@/lib/notifications';
+import { hideRestTimer, showRestTimer } from '../../../modules/rest-timer';
 import { useNow } from '@/lib/use-now';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { adjustRest, formatClock, restRemainingS } from './logic';
@@ -27,17 +28,28 @@ export function RestCard() {
   const restAlerts = usePreferencesStore((st) => st.notifications.rest_timer);
   const endsAt = rest?.endsAt ?? null;
 
-  // A notification at the end of the rest, for when the app is in the background.
+  // In the background: the countdown in an ongoing notification (lock screen too, Android) and an
+  // alert when the rest is over.
   useEffect(() => {
     if (endsAt == null || !restAlerts) {
       void cancelRestEnd();
+      hideRestTimer();
       return;
     }
+    showRestTimer(
+      endsAt,
+      t('session.restLiveTitle'),
+      t('session.restLiveBody'),
+      t('session.restChannel'),
+    );
     void scheduleRestEnd((endsAt - Date.now()) / 1000, {
       title: t('session.restDoneTitle'),
       body: t('session.restDoneBody'),
     });
-    return () => void cancelRestEnd();
+    return () => {
+      void cancelRestEnd();
+      hideRestTimer();
+    };
   }, [endsAt, restAlerts, t]);
 
   const remaining = rest ? Math.max(0, Math.ceil((rest.endsAt - now) / 1000)) : 0;
