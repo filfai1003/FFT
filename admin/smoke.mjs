@@ -71,6 +71,12 @@ check(
   (await call('/api/ai-model', { model: 'anthropic/claude-haiku-4.5' })).status === 403,
 );
 check('AI tab readable', (await call('/api/ai')).status === 200);
+check('password resets readable', (await call('/api/password-resets')).status === 200);
+check(
+  'temporary password refused without sudo',
+  (await call('/api/password-reset', { id: '00000000-0000-0000-0000-000000000000' })).status ===
+    403,
+);
 check(
   'row update refused without sudo',
   (

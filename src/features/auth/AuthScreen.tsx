@@ -8,6 +8,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
 import { credentialProblems, signIn, signUp } from './api';
+import { ForgotPasswordSheet } from './ForgotPasswordSheet';
 import { OfflineChoice } from './OfflineChoice';
 
 type Mode = 'signIn' | 'signUp';
@@ -21,6 +22,7 @@ export function AuthScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [forgot, setForgot] = useState(false);
 
   const problems = credentialProblems({ email, password });
   const showEmailError = submitted && problems.includes('email');
@@ -108,6 +110,12 @@ export function AuthScreen() {
           </Text>
         ) : null}
 
+        {mode === 'signIn' ? (
+          <View style={{ alignItems: 'flex-start' }}>
+            <Button label={t('auth.forgot.link')} variant="ghost" onPress={() => setForgot(true)} />
+          </View>
+        ) : null}
+
         {mode === 'signUp' ? (
           <Text variant="bodyS" muted>
             {t('auth.legal')}
@@ -125,6 +133,9 @@ export function AuthScreen() {
           onPress={submit}
         />
       </BottomActionBar>
+      {forgot ? (
+        <ForgotPasswordSheet initialEmail={email} onClose={() => setForgot(false)} />
+      ) : null}
     </>
   );
 }

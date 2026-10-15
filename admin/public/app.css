@@ -545,3 +545,6 @@ dialog::backdrop {
     height: 70vh;
   }
 }
+
+.badge{display:inline-block;min-width:18px;padding:0 6px;margin-left:4px;border-radius:9px;background:#d71921;color:#fff;font-size:12px;line-height:18px;text-align:center}
+.temp-password{font:600 20px/1.4 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em;user-select:all}

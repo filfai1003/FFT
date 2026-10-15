@@ -104,7 +104,17 @@
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
     "legal": "By continuing you accept the terms and the privacy policy.",
     "useOffline": "Use without an account",
-    "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up."
+    "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up.",
+    "forgot": {
+      "link": "Forgot password?",
+      "title": "Forgot password",
+      "body": "We send your request to the FFT team. You get an email with a temporary password, usually within a day. Sign in with it, then change it in Profile > Password.",
+      "note": "Note (optional)",
+      "send": "Send request",
+      "sending": "Sending…",
+      "sent": "Request sent. Watch your inbox (and spam) for the temporary password.",
+      "failed": "The request could not be sent. Check your connection and try again."
+    }
   },
   "onboarding": {
     "signOut": "Sign out",
@@ -835,7 +845,8 @@
       "premium": "Plans",
       "api": "API & MCP",
       "privacy": "Privacy & data",
-      "help": "Help & feedback"
+      "help": "Help & feedback",
+      "password": "Password"
     },
     "accessibility": "Accessibility",
     "privacy": "Privacy & data",
@@ -1397,5 +1408,18 @@
       "supplements": "Supplements",
       "supplement_logs": "Supplements taken"
     }
+  },
+  "password": {
+    "title": "Change password",
+    "current": "Current password",
+    "next": "New password",
+    "repeat": "Repeat the new password",
+    "mismatch": "The two passwords are different.",
+    "wrongCurrent": "The current password is not right.",
+    "same": "Choose a password different from the current one.",
+    "save": "Change password",
+    "saving": "Changing…",
+    "done": "Password changed.",
+    "failed": "The password could not be changed. Check your connection and try again."
   }
 }

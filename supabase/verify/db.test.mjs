@@ -1146,3 +1146,23 @@ describe('check sync (sync_counts)', () => {
     await rejects(`set role anon; select public.sync_counts()`, '42501');
   });
 });
+
+describe('forgot password (request_password_reset)', () => {
+  it('anyone can ask; three a day per email; users cannot read the requests', async () => {
+    await admin();
+    await db.exec('set role anon');
+    for (let i = 0; i < 5; i++)
+      await db.query(`select public.request_password_reset($1, $2)`, [' Lost@Example.com ', 'hi']);
+    await rejects(`select public.request_password_reset('not an email')`, '22023');
+    await as(A);
+    await rejects(`select * from public.password_reset_requests`, '42501');
+    await admin();
+    const r = await one(
+      `select count(*) as n, min(email) as email, min(note) as note
+       from public.password_reset_requests where email = 'lost@example.com'`,
+    );
+    assert.equal(Number(r.n), 3);
+    assert.equal(r.email, 'lost@example.com');
+    assert.equal(r.note, 'hi');
+  });
+});

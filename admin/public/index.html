@@ -38,6 +38,7 @@
         <button data-tab="data" class="tab active">Data</button>
         <button data-tab="sql" class="tab">SQL</button>
         <button data-tab="users" class="tab">Users</button>
+        <button data-tab="resets" class="tab">Password resets <span id="resetsBadge" class="badge" hidden></span></button>
         <button data-tab="ai" class="tab">AI</button>
         <button data-tab="audit" class="tab">Audit</button>
         <button data-tab="backup" class="tab">Backup</button>
@@ -102,6 +103,17 @@
             <span id="userCount" class="muted"></span>
           </div>
           <div id="userGrid" class="grid-wrap"></div>
+        </section>
+
+        <section id="tab-resets" class="panel" hidden>
+          <div class="toolbar">
+            <strong>Forgot password</strong>
+            <span class="muted">Requests from the sign-in screen. Set a temporary password (sudo), email it, the user changes it in the app.</span>
+            <span class="spacer"></span>
+            <button id="refreshResets" class="btn">Refresh</button>
+          </div>
+          <div id="resetResult" class="card" hidden></div>
+          <div id="resetsGrid" class="grid-wrap"></div>
         </section>
 
         <section id="tab-ai" class="panel" hidden>

@@ -63,6 +63,8 @@ Package name: `com.filfai1003.fft`.
 - Not covered: someone can still extract the anon key from the APK and sign up for accounts (that
   is all it allows: they only ever see their own data). Stronger app-only checks (Play Integrity)
   and email verification (needs an SMTP service) are possible later.
+- Forgot password: requests appear in the admin panel (Password resets); set a temporary password
+  there in sudo mode and email it by hand (DECISIONS 45).
 
 ## What happens on a push to `main`
 - `server/`, `supabase/migrations/`, `supabase/functions/`: Railway rebuilds `api`, which applies new migrations.

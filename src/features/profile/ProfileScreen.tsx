@@ -128,6 +128,15 @@ export function ProfileScreen() {
           ]),
     ],
     [
+      ...(offline
+        ? []
+        : [
+            {
+              icon: 'lock' as IconName,
+              name: t('profile.menu.password'),
+              onPress: () => router.push('/profile/password'),
+            },
+          ]),
       {
         icon: 'shield',
         name: t('profile.menu.privacy'),

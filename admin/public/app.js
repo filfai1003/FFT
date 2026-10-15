@@ -46,6 +46,8 @@ function showApp() {
   $('login').hidden = true;
   $('app').hidden = false;
   loadTables();
+  void countResets();
+  setInterval(() => void countResets(), 60_000);
 }
 
 function renderMode() {
@@ -135,6 +137,7 @@ $('tabs').addEventListener('click', (e) => {
   if (tab === 'users') loadUsers();
   if (tab === 'audit') loadAudit();
   if (tab === 'ai') loadAi();
+  if (tab === 'resets') loadResets();
 });
 
 // ---------------------------------------------------------------- grids
@@ -555,6 +558,122 @@ $('aiModelForm').addEventListener('submit', async (e) => {
     $('aiModelError').textContent = err.message;
   }
 });
+
+// ---------------------------------------------------------------- password resets tab
+// Forgot password without an email service: the admin sets a temporary password and emails it.
+async function countResets() {
+  const r = await api('/api/password-resets').catch(() => null);
+  if (!r) return null;
+  const open = r.rows.filter((row) => row[4] === null).length;
+  $('resetsBadge').hidden = open === 0;
+  $('resetsBadge').textContent = String(open);
+  return r;
+}
+
+async function loadResets() {
+  const r = await countResets();
+  if (!r) {
+    $('resetsGrid').replaceChildren(h('div', { class: 'empty error' }, 'Could not load.'));
+    return;
+  }
+  const [id, email, note, created, handled, hasAccount] = [0, 1, 2, 3, 4, 5];
+  const body = r.rows.map((row) =>
+    h(
+      'tr',
+      {},
+      h('td', {}, row[email]),
+      h('td', {}, new Date(row[created]).toLocaleString()),
+      h('td', {}, row[note] ?? ''),
+      h('td', {}, row[hasAccount] ? 'yes' : 'no account'),
+      h(
+        'td',
+        { class: 'actions' },
+        row[handled]
+          ? `handled ${new Date(row[handled]).toLocaleString()}`
+          : [
+              row[hasAccount]
+                ? h(
+                    'button',
+                    { class: 'btn danger', onclick: () => tempPassword(row[id], row[email]) },
+                    'Temporary password',
+                  )
+                : null,
+              h('button', { class: 'btn ghost', onclick: () => dismissReset(row[id]) }, 'Dismiss'),
+            ],
+      ),
+    ),
+  );
+  $('resetsGrid').replaceChildren(
+    r.rows.length
+      ? h(
+          'table',
+          {},
+          h(
+            'thead',
+            {},
+            h(
+              'tr',
+              {},
+              ['Email', 'Asked', 'Note', 'Account', ''].map((c) => h('th', {}, c)),
+            ),
+          ),
+          h('tbody', {}, body),
+        )
+      : h('div', { class: 'empty' }, 'No requests.'),
+  );
+}
+
+async function tempPassword(id, email) {
+  if (!inSudo()) return openSudo();
+  if (!confirm(`Replace the password of ${email} with a temporary one?`)) return;
+  try {
+    const r = await api('/api/password-reset', { id });
+    const subject = 'FFT: your temporary password';
+    const text =
+      `Hi,\n\nyou asked to reset your FFT password. Sign in with this temporary password:\n\n` +
+      `${r.password}\n\nThen change it right away in the app: Profile > Password.\n\n` +
+      `If you did not ask for this, reply to this email.\n`;
+    const mail = `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+    $('resetResult').hidden = false;
+    $('resetResult').replaceChildren(
+      h('h3', {}, `Temporary password for ${r.email}`),
+      h('p', { class: 'temp-password' }, r.password),
+      h('p', { class: 'muted' }, 'Shown only now. Email it, then close this.'),
+      h(
+        'div',
+        { class: 'toolbar' },
+        h('a', { class: 'btn primary', href: mail }, 'Write the email'),
+        h(
+          'button',
+          {
+            class: 'btn',
+            onclick: () => navigator.clipboard?.writeText(text).catch(() => undefined),
+          },
+          'Copy the text',
+        ),
+        h(
+          'button',
+          { class: 'btn ghost', onclick: () => ($('resetResult').hidden = true) },
+          'Close',
+        ),
+      ),
+    );
+    await loadResets();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function dismissReset(id) {
+  if (!inSudo()) return openSudo();
+  try {
+    await api('/api/password-reset/dismiss', { id });
+    await loadResets();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+$('refreshResets').addEventListener('click', loadResets);
 
 // ---------------------------------------------------------------- audit tab
 async function loadAudit() {

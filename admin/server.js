@@ -385,6 +385,70 @@ async function api(req, res, url) {
     return send(res, 200, out);
   }
 
+  if (route === 'GET /api/password-resets') {
+    // Forgot password requests from the sign-in screen: open first, then the last week's.
+    const out = await db.run(
+      `select r.id, r.email, r.note, r.created_at, r.handled_at,
+              exists (select 1 from auth.users u where lower(u.email) = r.email) as has_account
+       from public.password_reset_requests r
+       where r.deleted_at is null
+         and (r.handled_at is null or r.handled_at > now() - interval '7 days')
+       order by (r.handled_at is null) desc, r.created_at desc limit 200`,
+    );
+    return send(res, 200, out);
+  }
+
+  if (route === 'POST /api/password-reset') {
+    // A temporary password for the request's account, shown once to the admin, who emails it by
+    // hand. The user changes it in the app (Profile -> Password).
+    needSudo();
+    const { id } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(id))) throw new HttpError(400, 'Bad request id');
+    // Easy to read and to type: no 0/O, 1/l/I.
+    const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const temp = Array.from(crypto.randomBytes(12), (b) => alphabet[b % alphabet.length]).join('');
+    const found = await db.run(
+      `select r.email, exists (select 1 from auth.users u where lower(u.email) = r.email)
+       from public.password_reset_requests r where r.id = $1 and r.deleted_at is null`,
+      { params: [id] },
+    );
+    const email = found.rows[0]?.[0];
+    if (!email) throw new HttpError(404, 'No such request');
+    if (!found.rows[0][1]) throw new HttpError(404, 'No account with this email');
+    const out = await db.run(
+      `with u as (
+         update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 10)),
+                               updated_at = now()
+         where lower(email) = $1 returning id),
+       r as (update public.password_reset_requests set handled_at = now() where id = $3 returning id)
+       select (select count(*) from u) as accounts`,
+      {
+        sudo: true,
+        commit: true,
+        params: [email, temp, id],
+        audit: { action: 'password.temporary', detail: { email } },
+      },
+    );
+    if (Number(out.rows[0]?.[0] ?? 0) === 0) throw new HttpError(404, 'No account with this email');
+    return send(res, 200, { email, password: temp });
+  }
+
+  if (route === 'POST /api/password-reset/dismiss') {
+    needSudo();
+    const { id } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(id))) throw new HttpError(400, 'Bad request id');
+    const out = await db.run(
+      `update public.password_reset_requests set handled_at = now() where id = $1 returning email`,
+      {
+        sudo: true,
+        commit: true,
+        params: [id],
+        audit: { action: 'password.dismiss', detail: { id } },
+      },
+    );
+    return send(res, 200, out);
+  }
+
   if (route === 'GET /api/backup') {
     // A full copy of the data (public, auth, storage) as compressed SQL, made with the read-only role.
     const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);

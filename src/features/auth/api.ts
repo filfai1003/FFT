@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getMode } from '@/lib/mode';
 import { getAuthClient } from '@/lib/supabase';
 import { leaveOfflineMode } from './session-store';
@@ -40,4 +41,29 @@ export async function signOut() {
     return;
   }
   await getAuthClient().auth.signOut();
+}
+
+/**
+ * Forgot password: no email service, so the request reaches the admin panel and the admin emails a
+ * temporary password by hand. The answer is the same whether the email has an account or not.
+ */
+export async function requestPasswordReset(email: string, note: string) {
+  const server = getAuthClient() as unknown as SupabaseClient;
+  const { error } = await server.rpc('request_password_reset', {
+    p_email: email.trim(),
+    p_note: note.trim() || null,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Changes the password of the signed-in account, after checking the current one. */
+export async function changePassword(current: string, next: string) {
+  const auth = getAuthClient().auth;
+  const { data } = await auth.getUser();
+  const email = data.user?.email;
+  if (!email) return 'noAccount' as const;
+  const check = await auth.signInWithPassword({ email, password: current });
+  if (check.error) return 'wrongCurrent' as const;
+  const { error } = await auth.updateUser({ password: next });
+  return error ? error.message : null;
 }
