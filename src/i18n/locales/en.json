@@ -1442,5 +1442,37 @@
     "saving": "Changing…",
     "done": "Password changed.",
     "failed": "The password could not be changed. Check your connection and try again."
+  },
+  "widgets": {
+    "calories": "Calories",
+    "kcal": "{{kcal}} kcal",
+    "kcalLeft": "{{kcal}} kcal left",
+    "kcalOver": "{{kcal}} kcal over",
+    "ofTarget": "{{eaten}} of {{target}} kcal",
+    "eaten": "Eaten today",
+    "macro": {
+      "protein": "P",
+      "carbs": "C",
+      "fat": "F"
+    },
+    "upNext": "Up next",
+    "workoutDone": "Trained today",
+    "wellDone": "Workout done",
+    "noPlan": "No plan yet",
+    "start_one": "Start · {{count}} exercise",
+    "start_other": "Start · {{count}} exercises",
+    "openTrain": "Open Train",
+    "water": "Water",
+    "glasses": "{{n}} / {{goal}}",
+    "addGlass": "+ {{ml}} ml",
+    "glassAdded": "{{ml}} ml of water added",
+    "weight": "Weight",
+    "kg": "{{kg}} kg",
+    "change7": "{{kg}} kg in 7 days",
+    "on": "On {{day}}",
+    "logWeight": "Log your weight",
+    "supplementsCount": "Supplements {{done}}/{{total}}",
+    "noSupplements": "Add them in the app",
+    "openApp": "Open the app to start"
   }
 }

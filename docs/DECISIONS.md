@@ -82,6 +82,8 @@ before the phase that depends on it.
 
 50. **How to perform.** Every catalogue exercise has three or four short steps and one or two common mistakes (`src/features/train/how-to.json`, by slug; catalogue data in English like the exercise names, so not in i18n), shown first in the exercise page (also reached from the workout with the info button). A test checks that every catalogue exercise has one. The user's own exercises have none.
 
+51. **Android home screen widgets** (react-native-android-widget; a new APK). Five widgets: Calories (arc with kcal left, P/C/F bars; opens Diet), Next workout (the up-next plan day with Start, or trained today; opens Train), Water (glasses of the day and + one glass: the link fft://add-water adds it and shows Home with UNDO), Weight (latest and 7-day change; opens Body), Supplements (taken today). They follow the app's look in the phone's light or dark theme, with Figtree. Data: the app writes a small snapshot (AsyncStorage) whenever what they show changes (WidgetBridge, mounted on Android when signed in) and redraws them; the widgets never open the database. Every 30 minutes Android redraws them from the snapshot, and a snapshot of an earlier day shows that day's totals as zero, so the new day starts right even with the app closed. Signing out clears them. Taps open the app (deep links); nothing is changed from the widget itself, except water through the app. The widget task is registered in `index.js` (the new entry, which loads Expo Router).
+
 ## Still open
 
 - Apple / Google sign-in.

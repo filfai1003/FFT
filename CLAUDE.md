@@ -20,7 +20,7 @@ src/app/            routing only (thin screens). (tabs)/ = Home (index), diet, t
 src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar (filled bar), Gauge (arc/ring), DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, ExerciseImage, Icon, Text)
 src/design/         tokens.ts (light + dark palettes, mirror of tokens.json, tested), theme, use-theme (app/workout scope), appearance-store (a11y settings), fonts, text-style
 src/domain/         pure logic with tests: strength (Epley), nutrition (Mifflin, safety), rotation, units, dots, numbers
-src/features/       per-area queries and screens (premium/ = plan gate and data moves)
+src/features/       per-area queries and screens (premium/ = plan gate and data moves, widgets/ = Android home screen widgets)
 src/lib/            supabase client, query client, toast store, haptics
 src/i18n/           en.json + typed keys
 supabase/           migrations/, seed.sql, tests/database (pgTAP, real stack), verify/ (embedded Postgres), scripts/

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { updateWidgets } from '@/features/widgets/update';
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { signOut } from '@/features/auth/api';
 import { useConversations } from '@/features/ai/agent/conversations';
@@ -78,6 +79,8 @@ export function clearLocalUserData(queryClient: { clear: () => void }) {
   w.discard();
   for (const id of Object.keys(w.finished)) w.forget(id);
   queryClient.clear();
+  // The home screen widgets must not keep showing the account that left.
+  void updateWidgets(null);
 }
 
 /**

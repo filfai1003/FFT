@@ -27,6 +27,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/design/use-theme';
 import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
+import { WidgetBridge } from '@/features/widgets/WidgetBridge';
+import { Platform } from 'react-native';
 import { installErrorReporting, reportError } from '@/lib/error-report';
 import type { ErrorBoundaryProps } from 'expo-router';
 
@@ -128,6 +130,8 @@ function AppRoutes() {
   return (
     <>
       <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
+      {/* Android home screen widgets follow the data (DECISIONS 51). */}
+      {Platform.OS === 'android' && signedIn && onboarded ? <WidgetBridge /> : null}
       <Stack
         screenOptions={{
           headerShown: false,
@@ -159,6 +163,7 @@ function AppRoutes() {
           <Stack.Screen name="profile" />
           <Stack.Screen name="ai-chat" />
           <Stack.Screen name="ai-chats" />
+          <Stack.Screen name="add-water" options={{ animation: 'none' }} />
         </Stack.Protected>
       </Stack>
     </>
