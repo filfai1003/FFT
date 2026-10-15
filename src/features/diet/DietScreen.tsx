@@ -2,13 +2,14 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { meals, sumMacros, type Meal } from '@/domain/diet';
-import { monthYearLabel, weekOf } from '@/domain/day';
+import { addDays, monthYearLabel, weekOf } from '@/domain/day';
 import { useProfile } from '@/features/profile/api';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { DayPickerSheet } from './DayPickerSheet';
@@ -17,7 +18,8 @@ import { DaySummaryCard } from './DaySummaryCard';
 import { PickDayLabel } from './PickDayLabel';
 import { FixedMealsLog } from './FixedMealsLog';
 import { useDietDay, useDayTarget } from './day-hooks';
-import { useDayLog, useDayTotals, type LogEntry } from './log';
+import { useToastStore } from '@/lib/toast-store';
+import { useCopyEntries, useDayLog, useDayTotals, useSetLogDeleted, type LogEntry } from './log';
 
 /** Diet tab: the food log of the chosen mode (count foods or fixed meals). */
 export function DietScreen() {
@@ -33,11 +35,29 @@ function FoodLog() {
   const { day, today, setDay } = useDietDay();
   const [calendar, setCalendar] = useState(false);
   const log = useDayLog(day);
+  const before = useDayLog(addDays(day, -1));
   const totals = useDayTotals(day);
   const target = useDayTarget(day);
+  const copy = useCopyEntries();
+  const setDeleted = useSetLogDeleted();
+  const showToast = useToastStore((s) => s.show);
 
   const entries = log.data ?? [];
   const byMeal = (m: Meal) => entries.filter((e) => e.meal === m);
+  const yesterdayOf = (m: Meal) => (before.data ?? []).filter((e) => e.meal === m);
+
+  /** One tap: yesterday's meal again, as new entries (UNDO removes them). */
+  const sameAsYesterday = async (meal: Meal) => {
+    if (copy.isPending) return;
+    const ids = await copy.mutateAsync({ entries: yesterdayOf(meal), day, meal });
+    showToast({
+      message: t('diet.copiedMeal', { meal: t(`diet.meal.${meal}`), count: ids.length }),
+      actionLabel: t('common.undo'),
+      onAction: () => {
+        for (const id of ids) setDeleted.mutate({ id, deleted: true });
+      },
+    });
+  };
   const eaten = totals.data ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
 
   return (
@@ -76,6 +96,8 @@ function FoodLog() {
               key={meal}
               meal={meal}
               entries={byMeal(meal)}
+              yesterday={yesterdayOf(meal)}
+              onSameAsYesterday={() => void sameAsYesterday(meal)}
               onAdd={() => router.push({ pathname: '/food-search', params: { meal, day } })}
               onOpen={(e) =>
                 router.push({
@@ -106,11 +128,16 @@ function FoodLog() {
 function MealSection({
   meal,
   entries,
+  yesterday,
+  onSameAsYesterday,
   onAdd,
   onOpen,
 }: {
   meal: Meal;
   entries: LogEntry[];
+  /** The same meal the day before: offered in one tap while this one is empty. */
+  yesterday: LogEntry[];
+  onSameAsYesterday: () => void;
   onAdd: () => void;
   onOpen: (e: LogEntry) => void;
 }) {
@@ -155,6 +182,40 @@ function MealSection({
           onPress={onAdd}
         />
       </View>
+      {entries.length === 0 && yesterday.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('diet.sameAsYesterdayLabel', {
+            meal: name,
+            count: yesterday.length,
+            kcal: Math.round(sumMacros(yesterday.map((e) => e.macros)).kcal),
+          })}
+          onPress={onSameAsYesterday}
+          style={({ pressed }) => ({
+            minHeight: 52,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            borderTopWidth: 1,
+            borderColor: colors.divider,
+            paddingRight: 8,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Icon name="copy" size={18} color={colors.text} />
+          <View style={{ flex: 1, gap: 1, paddingVertical: 4 }}>
+            <Text variant="body">{t('diet.sameAsYesterday')}</Text>
+            <Text variant="bodyS" muted numberOfLines={1}>
+              {yesterday.map((e) => e.name).join(', ')}
+            </Text>
+          </View>
+          <Text variant="bodyS" muted numeric>
+            {t('diet.kcalValue', {
+              kcal: Math.round(sumMacros(yesterday.map((e) => e.macros)).kcal),
+            })}
+          </Text>
+        </Pressable>
+      ) : null}
       {entries.map((e) => (
         <Pressable
           key={e.id}

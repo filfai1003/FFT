@@ -33,6 +33,7 @@ export function rowToState(row: SettingsRow): {
       workoutTheme: (row.workout_theme ?? 'light') as Preferences['workoutTheme'],
       language: row.language,
       waterGlassMl: row.water_glass_ml,
+      smallPlates: row.small_plates ?? false,
       notifications: { ...defaultPreferences.notifications, ...n },
     },
   };
@@ -61,6 +62,7 @@ export function stateToRow(
     workout_theme: prefs.workoutTheme,
     language: prefs.language,
     water_glass_ml: prefs.waterGlassMl,
+    small_plates: prefs.smallPlates,
     notifications: prefs.notifications,
   };
 }

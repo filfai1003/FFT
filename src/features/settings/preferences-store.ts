@@ -20,6 +20,8 @@ export type Preferences = {
   workoutTheme: 'dark' | 'light' | 'system';
   language: string;
   waterGlassMl: number;
+  /** 1.25 kg (2.5 lb) plates: smaller steps for the next weight suggestion. */
+  smallPlates: boolean;
   notifications: NotificationPrefs;
 };
 
@@ -32,6 +34,7 @@ export const defaultPreferences: Preferences = {
   workoutTheme: 'light',
   language: 'en',
   waterGlassMl: 250,
+  smallPlates: false,
   notifications: { rest_timer: true, workout_reminder: true, weekly_check_in: true, meals: false },
 };
 

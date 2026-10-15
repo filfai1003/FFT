@@ -900,6 +900,7 @@ export type Database = {
           updated_at: string;
           user_id: string;
           water_glass_ml: number;
+          small_plates: boolean;
           week_start: string;
           weight_unit: string;
         };
@@ -925,6 +926,7 @@ export type Database = {
           updated_at?: string;
           user_id: string;
           water_glass_ml?: number;
+          small_plates?: boolean;
           week_start?: string;
           weight_unit?: string;
         };
@@ -948,6 +950,7 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           water_glass_ml?: number;
+          small_plates?: boolean;
           week_start?: string;
           weight_unit?: string;
           workout_theme?: string;

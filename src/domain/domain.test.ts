@@ -211,6 +211,7 @@ describe('units', () => {
     expect(lbToKg(220.462)).toBeCloseTo(100, 2);
     expect(displayWeight(100, 'lb')).toBe(220.5);
     expect(displayWeight(78.4, 'kg')).toBe(78.4);
+    expect(displayWeight(81.25, 'kg')).toBe(81.25);
     expect(storedWeight(185, 'lb')).toBe(83.91);
   });
 

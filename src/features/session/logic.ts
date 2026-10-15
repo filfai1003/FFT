@@ -130,7 +130,11 @@ export type NewExercise = {
   previous: PreviousSet[];
 };
 
-export function buildExercise(e: NewExercise, unit: WeightUnit): SessionExercise {
+export function buildExercise(
+  e: NewExercise,
+  unit: WeightUnit,
+  smallPlates = false,
+): SessionExercise {
   const targetReps = e.targetReps?.trim() || undefined;
   const suggestion =
     e.logType === 'weight_reps'
@@ -142,6 +146,7 @@ export function buildExercise(e: NewExercise, unit: WeightUnit): SessionExercise
           targetReps,
           equipment: e.equipment,
           unit,
+          smallPlates,
         }) ?? undefined)
       : undefined;
   const sets = Array.from({ length: e.targetSets }, (_, i) =>
@@ -187,6 +192,8 @@ export function buildSession(args: {
   cycleNumber: number | null;
   outOfOrder: boolean;
   weightUnit: WeightUnit;
+  /** 1.25 kg plates: smaller steps for the next weight suggestion. */
+  smallPlates?: boolean;
   exercises: NewExercise[];
   now: Date;
 }): ActiveSession {
@@ -199,7 +206,7 @@ export function buildSession(args: {
     outOfOrder: args.outOfOrder,
     startedAt: args.now.toISOString(),
     weightUnit: args.weightUnit,
-    exercises: args.exercises.map((e) => buildExercise(e, args.weightUnit)),
+    exercises: args.exercises.map((e) => buildExercise(e, args.weightUnit, args.smallPlates)),
     index: 0,
     rest: null,
   };

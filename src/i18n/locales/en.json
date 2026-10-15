@@ -600,7 +600,11 @@
     "eatenOfTarget": "{{eaten}} of {{target}} kcal eaten",
     "ofGrams": "of {{g}} g",
     "nothingYet": "Nothing yet",
-    "targetLine": "Target {{kcal}} kcal"
+    "targetLine": "Target {{kcal}} kcal",
+    "sameAsYesterday": "Same as yesterday",
+    "sameAsYesterdayLabel": "Same {{meal}} as yesterday: {{count}} foods, {{kcal}} kcal",
+    "copiedMeal_one": "{{meal}}: {{count}} food from yesterday",
+    "copiedMeal_other": "{{meal}}: {{count}} foods from yesterday"
   },
   "createFood": {
     "title": "New food",
@@ -956,7 +960,9 @@
     "themeDark": "Dark",
     "themeSystem": "Phone",
     "mon": "Mon",
-    "sun": "Sun"
+    "sun": "Sun",
+    "smallPlates": "I have small plates",
+    "smallPlatesDetail": "Suggested weights go up by {{step}} on barbells and machines"
   },
   "a11y": {
     "title": "Accessibility",

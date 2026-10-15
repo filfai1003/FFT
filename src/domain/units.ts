@@ -29,9 +29,10 @@ export function loadStep(unit: WeightUnit): number {
   return unit === 'kg' ? 2.5 : 5;
 }
 
-/** Stored kg to the number shown in the user's unit (one decimal at most). */
+/** Stored kg to the number shown in the user's unit. */
 export function displayWeight(kg: number, unit: WeightUnit): number {
-  return round(unit === 'kg' ? kg : kgToLb(kg), 1);
+  // kg keeps 2 decimals (1.25 kg plates: 81.25), pounds 1 (2.5 lb plates: 187.5).
+  return unit === 'kg' ? round(kg, 2) : round(kgToLb(kg), 1);
 }
 
 /** The number typed in the user's unit back to kg for storage (2 decimals, the DB precision). */

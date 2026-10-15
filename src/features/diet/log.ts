@@ -212,6 +212,46 @@ export function useLogFood() {
   });
 }
 
+/**
+ * "Same as yesterday": copies entries (another day's meal) into a day and meal as new entries,
+ * values as they were logged. Returns the new ids (for UNDO).
+ */
+export function useCopyEntries() {
+  const userId = useUserId();
+  const invalidate = useInvalidateDiet();
+  return useMutation({
+    mutationFn: async ({
+      entries,
+      day,
+      meal,
+    }: {
+      entries: LogEntry[];
+      day: string;
+      meal: Meal;
+    }) => {
+      const rows = entries.map((e) => ({
+        id: newId(),
+        user_id: userId!,
+        day,
+        meal,
+        food_id: e.foodId,
+        name: e.name,
+        quantity_label: e.quantityLabel,
+        grams: e.grams,
+        kcal: e.macros.kcal,
+        protein_g: e.macros.protein,
+        carbs_g: e.macros.carbs,
+        fat_g: e.macros.fat,
+        deleted_at: null,
+      }));
+      const { error } = await getSupabase().from('food_logs').upsert(rows);
+      if (error) throw error;
+      return rows.map((r) => r.id);
+    },
+    onSuccess: invalidate,
+  });
+}
+
 /** Soft delete (and restore, for UNDO). */
 export function useSetLogDeleted() {
   const invalidate = useInvalidateDiet();

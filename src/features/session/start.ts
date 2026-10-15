@@ -79,6 +79,7 @@ export function useStartWorkout() {
       cycleNumber: rotation?.state.cycle ?? 1,
       outOfOrder: rotation ? isOutOfOrder(rotation.state, day.id) : false,
       weightUnit: usePreferencesStore.getState().weightUnit,
+      smallPlates: usePreferencesStore.getState().smallPlates,
       now: new Date(),
       exercises: day.exercises.map((e) =>
         newExerciseFromCatalogue(e.exercise, previous[e.exerciseId] ?? [], {
@@ -102,6 +103,7 @@ export function useStartWorkout() {
       cycleNumber: null,
       outOfOrder: false,
       weightUnit: usePreferencesStore.getState().weightUnit,
+      smallPlates: usePreferencesStore.getState().smallPlates,
       now: new Date(),
       exercises: [],
     });
@@ -124,6 +126,7 @@ export function useStartWorkout() {
       cycleNumber: null,
       outOfOrder: false,
       weightUnit: usePreferencesStore.getState().weightUnit,
+      smallPlates: usePreferencesStore.getState().smallPlates,
       now: new Date(),
       exercises: exercises.map((e) =>
         newExerciseFromCatalogue(e.exercise, previous[e.exercise.id] ?? [], {

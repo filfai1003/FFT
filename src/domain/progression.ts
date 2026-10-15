@@ -28,11 +28,18 @@ export function parseTargetReps(text: string | undefined): { min: number; max: n
   return { min: a, max: b };
 }
 
-/** Step of the load for this equipment (dumbbells move in pairs of 1 kg). */
-export function stepFor(equipment: string | undefined, unit: WeightUnit): number | null {
+/**
+ * Step of the load for this equipment (dumbbells move in pairs of 1 kg). `smallPlates`: 1.25 kg
+ * (2.5 lb) plates, so barbells and machines move by half the usual step.
+ */
+export function stepFor(
+  equipment: string | undefined,
+  unit: WeightUnit,
+  smallPlates = false,
+): number | null {
   if (equipment === 'bodyweight' || equipment === 'bands') return null;
   if (equipment === 'dumbbells') return unit === 'kg' ? 2 : 5;
-  return loadStep(unit);
+  return smallPlates ? loadStep(unit) / 2 : loadStep(unit);
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -43,9 +50,10 @@ export function suggestNextWeight(args: {
   targetReps: string | undefined;
   equipment: string | undefined;
   unit: WeightUnit;
+  smallPlates?: boolean;
 }): Suggestion | null {
   const target = parseTargetReps(args.targetReps);
-  const step = stepFor(args.equipment, args.unit);
+  const step = stepFor(args.equipment, args.unit, args.smallPlates);
   if (!target || !step) return null;
   const sets = args.previous.filter(
     (s): s is { weight: number; reps: number } =>

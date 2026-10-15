@@ -35,6 +35,16 @@ describe('suggestNextWeight', () => {
     expect(suggestNextWeight({ ...base, unit: 'lb', previous: sets(185, 8, 8, 8) })?.to).toBe(190);
   });
 
+  it('small plates: 1.25 kg (2.5 lb) steps on barbells, dumbbells unchanged', () => {
+    expect(suggestNextWeight({ ...base, smallPlates: true, previous: sets(80, 8, 8) })?.to).toBe(
+      81.25,
+    );
+    expect(
+      suggestNextWeight({ ...base, unit: 'lb', smallPlates: true, previous: sets(185, 8) })?.to,
+    ).toBe(187.5);
+    expect(stepFor('dumbbells', 'kg', true)).toBe(2);
+  });
+
   it('in the range but not at the top: same weight', () => {
     expect(suggestNextWeight({ ...base, previous: sets(80, 8, 7, 6) })).toMatchObject({
       kind: 'same',

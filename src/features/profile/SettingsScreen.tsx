@@ -37,6 +37,7 @@ function SettingsPage({ title, children }: { title: string; children: React.Reac
 /** Units: weight, length, energy, first day of the week. */
 export function UnitsScreen() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const prefs = usePreferencesStore();
   return (
     <SettingsPage title={t('settings.units')}>
@@ -74,6 +75,30 @@ export function UnitsScreen() {
             ]}
           />
         </UnitRow>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingVertical: 10,
+            borderTopWidth: 1,
+            borderColor: colors.borderDecorative,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text>{t('settings.smallPlates')}</Text>
+            <Text variant="label" muted>
+              {t('settings.smallPlatesDetail', {
+                step: prefs.weightUnit === 'kg' ? '1.25 kg' : '2.5 lb',
+              })}
+            </Text>
+          </View>
+          <Toggle
+            value={prefs.smallPlates}
+            onValueChange={(v) => prefs.set('smallPlates', v)}
+            accessibilityLabel={t('settings.smallPlates')}
+          />
+        </View>
         <UnitRow label={t('settings.weekStarts')} last>
           <Segmented
             accessibilityLabel={t('settings.weekStarts')}
