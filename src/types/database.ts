@@ -616,6 +616,7 @@ export type Database = {
           exercise_id: string;
           id: string;
           notes: string | null;
+          superset_with_next: boolean;
           plan_day_id: string;
           position: number;
           rest_s: number;
@@ -631,6 +632,7 @@ export type Database = {
           exercise_id: string;
           id?: string;
           notes?: string | null;
+          superset_with_next?: boolean;
           plan_day_id: string;
           position: number;
           rest_s?: number;
@@ -645,6 +647,7 @@ export type Database = {
           exercise_id?: string;
           id?: string;
           notes?: string | null;
+          superset_with_next?: boolean;
           plan_day_id?: string;
           position?: number;
           rest_s?: number;
@@ -766,6 +769,7 @@ export type Database = {
           exercise_id: string;
           id: string;
           notes: string | null;
+          superset_with_next: boolean;
           position: number;
           rest_s: number | null;
           session_id: string;
@@ -779,6 +783,7 @@ export type Database = {
           exercise_id: string;
           id?: string;
           notes?: string | null;
+          superset_with_next?: boolean;
           position: number;
           rest_s?: number | null;
           session_id: string;
@@ -791,6 +796,7 @@ export type Database = {
           exercise_id?: string;
           id?: string;
           notes?: string | null;
+          superset_with_next?: boolean;
           position?: number;
           rest_s?: number | null;
           session_id?: string;

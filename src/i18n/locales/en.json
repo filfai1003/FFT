@@ -282,7 +282,11 @@
     "notePlaceholder": "Note (e.g. bench at 30°)",
     "moveUp": "Move up",
     "moveDown": "Move down",
-    "deleteDay": "Delete day"
+    "deleteDay": "Delete day",
+    "supersetToggle": "Superset with the next exercise",
+    "supersetDetail": "Do them in turn, one rest after both",
+    "supersetDetailOn": "Superset {{label}}: in turn, one rest after the round",
+    "supersetLabel": "Superset {{label}}"
   },
   "library": {
     "title": "Library",
@@ -450,7 +454,11 @@
       "use": "Use {{weight}}",
       "keepLabel": "Keep last time's weight, {{weight}}",
       "useLabel": "Use the suggested weight, {{weight}}"
-    }
+    },
+    "restLiveTitle": "Resting",
+    "restLiveBody": "Next set when the timer ends",
+    "restChannel": "Rest timer",
+    "superset": "Superset {{label}}"
   },
   "summary": {
     "done": "Done",

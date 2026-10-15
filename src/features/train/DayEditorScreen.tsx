@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
+import { Toggle } from '@/components/ui/Toggle';
+import { supersetLabels } from '@/domain/superset';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import {
@@ -75,6 +77,9 @@ export function DayEditorScreen() {
   if (!state || !showing || !plan.data) return <Screen>{null}</Screen>;
 
   const valid = state.name.trim().length > 0;
+  const labels = supersetLabels(
+    state.exercises.map((e, i) => e.supersetWithNext && i < state.exercises.length - 1),
+  );
   const subtitle = `${plan.data.name} · ${t('plan.dayN', { n: state.position + 1 })}`;
 
   const submit = async () => {
@@ -124,6 +129,8 @@ export function DayEditorScreen() {
               <ExpandedExercise
                 key={e.id}
                 e={e}
+                label={labels[index]}
+                canLink={index < state.exercises.length - 1}
                 canUp={index > 0}
                 canDown={index < state.exercises.length - 1}
                 onChange={(p) => patch((s) => updateInDay(s, e.id, p))}
@@ -157,7 +164,9 @@ export function DayEditorScreen() {
                     {e.exercise.name}
                   </Text>
                   <Text variant="label" muted>
-                    {t('plan.summary', summaryLine(e))}
+                    {labels[index]
+                      ? `${t('plan.supersetLabel', { label: labels[index] })} · ${t('plan.summary', summaryLine(e))}`
+                      : t('plan.summary', summaryLine(e))}
                   </Text>
                 </View>
               </Pressable>
@@ -219,10 +228,16 @@ export function DayEditorScreen() {
 
 function ExpandedExercise(props: {
   e: DayDraftExercise;
+  /** "A1" when it is in a superset. */
+  label: string | null;
+  /** Not the last exercise: it can be linked with the next one. */
+  canLink: boolean;
   canUp: boolean;
   canDown: boolean;
   onChange: (
-    p: Partial<Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS' | 'notes'>>,
+    p: Partial<
+      Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext'>
+    >,
   ) => void;
   onMove: (d: -1 | 1) => void;
   onRemove: () => void;
@@ -291,6 +306,24 @@ function ExpandedExercise(props: {
           increaseLabel={t('plan.moreRest')}
         />
       </View>
+
+      {props.canLink ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text>{t('plan.supersetToggle')}</Text>
+            <Text variant="label" muted>
+              {props.label
+                ? t('plan.supersetDetailOn', { label: props.label })
+                : t('plan.supersetDetail')}
+            </Text>
+          </View>
+          <Toggle
+            value={e.supersetWithNext}
+            onValueChange={(v) => props.onChange({ supersetWithNext: v })}
+            accessibilityLabel={t('plan.supersetToggle')}
+          />
+        </View>
+      ) : null}
 
       <Input
         accessibilityLabel={t('plan.note')}

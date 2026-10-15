@@ -19,6 +19,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
+import { afterSetInSuperset, supersetLabels } from '@/domain/superset';
 import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
 import {
@@ -82,6 +83,8 @@ export function SessionScreen() {
       .find((d) => d.id === active.planDayId)
       ?.exercises.find((e) => e.exerciseId === exercise?.exerciseId)
       ?.targetReps.trim();
+  const labels = supersetLabels(active.exercises.map((e) => e.supersetWithNext ?? false));
+  const supersetLabel = labels[index];
   const previousEx = active.exercises[index - 1];
   const nextEx = active.exercises[index + 1];
 
@@ -94,10 +97,18 @@ export function SessionScreen() {
     const before = useSessionStore.getState().active!;
     const setId = before.exercises[index].sets[setIndex].id;
     const { session, completed } = toggleSet(before, index, setIndex, new Date());
-    const withRest = completed
-      ? startRest(session, before.exercises[index].restS, Date.now())
-      : session;
-    update(() => withRest);
+    // In a superset: straight to the next exercise of the round, rest only after the last one.
+    const flow = completed
+      ? afterSetInSuperset(
+          session.exercises.map((e) => e.supersetWithNext ?? false),
+          index,
+          session.exercises.map((e) => e.sets.filter((x) => !x.done).length),
+        )
+      : null;
+    let next = session;
+    if (flow?.rest) next = startRest(next, before.exercises[index].restS, Date.now());
+    if (flow?.goTo != null) next = goTo(next, flow.goTo);
+    update(() => next);
     if (completed) {
       confirm();
       showToast({
@@ -223,9 +234,16 @@ export function SessionScreen() {
                 <Text variant="titleM" accessibilityRole="header">
                   {exercise.name}
                 </Text>
-                {targetReps ? (
+                {targetReps || supersetLabel ? (
                   <Text variant="label" muted>
-                    {t('session.targetReps', { reps: targetReps.replace('-', '–') })}
+                    {[
+                      supersetLabel ? t('session.superset', { label: supersetLabel }) : null,
+                      targetReps
+                        ? t('session.targetReps', { reps: targetReps.replace('-', '–') })
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 ) : null}
               </View>

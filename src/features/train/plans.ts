@@ -15,6 +15,8 @@ export type PlanExerciseView = {
   targetReps: string;
   restS: number;
   notes: string | null;
+  /** Linked with the next exercise of the day: a superset (domain/superset.ts). */
+  supersetWithNext: boolean;
   exercise: Exercise;
 };
 
@@ -57,6 +59,7 @@ type Raw = {
       target_reps: string;
       rest_s: number;
       notes: string | null;
+      superset_with_next?: boolean | null;
       deleted_at: string | null;
       exercises: Parameters<typeof toExercise>[0] | null;
     }[];
@@ -83,6 +86,7 @@ export function toPlan(raw: Raw): PlanView {
           targetReps: e.target_reps,
           restS: e.rest_s,
           notes: e.notes,
+          supersetWithNext: e.superset_with_next ?? false,
           exercise: toExercise(e.exercises!),
         })),
     }));
@@ -344,6 +348,7 @@ export function useDuplicatePlan() {
               target_reps: e.targetReps,
               rest_s: e.restS,
               notes: e.notes,
+              superset_with_next: e.supersetWithNext,
             })),
           );
           if (exRes.error) throw exRes.error;
@@ -364,6 +369,7 @@ export type DayDraftExercise = {
   targetReps: string;
   restS: number;
   notes: string;
+  supersetWithNext: boolean;
 };
 
 export function useSaveDay() {
@@ -401,6 +407,8 @@ export function useSaveDay() {
             target_reps: e.targetReps.trim() || '8-12',
             rest_s: e.restS,
             notes: e.notes.trim() === '' ? null : e.notes.trim(),
+            // The last exercise has nothing after it to be linked with.
+            superset_with_next: e.supersetWithNext && position < args.exercises.length - 1,
             deleted_at: null,
           })),
         );

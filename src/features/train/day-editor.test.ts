@@ -34,6 +34,7 @@ const day: PlanDayView = {
       targetReps: '6-8',
       restS: 150,
       notes: null,
+      supersetWithNext: true,
       exercise: ex('bench'),
     },
     {
@@ -44,6 +45,7 @@ const day: PlanDayView = {
       targetReps: '12',
       restS: 60,
       notes: 'slow',
+      supersetWithNext: false,
       exercise: ex('fly'),
     },
   ],
@@ -99,5 +101,14 @@ describe('day editor', () => {
       reps: '6–8',
       rest: '2:30',
     });
+  });
+});
+
+describe('supersets in the day editor', () => {
+  it('opening a day keeps the links and they can be changed', () => {
+    const s = openDay('p1', day, 1);
+    expect(s.exercises.map((e) => e.supersetWithNext)).toEqual([true, false]);
+    const off = updateInDay(s, 'pe1', { supersetWithNext: false });
+    expect(off.exercises[0].supersetWithNext).toBe(false);
   });
 });

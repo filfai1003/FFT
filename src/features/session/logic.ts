@@ -37,6 +37,8 @@ export type SessionExercise = {
   restS: number;
   /** Reps planned for each set ("8-12"), from the plan day; absent for exercises added on the go. */
   targetReps?: string;
+  /** Linked with the next exercise: a superset (domain/superset.ts). */
+  supersetWithNext?: boolean;
   /**
    * Next weight suggestion from the last session (domain/progression.ts); the sets start at
    * `to`. `kept`: the user chose last time's weight instead.
@@ -127,6 +129,7 @@ export type NewExercise = {
   targetReps?: string;
   /** Equipment of the exercise: decides the step of the suggested weight. */
   equipment?: string;
+  supersetWithNext?: boolean;
   previous: PreviousSet[];
 };
 
@@ -160,6 +163,7 @@ export function buildExercise(
     imagePath: e.imagePath,
     restS: e.restS,
     targetReps,
+    supersetWithNext: e.supersetWithNext ?? false,
     suggestion,
     // Working sets start at the suggested weight (warm-ups at a lighter one stay as they were).
     sets: suggestion ? withWeight(sets, suggestion.from, suggestion.to) : sets,
@@ -476,6 +480,7 @@ export function toRows(
     exercise_id: string;
     position: number;
     rest_s: number;
+    superset_with_next: boolean;
   }[] = [];
   const sets: {
     id: string;
@@ -500,6 +505,7 @@ export function toRows(
       exercise_id: e.exerciseId,
       position,
       rest_s: e.restS,
+      superset_with_next: e.supersetWithNext ?? false,
     });
     done.forEach((x, i) => {
       const reps = parseDecimal(x.reps);

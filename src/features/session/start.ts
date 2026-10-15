@@ -40,7 +40,12 @@ export async function fetchPrevious(exerciseIds: string[]): Promise<Record<strin
 export function newExerciseFromCatalogue(
   exercise: Exercise,
   previous: PreviousSet[],
-  defaults: { targetSets?: number; targetReps?: string; restS?: number } = {},
+  defaults: {
+    targetSets?: number;
+    targetReps?: string;
+    restS?: number;
+    supersetWithNext?: boolean;
+  } = {},
 ): NewExercise {
   return {
     exerciseId: exercise.id,
@@ -51,6 +56,7 @@ export function newExerciseFromCatalogue(
     targetSets: defaults.targetSets ?? 3,
     targetReps: defaults.targetReps,
     equipment: exercise.equipment,
+    supersetWithNext: defaults.supersetWithNext ?? false,
     previous,
   };
 }
@@ -86,6 +92,7 @@ export function useStartWorkout() {
           targetSets: e.targetSets,
           targetReps: e.targetReps,
           restS: e.restS,
+          supersetWithNext: e.supersetWithNext,
         }),
       ),
     });
