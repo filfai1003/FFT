@@ -4,259 +4,77 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>FFT Admin</title>
+    <title>FFT admin</title>
     <link rel="icon" href="favicon.png" />
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <section id="login" hidden>
-      <form id="loginForm" class="login-card">
-        <h1>FFT ADMIN</h1>
-        <p class="muted">Restricted area.</p>
-        <label>
-          <span class="label">Password</span>
+    <!-- Sign in -->
+    <section id="login" class="login" hidden>
+      <form id="loginForm" class="card login-card">
+        <div class="brand"><span class="brand-ring" aria-hidden="true"></span>FFT admin</div>
+        <h1>Welcome back</h1>
+        <p class="muted">Sign in with the admin password to look after the app and its people.</p>
+        <label class="field">
+          <span>Password</span>
           <input id="loginPassword" type="password" autocomplete="current-password" required />
         </label>
         <p id="loginError" class="error" role="alert"></p>
-        <button class="btn primary" type="submit">Sign in</button>
+        <button class="btn primary block" type="submit">Sign in</button>
       </form>
     </section>
 
-    <div id="app" hidden>
-      <header class="top">
-        <span class="brand">FFT ADMIN</span>
-        <span id="modePill" class="pill">READ ONLY</span>
-        <span class="spacer"></span>
-        <button id="sudoButton" class="btn">Enter sudo mode</button>
-        <button id="logout" class="btn ghost">Sign out</button>
-      </header>
-      <div id="banner" class="banner" hidden>
-        SUDO MODE: changes are real and cannot be undone. Everything you change is logged.
-        <span id="sudoLeft"></span>
-      </div>
-      <nav class="tabs" id="tabs">
-        <button data-tab="data" class="tab active">Data</button>
-        <button data-tab="sql" class="tab">SQL</button>
-        <button data-tab="users" class="tab">Users</button>
-        <button data-tab="resets" class="tab">Password resets <span id="resetsBadge" class="badge" hidden></span></button>
-        <button data-tab="errors" class="tab">Errors <span id="errorsBadge" class="badge" hidden></span></button>
-        <button data-tab="ai" class="tab">AI</button>
-        <button data-tab="audit" class="tab">Audit</button>
-        <button data-tab="backup" class="tab">Backup</button>
-      </nav>
+    <!-- The panel -->
+    <div id="app" class="shell" hidden>
+      <aside class="sidebar" aria-label="Sections">
+        <div class="brand"><span class="brand-ring" aria-hidden="true"></span>FFT admin</div>
+        <nav id="nav" class="nav"></nav>
+        <button id="logout" class="nav-item subtle" type="button">Sign out</button>
+      </aside>
 
-      <main>
-        <section id="tab-data" class="panel">
-          <div class="split">
-            <aside class="sidebar">
-              <input id="tableFilter" placeholder="Filter tables" />
-              <div id="tableList"></div>
-            </aside>
-            <div class="content">
-              <div class="toolbar">
-                <strong id="tableTitle">Choose a table</strong>
-                <span id="tableMeta" class="muted"></span>
-                <span class="spacer"></span>
-                <input id="rowSearch" placeholder="Search in rows" />
-                <select id="rowLimit">
-                  <option>25</option>
-                  <option selected>50</option>
-                  <option>100</option>
-                  <option>200</option>
-                </select>
-                <button id="addRow" class="btn" hidden>+ Row</button>
-              </div>
-              <div id="dataGrid" class="grid-wrap"></div>
-              <div class="pager">
-                <button id="prevPage" class="btn">Previous</button>
-                <span id="pageInfo" class="muted"></span>
-                <button id="nextPage" class="btn">Next</button>
-              </div>
-            </div>
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p id="pageKicker" class="kicker"></p>
+            <h1 id="pageTitle"></h1>
           </div>
-        </section>
-
-        <section id="tab-sql" class="panel" hidden>
-          <textarea
-            id="sqlText"
-            spellcheck="false"
-            placeholder="select * from public.profiles limit 20;"
-          ></textarea>
-          <div class="toolbar">
-            <button id="runSql" class="btn primary">Run (read only)</button>
-            <button id="runRollback" class="btn" hidden>Run and roll back</button>
-            <button id="runCommit" class="btn danger" hidden>Run and keep changes</button>
-            <span id="sqlStatus" class="muted"></span>
-            <span class="spacer"></span>
-            <select id="sqlHistory">
-              <option value="">History</option>
-            </select>
+          <div class="lock" id="lockBox">
+            <span id="lockState" class="lock-state"></span>
+            <button id="lockButton" class="btn" type="button"></button>
           </div>
-          <p class="muted hint">
-            Ctrl+Enter runs. Without sudo mode nothing can be changed, whatever you write.
-          </p>
-          <div id="sqlGrid" class="grid-wrap"></div>
-        </section>
-
-        <section id="tab-users" class="panel" hidden>
-          <div class="toolbar">
-            <input id="userSearch" placeholder="Search by email" />
-            <span id="userCount" class="muted"></span>
-          </div>
-          <div id="userGrid" class="grid-wrap"></div>
-        </section>
-
-        <section id="tab-resets" class="panel" hidden>
-          <div class="toolbar">
-            <strong>Forgot password</strong>
-            <span class="muted">Requests from the sign-in screen. Set a temporary password (sudo), email it, the user changes it in the app.</span>
-            <span class="spacer"></span>
-            <button id="refreshResets" class="btn">Refresh</button>
-          </div>
-          <div id="resetResult" class="card" hidden></div>
-          <div id="resetsGrid" class="grid-wrap"></div>
-        </section>
-
-        <section id="tab-errors" class="panel" hidden>
-          <div class="toolbar">
-            <strong>App errors</strong>
-            <span class="muted">Crashes and failures sent by the app, grouped. Clear one when it is fixed (sudo).</span>
-            <span class="spacer"></span>
-            <select id="errorDays">
-              <option value="1">Last day</option>
-              <option value="7" selected>Last 7 days</option>
-              <option value="30">Last 30 days</option>
-              <option value="60">Last 60 days</option>
-            </select>
-            <button id="refreshErrors" class="btn">Refresh</button>
-          </div>
-          <div id="errorsGrid" class="grid-wrap"></div>
-        </section>
-
-        <section id="tab-ai" class="panel" hidden>
-          <div class="card">
-            <h3>AI coach model</h3>
-            <p class="muted">
-              The OpenRouter model of the AI coach included with Premium. It applies to the next
-              message, no redeploy. Model ids are on openrouter.ai/models (like
-              anthropic/claude-haiku-4.5). Leave empty to use the default.
-            </p>
-            <p>
-              Now: <strong id="aiModelNow"></strong> <span id="aiModelSince" class="muted"></span>
-            </p>
-            <form id="aiModelForm" class="toolbar">
-              <input id="aiModel" list="aiModels" placeholder="provider/model" size="40" />
-              <datalist id="aiModels">
-                <option value="anthropic/claude-haiku-4.5"></option>
-                <option value="anthropic/claude-sonnet-4.5"></option>
-                <option value="openai/gpt-5-mini"></option>
-                <option value="google/gemini-2.5-flash"></option>
-              </datalist>
-              <button type="submit" class="btn primary">Save</button>
-            </form>
-            <p id="aiModelError" class="error"></p>
-          </div>
-          <div class="card">
-            <h3>Last 30 days</h3>
-            <div id="aiUsageGrid" class="grid-wrap"></div>
-          </div>
-        </section>
-
-        <section id="tab-audit" class="panel" hidden>
-          <div class="toolbar">
-            <strong>Sudo log</strong>
-            <span class="muted">Every change made in sudo mode.</span>
-            <span class="spacer"></span>
-            <button id="refreshAudit" class="btn">Refresh</button>
-          </div>
-          <div id="auditGrid" class="grid-wrap"></div>
-        </section>
-        <section id="tab-backup" class="panel" hidden>
-          <div class="card">
-            <h3>Backup</h3>
-            <p class="muted">
-              A copy of all the data (accounts, profiles, plans, catalogue, everything in the
-              database) as a compressed SQL file. It contains private data, including password
-              hashes: keep it safe. To restore it, run it with psql on an empty database.
-            </p>
-            <a class="btn primary" href="/api/backup" download>Download backup</a>
-          </div>
-          <div class="card danger-zone">
-            <h3>Reset the database</h3>
-            <p class="muted">
-              Deletes <strong>every account and everything that belongs to it</strong> (profiles,
-              plan, and the data the server holds for them). The tables and the catalogue
-              (exercises, foods) stay. This cannot be undone: download a backup first.
-            </p>
-            <button id="resetButton" class="btn danger">Reset the database…</button>
-          </div>
-        </section>
+        </header>
+        <div id="editingBanner" class="banner" hidden role="status"></div>
+        <p id="pageIntro" class="intro muted"></p>
+        <div id="page" class="page"></div>
       </main>
     </div>
 
-    <dialog id="sudoDialog">
-      <form id="sudoForm" method="dialog" class="dialog-card">
-        <h2>Enter sudo mode</h2>
-        <p>
-          In sudo mode you can change and delete real data. Take your time and read before you
-          confirm. It ends by itself after 10 minutes.
+    <!-- Unlock editing -->
+    <dialog id="unlockDialog">
+      <form id="unlockForm" method="dialog" class="dialog">
+        <h2>Unlock editing</h2>
+        <p class="muted">
+          While editing is unlocked you can change and delete real data. Every change is written in
+          the change log. It locks again by itself after 10 minutes.
         </p>
-        <label>
-          <span class="label">Password again</span>
-          <input id="sudoPassword" type="password" autocomplete="current-password" required />
+        <label class="field">
+          <span>Admin password</span>
+          <input id="unlockPassword" type="password" autocomplete="current-password" required />
         </label>
-        <p id="sudoError" class="error" role="alert"></p>
-        <div class="row">
-          <button type="button" id="sudoCancel" class="btn ghost">Cancel</button>
-          <button type="submit" class="btn danger">Enter sudo mode</button>
+        <p id="unlockError" class="error" role="alert"></p>
+        <div class="row end">
+          <button type="button" class="btn ghost" data-close>Cancel</button>
+          <button type="submit" class="btn primary">Unlock</button>
         </div>
       </form>
     </dialog>
 
-    <dialog id="resetDialog">
-      <form id="resetForm" method="dialog" class="dialog-card">
-        <h2>Reset the database</h2>
-        <p>
-          This deletes every account and everything that belongs to it. It cannot be undone.
-          <a href="/api/backup" download>Download a backup first.</a>
-        </p>
-        <label>
-          <span class="label">Type RESET</span>
-          <input id="resetWord" autocomplete="off" required />
-        </label>
-        <label>
-          <span class="label">Password again</span>
-          <input id="resetPassword" type="password" autocomplete="current-password" required />
-        </label>
-        <p id="resetError" class="error" role="alert"></p>
-        <div class="row">
-          <button type="button" id="resetCancel" class="btn ghost">Cancel</button>
-          <button type="submit" class="btn danger">Delete everything</button>
-        </div>
-      </form>
+    <!-- A general dialog (details, confirmations, forms) filled by app.js -->
+    <dialog id="dialog">
+      <div class="dialog" id="dialogBody"></div>
     </dialog>
 
-    <dialog id="detailDialog">
-      <div class="dialog-card wide">
-        <div class="row between">
-          <h2 id="detailTitle">Row</h2>
-          <button id="detailClose" class="btn ghost">Close</button>
-        </div>
-        <div id="detailBody"></div>
-      </div>
-    </dialog>
-
-    <dialog id="formDialog">
-      <form id="formForm" method="dialog" class="dialog-card wide">
-        <h2 id="formTitle">New row</h2>
-        <div id="formFields"></div>
-        <p id="formError" class="error" role="alert"></p>
-        <div class="row">
-          <button type="button" id="formCancel" class="btn ghost">Cancel</button>
-          <button type="submit" class="btn danger">Save</button>
-        </div>
-      </form>
-    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
 
     <script src="app.js" type="module"></script>
   </body>

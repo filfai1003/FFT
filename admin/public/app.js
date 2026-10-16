@@ -1,5 +1,6 @@
-// FFT admin panel (browser side). Everything that comes from the database is shown with textContent,
-// never as HTML.
+// FFT admin panel (browser side). Made for anyone, not only people who know databases: plain
+// names, ready-made questions, and editing locked until it is unlocked on purpose. Everything that
+// comes from the database is shown as text (textContent), never as HTML.
 const $ = (id) => document.getElementById(id);
 
 function h(tag, attrs = {}, ...kids) {
@@ -10,8 +11,9 @@ function h(tag, attrs = {}, ...kids) {
     else if (v === true) e.setAttribute(k, '');
     else if (v !== false && v != null) e.setAttribute(k, v);
   }
-  for (const kid of kids.flat())
-    if (kid != null) e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+  for (const kid of kids.flat(Infinity))
+    if (kid != null && kid !== false)
+      e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   return e;
 }
 
@@ -24,16 +26,163 @@ async function api(path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && path !== '/api/login' && path !== '/api/sudo') showLogin();
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+  if (!res.ok) throw new Error(data.error ?? `Something went wrong (${res.status})`);
   return data;
 }
 
-const fmtCell = (v) =>
-  v === null ? 'NULL' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+/** {columns, rows: [[…]]} from the server -> [{column: value}]. */
+const asObjects = (r) =>
+  r.rows.map((row) => Object.fromEntries(r.columns.map((c, i) => [c, row[i]])));
 
-// ---------------------------------------------------------------- sign in and sudo mode
+// ---------------------------------------------------------------- formatting
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/;
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+const dateTime = (v) =>
+  new Date(v).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+const dateOnly = (v) =>
+  new Date(`${String(v).slice(0, 10)}T12:00:00`).toLocaleDateString(undefined, {
+    dateStyle: 'medium',
+  });
+function ago(v) {
+  if (!v) return 'never';
+  const s = (Date.now() - new Date(v).getTime()) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  if (s < 86400 * 30) {
+    const d = Math.round(s / 86400);
+    return d === 1 ? 'yesterday' : `${d} days ago`;
+  }
+  return dateOnly(v);
+}
+const num = (v) => Number(v ?? 0).toLocaleString();
+
+/** id -> email of the accounts, to show people instead of codes (loaded once, when needed). */
+const peopleById = new Map();
+async function loadPeople() {
+  if (peopleById.size) return;
+  const r = await api('/api/users').catch(() => null);
+  if (r) for (const row of asObjects(r)) peopleById.set(row.id, row.email);
+}
+const PERSON_COLUMNS = new Set(['user_id', 'owner_id', 'id_user']);
+function personLink(id) {
+  const email = peopleById.get(id);
+  if (!email) return null;
+  return h(
+    'button',
+    {
+      class: 'link',
+      type: 'button',
+      title: id,
+      onclick: (e) => {
+        e.stopPropagation();
+        go('person', id);
+      },
+    },
+    email,
+  );
+}
+const euro = (v) => `${Number(v ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })} €`;
+
+/** A value as people read it: dates as dates, yes/no, short ids, "—" for nothing. */
+function pretty(v, column = '') {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  if (typeof v === 'number') return v.toLocaleString();
+  if (typeof v === 'object') return JSON.stringify(v);
+  const s = String(v);
+  if (UUID.test(s)) return `${s.slice(0, 8)}…`;
+  if (ISO_TIME.test(s) && !Number.isNaN(Date.parse(s))) return dateTime(s);
+  if (ISO_DAY.test(s) || column === 'day') return dateOnly(s);
+  return s;
+}
+
+const WORDS = {
+  id: 'ID',
+  user_id: 'Person',
+  owner_id: 'Owner',
+  created_at: 'Created',
+  updated_at: 'Changed',
+  deleted_at: 'Deleted',
+  kcal: 'Calories',
+  kcal_100g: 'Calories per 100 g',
+  protein_g: 'Protein (g)',
+  carbs_g: 'Carbs (g)',
+  fat_g: 'Fat (g)',
+  weight_kg: 'Weight (kg)',
+  reps: 'Reps',
+  ml: 'Water (ml)',
+  email: 'Email',
+  last_sign_in_at: 'Last sign-in',
+  cost_micros: 'Cost (millionths of €)',
+};
+/** snake_case column -> a label ("weight_kg" -> "Weight (kg)"). */
+function label(column) {
+  if (WORDS[column]) return WORDS[column];
+  const unit = column.match(/_(kg|g|ml|cm|s|m|pct|eur)$/);
+  const base = unit ? column.slice(0, -unit[0].length) : column;
+  const words = base.replace(/_id$/, '').replace(/_at$/, '').split('_').join(' ');
+  const text = words.charAt(0).toUpperCase() + words.slice(1);
+  const units = { kg: 'kg', g: 'g', ml: 'ml', cm: 'cm', s: 'seconds', m: 'm', pct: '%', eur: '€' };
+  return unit ? `${text} (${units[unit[1]]})` : text;
+}
+
+// ---------------------------------------------------------------- toast and dialogs
+let toastTimer;
+function toast(message) {
+  $('toast').textContent = message;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => ($('toast').hidden = true), 4000);
+}
+
+/** Opens the general dialog with `content`; resolves with what `close(value)` was given. */
+function openDialog(build, { wide = false } = {}) {
+  return new Promise((resolve) => {
+    const dialog = $('dialog');
+    dialog.classList.toggle('wide', wide);
+    const close = (value) => {
+      dialog.close();
+      resolve(value);
+    };
+    dialog.onclose = () => resolve(undefined);
+    $('dialogBody').replaceChildren(...[build(close)].flat());
+    dialog.showModal();
+  });
+}
+
+/** Are you sure? -> true / false. */
+function confirmDialog(title, text, { confirm = 'Confirm', danger = false } = {}) {
+  return openDialog((close) => [
+    h('h2', {}, title),
+    h('p', { class: 'muted' }, text),
+    h(
+      'div',
+      { class: 'row end' },
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => close(false) }, 'Cancel'),
+      h(
+        'button',
+        {
+          class: danger ? 'btn danger' : 'btn primary',
+          type: 'button',
+          onclick: () => close(true),
+        },
+        confirm,
+      ),
+    ),
+  ]).then(Boolean);
+}
+
+function errorBox(e) {
+  return h('div', { class: 'card' }, h('p', { class: 'error' }, e.message ?? String(e)));
+}
+
+// ---------------------------------------------------------------- sign in and editing lock
 let sudoUntil = 0;
-const inSudo = () => sudoUntil > Date.now();
+const editing = () => sudoUntil > Date.now();
+let unlockResolve = null;
 
 function showLogin() {
   $('app').hidden = true;
@@ -45,46 +194,71 @@ function showLogin() {
 function showApp() {
   $('login').hidden = true;
   $('app').hidden = false;
-  loadTables();
-  void countResets();
-  void countErrors();
-  setInterval(() => {
-    void countResets();
-    void countErrors();
-  }, 60_000);
+  renderNav();
+  route();
+  void refreshBadges();
 }
 
-function renderMode() {
-  const on = inSudo();
-  document.body.classList.toggle('sudo', on);
-  $('banner').hidden = !on;
-  $('modePill').textContent = on ? 'SUDO' : 'READ ONLY';
-  $('modePill').classList.toggle('sudo', on);
-  $('sudoButton').textContent = on ? 'Leave sudo mode' : 'Enter sudo mode';
-  $('runSql').textContent = on ? 'Run (cannot change)' : 'Run (read only)';
-  $('runRollback').hidden = !on;
-  $('runCommit').hidden = !on;
-  $('addRow').hidden = !on || !current;
-  $('resetButton').textContent = on
-    ? 'Reset the database…'
-    : 'Reset the database… (needs sudo mode)';
+function renderLock() {
+  const on = editing();
+  $('lockState').textContent = on ? '' : 'Viewing only';
+  $('lockButton').textContent = on ? 'Lock editing' : 'Unlock editing';
+  $('editingBanner').hidden = !on;
   if (on) {
     const s = Math.max(0, Math.round((sudoUntil - Date.now()) / 1000));
-    $('sudoLeft').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} left`;
+    $('editingBanner').textContent =
+      `Editing is unlocked for ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} more. ` +
+      'Changes are real and written in the change log.';
   }
 }
 
-function setSudo(ms) {
+function setEditing(ms) {
+  const was = editing();
   sudoUntil = ms > 0 ? Date.now() + ms : 0;
-  renderMode();
-  if (current) renderTableGrid();
-  if (activeTab === 'users') loadUsers();
+  renderLock();
+  if (was !== editing()) route();
 }
 
 setInterval(() => {
-  if (sudoUntil && !inSudo()) setSudo(0);
-  else if (inSudo()) renderMode();
+  if (sudoUntil && !editing()) setEditing(0);
+  else if (editing()) renderLock();
 }, 1000);
+
+/** Resolves true once editing is unlocked (asking the password if needed), false if cancelled. */
+function needEditing() {
+  if (editing()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    unlockResolve = resolve;
+    $('unlockError').textContent = '';
+    $('unlockPassword').value = '';
+    $('unlockDialog').showModal();
+    $('unlockPassword').focus();
+  });
+}
+$('unlockDialog').addEventListener('close', () => {
+  unlockResolve?.(editing());
+  unlockResolve = null;
+});
+$('unlockDialog')
+  .querySelector('[data-close]')
+  .addEventListener('click', () => $('unlockDialog').close());
+$('unlockForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('/api/sudo', { password: $('unlockPassword').value });
+    setEditing(r.sudoLeftMs);
+    $('unlockDialog').close();
+  } catch (err) {
+    $('unlockError').textContent = err.message;
+  }
+});
+$('lockButton').addEventListener('click', async () => {
+  if (editing()) {
+    await api('/api/sudo/exit', {});
+    setEditing(0);
+    toast('Editing locked');
+  } else void needEditing();
+});
 
 $('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -96,306 +270,1374 @@ $('loginForm').addEventListener('submit', async (e) => {
     $('loginError').textContent = err.message;
   }
 });
-
 $('logout').addEventListener('click', async () => {
   await api('/api/logout', {}).catch(() => undefined);
   sudoUntil = 0;
-  renderMode();
   showLogin();
 });
 
-$('sudoButton').addEventListener('click', async () => {
-  if (inSudo()) {
-    await api('/api/sudo/exit', {});
-    setSudo(0);
-  } else openSudo();
-});
+// ---------------------------------------------------------------- navigation
+const ICONS = {
+  home: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  people:
+    'M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8',
+  key: 'M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
+  alert:
+    'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
+  table: 'M3 5h18v14H3zM3 10h18M9 10v9',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  archive: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4',
+};
+const icon = (name) => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', ICONS[name]);
+  svg.append(path);
+  return svg;
+};
 
-function openSudo() {
-  $('sudoError').textContent = '';
-  $('sudoPassword').value = '';
-  $('sudoDialog').showModal();
-  $('sudoPassword').focus();
-}
-$('sudoCancel').addEventListener('click', () => $('sudoDialog').close());
-$('sudoForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    const r = await api('/api/sudo', { password: $('sudoPassword').value });
-    $('sudoDialog').close();
-    setSudo(r.sudoLeftMs);
-  } catch (err) {
-    $('sudoError').textContent = err.message;
-  }
-});
+const PAGES = [
+  { id: 'overview', group: null, icon: 'home', label: 'Overview', render: overviewPage },
+  { id: 'people', group: null, icon: 'people', label: 'People', render: peoplePage },
+  {
+    id: 'requests',
+    group: null,
+    icon: 'key',
+    label: 'Password requests',
+    badge: 'resets',
+    render: requestsPage,
+  },
+  {
+    id: 'problems',
+    group: null,
+    icon: 'alert',
+    label: 'Problems',
+    badge: 'errors',
+    render: problemsPage,
+  },
+  { id: 'ai', group: null, icon: 'sparkle', label: 'AI coach', render: aiPage },
+  { id: 'data', group: 'Advanced', icon: 'table', label: 'All data', render: dataPage },
+  { id: 'ask', group: 'Advanced', icon: 'search', label: 'Ask the database', render: askPage },
+  { id: 'log', group: 'Advanced', icon: 'list', label: 'Change log', render: logPage },
+  {
+    id: 'backup',
+    group: 'Advanced',
+    icon: 'archive',
+    label: 'Backup and reset',
+    render: backupPage,
+  },
+];
+const badges = { resets: 0, errors: 0 };
 
-// ---------------------------------------------------------------- tabs
-let activeTab = 'data';
-$('tabs').addEventListener('click', (e) => {
-  const tab = e.target.closest('[data-tab]')?.dataset.tab;
-  if (!tab) return;
-  activeTab = tab;
-  for (const b of document.querySelectorAll('.tab'))
-    b.classList.toggle('active', b.dataset.tab === tab);
-  for (const p of document.querySelectorAll('.panel')) p.hidden = p.id !== `tab-${tab}`;
-  if (tab === 'users') loadUsers();
-  if (tab === 'audit') loadAudit();
-  if (tab === 'ai') loadAi();
-  if (tab === 'resets') loadResets();
-  if (tab === 'errors') loadErrors();
-});
-
-// ---------------------------------------------------------------- grids
-/** A table of values. `opts.onSort(column)`, `opts.onRow(row)`, `opts.cell(td, column, row, value)`, `opts.actions(row)`. */
-function renderGrid(container, columns, rows, opts = {}) {
-  container.replaceChildren();
-  if (rows.length === 0) {
-    container.append(h('div', { class: 'empty' }, 'No rows.'));
-    return;
-  }
-  const head = h(
-    'tr',
-    {},
-    columns.map((c) => {
-      const mark = opts.sort?.column === c ? (opts.sort.dir === 'desc' ? ' ▼' : ' ▲') : '';
-      return h('th', { onclick: opts.onSort ? () => opts.onSort(c) : null, title: c }, c + mark);
-    }),
-    opts.actions ? h('th', {}, '') : null,
-  );
-  const body = rows.map((row) =>
-    h(
-      'tr',
-      {},
-      row.map((v, i) => {
-        const td = h('td', { class: v === null ? 'null' : '', title: fmtCell(v) }, fmtCell(v));
-        td.addEventListener('click', () => opts.onRow?.(row));
-        opts.cell?.(td, columns[i], row, v);
-        return td;
-      }),
-      opts.actions ? h('td', { class: 'actions' }, opts.actions(row)) : null,
-    ),
-  );
-  container.append(h('table', {}, h('thead', {}, head), h('tbody', {}, body)));
-}
-
-// ---------------------------------------------------------------- data tab
-let tables = [];
-let current = null; // { schema, name }
-let page = { offset: 0, limit: 50, sort: null, dir: 'asc', q: '' };
-let loaded = null; // last answer of /api/table
-
-async function loadTables() {
-  tables = (await api('/api/tables')).tables;
-  renderTableList();
-}
-
-function renderTableList() {
-  const filter = $('tableFilter').value.trim().toLowerCase();
-  const list = $('tableList');
-  list.replaceChildren();
-  let schema = '';
-  for (const t of tables.filter((x) => `${x.schema}.${x.name}`.includes(filter))) {
-    if (t.schema !== schema) {
-      schema = t.schema;
-      list.append(h('div', { class: 'schema' }, schema));
+function renderNav() {
+  const current = location.hash.slice(1).split('/')[0] || 'overview';
+  const items = [];
+  let group = null;
+  for (const p of PAGES) {
+    if (p.group !== group) {
+      group = p.group;
+      if (group) items.push(h('div', { class: 'nav-group' }, group));
     }
-    list.append(
+    const count = p.badge ? badges[p.badge] : 0;
+    items.push(
       h(
         'button',
         {
-          class: `table-item${current && current.schema === t.schema && current.name === t.name ? ' active' : ''}`,
-          onclick: () => openTable(t.schema, t.name),
+          class: `nav-item${current === p.id || (current === 'person' && p.id === 'people') ? ' active' : ''}`,
+          type: 'button',
+          'aria-current': current === p.id ? 'page' : null,
+          onclick: () => go(p.id),
         },
-        h('span', {}, t.name + (t.kind === 'v' || t.kind === 'm' ? ' (view)' : '')),
-        h('small', {}, `~${t.estimate}`),
+        icon(p.icon),
+        p.label,
+        count ? h('span', { class: 'badge', 'aria-label': `${count} open` }, String(count)) : null,
       ),
     );
   }
-}
-$('tableFilter').addEventListener('input', renderTableList);
-
-function openTable(schema, name) {
-  current = { schema, name };
-  page = { ...page, offset: 0, sort: null, dir: 'asc', q: '' };
-  $('rowSearch').value = '';
-  renderTableList();
-  loadRows();
+  $('nav').replaceChildren(...items);
 }
 
-async function loadRows() {
-  if (!current) return;
-  const params = new URLSearchParams({
-    schema: current.schema,
-    name: current.name,
-    limit: String(page.limit),
-    offset: String(page.offset),
-    q: page.q,
-  });
-  if (page.sort) {
-    params.set('sort', page.sort);
-    params.set('dir', page.dir);
-  }
+function go(...parts) {
+  const hash = `#${parts.map(encodeURIComponent).join('/')}`;
+  if (location.hash === hash) route();
+  else location.hash = hash;
+}
+window.addEventListener('hashchange', () => route());
+
+/** Sets the title, the kicker and the short explanation of a page. */
+function header(title, intro = '', kicker = '') {
+  $('pageTitle').textContent = title;
+  $('pageIntro').textContent = intro;
+  $('pageKicker').textContent = kicker;
+  document.title = `${title} · FFT admin`;
+}
+
+async function route() {
+  const [id, ...args] = location.hash.slice(1).split('/').map(decodeURIComponent);
+  const page =
+    id === 'person' ? { render: personPage } : (PAGES.find((p) => p.id === id) ?? PAGES[0]);
+  renderNav();
+  renderLock();
+  const box = $('page');
+  box.replaceChildren(h('div', { class: 'empty' }, 'Loading…'));
   try {
-    loaded = await api(`/api/table?${params}`);
-    renderTableGrid();
+    const content = await page.render(...args);
+    box.replaceChildren(...[content].flat().filter(Boolean));
   } catch (e) {
-    $('dataGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
+    box.replaceChildren(errorBox(e));
   }
 }
 
-function pkOf(row) {
-  const idx = loaded.columns.map((c) => c);
-  return Object.fromEntries(loaded.table.pk.map((c) => [c, row[idx.indexOf(c)]]));
+async function refreshBadges() {
+  const [resets, errors] = await Promise.all([
+    api('/api/password-resets').catch(() => null),
+    api('/api/errors?days=1').catch(() => null),
+  ]);
+  badges.resets = resets ? resets.rows.filter((r) => r[4] === null).length : 0;
+  badges.errors = errors ? errors.rows.length : 0;
+  renderNav();
 }
+setInterval(() => {
+  if (!$('app').hidden) void refreshBadges();
+}, 60_000);
 
-function renderTableGrid() {
-  renderMode();
-  if (!loaded || !current) return;
-  const { table, columns, rows, total, ms } = loaded;
-  $('tableTitle').textContent = `${table.schema}.${table.name}`;
-  $('tableMeta').textContent =
-    `${total} rows · ${ms} ms${table.pk.length ? '' : ' · no primary key (edit with SQL)'}`;
-  const editable = inSudo() && table.kind === 'r' && table.pk.length > 0;
-  renderGrid($('dataGrid'), columns, rows, {
-    sort: page.sort ? { column: page.sort, dir: page.dir } : null,
-    onSort: (c) => {
-      page.dir = page.sort === c && page.dir === 'asc' ? 'desc' : 'asc';
-      page.sort = c;
-      page.offset = 0;
-      loadRows();
-    },
-    onRow: (row) => showDetail(row),
-    cell: (td, column, row) => {
-      if (!editable || table.pk.includes(column)) return;
-      td.classList.add('editable');
-      td.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
-        editCell(td, column, row);
-      });
-    },
-    actions: editable
-      ? (row) =>
-          h(
-            'button',
-            { class: 'btn ghost', title: 'Delete row', onclick: () => deleteRow(row) },
-            'Delete',
-          )
-      : null,
-  });
-  const from = total === 0 ? 0 : page.offset + 1;
-  $('pageInfo').textContent = `${from}–${Math.min(total, page.offset + rows.length)} of ${total}`;
-  $('prevPage').disabled = page.offset === 0;
-  $('nextPage').disabled = page.offset + page.limit >= total;
-}
-
-function editCell(td, column, row) {
-  const idx = loaded.columns.indexOf(column);
-  const input = h('input', {
-    value: row[idx] === null ? '' : fmtCell(row[idx]),
-    placeholder: 'type null for NULL',
-    style: 'width:100%;padding:4px 8px',
-  });
-  td.replaceChildren(input);
-  input.focus();
-  input.select();
-  const cancel = () => renderTableGrid();
-  input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Escape') return cancel();
-    if (e.key !== 'Enter') return;
-    const value = input.value === 'null' ? null : input.value;
-    try {
-      await api('/api/row/update', { ...current, pk: pkOf(row), set: { [column]: value } });
-      await loadRows();
-    } catch (err) {
-      alert(err.message);
-      cancel();
-    }
-  });
-  input.addEventListener('blur', cancel);
-}
-
-async function deleteRow(row) {
-  if (!confirm(`Delete this row for good?\n\n${JSON.stringify(pkOf(row))}`)) return;
-  try {
-    await api('/api/row/delete', { ...current, pk: pkOf(row) });
-    await loadRows();
-  } catch (err) {
-    alert(err.message);
-  }
-}
-
-function showDetail(row) {
-  $('detailTitle').textContent = `${current.schema}.${current.name}`;
-  $('detailBody').replaceChildren(
+// ---------------------------------------------------------------- a table of rows
+/**
+ * rows: [{…}]; columns: [{key, label?, render?(row) -> node|string, wrap?}] (default: every key).
+ * onRow(row) makes rows clickable.
+ */
+function table(rows, { columns, onRow, empty = 'Nothing here yet.', sort, onSort } = {}) {
+  if (!rows.length) return h('div', { class: 'empty' }, empty);
+  const cols = columns ?? Object.keys(rows[0]).map((key) => ({ key }));
+  return h(
+    'div',
+    { class: 'table-wrap' },
     h(
-      'dl',
-      { class: 'kv' },
-      loaded.columns.flatMap((c, i) => [h('dt', {}, c), h('dd', {}, fmtCell(row[i]))]),
-    ),
-  );
-  $('detailDialog').showModal();
-}
-$('detailClose').addEventListener('click', () => $('detailDialog').close());
-
-$('addRow').addEventListener('click', () => {
-  if (!current || !loaded) return;
-  $('formTitle').textContent = `New row in ${current.schema}.${current.name}`;
-  $('formError').textContent = '';
-  $('formFields').replaceChildren(
-    ...loaded.table.columns.map((c) =>
+      'table',
+      {},
       h(
-        'label',
+        'thead',
         {},
-        h('span', { class: 'label' }, `${c.name} · ${c.type}${c.nullable ? '' : ' · required'}`),
-        h('input', { 'data-col': c.name, placeholder: 'empty = default · null = NULL' }),
+        h(
+          'tr',
+          {},
+          cols.map((c) => {
+            const mark = sort?.column === c.key ? (sort.dir === 'desc' ? ' ↓' : ' ↑') : '';
+            return h(
+              'th',
+              {
+                class: onSort ? 'sortable' : '',
+                onclick: onSort ? () => onSort(c.key) : null,
+                title: c.key,
+              },
+              (c.label ?? label(c.key)) + mark,
+            );
+          }),
+        ),
+      ),
+      h(
+        'tbody',
+        {},
+        rows.map((row) =>
+          h(
+            'tr',
+            {
+              class: onRow ? 'clickable' : '',
+              tabindex: onRow ? '0' : null,
+              onclick: onRow ? () => onRow(row) : null,
+              onkeydown: onRow ? (e) => e.key === 'Enter' && onRow(row) : null,
+            },
+            cols.map((c) => {
+              const v = c.render
+                ? c.render(row)
+                : (PERSON_COLUMNS.has(c.key) && personLink(row[c.key])) ||
+                  pretty(row[c.key], c.key);
+              const none = !c.render && (row[c.key] === null || row[c.key] === undefined);
+              return h(
+                'td',
+                {
+                  class: [none ? 'none' : '', c.wrap ? 'wrap' : '', c.actions ? 'actions' : '']
+                    .filter(Boolean)
+                    .join(' '),
+                  title: typeof v === 'string' && !c.render ? String(row[c.key] ?? '') : null,
+                },
+                v,
+              );
+            }),
+          ),
+        ),
       ),
     ),
   );
-  $('formDialog').showModal();
-});
-$('formCancel').addEventListener('click', () => $('formDialog').close());
-$('formForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const values = {};
-  for (const input of $('formFields').querySelectorAll('input')) {
-    if (input.value === '') continue;
-    values[input.dataset.col] = input.value === 'null' ? null : input.value;
+}
+
+const stat = (value, labelText, { onclick, attention } = {}) =>
+  h(
+    onclick ? 'button' : 'div',
+    {
+      class: `stat${onclick ? ' clickable' : ''}${attention ? ' attention' : ''}`,
+      type: onclick ? 'button' : null,
+      onclick,
+    },
+    h('span', { class: 'value' }, value),
+    h('span', { class: 'label' }, labelText),
+  );
+
+// ---------------------------------------------------------------- overview
+async function overviewPage() {
+  header('Overview', 'How the app is doing at a glance. Click a number to see more.');
+  const o = await api('/api/overview');
+  const signups = o.signups ?? [];
+  const max = Math.max(1, ...signups.map((d) => Number(d.n)));
+  return [
+    h(
+      'div',
+      { class: 'stats' },
+      stat(num(o.accounts), 'Accounts', { onclick: () => go('people') }),
+      stat(num(o.new_7d), 'New this week', { onclick: () => go('people') }),
+      stat(num(o.active_7d), 'Signed in this week'),
+      stat(num(o.premium), 'On Premium', { onclick: () => go('ask', 'premium') }),
+      stat(num(o.open_resets), 'Password requests waiting', {
+        onclick: () => go('requests'),
+        attention: Number(o.open_resets) > 0,
+      }),
+      stat(num(o.problems_24h), 'App problems today', {
+        onclick: () => go('problems'),
+        attention: Number(o.problems_24h) > 0,
+      }),
+    ),
+    h(
+      'div',
+      { class: 'grid-2' },
+      h(
+        'section',
+        { class: 'card' },
+        h('h3', {}, 'New accounts, last 14 days'),
+        h(
+          'div',
+          {
+            class: 'bars',
+            role: 'img',
+            'aria-label': `New accounts per day: ${signups.map((d) => d.n).join(', ')}`,
+          },
+          signups.map((d) =>
+            h(
+              'div',
+              { class: 'bar', title: `${dateOnly(d.day)}: ${d.n}` },
+              h('span', {}, Number(d.n) ? String(d.n) : ''),
+              h('div', {
+                class: `fill${Number(d.n) ? '' : ' zero'}`,
+                style: `height:${Math.round((Number(d.n) / max) * 90) + 3}px`,
+              }),
+              h('span', {}, new Date(`${d.day}T12:00:00`).getDate()),
+            ),
+          ),
+        ),
+      ),
+      h(
+        'section',
+        { class: 'card' },
+        h('h3', {}, 'This week in the app'),
+        h(
+          'dl',
+          { class: 'kv' },
+          h('dt', {}, 'Workouts finished'),
+          h('dd', {}, num(o.workouts_7d)),
+          h('dt', {}, 'Foods logged'),
+          h('dd', {}, num(o.food_7d)),
+          h('dt', {}, 'AI coach cost (30 days)'),
+          h('dd', {}, euro(o.ai_cost_30d)),
+          h('dt', {}, 'AI apps and tokens connected'),
+          h('dd', {}, num(o.ai_connections)),
+          h('dt', {}, 'Database size'),
+          h('dd', {}, o.db_size),
+        ),
+      ),
+    ),
+  ];
+}
+
+// ---------------------------------------------------------------- people
+let peopleQuery = '';
+async function peoplePage() {
+  header(
+    'People',
+    'Everyone with an account. Click a person to see their plan, activity and options.',
+  );
+  const list = h('div', { class: 'card flat' }, h('div', { class: 'empty' }, 'Loading…'));
+  const load = async () => {
+    const r = await api(`/api/users?q=${encodeURIComponent(peopleQuery)}`);
+    const rows = asObjects(r);
+    count.textContent = `${rows.length} ${rows.length === 1 ? 'account' : 'accounts'}`;
+    list.replaceChildren(
+      table(rows, {
+        empty: peopleQuery ? 'No account matches.' : 'No accounts yet.',
+        onRow: (row) => go('person', row.id),
+        columns: [
+          { key: 'email', label: 'Email' },
+          {
+            key: 'plan',
+            label: 'Plan',
+            render: (row) =>
+              h(
+                'span',
+                { class: `chip${row.plan === 'premium' ? ' premium' : ''}` },
+                row.plan === 'premium' ? 'Premium' : 'Free',
+              ),
+          },
+          { key: 'created_at', label: 'Joined', render: (row) => dateOnly(row.created_at) },
+          { key: 'last_sign_in_at', label: 'Last seen', render: (row) => ago(row.last_sign_in_at) },
+          { key: 'note', label: 'Note' },
+        ],
+      }),
+    );
+  };
+  const count = h('span', { class: 'muted' });
+  let timer;
+  const search = h('input', {
+    type: 'search',
+    placeholder: 'Search by email',
+    'aria-label': 'Search by email',
+    value: peopleQuery,
+    oninput: (e) => {
+      peopleQuery = e.target.value.trim();
+      clearTimeout(timer);
+      timer = setTimeout(
+        () => void load().catch((err) => list.replaceChildren(errorBox(err))),
+        300,
+      );
+    },
+  });
+  await load();
+  return [h('div', { class: 'row' }, search, count), list];
+}
+
+async function personPage(id) {
+  const p = await api(`/api/user?id=${encodeURIComponent(id)}`);
+  header(p.name || p.email, '', 'People');
+  const connections = p.connections ?? [];
+  const changePlan = async () => {
+    if (!(await needEditing())) return;
+    const next = p.plan === 'premium' ? 'free' : 'premium';
+    const result = await openDialog((close) => {
+      const note = h('input', {
+        placeholder: 'For example: friend, beta tester',
+        value: p.note ?? '',
+      });
+      return [
+        h('h2', {}, next === 'premium' ? 'Give Premium' : 'Move back to Free'),
+        h(
+          'p',
+          { class: 'muted' },
+          next === 'premium'
+            ? `${p.email} gets the AI coach included in the app, with 10 € of AI a month.`
+            : `${p.email} keeps all their data; only the AI coach included in the app stops.`,
+        ),
+        next === 'premium'
+          ? h('label', { class: 'field' }, h('span', {}, 'A note for yourself (optional)'), note)
+          : null,
+        h(
+          'div',
+          { class: 'row end' },
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => close(null) }, 'Cancel'),
+          h(
+            'button',
+            {
+              class: 'btn primary',
+              type: 'button',
+              onclick: () => close({ note: note.value.trim() || null }),
+            },
+            next === 'premium' ? 'Give Premium' : 'Move to Free',
+          ),
+        ),
+      ];
+    });
+    if (!result) return;
+    await api('/api/plan', { userId: p.id, plan: next, note: result.note });
+    toast(next === 'premium' ? `${p.email} is now on Premium` : `${p.email} is now on Free`);
+    route();
+  };
+  const resetPassword = async () => {
+    if (!(await needEditing())) return;
+    const ok = await confirmDialog(
+      'Give a temporary password?',
+      `${p.email} will sign in with a new password you send them, then change it in the app (Profile > Password). Their current password stops working.`,
+      { confirm: 'Make a temporary password', danger: true },
+    );
+    if (!ok) return;
+    const r = await api('/api/user/temp-password', { userId: p.id });
+    await showTempPassword(r.email, r.password);
+  };
+  return [
+    h(
+      'div',
+      { class: 'row' },
+      h(
+        'button',
+        { class: 'btn ghost small', type: 'button', onclick: () => go('people') },
+        '← All people',
+      ),
+    ),
+    h(
+      'div',
+      { class: 'stats' },
+      stat(num(p.workouts), 'Workouts finished'),
+      stat(num(p.food_logs), 'Foods logged'),
+      stat(num(p.body_entries), 'Body check-ins'),
+      stat(num(p.plans), 'Workout plans'),
+    ),
+    h(
+      'div',
+      { class: 'grid-2' },
+      h(
+        'section',
+        { class: 'card' },
+        h('h3', {}, 'Account'),
+        h(
+          'dl',
+          { class: 'kv' },
+          h('dt', {}, 'Email'),
+          h('dd', {}, p.email ?? '—'),
+          h('dt', {}, 'Name'),
+          h('dd', {}, p.name ?? '—'),
+          h('dt', {}, 'Plan'),
+          h(
+            'dd',
+            {},
+            h(
+              'span',
+              { class: `chip${p.plan === 'premium' ? ' premium' : ''}` },
+              p.plan === 'premium' ? 'Premium' : 'Free',
+            ),
+          ),
+          p.note ? [h('dt', {}, 'Note'), h('dd', {}, p.note)] : null,
+          h('dt', {}, 'Joined'),
+          h('dd', {}, dateTime(p.created_at)),
+          h('dt', {}, 'Finished sign-up'),
+          h('dd', {}, p.onboarded_at ? dateOnly(p.onboarded_at) : 'Not yet'),
+          h('dt', {}, 'Last seen'),
+          h('dd', {}, ago(p.last_sign_in_at)),
+        ),
+        h(
+          'div',
+          { class: 'row' },
+          h(
+            'button',
+            {
+              class: 'btn',
+              type: 'button',
+              onclick: () => void changePlan().catch((e) => toast(e.message)),
+            },
+            p.plan === 'premium' ? 'Move to Free' : 'Give Premium',
+          ),
+          h(
+            'button',
+            {
+              class: 'btn',
+              type: 'button',
+              onclick: () => void resetPassword().catch((e) => toast(e.message)),
+            },
+            'Temporary password',
+          ),
+        ),
+      ),
+      h(
+        'section',
+        { class: 'card' },
+        h('h3', {}, 'Activity'),
+        h(
+          'dl',
+          { class: 'kv' },
+          h('dt', {}, 'Last workout'),
+          h('dd', {}, p.last_workout ? ago(p.last_workout) : 'None yet'),
+          h('dt', {}, 'Last food logged'),
+          h('dd', {}, p.last_food_day ? dateOnly(p.last_food_day) : 'None yet'),
+          h('dt', {}, 'AI credit left'),
+          h('dd', {}, p.ai_credit_eur != null ? euro(p.ai_credit_eur) : '—'),
+          h('dt', {}, 'AI coach cost (30 days)'),
+          h('dd', {}, euro(p.ai_cost_30d)),
+        ),
+        h('h3', {}, 'Connected AI apps and tokens'),
+        connections.length
+          ? h(
+              'ul',
+              {},
+              connections.map((c) =>
+                h(
+                  'li',
+                  {},
+                  `${c.name} · ${c.app ? 'AI app' : 'personal token'} · used ${ago(c.last_used_at)}`,
+                ),
+              ),
+            )
+          : h('p', { class: 'muted' }, 'None.'),
+      ),
+    ),
+    h(
+      'p',
+      { class: 'help' },
+      'Only counts are shown here: what people eat, weigh or write stays private unless you open the raw data under Advanced.',
+    ),
+  ];
+}
+
+/** The temporary password, shown once, with a ready email. */
+function showTempPassword(email, password) {
+  const subject = 'FFT: your temporary password';
+  const text =
+    `Hi,\n\nyou asked to reset your FFT password. Sign in with this temporary password:\n\n` +
+    `${password}\n\nThen change it right away in the app: Profile > Password.\n\n` +
+    `If you did not ask for this, reply to this email.\n`;
+  const mail = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  return openDialog((close) => [
+    h('h2', {}, `Temporary password for ${email}`),
+    h('p', { class: 'secret' }, password),
+    h('p', { class: 'muted' }, 'It is shown only now. Send it to them, then close this window.'),
+    h(
+      'div',
+      { class: 'row end' },
+      h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Close'),
+      h(
+        'button',
+        {
+          class: 'btn',
+          type: 'button',
+          onclick: () =>
+            navigator.clipboard?.writeText(text).then(
+              () => toast('Email text copied'),
+              () => undefined,
+            ),
+        },
+        'Copy the email text',
+      ),
+      h('a', { class: 'btn primary', href: mail }, 'Write the email'),
+    ),
+  ]);
+}
+
+// ---------------------------------------------------------------- password requests
+async function requestsPage() {
+  header(
+    'Password requests',
+    'People who tapped "Forgot password?" in the app. Give them a temporary password and email it; they change it in the app afterwards.',
+  );
+  const rows = asObjects(await api('/api/password-resets'));
+  const open = rows.filter((r) => !r.handled_at);
+  const done = rows.filter((r) => r.handled_at);
+  badges.resets = open.length;
+  renderNav();
+  const answer = async (r) => {
+    if (!(await needEditing())) return;
+    const ok = await confirmDialog(
+      'Give a temporary password?',
+      `${r.email} will sign in with a new password you send them. Their current password stops working.`,
+      { confirm: 'Make a temporary password', danger: true },
+    );
+    if (!ok) return;
+    const res = await api('/api/password-reset', { id: r.id });
+    await showTempPassword(res.email, res.password);
+    route();
+  };
+  const dismiss = async (r) => {
+    if (!(await needEditing())) return;
+    await api('/api/password-reset/dismiss', { id: r.id });
+    toast('Request dismissed');
+    route();
+  };
+  return [
+    h(
+      'section',
+      { class: 'card flat' },
+      h(
+        'div',
+        { class: 'card-head', style: 'padding:16px 16px 0' },
+        h('h3', {}, `Waiting (${open.length})`),
+      ),
+      table(open, {
+        empty: 'No one is waiting. All good.',
+        columns: [
+          { key: 'email', label: 'Email' },
+          { key: 'created_at', label: 'Asked', render: (r) => ago(r.created_at) },
+          { key: 'note', label: 'Their note', wrap: true },
+          {
+            key: 'has_account',
+            label: 'Has an account',
+            render: (r) => (r.has_account ? 'Yes' : 'No — nothing to reset'),
+          },
+          {
+            key: 'actions',
+            label: '',
+            actions: true,
+            render: (r) => [
+              r.has_account
+                ? h(
+                    'button',
+                    {
+                      class: 'btn primary small',
+                      type: 'button',
+                      onclick: () => void answer(r).catch((e) => toast(e.message)),
+                    },
+                    'Temporary password',
+                  )
+                : null,
+              ' ',
+              h(
+                'button',
+                {
+                  class: 'btn ghost small',
+                  type: 'button',
+                  onclick: () => void dismiss(r).catch((e) => toast(e.message)),
+                },
+                'Dismiss',
+              ),
+            ],
+          },
+        ],
+      }),
+    ),
+    done.length
+      ? h(
+          'section',
+          { class: 'card flat' },
+          h(
+            'div',
+            { class: 'card-head', style: 'padding:16px 16px 0' },
+            h('h3', {}, 'Done in the last 7 days'),
+          ),
+          table(done, {
+            columns: [
+              { key: 'email', label: 'Email' },
+              { key: 'created_at', label: 'Asked', render: (r) => dateTime(r.created_at) },
+              { key: 'handled_at', label: 'Handled', render: (r) => dateTime(r.handled_at) },
+            ],
+          }),
+        )
+      : null,
+  ];
+}
+
+// ---------------------------------------------------------------- problems
+const KINDS = {
+  crash: 'App crashed',
+  unhandled: 'Unexpected error',
+  render: 'A screen failed to show',
+  query: 'Data failed to load',
+  mutation: 'A change failed to save',
+  sync: 'Sync problem',
+  widget: 'Home screen widget',
+  handled: 'Reported by the app',
+};
+let problemDays = '7';
+async function problemsPage() {
+  header(
+    'Problems',
+    'Errors the app sent by itself, grouped: the same problem on many phones is one row. Mark one as fixed once a new version solves it; if it comes back it shows up as new.',
+  );
+  const rows = asObjects(await api(`/api/errors?days=${problemDays}`));
+  const days = h(
+    'select',
+    {
+      'aria-label': 'Period',
+      onchange: (e) => {
+        problemDays = e.target.value;
+        route();
+      },
+    },
+    [
+      ['1', 'Today'],
+      ['7', 'Last 7 days'],
+      ['30', 'Last 30 days'],
+      ['60', 'Last 60 days'],
+    ].map(([v, t]) => h('option', { value: v, selected: v === problemDays }, t)),
+  );
+  const open = (r) =>
+    openDialog(
+      (close) => [
+        h('h2', {}, KINDS[r.kind] ?? r.kind),
+        h('p', {}, r.message),
+        h(
+          'p',
+          { class: 'muted' },
+          `${r.times} times on ${r.accounts} ${Number(r.accounts) === 1 ? 'account' : 'accounts'} · first ${dateTime(r.first_seen)} · last ${dateTime(r.last_seen)}`,
+        ),
+        h(
+          'p',
+          { class: 'muted' },
+          `Phones: ${r.platforms ?? 'unknown'} · versions: ${r.versions ?? 'unknown'}`,
+        ),
+        r.context
+          ? h(
+              'details',
+              { class: 'advanced' },
+              h('summary', {}, 'Where it happened'),
+              h('pre', {}, JSON.stringify(r.context, null, 2)),
+            )
+          : null,
+        h(
+          'details',
+          { class: 'advanced' },
+          h('summary', {}, 'Technical details (for the developer)'),
+          h('pre', {}, r.stack ?? '(none)'),
+        ),
+        h(
+          'div',
+          { class: 'row end' },
+          h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Close'),
+          h(
+            'button',
+            {
+              class: 'btn',
+              type: 'button',
+              onclick: async () => {
+                if (!(await needEditing())) return;
+                await api('/api/errors/clear', { fingerprint: r.fingerprint });
+                close();
+                toast('Marked as fixed');
+                void refreshBadges();
+                route();
+              },
+            },
+            'Mark as fixed',
+          ),
+        ),
+      ],
+      { wide: true },
+    );
+  return [
+    h(
+      'div',
+      { class: 'row' },
+      days,
+      h('span', { class: 'muted' }, `${rows.length} ${rows.length === 1 ? 'problem' : 'problems'}`),
+    ),
+    h(
+      'section',
+      { class: 'card flat' },
+      table(rows, {
+        empty: 'No problems in this period. Nice.',
+        onRow: open,
+        columns: [
+          { key: 'kind', label: 'What', render: (r) => KINDS[r.kind] ?? r.kind },
+          { key: 'message', label: 'Message' },
+          { key: 'times', label: 'Times' },
+          { key: 'accounts', label: 'Accounts' },
+          { key: 'last_seen', label: 'Last seen', render: (r) => ago(r.last_seen) },
+        ],
+      }),
+    ),
+  ];
+}
+
+// ---------------------------------------------------------------- AI coach
+async function aiPage() {
+  header(
+    'AI coach',
+    'The model behind the AI coach included with Premium, and what it cost. A change applies to the next message, with no new version of the app.',
+  );
+  const r = await api('/api/ai');
+  const usage = asObjects(r.usage);
+  const input = h('input', {
+    list: 'aiModels',
+    placeholder: r.defaultModel ?? 'provider/model',
+    value: r.model ?? '',
+    'aria-label': 'Model',
+    style: 'min-width:min(360px,100%)',
+  });
+  const save = async () => {
+    if (!(await needEditing())) return;
+    const model = input.value.trim();
+    const ok = await confirmDialog(
+      model ? `Use ${model}?` : 'Go back to the default model?',
+      'Every AI coach message from now on uses it. If the name is wrong the coach stops answering, so double-check it on openrouter.ai/models.',
+      { confirm: 'Use it' },
+    );
+    if (!ok) return;
+    await api('/api/ai-model', { model });
+    toast('AI model changed');
+    route();
+  };
+  return [
+    h(
+      'section',
+      { class: 'card' },
+      h('h3', {}, 'Model in use'),
+      h(
+        'p',
+        {},
+        h('strong', {}, r.model ?? `${r.defaultModel} (default)`),
+        r.updatedAt ? h('span', { class: 'muted' }, ` · since ${dateTime(r.updatedAt)}`) : null,
+      ),
+      h(
+        'div',
+        { class: 'row' },
+        input,
+        h(
+          'datalist',
+          { id: 'aiModels' },
+          [
+            'anthropic/claude-haiku-4.5',
+            'anthropic/claude-sonnet-4.5',
+            'openai/gpt-5-mini',
+            'google/gemini-2.5-flash',
+            'deepseek/deepseek-v4.1-flash',
+          ].map((m) => h('option', { value: m })),
+        ),
+        h(
+          'button',
+          {
+            class: 'btn primary',
+            type: 'button',
+            onclick: () => void save().catch((e) => toast(e.message)),
+          },
+          'Save',
+        ),
+      ),
+      h(
+        'p',
+        { class: 'help' },
+        'Model names are on openrouter.ai/models (like anthropic/claude-haiku-4.5). Leave it empty for the default.',
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card flat' },
+      h('div', { class: 'card-head', style: 'padding:16px 16px 0' }, h('h3', {}, 'Last 30 days')),
+      table(usage, { empty: 'No AI coach requests yet.' }),
+    ),
+  ];
+}
+
+// ---------------------------------------------------------------- all data (table browser)
+/** Plain names for the tables: [group, name, what it holds]. */
+const TABLE_INFO = {
+  profiles: [
+    'People',
+    'Profiles',
+    'Name, birth date, height, goal and the choices made at sign-up.',
+  ],
+  user_plans: ['People', 'Plans', 'Who has Premium (free accounts have no row).'],
+  vip_users: ['People', 'Old VIP list', 'Replaced by Plans, kept for history.'],
+  user_settings: [
+    'People',
+    'App settings',
+    'Units, theme, accessibility and notifications of each person.',
+  ],
+  consents: ['People', 'Consents', 'Health data and statistics consents, with the policy version.'],
+  exercises: ['Training', 'Exercises', 'The catalogue (no owner) and the exercises people made.'],
+  workout_plans: ['Training', 'Workout plans', "Each person's plans (active, draft, archived)."],
+  plan_days: ['Training', 'Plan days', 'The days of each plan (Push, Pull…).'],
+  plan_exercises: [
+    'Training',
+    'Plan exercises',
+    'Exercises of each plan day: sets, reps, rest, supersets, drop sets.',
+  ],
+  workout_sessions: ['Training', 'Workouts', 'Each workout: when, which plan day, how it felt.'],
+  session_exercises: ['Training', 'Workout exercises', 'The exercises done in each workout.'],
+  session_sets: [
+    'Training',
+    'Sets',
+    'Every set: weight, reps, time. Drop index above 0 = a drop of a drop set.',
+  ],
+  exercise_records: [
+    'Training',
+    'Records (view)',
+    'Best weight and estimated max per person and exercise.',
+  ],
+  exercise_e1rm_daily: [
+    'Training',
+    'Daily strength (view)',
+    'Best estimated max and volume per day.',
+  ],
+  foods: ['Diet', 'Foods', 'The food catalogue and foods people created, per 100 g.'],
+  food_servings: ['Diet', 'Food portions', 'Named portions of foods (1 slice = 30 g).'],
+  food_logs: ['Diet', 'Food diary', 'Every food logged: day, meal, amount, calories and macros.'],
+  daily_nutrition_totals: [
+    'Diet',
+    'Daily totals (view)',
+    'Calories and macros eaten per person and day.',
+  ],
+  nutrition_goals: ['Diet', 'Nutrition goals', 'Calorie and macro targets.'],
+  fixed_meal_plans: ['Diet', 'Meal plans', 'Fixed-meal plans.'],
+  fixed_meals: ['Diet', 'Planned meals', 'The meals of each meal plan.'],
+  fixed_meal_checks: [
+    'Diet',
+    'Meals ticked off',
+    'Planned meals marked done, adjusted or skipped.',
+  ],
+  water_logs: ['Diet', 'Water', 'Water drunk per day.'],
+  recipes: ['Diet', 'Recipes', 'Recipes people saved.'],
+  recipe_items: ['Diet', 'Recipe ingredients', 'Ingredients of each recipe.'],
+  recipe_nutrition: ['Diet', 'Recipe nutrition (view)', 'Calories and macros of each recipe.'],
+  body_metrics: ['Body', 'Body check-ins', 'Weight, body fat and measurements by day.'],
+  body_goals: ['Body', 'Body goals', 'Target weight and measurements.'],
+  progress_photos: ['Body', 'Progress photos', 'Photo records (the pictures are private files).'],
+  supplements: ['Supplements', 'Supplements', "Each person's supplement list."],
+  supplement_logs: [
+    'Supplements',
+    'Supplements taken',
+    'Which supplements were taken on which day.',
+  ],
+  ai_credit: ['AI', 'AI credit', 'Monthly AI coach credit of Premium accounts.'],
+  ai_usage: ['AI', 'AI requests', 'Each AI coach request: model, tokens and cost.'],
+  api_tokens: [
+    'AI',
+    'API and MCP connections',
+    'Personal tokens and connected AI apps (only a fingerprint of the token is kept).',
+  ],
+  oauth_clients: ['AI', 'Registered AI apps', 'Apps that can sign in with FFT (Claude, ChatGPT…).'],
+  oauth_codes: ['AI', 'Sign-in codes', 'Short-lived codes of the AI app sign-in.'],
+  app_settings: ['App', 'App settings (global)', 'Settings for everyone, like the AI coach model.'],
+  app_errors: ['App', 'Problem reports', 'Errors sent by the app (see Problems).'],
+  password_reset_requests: [
+    'App',
+    'Password requests',
+    'Forgot-password requests (see Password requests).',
+  ],
+  admin_audit: ['App', 'Change log', 'Every change made with editing unlocked.'],
+  sync_tombstones: ['App', 'Sync deletions', 'Deletions waiting to reach other devices.'],
+};
+const GROUP_ORDER = ['People', 'Training', 'Diet', 'Body', 'Supplements', 'AI', 'App'];
+
+let tables = [];
+let current = null; // { schema, name }
+let pageState = { offset: 0, limit: 50, sort: null, dir: 'asc', q: '' };
+let showSystem = false;
+
+const infoOf = (t) => (t.schema === 'public' ? TABLE_INFO[t.name] : null);
+
+async function dataPage(schema, name) {
+  header(
+    'All data',
+    'Every table of the database, with plain names. Pick one on the left. Click a row to see it whole' +
+      (editing() ? ' and change it.' : '; unlock editing to change it.'),
+    'Advanced',
+  );
+  if (!tables.length) tables = (await api('/api/tables')).tables;
+  await loadPeople();
+  if (schema && name) current = { schema, name };
+  const listBox = h('nav', { class: 'card table-list', 'aria-label': 'Tables' });
+  const content = h('div', { class: 'page' });
+
+  const renderList = () => {
+    const items = [];
+    const known = tables.filter((t) => infoOf(t));
+    for (const g of GROUP_ORDER) {
+      const inGroup = known.filter((t) => infoOf(t)[0] === g);
+      if (!inGroup.length) continue;
+      items.push(h('div', { class: 'group' }, g));
+      for (const t of inGroup) items.push(tableButton(t, infoOf(t)[1], `~${num(t.estimate)} rows`));
+    }
+    const others = tables.filter((t) => !infoOf(t));
+    items.push(
+      h(
+        'button',
+        {
+          class: 'table-item',
+          type: 'button',
+          onclick: () => ((showSystem = !showSystem), renderList()),
+        },
+        h(
+          'small',
+          {},
+          showSystem ? '▾ Hide technical tables' : `▸ Technical tables (${others.length})`,
+        ),
+      ),
+    );
+    if (showSystem)
+      for (const t of others)
+        items.push(tableButton(t, `${t.schema}.${t.name}`, `~${num(t.estimate)} rows`));
+    listBox.replaceChildren(...items);
+  };
+  const tableButton = (t, title, sub) =>
+    h(
+      'button',
+      {
+        class: `table-item${current && current.schema === t.schema && current.name === t.name ? ' active' : ''}`,
+        type: 'button',
+        onclick: () => {
+          pageState = { ...pageState, offset: 0, sort: null, dir: 'asc', q: '' };
+          go('data', t.schema, t.name);
+        },
+      },
+      h('strong', {}, title),
+      h('small', {}, sub),
+    );
+
+  renderList();
+  if (current) await renderTable(content);
+  else content.append(h('div', { class: 'card empty' }, 'Pick a table on the left.'));
+  return h('div', { class: 'browser' }, listBox, content);
+}
+
+async function renderTable(box) {
+  const params = new URLSearchParams({
+    schema: current.schema,
+    name: current.name,
+    limit: String(pageState.limit),
+    offset: String(pageState.offset),
+    q: pageState.q,
+  });
+  if (pageState.sort) {
+    params.set('sort', pageState.sort);
+    params.set('dir', pageState.dir);
   }
+  const loaded = await api(`/api/table?${params}`);
+  const t = loaded.table;
+  const info = infoOf(t);
+  const rows = asObjects(loaded);
+  const canEdit = editing() && t.kind === 'r' && t.pk.length > 0;
+  let timer;
+  const search = h('input', {
+    type: 'search',
+    placeholder: 'Search in this table',
+    'aria-label': 'Search in this table',
+    value: pageState.q,
+    oninput: (e) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        pageState = { ...pageState, q: e.target.value, offset: 0 };
+        void renderTable(box);
+      }, 350);
+    },
+  });
+  const from = loaded.total === 0 ? 0 : pageState.offset + 1;
+  box.replaceChildren(
+    h(
+      'section',
+      { class: 'card' },
+      h(
+        'div',
+        { class: 'card-head' },
+        h(
+          'div',
+          {},
+          h('h2', {}, info ? info[1] : `${t.schema}.${t.name}`),
+          h('p', { class: 'muted' }, info ? info[2] : 'A technical table.'),
+        ),
+        canEdit
+          ? h(
+              'button',
+              { class: 'btn', type: 'button', onclick: () => void addRow(t, box) },
+              'Add a row',
+            )
+          : null,
+      ),
+      h(
+        'div',
+        { class: 'row' },
+        search,
+        h('span', { class: 'muted' }, `${num(loaded.total)} rows`),
+      ),
+      t.kind === 'r' && t.pk.length === 0
+        ? h(
+            'p',
+            { class: 'help' },
+            'This table has no key, so its rows can only be changed with SQL.',
+          )
+        : null,
+    ),
+    h(
+      'section',
+      { class: 'card flat' },
+      table(rows, {
+        empty: pageState.q ? 'No row matches.' : 'This table is empty.',
+        sort: pageState.sort ? { column: pageState.sort, dir: pageState.dir } : null,
+        onSort: (c) => {
+          pageState = {
+            ...pageState,
+            dir: pageState.sort === c && pageState.dir === 'asc' ? 'desc' : 'asc',
+            sort: c,
+            offset: 0,
+          };
+          void renderTable(box);
+        },
+        onRow: (row) => void rowDialog(t, row, canEdit, box),
+        columns: loaded.columns.map((key) => ({ key })),
+      }),
+      h(
+        'div',
+        { class: 'pager' },
+        h(
+          'button',
+          {
+            class: 'btn small',
+            type: 'button',
+            disabled: pageState.offset === 0,
+            onclick: () => (
+              (pageState.offset = Math.max(0, pageState.offset - pageState.limit)),
+              void renderTable(box)
+            ),
+          },
+          '← Previous',
+        ),
+        h(
+          'span',
+          { class: 'muted' },
+          `${num(from)}–${num(Math.min(loaded.total, pageState.offset + rows.length))} of ${num(loaded.total)}`,
+        ),
+        h(
+          'button',
+          {
+            class: 'btn small',
+            type: 'button',
+            disabled: pageState.offset + pageState.limit >= loaded.total,
+            onclick: () => ((pageState.offset += pageState.limit), void renderTable(box)),
+          },
+          'Next →',
+        ),
+      ),
+    ),
+  );
+}
+
+const editable = (v) =>
+  v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+
+/** One row whole; with editing unlocked its fields can be changed, or the row deleted. */
+async function rowDialog(t, row, canEdit, box) {
+  const fields = Object.keys(row);
+  const inputs = {};
+  const result = await openDialog(
+    (close) => [
+      h('h2', {}, infoOf(t)?.[1] ?? t.name),
+      canEdit
+        ? h(
+            'p',
+            { class: 'help' },
+            'Change a field and save. Leave a field empty to clear it. The key fields cannot be changed.',
+          )
+        : h('p', { class: 'help' }, 'Unlock editing to change this row.'),
+      h(
+        'dl',
+        { class: 'kv' },
+        fields.flatMap((f) => {
+          const locked = !canEdit || t.pk.includes(f);
+          if (locked)
+            return [
+              h('dt', { title: f }, label(f)),
+              h('dd', {}, h('span', { title: editable(row[f]) }, editable(row[f]) || '—')),
+            ];
+          inputs[f] = h('input', {
+            value: editable(row[f]),
+            'aria-label': label(f),
+            style: 'width:100%',
+          });
+          return [h('dt', { title: f }, label(f)), h('dd', {}, inputs[f])];
+        }),
+      ),
+      h(
+        'div',
+        { class: 'row end' },
+        canEdit
+          ? h(
+              'button',
+              { class: 'btn danger', type: 'button', onclick: () => close('delete') },
+              'Delete this row',
+            )
+          : null,
+        h('span', { class: 'spacer' }),
+        h(
+          'button',
+          { class: 'btn ghost', type: 'button', onclick: () => close() },
+          canEdit ? 'Cancel' : 'Close',
+        ),
+        canEdit
+          ? h(
+              'button',
+              { class: 'btn primary', type: 'button', onclick: () => close('save') },
+              'Save changes',
+            )
+          : null,
+      ),
+    ],
+    { wide: true },
+  );
+  const pk = Object.fromEntries(t.pk.map((c) => [c, row[c]]));
   try {
-    await api('/api/row/insert', { ...current, values });
-    $('formDialog').close();
-    await loadRows();
-  } catch (err) {
-    $('formError').textContent = err.message;
+    if (result === 'save') {
+      const set = {};
+      for (const [f, input] of Object.entries(inputs))
+        if (input.value !== editable(row[f])) set[f] = input.value === '' ? null : input.value;
+      if (!Object.keys(set).length) return toast('Nothing changed');
+      await api('/api/row/update', { schema: t.schema, table: t.name, pk, set });
+      toast('Saved');
+      await renderTable(box);
+    } else if (result === 'delete') {
+      const ok = await confirmDialog(
+        'Delete this row for good?',
+        'It cannot be undone. The app may stop showing what depended on it.',
+        { confirm: 'Delete', danger: true },
+      );
+      if (!ok) return;
+      await api('/api/row/delete', { schema: t.schema, table: t.name, pk });
+      toast('Deleted');
+      await renderTable(box);
+    }
+  } catch (e) {
+    toast(e.message);
   }
-});
+}
 
-let searchTimer;
-$('rowSearch').addEventListener('input', () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    page.q = $('rowSearch').value;
-    page.offset = 0;
-    loadRows();
-  }, 300);
-});
-$('rowLimit').addEventListener('change', () => {
-  page.limit = Number($('rowLimit').value);
-  page.offset = 0;
-  loadRows();
-});
-$('prevPage').addEventListener('click', () => {
-  page.offset = Math.max(0, page.offset - page.limit);
-  loadRows();
-});
-$('nextPage').addEventListener('click', () => {
-  page.offset += page.limit;
-  loadRows();
-});
+async function addRow(t, box) {
+  const inputs = {};
+  const values = await openDialog(
+    (close) => [
+      h('h2', {}, `New row in ${infoOf(t)?.[1] ?? t.name}`),
+      h('p', { class: 'help' }, 'Fill in what you need; empty fields get their default value.'),
+      h(
+        'div',
+        { class: 'page' },
+        t.columns.map((c) => {
+          inputs[c.name] = h('input', {
+            placeholder: c.nullable ? 'optional' : 'required unless it has a default',
+          });
+          return h(
+            'label',
+            { class: 'field' },
+            h('span', {}, `${label(c.name)} · ${c.type}`),
+            inputs[c.name],
+          );
+        }),
+      ),
+      h(
+        'div',
+        { class: 'row end' },
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Cancel'),
+        h(
+          'button',
+          {
+            class: 'btn primary',
+            type: 'button',
+            onclick: () =>
+              close(
+                Object.fromEntries(
+                  Object.entries(inputs)
+                    .filter(([, i]) => i.value !== '')
+                    .map(([k, i]) => [k, i.value]),
+                ),
+              ),
+          },
+          'Add the row',
+        ),
+      ),
+    ],
+    { wide: true },
+  );
+  if (!values) return;
+  try {
+    await api('/api/row/insert', { schema: t.schema, table: t.name, values });
+    toast('Row added');
+    await renderTable(box);
+  } catch (e) {
+    toast(e.message);
+  }
+}
 
-// ---------------------------------------------------------------- SQL tab
+// ---------------------------------------------------------------- ask the database
+/** Ready-made questions: one click, no SQL needed. They only read. */
+const QUESTIONS = [
+  {
+    id: 'signups',
+    title: 'New accounts per day',
+    about: 'Last 30 days',
+    sql: `select created_at::date as day, count(*) as new_accounts
+from auth.users
+where created_at > now() - interval '30 days'
+group by 1 order by 1 desc`,
+  },
+  {
+    id: 'active',
+    title: 'Most active people',
+    about: 'Workouts finished in the last 30 days',
+    sql: `select u.email, count(*) as workouts
+from public.workout_sessions w join auth.users u on u.id = w.user_id
+where w.status = 'done' and w.deleted_at is null and w.started_at > now() - interval '30 days'
+group by u.email order by workouts desc limit 20`,
+  },
+  {
+    id: 'foods',
+    title: 'Most logged foods',
+    about: 'Last 30 days, with average calories',
+    sql: `select name as food, count(*) as times_logged, round(avg(kcal)) as average_kcal
+from public.food_logs
+where deleted_at is null and created_at > now() - interval '30 days'
+group by name order by times_logged desc limit 25`,
+  },
+  {
+    id: 'exercises',
+    title: 'Most trained exercises',
+    about: 'Last 30 days',
+    sql: `select e.name as exercise, count(distinct s.session_id) as workouts, count(*) as sets
+from public.session_sets s
+join public.exercises e on e.id = s.exercise_id
+join public.workout_sessions w on w.id = s.session_id
+where w.status = 'done' and s.completed_at is not null and s.deleted_at is null
+  and w.started_at > now() - interval '30 days'
+group by e.name order by workouts desc limit 25`,
+  },
+  {
+    id: 'weekdays',
+    title: 'Workouts per weekday',
+    about: 'Last 90 days',
+    sql: `select trim(to_char(started_at, 'Day')) as weekday, count(*) as workouts
+from public.workout_sessions
+where status = 'done' and deleted_at is null and started_at > now() - interval '90 days'
+group by 1, extract(isodow from started_at) order by extract(isodow from started_at)`,
+  },
+  {
+    id: 'calories',
+    title: 'Average calories logged',
+    about: 'Per person and day, last 14 days',
+    sql: `select day, round(avg(kcal)) as average_kcal_per_person, count(*) as people
+from (select user_id, day, sum(kcal) as kcal from public.food_logs
+      where deleted_at is null and day > current_date - 14 group by user_id, day) d
+group by day order by day desc`,
+  },
+  {
+    id: 'ai-cost',
+    title: 'AI coach cost per person',
+    about: 'Last 30 days',
+    sql: `select u.email, count(*) as requests, round(sum(a.cost_micros) / 1000000.0, 2) as cost_eur
+from public.ai_usage a join auth.users u on u.id = a.user_id
+where a.created_at > now() - interval '30 days'
+group by u.email order by cost_eur desc`,
+  },
+  {
+    id: 'premium',
+    title: 'Premium accounts',
+    about: 'Who has Premium and why',
+    sql: `select u.email, p.note, p.created_at as since
+from public.user_plans p join auth.users u on u.id = p.user_id
+where p.deleted_at is null and p.plan = 'premium'
+order by p.created_at desc`,
+  },
+  {
+    id: 'unfinished',
+    title: 'Sign-ups not finished',
+    about: 'Accounts that never completed the first steps',
+    sql: `select u.email, u.created_at as signed_up, u.last_sign_in_at as last_seen
+from auth.users u left join public.profiles p on p.id = u.id
+where p.onboarding_completed_at is null
+order by u.created_at desc`,
+  },
+  {
+    id: 'connections',
+    title: 'Connected AI apps',
+    about: 'Claude, ChatGPT and personal tokens',
+    sql: `select u.email, t.name, case when t.client_id is null then 'personal token' else 'AI app' end as kind, t.last_used_at
+from public.api_tokens t join auth.users u on u.id = t.user_id
+where t.deleted_at is null
+order by t.last_used_at desc nulls last`,
+  },
+];
+
 const HISTORY_KEY = 'fft-admin-sql-history';
-const history = () => {
+const sqlHistory = () => {
   try {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]');
   } catch {
@@ -403,422 +1645,302 @@ const history = () => {
   }
 };
 
-function renderHistory() {
-  const select = $('sqlHistory');
-  select.replaceChildren(h('option', { value: '' }, 'History'));
-  history().forEach((q, i) =>
-    select.append(h('option', { value: String(i) }, q.replace(/\s+/g, ' ').slice(0, 80))),
+async function askPage(questionId) {
+  await loadPeople();
+  header(
+    'Ask the database',
+    'Pick a ready-made question to see the answer. It only reads, nothing can break. If you know SQL, write your own question under "Write SQL".',
+    'Advanced',
   );
-}
-$('sqlHistory').addEventListener('change', () => {
-  const q = history()[Number($('sqlHistory').value)];
-  if (q) $('sqlText').value = q;
-  $('sqlHistory').value = '';
-});
-
-async function runSql(commit) {
-  const sql = $('sqlText').value;
-  if (!sql.trim()) return;
-  if (commit && !confirm('Run this and KEEP the changes in the real database?')) return;
-  $('sqlStatus').textContent = 'Running…';
-  try {
-    const r = await api('/api/sql', { sql, commit });
-    const note = r.committed ? 'changes kept' : inSudo() ? 'rolled back' : '';
-    $('sqlStatus').textContent =
-      `${r.command ?? ''} · ${r.rowCount} rows${r.truncated ? ' (first 1000 shown)' : ''} · ${r.ms} ms${note ? ' · ' + note : ''}`;
-    renderGrid($('sqlGrid'), r.columns, r.rows);
-    if (r.columns.length === 0)
-      $('sqlGrid').replaceChildren(
-        h('div', { class: 'empty' }, `${r.command ?? 'Done'}: ${r.rowCount} rows affected.`),
-      );
-    localStorage.setItem(
-      HISTORY_KEY,
-      JSON.stringify([sql, ...history().filter((q) => q !== sql)].slice(0, 20)),
-    );
-    renderHistory();
-  } catch (e) {
-    $('sqlStatus').textContent = '';
-    $('sqlGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
-  }
-}
-$('runSql').addEventListener('click', () => runSql(false));
-$('runRollback').addEventListener('click', () => runSql(false));
-$('runCommit').addEventListener('click', () => runSql(true));
-$('sqlText').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault();
-    runSql(false);
-  }
-});
-
-// ---------------------------------------------------------------- users tab
-let userTimer;
-$('userSearch').addEventListener('input', () => {
-  clearTimeout(userTimer);
-  userTimer = setTimeout(loadUsers, 300);
-});
-
-async function loadUsers() {
-  const r = await api(`/api/users?q=${encodeURIComponent($('userSearch').value)}`).catch((e) => {
-    $('userGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
-    return null;
+  const results = h('div', { class: 'page' });
+  const editor = h('textarea', {
+    class: 'code',
+    spellcheck: 'false',
+    'aria-label': 'SQL',
+    placeholder: 'select * from public.profiles limit 20;',
   });
-  if (!r) return;
-  $('userCount').textContent = `${r.rows.length} accounts`;
-  const [id, email, created, last, plan, note, credit] = [0, 1, 2, 3, 4, 5, 6];
-  const body = r.rows.map((row) => {
-    // free / premium: changes go through sudo mode (DECISIONS 42, 47).
-    const select = h(
-      'select',
-      {
-        'aria-label': `Plan of ${row[email]}`,
-        title: inSudo() ? 'Change the plan' : 'Enter sudo mode to change this',
-        onchange: (e) => setPlan(row[id], row[email], e.target.value, e.target, row[plan]),
-      },
-      ['free', 'premium'].map((p) =>
-        h('option', { value: p, ...(p === row[plan] ? { selected: '' } : {}) }, p),
-      ),
-    );
-    return h(
-      'tr',
-      {},
-      h('td', {}, row[email] ?? '(no email)'),
-      h('td', {}, row[created] ? new Date(row[created]).toLocaleString() : ''),
-      h('td', {}, row[last] ? new Date(row[last]).toLocaleString() : 'never'),
-      h('td', {}, select),
-      h('td', {}, row[credit] != null ? `${row[credit]} €` : ''),
-      h('td', {}, row[note] ?? ''),
-    );
-  });
-  $('userGrid').replaceChildren(
-    r.rows.length
-      ? h(
-          'table',
-          {},
-          h(
-            'thead',
-            {},
-            h(
-              'tr',
-              {},
-              ['Email', 'Created', 'Last sign-in', 'Plan', 'AI credit', 'Note'].map((c) =>
-                h('th', {}, c),
-              ),
-            ),
-          ),
-          h('tbody', {}, body),
-        )
-      : h('div', { class: 'empty' }, 'No accounts.'),
-  );
-}
-
-async function setPlan(userId, email, plan, select, previous) {
-  const undo = () => (select.value = previous);
-  if (!inSudo()) {
-    undo();
-    return openSudo();
-  }
-  let note = null;
-  if (plan !== 'free') {
-    note = prompt(`Give ${email} the ${plan} plan. A note for yourself (optional):`, '');
-    if (note === null) return undo();
-  } else if (
-    !confirm(
-      `Move ${email} back to the free plan? They keep their data; only the included AI coach stops.`,
-    )
-  )
-    return undo();
-  try {
-    await api('/api/plan', { userId, plan, note });
-    await loadUsers();
-  } catch (e) {
-    undo();
-    alert(e.message);
-  }
-}
-
-// ---------------------------------------------------------------- AI tab
-async function loadAi() {
-  $('aiModelError').textContent = '';
-  try {
-    const r = await api('/api/ai');
-    $('aiModelNow').textContent = r.model ?? `${r.defaultModel} (default)`;
-    $('aiModelSince').textContent = r.updatedAt
-      ? `since ${new Date(r.updatedAt).toLocaleString()}`
-      : '';
-    $('aiModel').value = r.model ?? '';
-    if (r.usage.rows.length) renderGrid($('aiUsageGrid'), r.usage.columns, r.usage.rows);
-    else $('aiUsageGrid').replaceChildren(h('div', { class: 'empty' }, 'No AI requests yet.'));
-  } catch (e) {
-    $('aiModelError').textContent = e.message;
-  }
-}
-$('aiModelForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (!inSudo()) return openSudo();
-  const model = $('aiModel').value.trim();
-  if (!confirm(model ? `Use ${model} for the AI coach?` : 'Go back to the default model?')) return;
-  try {
-    await api('/api/ai-model', { model });
-    await loadAi();
-  } catch (err) {
-    $('aiModelError').textContent = err.message;
-  }
-});
-
-// ---------------------------------------------------------------- password resets tab
-// Forgot password without an email service: the admin sets a temporary password and emails it.
-async function countResets() {
-  const r = await api('/api/password-resets').catch(() => null);
-  if (!r) return null;
-  const open = r.rows.filter((row) => row[4] === null).length;
-  $('resetsBadge').hidden = open === 0;
-  $('resetsBadge').textContent = String(open);
-  return r;
-}
-
-async function loadResets() {
-  const r = await countResets();
-  if (!r) {
-    $('resetsGrid').replaceChildren(h('div', { class: 'empty error' }, 'Could not load.'));
-    return;
-  }
-  const [id, email, note, created, handled, hasAccount] = [0, 1, 2, 3, 4, 5];
-  const body = r.rows.map((row) =>
+  const status = h('span', { class: 'muted' });
+  const cards = QUESTIONS.map((q) =>
     h(
-      'tr',
-      {},
-      h('td', {}, row[email]),
-      h('td', {}, new Date(row[created]).toLocaleString()),
-      h('td', {}, row[note] ?? ''),
-      h('td', {}, row[hasAccount] ? 'yes' : 'no account'),
-      h(
-        'td',
-        { class: 'actions' },
-        row[handled]
-          ? `handled ${new Date(row[handled]).toLocaleString()}`
-          : [
-              row[hasAccount]
-                ? h(
-                    'button',
-                    { class: 'btn danger', onclick: () => tempPassword(row[id], row[email]) },
-                    'Temporary password',
-                  )
-                : null,
-              h('button', { class: 'btn ghost', onclick: () => dismissReset(row[id]) }, 'Dismiss'),
-            ],
-      ),
+      'button',
+      {
+        class: `question${q.id === questionId ? ' active' : ''}`,
+        type: 'button',
+        onclick: () => go('ask', q.id),
+      },
+      h('strong', {}, q.title),
+      h('span', {}, q.about),
     ),
   );
-  $('resetsGrid').replaceChildren(
-    r.rows.length
-      ? h(
-          'table',
-          {},
+
+  const run = async (sql, commit, title) => {
+    if (!sql.trim()) return;
+    if (
+      commit &&
+      !(await confirmDialog(
+        'Keep these changes?',
+        'This runs your SQL on the real database and keeps what it changes. It cannot be undone.',
+        { confirm: 'Run and keep', danger: true },
+      ))
+    )
+      return;
+    status.textContent = 'Running…';
+    try {
+      const r = await api('/api/sql', { sql, commit });
+      const note = r.committed
+        ? ' · changes kept'
+        : editing() && !title
+          ? ' · tried, nothing kept'
+          : '';
+      status.textContent = `${num(r.rowCount)} ${r.rowCount === 1 ? 'row' : 'rows'}${r.truncated ? ' (first 1,000 shown)' : ''} · ${r.ms} ms${note}`;
+      results.replaceChildren(
+        h(
+          'section',
+          { class: 'card flat' },
+          title
+            ? h('div', { class: 'card-head', style: 'padding:16px 16px 0' }, h('h3', {}, title))
+            : null,
+          r.columns.length
+            ? table(asObjects(r), { empty: 'No rows: nothing matches.' })
+            : h('div', { class: 'empty' }, `Done: ${num(r.rowCount)} rows affected.`),
+        ),
+      );
+      if (!title) {
+        localStorage.setItem(
+          HISTORY_KEY,
+          JSON.stringify([sql, ...sqlHistory().filter((q) => q !== sql)].slice(0, 20)),
+        );
+      }
+    } catch (e) {
+      status.textContent = '';
+      results.replaceChildren(errorBox(e));
+    }
+  };
+
+  const history = h(
+    'select',
+    {
+      'aria-label': 'Earlier SQL',
+      onchange: (e) => {
+        const q = sqlHistory()[Number(e.target.value)];
+        if (q) editor.value = q;
+        e.target.value = '';
+      },
+    },
+    h('option', { value: '' }, 'Earlier SQL…'),
+    sqlHistory().map((q, i) =>
+      h('option', { value: String(i) }, q.replace(/\s+/g, ' ').slice(0, 80)),
+    ),
+  );
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      void run(editor.value, false);
+    }
+  });
+
+  const chosen = QUESTIONS.find((q) => q.id === questionId);
+  const advanced = h(
+    'details',
+    { class: 'card advanced', open: !chosen && sqlHistory().length > 0 ? true : null },
+    h('summary', {}, 'Write SQL'),
+    h(
+      'p',
+      { class: 'help' },
+      editing()
+        ? 'Editing is unlocked: "Try it" runs and then undoes everything, "Run and keep" changes the real data (and is written in the change log).'
+        : 'Viewing only: whatever you write, nothing can be changed. Ctrl+Enter runs it.',
+    ),
+    editor,
+    h(
+      'div',
+      { class: 'row' },
+      h(
+        'button',
+        { class: 'btn primary', type: 'button', onclick: () => void run(editor.value, false) },
+        editing() ? 'Try it' : 'Run',
+      ),
+      editing()
+        ? h(
+            'button',
+            { class: 'btn danger', type: 'button', onclick: () => void run(editor.value, true) },
+            'Run and keep',
+          )
+        : null,
+      chosen
+        ? h(
+            'button',
+            { class: 'btn ghost', type: 'button', onclick: () => (editor.value = chosen.sql) },
+            'Show the SQL of this question',
+          )
+        : null,
+      h('span', { class: 'spacer' }),
+      history,
+    ),
+  );
+  if (chosen) await run(chosen.sql, false, chosen.title);
+  return [
+    h('div', { class: 'questions' }, cards),
+    h('div', { class: 'row' }, status),
+    results,
+    advanced,
+  ];
+}
+
+// ---------------------------------------------------------------- change log
+const ACTIONS = {
+  'sudo.enter': 'Unlocked editing',
+  'plan.set': 'Changed a plan',
+  'password.temporary': 'Gave a temporary password',
+  'password.dismiss': 'Dismissed a password request',
+  'errors.clear': 'Marked a problem as fixed',
+  'ai.model': 'Changed the AI coach model',
+  sql: 'Ran SQL that changed data',
+  'row.update': 'Changed a row',
+  'row.insert': 'Added a row',
+  'row.delete': 'Deleted a row',
+  'backup.download': 'Downloaded a backup',
+  'db.reset': 'Reset the database',
+};
+function describe(action, d) {
+  if (!d || typeof d !== 'object') return '';
+  if (action === 'plan.set')
+    return `${d.plan === 'premium' ? 'Premium' : 'Free'}${d.userId ? ` · ${d.userId.slice(0, 8)}…` : ''}`;
+  if (action === 'password.temporary')
+    return d.email ?? (d.userId ? `${d.userId.slice(0, 8)}…` : '');
+  if (action === 'ai.model') return d.model || 'back to the default';
+  if (action === 'sql')
+    return String(d.sql ?? '')
+      .replace(/\s+/g, ' ')
+      .slice(0, 120);
+  if (action.startsWith('row.'))
+    return `${infoOf({ schema: d.schema, name: d.table })?.[1] ?? d.table}`;
+  if (action === 'sudo.enter') return d.ip ? `from ${d.ip}` : '';
+  return '';
+}
+async function logPage() {
+  header(
+    'Change log',
+    'Everything changed with editing unlocked, newest first. Nothing here can be edited or removed.',
+    'Advanced',
+  );
+  const rows = asObjects(await api('/api/audit'));
+  return h(
+    'section',
+    { class: 'card flat' },
+    table(rows, {
+      empty: 'No changes yet.',
+      onRow: (r) =>
+        openDialog((close) => [
+          h('h2', {}, ACTIONS[r.action] ?? r.action),
+          h('p', { class: 'muted' }, dateTime(r.created_at)),
+          h('pre', {}, JSON.stringify(r.detail, null, 2)),
           h(
-            'thead',
-            {},
-            h(
-              'tr',
-              {},
-              ['Email', 'Asked', 'Note', 'Account', ''].map((c) => h('th', {}, c)),
-            ),
+            'div',
+            { class: 'row end' },
+            h('button', { class: 'btn', type: 'button', onclick: () => close() }, 'Close'),
           ),
-          h('tbody', {}, body),
-        )
-      : h('div', { class: 'empty' }, 'No requests.'),
+        ]),
+      columns: [
+        { key: 'created_at', label: 'When', render: (r) => dateTime(r.created_at) },
+        { key: 'action', label: 'What', render: (r) => ACTIONS[r.action] ?? r.action },
+        { key: 'detail', label: 'Details', render: (r) => describe(r.action, r.detail) },
+      ],
+    }),
   );
 }
 
-async function tempPassword(id, email) {
-  if (!inSudo()) return openSudo();
-  if (!confirm(`Replace the password of ${email} with a temporary one?`)) return;
-  try {
-    const r = await api('/api/password-reset', { id });
-    const subject = 'FFT: your temporary password';
-    const text =
-      `Hi,\n\nyou asked to reset your FFT password. Sign in with this temporary password:\n\n` +
-      `${r.password}\n\nThen change it right away in the app: Profile > Password.\n\n` +
-      `If you did not ask for this, reply to this email.\n`;
-    const mail = `mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-    $('resetResult').hidden = false;
-    $('resetResult').replaceChildren(
-      h('h3', {}, `Temporary password for ${r.email}`),
-      h('p', { class: 'temp-password' }, r.password),
-      h('p', { class: 'muted' }, 'Shown only now. Email it, then close this.'),
+// ---------------------------------------------------------------- backup and reset
+async function backupPage() {
+  header('Backup and reset', 'Keep a copy of everything, or start over.', 'Advanced');
+  const reset = async () => {
+    if (!(await needEditing())) return;
+    const word = h('input', { autocomplete: 'off', 'aria-label': 'Type RESET' });
+    const password = h('input', {
+      type: 'password',
+      autocomplete: 'current-password',
+      'aria-label': 'Admin password',
+    });
+    const error = h('p', { class: 'error', role: 'alert' });
+    await openDialog((close) => [
+      h('h2', {}, 'Reset the database'),
+      h(
+        'p',
+        {},
+        'This deletes every account and everything that belongs to it. It cannot be undone. ',
+        h('a', { href: '/api/backup', download: true }, 'Download a backup first.'),
+      ),
+      h('label', { class: 'field' }, h('span', {}, 'Type RESET'), word),
+      h('label', { class: 'field' }, h('span', {}, 'Admin password again'), password),
+      error,
       h(
         'div',
-        { class: 'toolbar' },
-        h('a', { class: 'btn primary', href: mail }, 'Write the email'),
+        { class: 'row end' },
+        h('button', { class: 'btn ghost', type: 'button', onclick: () => close() }, 'Cancel'),
         h(
           'button',
           {
-            class: 'btn',
-            onclick: () => navigator.clipboard?.writeText(text).catch(() => undefined),
+            class: 'btn danger',
+            type: 'button',
+            onclick: async () => {
+              try {
+                const r = await api('/api/reset', {
+                  confirm: word.value,
+                  password: password.value,
+                });
+                close();
+                toast(`Done: ${r.accounts} accounts deleted`);
+              } catch (e) {
+                error.textContent = e.message;
+              }
+            },
           },
-          'Copy the text',
-        ),
-        h(
-          'button',
-          { class: 'btn ghost', onclick: () => ($('resetResult').hidden = true) },
-          'Close',
+          'Delete everything',
         ),
       ),
-    );
-    await loadResets();
-  } catch (e) {
-    alert(e.message);
-  }
-}
-
-async function dismissReset(id) {
-  if (!inSudo()) return openSudo();
-  try {
-    await api('/api/password-reset/dismiss', { id });
-    await loadResets();
-  } catch (e) {
-    alert(e.message);
-  }
-}
-$('refreshResets').addEventListener('click', loadResets);
-
-// ---------------------------------------------------------------- errors tab
-// Crashes and failures from the app (report_error), one row per problem.
-async function countErrors() {
-  const r = await api('/api/errors?days=1').catch(() => null);
-  if (!r) return;
-  $('errorsBadge').hidden = r.rows.length === 0;
-  $('errorsBadge').textContent = String(r.rows.length);
-}
-
-async function loadErrors() {
-  const r = await api(`/api/errors?days=${$('errorDays').value}`).catch((e) => {
-    $('errorsGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
-    return null;
-  });
-  if (!r) return;
-  const col = Object.fromEntries(r.columns.map((c, i) => [c, i]));
-  const body = r.rows.map((row) =>
+    ]);
+  };
+  return [
     h(
-      'tr',
-      {},
-      h('td', {}, new Date(row[col.last_seen]).toLocaleString()),
-      h('td', {}, row[col.kind]),
+      'section',
+      { class: 'card' },
+      h('h3', {}, 'Backup'),
       h(
-        'td',
-        { class: 'error-message', title: 'Show the details', onclick: () => showError(row, col) },
-        row[col.message],
+        'p',
+        { class: 'muted' },
+        'A copy of all the data (accounts, profiles, plans, catalogue, everything) in one compressed file. It contains private data, including password fingerprints: keep it somewhere safe. A developer can load it back into an empty database.',
       ),
-      h('td', {}, String(row[col.times])),
-      h('td', {}, String(row[col.accounts])),
-      h('td', {}, row[col.platforms] ?? ''),
       h(
-        'td',
-        { class: 'actions' },
+        'div',
+        { class: 'row' },
+        h('a', { class: 'btn primary', href: '/api/backup', download: true }, 'Download a backup'),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card danger-zone' },
+      h('h3', {}, 'Reset the database'),
+      h(
+        'p',
+        { class: 'muted' },
+        'Deletes every account and everything that belongs to it. The tables and the catalogue (exercises, foods) stay. Only for starting over: it cannot be undone.',
+      ),
+      h(
+        'div',
+        { class: 'row' },
         h(
           'button',
-          { class: 'btn ghost', onclick: () => clearError(row[col.fingerprint]) },
-          'Fixed',
+          { class: 'btn danger', type: 'button', onclick: () => void reset() },
+          'Reset the database…',
         ),
       ),
     ),
-  );
-  $('errorsGrid').replaceChildren(
-    r.rows.length
-      ? h(
-          'table',
-          {},
-          h(
-            'thead',
-            {},
-            h(
-              'tr',
-              {},
-              ['Last seen', 'Kind', 'Error', 'Times', 'Accounts', 'Platforms', ''].map((c) =>
-                h('th', {}, c),
-              ),
-            ),
-          ),
-          h('tbody', {}, body),
-        )
-      : h('div', { class: 'empty' }, 'No errors. Nice.'),
-  );
+  ];
 }
-
-function showError(row, col) {
-  $('detailTitle').textContent = row[col.message];
-  $('detailBody').replaceChildren(
-    h(
-      'p',
-      { class: 'muted' },
-      `${row[col.times]} times, ${row[col.accounts]} accounts. First ${new Date(row[col.first_seen]).toLocaleString()}, last ${new Date(row[col.last_seen]).toLocaleString()}.`,
-    ),
-    h('p', { class: 'muted' }, `Versions: ${row[col.versions] ?? 'unknown'}`),
-    row[col.context] ? h('pre', {}, JSON.stringify(row[col.context], null, 2)) : null,
-    h('pre', {}, row[col.stack] ?? '(no stack)'),
-  );
-  $('detailDialog').showModal();
-}
-
-async function clearError(fingerprint) {
-  if (!inSudo()) return openSudo();
-  if (
-    !confirm(
-      'Mark this problem as fixed? Its reports are deleted; if it happens again it shows up as new.',
-    )
-  )
-    return;
-  try {
-    await api('/api/errors/clear', { fingerprint });
-    await loadErrors();
-    await countErrors();
-  } catch (e) {
-    alert(e.message);
-  }
-}
-$('refreshErrors').addEventListener('click', loadErrors);
-$('errorDays').addEventListener('change', loadErrors);
-
-// ---------------------------------------------------------------- audit tab
-async function loadAudit() {
-  try {
-    const r = await api('/api/audit');
-    renderGrid($('auditGrid'), r.columns, r.rows);
-  } catch (e) {
-    $('auditGrid').replaceChildren(h('div', { class: 'empty error' }, e.message));
-  }
-}
-$('refreshAudit').addEventListener('click', loadAudit);
-
-// ---------------------------------------------------------------- backup tab
-$('resetButton').addEventListener('click', () => {
-  if (!inSudo()) return openSudo();
-  $('resetError').textContent = '';
-  $('resetWord').value = '';
-  $('resetPassword').value = '';
-  $('resetDialog').showModal();
-});
-$('resetCancel').addEventListener('click', () => $('resetDialog').close());
-$('resetForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    const r = await api('/api/reset', {
-      confirm: $('resetWord').value,
-      password: $('resetPassword').value,
-    });
-    $('resetDialog').close();
-    alert(`Done: ${r.accounts} accounts deleted.`);
-    if (current) loadRows();
-  } catch (err) {
-    $('resetError').textContent = err.message;
-  }
-});
 
 // ---------------------------------------------------------------- start
-renderHistory();
 const s = await api('/api/session').catch(() => ({ signedIn: false }));
 if (s.signedIn) {
   sudoUntil = s.sudoLeftMs > 0 ? Date.now() + s.sudoLeftMs : 0;
   showApp();
-  renderMode();
 } else showLogin();

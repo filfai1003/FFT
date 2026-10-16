@@ -385,6 +385,92 @@ async function api(req, res, url) {
     return send(res, 200, out);
   }
 
+  if (route === 'GET /api/overview') {
+    // The home page of the panel: the key numbers in one read-only query.
+    const out = await db.run(
+      `select
+         (select count(*) from auth.users) as accounts,
+         (select count(*) from auth.users where created_at > now() - interval '7 days') as new_7d,
+         (select count(*) from auth.users where last_sign_in_at > now() - interval '7 days') as active_7d,
+         (select count(*) from auth.users u where exists (
+            select 1 from public.user_plans p where p.user_id = u.id and p.deleted_at is null and p.plan = 'premium')
+          or exists (select 1 from public.vip_users v where v.user_id = u.id and v.deleted_at is null)) as premium,
+         (select count(*) from public.workout_sessions
+            where status = 'done' and deleted_at is null and started_at > now() - interval '7 days') as workouts_7d,
+         (select count(*) from public.food_logs
+            where deleted_at is null and created_at > now() - interval '7 days') as food_7d,
+         (select count(*) from public.password_reset_requests
+            where handled_at is null and deleted_at is null) as open_resets,
+         (select count(distinct fingerprint) from public.app_errors
+            where created_at > now() - interval '1 day') as problems_24h,
+         (select coalesce(round(sum(cost_micros) / 1000000.0, 2), 0) from public.ai_usage
+            where created_at > now() - interval '30 days') as ai_cost_30d,
+         (select count(*) from public.api_tokens where deleted_at is null) as ai_connections,
+         pg_size_pretty(pg_database_size(current_database())) as db_size,
+         (select coalesce(json_agg(json_build_object('day', d::date, 'n',
+             (select count(*) from auth.users where created_at::date = d::date)) order by d), '[]')
+            from generate_series(current_date - 13, current_date, interval '1 day') d) as signups`,
+    );
+    return send(res, 200, Object.fromEntries(out.columns.map((c, i) => [c, out.rows[0]?.[i]])));
+  }
+
+  if (route === 'GET /api/user') {
+    // One person: account, plan and how much they use the app (counts only, never the content).
+    const id = url.searchParams.get('id') ?? '';
+    if (!/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(400, 'Bad user id');
+    const out = await db.run(
+      `select u.id, u.email, u.created_at, u.last_sign_in_at,
+              coalesce(p.plan, case when v.user_id is not null then 'premium' end, 'free') as plan,
+              coalesce(p.note, v.note) as note,
+              round(c.balance_micros / 1000000.0, 2) as ai_credit_eur,
+              pr.name, pr.onboarding_completed_at as onboarded_at,
+              (select count(*) from public.workout_sessions w
+                 where w.user_id = u.id and w.status = 'done' and w.deleted_at is null) as workouts,
+              (select max(w.started_at) from public.workout_sessions w
+                 where w.user_id = u.id and w.status = 'done' and w.deleted_at is null) as last_workout,
+              (select count(*) from public.food_logs f where f.user_id = u.id and f.deleted_at is null) as food_logs,
+              (select max(f.day) from public.food_logs f where f.user_id = u.id and f.deleted_at is null) as last_food_day,
+              (select count(*) from public.body_metrics b where b.user_id = u.id and b.deleted_at is null) as body_entries,
+              (select count(*) from public.workout_plans wp where wp.user_id = u.id and wp.deleted_at is null) as plans,
+              (select coalesce(round(sum(a.cost_micros) / 1000000.0, 2), 0) from public.ai_usage a
+                 where a.user_id = u.id and a.created_at > now() - interval '30 days') as ai_cost_30d,
+              (select coalesce(json_agg(json_build_object('name', t.name, 'app', t.client_id is not null,
+                   'last_used_at', t.last_used_at) order by t.created_at desc), '[]')
+                 from public.api_tokens t where t.user_id = u.id and t.deleted_at is null) as connections
+       from auth.users u
+       left join public.user_plans p on p.user_id = u.id and p.deleted_at is null
+       left join public.vip_users v on v.user_id = u.id and v.deleted_at is null
+       left join public.ai_credit c on c.user_id = u.id
+       left join public.profiles pr on pr.id = u.id
+       where u.id = $1`,
+      { params: [id] },
+    );
+    if (!out.rows[0]) throw new HttpError(404, 'No such account');
+    return send(res, 200, Object.fromEntries(out.columns.map((c, i) => [c, out.rows[0][i]])));
+  }
+
+  if (route === 'POST /api/user/temp-password') {
+    // From a person's page (no request needed): same as answering a forgot-password request.
+    needSudo();
+    const { userId } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
+    const temp = tempPassword();
+    const out = await db.run(
+      `update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 10)),
+                             updated_at = now()
+       where id = $1 returning email`,
+      {
+        sudo: true,
+        commit: true,
+        params: [userId, temp],
+        audit: { action: 'password.temporary', detail: { userId } },
+      },
+    );
+    const email = out.rows[0]?.[0];
+    if (!email) throw new HttpError(404, 'No such account');
+    return send(res, 200, { email, password: temp });
+  }
+
   if (route === 'GET /api/errors') {
     // App errors (report_error), grouped: the same message and stack = one problem.
     const days = Math.min(60, Math.max(1, Number(url.searchParams.get('days')) || 7));
@@ -439,9 +525,7 @@ async function api(req, res, url) {
     needSudo();
     const { id } = await readBody(req);
     if (!/^[0-9a-f-]{36}$/i.test(String(id))) throw new HttpError(400, 'Bad request id');
-    // Easy to read and to type: no 0/O, 1/l/I.
-    const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const temp = Array.from(crypto.randomBytes(12), (b) => alphabet[b % alphabet.length]).join('');
+    const temp = tempPassword();
     const found = await db.run(
       `select r.email, exists (select 1 from auth.users u where lower(u.email) = r.email)
        from public.password_reset_requests r where r.id = $1 and r.deleted_at is null`,
@@ -568,6 +652,12 @@ async function api(req, res, url) {
   }
 
   throw new HttpError(404, 'Not found');
+}
+
+/** A temporary password, easy to read and to type (no 0/O, 1/l/I). */
+function tempPassword() {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from(crypto.randomBytes(12), (b) => alphabet[b % alphabet.length]).join('');
 }
 
 const TYPES = {

@@ -73,6 +73,13 @@ check(
 check('AI tab readable', (await call('/api/ai')).status === 200);
 check('password resets readable', (await call('/api/password-resets')).status === 200);
 check('errors readable', (await call('/api/errors')).status === 200);
+check('overview readable', (await call('/api/overview')).status === 200);
+check('a person: bad id refused', (await call('/api/user?id=x')).status === 400);
+check(
+  'temporary password for a person refused without sudo',
+  (await call('/api/user/temp-password', { userId: '00000000-0000-0000-0000-000000000000' }))
+    .status === 403,
+);
 check(
   'clearing errors refused without sudo',
   (await call('/api/errors/clear', { fingerprint: '0'.repeat(32) })).status === 403,
