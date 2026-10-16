@@ -12,7 +12,7 @@ import { getAuthClient, isSupabaseConfigured } from './supabase';
  */
 
 export type ErrorKind =
-  'crash' | 'unhandled' | 'render' | 'query' | 'mutation' | 'sync' | 'handled';
+  'crash' | 'unhandled' | 'render' | 'query' | 'mutation' | 'sync' | 'widget' | 'handled';
 
 type Report = { kind: ErrorKind; message: string; stack: string | null; context?: object };
 
@@ -47,6 +47,12 @@ export function reportError(error: unknown, kind: ErrorKind = 'handled', context
   } catch {
     // Reporting must never be the cause of another error.
   }
+}
+
+/** Sends the waiting reports now (a background task that is about to end). */
+export async function flushErrors() {
+  if (timer) clearTimeout(timer);
+  await flush();
 }
 
 async function flush() {

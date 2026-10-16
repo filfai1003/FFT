@@ -1,3 +1,7 @@
+// The widget library calls these components as plain functions, outside React: compiled by the
+// React Compiler they would use hooks and fail ("Invalid hook call"), leaving the widget empty.
+'use no memo';
+
 import { t as translate } from 'i18next';
 import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 import { palettes, type ThemeMode } from '@/design/tokens';
@@ -315,6 +319,26 @@ export function renderWidgetView(
     default:
       return <Empty p={p} />;
   }
+}
+
+/** Drawn when a widget cannot be drawn: never an empty, transparent widget. */
+export function fallbackWidget() {
+  const p = palettes.light;
+  return (
+    <FlexWidget
+      clickAction="OPEN_APP"
+      style={{
+        height: 'match_parent',
+        width: 'match_parent',
+        backgroundColor: hex(p.surface),
+        borderRadius: 24,
+        padding: 14,
+        justifyContent: 'center',
+      }}
+    >
+      <TextWidget text="FFT" style={{ fontSize: 16, color: hex(p.text) }} />
+    </FlexWidget>
+  );
 }
 
 /** Light and dark versions: the launcher picks the one of the phone's theme. */
