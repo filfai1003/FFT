@@ -21,6 +21,7 @@ import {
   MealsStep,
   ModeStep,
   TargetStep,
+  AiStep,
 } from './steps';
 import { completeOnboarding } from './submit';
 
@@ -111,6 +112,7 @@ export function OnboardingFlow() {
         {id === 'mode' ? <ModeStep draft={draft} patch={patch} /> : null}
         {id === 'meals' ? <MealsStep draft={draft} patch={patch} today={today} /> : null}
         {id === 'consent' ? <ConsentStep draft={draft} patch={patch} /> : null}
+        {id === 'ai' ? <AiStep bottomOffset={barHeight} /> : null}
 
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">

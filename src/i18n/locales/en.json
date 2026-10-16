@@ -194,6 +194,11 @@
       "healthDetail": "Required to use the app. You can withdraw it later.",
       "analytics": "Share anonymous usage statistics",
       "analyticsDetail": "Optional, off by default."
+    },
+    "ai": {
+      "title": "Use FFT with your AI",
+      "body": "Optional: connect Claude or ChatGPT and ask them about your training and diet, or let them log food and plan workouts for you. They sign in with your FFT account.",
+      "later": "You can do this any time in Profile > API & MCP."
     }
   },
   "train": {

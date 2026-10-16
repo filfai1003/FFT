@@ -1,13 +1,18 @@
 import { create } from 'zustand';
+import { getMode } from '@/lib/mode';
 import { emptyDraft, type OnboardingDraft } from './logic';
 
-export type StepId = 'goal' | 'body' | 'lifestyle' | 'target' | 'mode' | 'meals' | 'consent';
+export type StepId = 'goal' | 'body' | 'lifestyle' | 'target' | 'mode' | 'meals' | 'consent' | 'ai';
 
-/** Steps in order; "meals" only exists for the fixed-meals mode. */
-export function stepsFor(draft: OnboardingDraft): StepId[] {
+/**
+ * Steps in order; "meals" only exists for the fixed-meals mode, "ai" (connect Claude or ChatGPT,
+ * optional) only with an account: the account-less mode has nothing to connect.
+ */
+export function stepsFor(draft: OnboardingDraft, withAccount = getMode() === 'cloud'): StepId[] {
   const steps: StepId[] = ['goal', 'body', 'lifestyle', 'target', 'mode'];
   if (draft.dietMode === 'fixed_meals') steps.push('meals');
   steps.push('consent');
+  if (withAccount) steps.push('ai');
   return steps;
 }
 

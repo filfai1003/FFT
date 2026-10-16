@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { ConnectAiButtons } from '@/features/premium/ConnectAiButtons';
 import { useTranslation } from 'react-i18next';
 import { View, type TextInput } from 'react-native';
 import { Card } from '@/components/ui/Card';
@@ -289,6 +290,22 @@ export function MealsStep({ draft, patch, today }: StepProps & { today: Date }) 
       workoutAfter={workoutAfter}
       onWorkoutAfterChange={(workoutAfterId) => patch({ workoutAfterId })}
     />
+  );
+}
+
+/** Optional: FFT in Claude or ChatGPT (MCP). Finishing works the same with or without it. */
+export function AiStep({ bottomOffset }: { bottomOffset: number }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ gap: 16 }}>
+      <Text muted>{t('onboarding.ai.body')}</Text>
+      <Card gap={10}>
+        <ConnectAiButtons bottomOffset={bottomOffset} />
+      </Card>
+      <Text variant="bodyS" muted>
+        {t('onboarding.ai.later')}
+      </Text>
+    </View>
   );
 }
 

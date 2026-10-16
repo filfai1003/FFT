@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, View } from 'react-native';
+import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -16,6 +16,7 @@ import { useTheme } from '@/design/use-theme';
 import { usePlanStore } from '@/lib/plan';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
+import { ConnectAiButtons } from './ConnectAiButtons';
 import {
   claudeCodeCommand,
   MCP_URL,
@@ -24,15 +25,6 @@ import {
   useCreateApiToken,
   useSetApiTokenRevoked,
 } from './api-tokens';
-
-/**
- * AI apps that add FFT by its address and a sign-in with the FFT account (OAuth on the server):
- * no token to copy. Each opens its own page for adding a connector.
- */
-const CONNECTORS = [
-  { id: 'claude', name: 'Claude', url: 'https://claude.ai/settings/connectors' },
-  { id: 'chatgpt', name: 'ChatGPT', url: 'https://chatgpt.com/#settings/Connectors' },
-] as const;
 
 const date = (iso: string) =>
   new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
@@ -58,12 +50,6 @@ export function ApiScreen() {
   const [error, setError] = useState<string | null>(null);
 
   /** Copies the MCP address and opens the app's connectors page: paste, then sign in with FFT. */
-  const connect = async (c: (typeof CONNECTORS)[number]) => {
-    await Clipboard.setStringAsync(MCP_URL);
-    showToast({ message: t('api.connectCopied', { app: c.name }), durationMs: 8000 });
-    await Linking.openURL(c.url).catch(() => undefined);
-  };
-
   const copy = async (text: string) => {
     await Clipboard.setStringAsync(text);
     showToast({ message: t('api.copied') });
@@ -134,15 +120,7 @@ export function ApiScreen() {
               <Text variant="label" muted>
                 {t('api.connectTitle')}
               </Text>
-              {CONNECTORS.map((c) => (
-                <Button
-                  key={c.id}
-                  variant="secondary"
-                  icon="plus"
-                  label={t('api.addTo', { app: c.name })}
-                  onPress={() => void connect(c)}
-                />
-              ))}
+              <ConnectAiButtons />
             </Card>
 
             <Card size="small" gap={0}>
