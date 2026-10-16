@@ -20,6 +20,7 @@ import { useNow } from '@/lib/use-now';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
 import { ReorderSheet } from './ReorderSheet';
+import { SwapSheet } from './SwapSheet';
 import { afterSetInSuperset, supersetLabels, supersetOf } from '@/domain/superset';
 import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
@@ -59,6 +60,7 @@ export function SessionScreen() {
   const [finishing, setFinishing] = useState(false);
   const [menu, setMenu] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [swapping, setSwapping] = useState(false);
   // Planned reps also for workouts started before they were saved in the session.
   const plan = usePlan(active?.planId ?? undefined);
 
@@ -469,6 +471,11 @@ export function SessionScreen() {
 
       <FinishSheet visible={finishing} onClose={() => setFinishing(false)} />
       <ReorderSheet visible={reordering} onClose={() => setReordering(false)} />
+      <SwapSheet
+        visible={swapping}
+        onClose={() => setSwapping(false)}
+        bottomOffset={BOTTOM_NAV_HEIGHT}
+      />
 
       <Sheet
         visible={menu}
@@ -483,6 +490,16 @@ export function SessionScreen() {
           onPress={() => {
             update((s) => removeSet(s, index, sets.length - 1));
             setMenu(false);
+          }}
+        />
+        <Button
+          label={t('session.swap')}
+          variant="secondary"
+          icon="swap"
+          disabled={!exercise}
+          onPress={() => {
+            setMenu(false);
+            setSwapping(true);
           }}
         />
         <Button

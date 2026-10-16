@@ -408,6 +408,42 @@ export function removeSet(
   });
 }
 
+/**
+ * Swap the exercise at `index` for another (machine taken…): with no set done it takes its place
+ * with the same sets, reps, rest, superset link and drop set; otherwise the sets done stay with it
+ * and the remaining ones go to the new exercise, right after. The new one is shown either way.
+ */
+export function swapExercise(
+  s: ActiveSession,
+  index: number,
+  replacement: Omit<NewExercise, 'targetSets' | 'targetReps' | 'restS' | 'supersetWithNext'>,
+  smallPlates = false,
+): ActiveSession {
+  const old = s.exercises[index];
+  if (!old) return s;
+  const done = old.sets.filter((x) => x.done);
+  const left = old.sets.length - done.length;
+  const built = buildExercise(
+    {
+      ...replacement,
+      targetSets: Math.max(1, left),
+      targetReps: old.targetReps,
+      restS: old.restS,
+      supersetWithNext: old.supersetWithNext,
+      drops: replacement.logType === 'weight_reps' ? (old.drops ?? null) : null,
+    },
+    s.weightUnit,
+    smallPlates,
+  );
+  const exercises = [...s.exercises];
+  if (done.length === 0) exercises.splice(index, 1, built);
+  else {
+    // The part already done stays as it was; the link of a superset moves to the new exercise.
+    exercises.splice(index, 1, { ...old, sets: done, supersetWithNext: false }, built);
+  }
+  return { ...s, exercises, index: done.length === 0 ? index : index + 1 };
+}
+
 export function addExercises(s: ActiveSession, added: NewExercise[]): ActiveSession {
   const existing = new Set(s.exercises.map((e) => e.exerciseId));
   const fresh = added

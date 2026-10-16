@@ -490,7 +490,19 @@
     "dropPrevious": "Drop {{n}} · last {{previous}}",
     "dropTarget": "Drop {{n}} · {{reps}} reps",
     "dropWeight": "Set {{n}}, drop {{k}}, weight",
-    "dropReps": "Set {{n}}, drop {{k}}, reps"
+    "dropReps": "Set {{n}}, drop {{k}}, reps",
+    "swap": "Swap exercise",
+    "swapTitle": "Swap {{name}}",
+    "swapIntro": "For this workout only: the plan stays the same. Sets, reps and rest carry over.",
+    "swapPartly_one": "{{count}} set is done: it stays here, the remaining sets move to the new exercise. The plan stays the same.",
+    "swapPartly_other": "{{count}} sets are done: they stay here, the remaining sets move to the new exercise. The plan stays the same.",
+    "swapSearch": "Search all exercises",
+    "swapSameMuscle": "Same muscle: {{muscle}}",
+    "swapSimilar": "Similar",
+    "swapOtherEquipment": "Not where you train",
+    "swapTo": "Swap to {{name}}",
+    "swapNone": "No exercise found.",
+    "swapped": "{{from}} swapped for {{to}}"
   },
   "summary": {
     "done": "Done",

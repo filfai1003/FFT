@@ -92,6 +92,8 @@ before the phase that depends on it.
 
 55. **Drag to reorder.** Lists that can be reordered use one component (`components/ui/reorder`): hold the grip a moment, slide, drop. Day editor exercises have a grip (the Move up / Move down buttons are gone); in the workout the exercise menu has Reorder exercises, a sheet with the same list. Screen readers get move up / move down actions on the grip.
 
+56. **Swap exercise during a workout** (exercise menu → Swap exercise), for that workout only: the plan does not change. Alternatives are the exercises for the same main muscle not already in the workout (`domain/swap.ts`), ranked by: equipment available where the user trains (profile `training_location`: home = dumbbells, bodyweight, bands; bodyweight = bodyweight, bands; gym = all; the others are listed last and marked), the same way of logging, shared secondary muscles; a search finds any exercise by name. With no set done the new exercise takes the place of the old one with the same sets, reps, rest, superset link and drop set; with some sets done they stay with the old exercise and the remaining sets go to the new one, right after it. The new one gets its own PREVIOUS column and suggestion. UNDO puts the workout back as it was.
+
 ## Still open
 
 - Apple / Google sign-in.

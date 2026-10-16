@@ -14,6 +14,7 @@ import {
   restRemainingS,
   sessionRecords,
   setDropField,
+  swapExercise,
   setField,
   startRest,
   toMeters,
@@ -491,5 +492,54 @@ describe('drop sets in the workout', () => {
   it('after every set: every set has its drops', () => {
     const s = addSet(build({ ...press, drops: { on: 'every', reps: ['10'] } }), 0);
     expect(s.exercises[0].sets.map((x) => x.drops?.length ?? 0)).toEqual([1, 1, 1, 1]);
+  });
+});
+
+describe('swap exercise', () => {
+  const ex = (id: string, sets = 3): NewExercise => ({
+    exerciseId: id,
+    name: id,
+    logType: 'weight_reps',
+    imagePath: null,
+    restS: 120,
+    targetSets: sets,
+    targetReps: '6-8',
+    previous: [],
+  });
+  const start = () =>
+    buildSession({
+      planId: null,
+      planDayId: null,
+      dayName: 'Push',
+      cycleNumber: null,
+      outOfOrder: false,
+      weightUnit: 'kg',
+      now,
+      exercises: [ex('bench'), ex('fly')],
+    });
+  const replacement = {
+    exerciseId: 'db-bench',
+    name: 'db-bench',
+    logType: 'weight_reps' as const,
+    imagePath: null,
+    previous: [],
+  };
+
+  it('nothing done yet: the new exercise takes its place with the same sets, reps and rest', () => {
+    const s = swapExercise(start(), 0, replacement);
+    expect(s.exercises.map((e) => e.exerciseId)).toEqual(['db-bench', 'fly']);
+    expect(s.exercises[0]).toMatchObject({ restS: 120, targetReps: '6-8' });
+    expect(s.exercises[0].sets).toHaveLength(3);
+    expect(s.index).toBe(0);
+  });
+
+  it('some sets done: they stay, the remaining ones go to the new exercise right after', () => {
+    let s = start();
+    s = toggleSet(s, 0, 0, now).session;
+    s = swapExercise(s, 0, replacement);
+    expect(s.exercises.map((e) => e.exerciseId)).toEqual(['bench', 'db-bench', 'fly']);
+    expect(s.exercises[0].sets).toHaveLength(1);
+    expect(s.exercises[1].sets).toHaveLength(2);
+    expect(s.index).toBe(1);
   });
 });
