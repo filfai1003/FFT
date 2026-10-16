@@ -286,7 +286,9 @@
     "supersetToggle": "Superset with the next exercise",
     "supersetDetail": "Do them in turn, one rest after both",
     "supersetDetailOn": "Superset {{label}}: in turn, one rest after the round",
-    "supersetLabel": "Superset {{label}}"
+    "supersetLabel": "Superset {{label}}",
+    "reorderLabel": "Move {{name}}",
+    "reorderHint": "Hold and slide to change the order"
   },
   "library": {
     "title": "Library",
@@ -463,7 +465,14 @@
     "setSavedIn": "Set {{n}} of {{label}} saved",
     "supersetIntro": "Superset: one set of each in turn, then rest",
     "upNow": "Next set here",
-    "upNowLabel": "Next set: {{name}}"
+    "upNowLabel": "Next set: {{name}}",
+    "reorder": "Reorder exercises",
+    "reorderHint": "Hold an exercise and slide it to change the order.",
+    "state": {
+      "todo": "To do",
+      "partial": "Started",
+      "done": "Done"
+    }
   },
   "summary": {
     "done": "Done",

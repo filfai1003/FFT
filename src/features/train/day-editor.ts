@@ -108,6 +108,16 @@ export function moveInDay(s: DayEditorState, id: string, delta: -1 | 1): DayEdit
   return { ...s, exercises };
 }
 
+/** Drag and drop: the exercise at `from` goes to `to`, the others shift. */
+export function moveInDayTo(s: DayEditorState, from: number, to: number): DayEditorState {
+  if (from === to || from < 0 || to < 0 || from >= s.exercises.length || to >= s.exercises.length)
+    return s;
+  const exercises = [...s.exercises];
+  const [moved] = exercises.splice(from, 1);
+  exercises.splice(to, 0, moved);
+  return { ...s, exercises };
+}
+
 export function updateInDay(
   s: DayEditorState,
   id: string,

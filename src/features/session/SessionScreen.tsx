@@ -19,6 +19,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
+import { ReorderSheet } from './ReorderSheet';
 import { afterSetInSuperset, supersetLabels, supersetOf } from '@/domain/superset';
 import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
@@ -28,7 +29,6 @@ import {
   formatClock,
   goTo,
   keepLastWeight,
-  moveExercise,
   removeExercise,
   removeSet,
   setField,
@@ -57,6 +57,7 @@ export function SessionScreen() {
   const now = useNow(1000, active != null);
   const [finishing, setFinishing] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [reordering, setReordering] = useState(false);
   // Planned reps also for workouts started before they were saved in the session.
   const plan = usePlan(active?.planId ?? undefined);
 
@@ -463,6 +464,7 @@ export function SessionScreen() {
       </View>
 
       <FinishSheet visible={finishing} onClose={() => setFinishing(false)} />
+      <ReorderSheet visible={reordering} onClose={() => setReordering(false)} />
 
       <Sheet
         visible={menu}
@@ -480,23 +482,13 @@ export function SessionScreen() {
           }}
         />
         <Button
-          label={t('session.moveEarlier')}
+          label={t('session.reorder')}
           variant="secondary"
-          icon="arrowUp"
-          disabled={index === 0}
+          icon="grip"
+          disabled={active.exercises.length < 2}
           onPress={() => {
-            update((s) => moveExercise(s, index, index - 1));
             setMenu(false);
-          }}
-        />
-        <Button
-          label={t('session.moveLater')}
-          variant="secondary"
-          icon="arrowDown"
-          disabled={index >= active.exercises.length - 1}
-          onPress={() => {
-            update((s) => moveExercise(s, index, index + 1));
-            setMenu(false);
+            setReordering(true);
           }}
         />
         <Button

@@ -304,7 +304,10 @@ export function moveExercise(s: ActiveSession, from: number, to: number): Active
   const exercises = [...s.exercises];
   const [moved] = exercises.splice(from, 1);
   exercises.splice(to, 0, moved);
-  return { ...s, exercises, index: to === s.index ? from : s.index === from ? to : s.index };
+  // The exercise on screen stays on screen, wherever it ends up (moves can jump several places).
+  const current = s.exercises[s.index]?.rowId;
+  const index = exercises.findIndex((e) => e.rowId === current);
+  return { ...s, exercises, index: index >= 0 ? index : s.index };
 }
 
 export function goTo(s: ActiveSession, index: number): ActiveSession {

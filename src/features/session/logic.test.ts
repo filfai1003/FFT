@@ -365,3 +365,33 @@ describe('next weight suggestion', () => {
     expect(s.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '80', '80']);
   });
 });
+
+describe('reorder exercises', () => {
+  it('a move of several places keeps the exercise on screen', () => {
+    const ex = (id: string): NewExercise => ({
+      exerciseId: id,
+      name: id,
+      logType: 'weight_reps',
+      imagePath: null,
+      restS: 60,
+      targetSets: 1,
+      previous: [],
+    });
+    const s = goTo(
+      buildSession({
+        planId: null,
+        planDayId: null,
+        dayName: 'x',
+        cycleNumber: null,
+        outOfOrder: false,
+        weightUnit: 'kg',
+        now,
+        exercises: ['a', 'b', 'c', 'd'].map(ex),
+      }),
+      1,
+    );
+    const moved = moveExercise(s, 0, 3);
+    expect(moved.exercises.map((e) => e.exerciseId)).toEqual(['b', 'c', 'd', 'a']);
+    expect(moved.exercises[moved.index].exerciseId).toBe('b');
+  });
+});

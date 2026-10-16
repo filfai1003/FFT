@@ -12,11 +12,14 @@ import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
+import { Icon } from '@/components/ui/Icon';
+import { DragHandle, moveActionDelta, useReorder } from '@/components/ui/reorder';
 import { supersetLabels } from '@/domain/superset';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import {
   moveInDay,
+  moveInDayTo,
   nextPosition,
   openDay,
   openNewDay,
@@ -49,6 +52,11 @@ export function DayEditorScreen() {
   const deleteDay = useDeleteDay();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reorder = useReorder(
+    (state?.exercises ?? []).map((e) => e.id),
+    (from, to) => patch((s) => moveInDayTo(s, from, to)),
+    8,
+  );
 
   // Load once per opening. The picker adds to the same store, so re-opening must not reset it.
   useEffect(() => {
@@ -124,54 +132,83 @@ export function DayEditorScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          {state.exercises.map((e, index) =>
-            state.expandedId === e.id ? (
-              <ExpandedExercise
+          {state.exercises.map((e, index) => {
+            const row = reorder.rowProps(index);
+            return (
+              <View
                 key={e.id}
-                e={e}
-                label={labels[index]}
-                canLink={index < state.exercises.length - 1}
-                canUp={index > 0}
-                canDown={index < state.exercises.length - 1}
-                onChange={(p) => patch((s) => updateInDay(s, e.id, p))}
-                onMove={(d) => patch((s) => moveInDay(s, e.id, d))}
-                onRemove={() => patch((s) => removeFromDay(s, e.id))}
-                onCollapse={() => patch((s) => ({ ...s, expandedId: null }))}
-              />
-            ) : (
-              <Pressable
-                key={e.id}
-                accessibilityRole="button"
-                accessibilityLabel={e.exercise.name}
-                accessibilityHint={t('plan.editExerciseHint')}
-                onPress={() => patch((s) => ({ ...s, expandedId: e.id }))}
-                style={({ pressed }) => ({
-                  minHeight: 60,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingHorizontal: 12,
-                  borderRadius: radius.row + 2,
-                  borderWidth: 1,
-                  borderColor: colors.borderDecorative,
-                  backgroundColor: colors.surfaceAlt,
-                  opacity: pressed ? 0.8 : 1,
-                })}
+                onLayout={row.onLayout}
+                style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 4 }, row.style]}
               >
-                <ExerciseThumb exercise={e.exercise} size={40} />
-                <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="body" numberOfLines={1}>
-                    {e.exercise.name}
-                  </Text>
-                  <Text variant="label" muted>
-                    {labels[index]
-                      ? `${t('plan.supersetLabel', { label: labels[index] })} · ${t('plan.summary', summaryLine(e))}`
-                      : t('plan.summary', summaryLine(e))}
-                  </Text>
+                {/* Hold the grip, then slide the exercise to its new place. */}
+                <DragHandle
+                  {...reorder.handleProps(index)}
+                  accessible
+                  accessibilityRole="adjustable"
+                  accessibilityLabel={t('plan.reorderLabel', { name: e.exercise.name })}
+                  accessibilityHint={t('plan.reorderHint')}
+                  accessibilityActions={[
+                    { name: 'decrement', label: t('plan.moveUp') },
+                    { name: 'increment', label: t('plan.moveDown') },
+                  ]}
+                  onAccessibilityAction={(ev) =>
+                    patch((s) => moveInDay(s, e.id, moveActionDelta(ev.nativeEvent.actionName)))
+                  }
+                  style={{
+                    width: 32,
+                    minHeight: 60,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="grip" size={20} color={colors.textMuted} />
+                </DragHandle>
+                <View style={{ flex: 1 }}>
+                  {state.expandedId === e.id ? (
+                    <ExpandedExercise
+                      e={e}
+                      label={labels[index]}
+                      canLink={index < state.exercises.length - 1}
+                      onChange={(p) => patch((s) => updateInDay(s, e.id, p))}
+                      onRemove={() => patch((s) => removeFromDay(s, e.id))}
+                      onCollapse={() => patch((s) => ({ ...s, expandedId: null }))}
+                    />
+                  ) : (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={e.exercise.name}
+                      accessibilityHint={t('plan.editExerciseHint')}
+                      onPress={() => patch((s) => ({ ...s, expandedId: e.id }))}
+                      style={({ pressed }) => ({
+                        minHeight: 60,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingHorizontal: 12,
+                        borderRadius: radius.row + 2,
+                        borderWidth: 1,
+                        borderColor: colors.borderDecorative,
+                        backgroundColor: colors.surfaceAlt,
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <ExerciseThumb exercise={e.exercise} size={40} />
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text variant="body" numberOfLines={1}>
+                          {e.exercise.name}
+                        </Text>
+                        <Text variant="label" muted>
+                          {labels[index]
+                            ? `${t('plan.supersetLabel', { label: labels[index] })} · ${t('plan.summary', summaryLine(e))}`
+                            : t('plan.summary', summaryLine(e))}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  )}
                 </View>
-              </Pressable>
-            ),
-          )}
+              </View>
+            );
+          })}
         </View>
 
         <Button
@@ -232,14 +269,11 @@ function ExpandedExercise(props: {
   label: string | null;
   /** Not the last exercise: it can be linked with the next one. */
   canLink: boolean;
-  canUp: boolean;
-  canDown: boolean;
   onChange: (
     p: Partial<
       Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext'>
     >,
   ) => void;
-  onMove: (d: -1 | 1) => void;
   onRemove: () => void;
   onCollapse: () => void;
 }) {
@@ -331,27 +365,6 @@ function ExpandedExercise(props: {
         value={e.notes}
         onChangeText={(v) => props.onChange({ notes: v })}
       />
-
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1 }}>
-          <Button
-            variant="secondary"
-            label={t('plan.moveUp')}
-            icon="arrowUp"
-            disabled={!props.canUp}
-            onPress={() => props.onMove(-1)}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            variant="secondary"
-            label={t('plan.moveDown')}
-            icon="arrowDown"
-            disabled={!props.canDown}
-            onPress={() => props.onMove(1)}
-          />
-        </View>
-      </View>
     </Card>
   );
 }

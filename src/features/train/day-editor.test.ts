@@ -6,6 +6,7 @@ import {
   removeFromDay,
   summaryLine,
   updateInDay,
+  moveInDayTo,
 } from './day-editor';
 import type { Exercise } from './exercises';
 import type { PlanDayView } from './plans';
@@ -110,5 +111,14 @@ describe('supersets in the day editor', () => {
     expect(s.exercises.map((e) => e.supersetWithNext)).toEqual([true, false]);
     const off = updateInDay(s, 'pe1', { supersetWithNext: false });
     expect(off.exercises[0].supersetWithNext).toBe(false);
+  });
+});
+
+describe('drag and drop in the day editor', () => {
+  it('moves an exercise several places at once', () => {
+    const s = openDay('p1', day, 1);
+    const moved = moveInDayTo(s, 0, 1);
+    expect(moved.exercises.map((e) => e.id)).toEqual(['pe2', 'pe1']);
+    expect(moveInDayTo(s, 0, 5)).toBe(s);
   });
 });
