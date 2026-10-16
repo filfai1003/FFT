@@ -63,6 +63,9 @@ const maxOf = (values: (number | null)[]) => {
   return v.length ? Math.max(...v) : null;
 };
 
+/** A main set (not a drop): drops count in volume only (DECISIONS 54). */
+const main = (set: Row) => n(set.drop_index ?? 0) === 0;
+
 const e1rm = (set: Row) =>
   set.weight_kg == null || set.reps == null || Number(set.weight_kg) <= 0
     ? null
@@ -72,15 +75,18 @@ function exerciseRecords(sets: DoneSet[], userId: string): Row[] {
   const groups = new Map<string, Row[]>();
   for (const { set } of sets)
     groups.set(String(set.exercise_id), [...(groups.get(String(set.exercise_id)) ?? []), set]);
-  return [...groups].map(([exercise_id, rows]) => ({
-    user_id: userId,
-    exercise_id,
-    actual_max_kg: maxOf(rows.filter((s) => n(s.weight_kg) > 0).map((s) => n(s.weight_kg))),
-    est_1rm_kg: maxOf(rows.map(e1rm)),
-    completed_sets: rows.length,
-    best_reps: maxOf(rows.map((s) => (s.reps == null ? null : n(s.reps)))),
-    best_duration_s: maxOf(rows.map((s) => (s.duration_s == null ? null : n(s.duration_s)))),
-  }));
+  return [...groups].map(([exercise_id, all]) => {
+    const rows = all.filter(main);
+    return {
+      user_id: userId,
+      exercise_id,
+      actual_max_kg: maxOf(rows.filter((s) => n(s.weight_kg) > 0).map((s) => n(s.weight_kg))),
+      est_1rm_kg: maxOf(rows.map(e1rm)),
+      completed_sets: rows.length,
+      best_reps: maxOf(rows.map((s) => (s.reps == null ? null : n(s.reps)))),
+      best_duration_s: maxOf(rows.map((s) => (s.duration_s == null ? null : n(s.duration_s)))),
+    };
+  });
 }
 
 function exerciseE1rmDaily(sets: DoneSet[], t: Tables, userId: string): Row[] {
@@ -97,9 +103,11 @@ function exerciseE1rmDaily(sets: DoneSet[], t: Tables, userId: string): Row[] {
     user_id: userId,
     exercise_id,
     day,
-    best_e1rm_kg: maxOf(rows.map(e1rm)),
-    sets: rows.length,
-    best_weight_kg: maxOf(rows.filter((s) => n(s.weight_kg) > 0).map((s) => n(s.weight_kg))),
+    best_e1rm_kg: maxOf(rows.filter(main).map(e1rm)),
+    sets: rows.filter(main).length,
+    best_weight_kg: maxOf(
+      rows.filter((s) => main(s) && n(s.weight_kg) > 0).map((s) => n(s.weight_kg)),
+    ),
     volume_kg: rows
       .filter((s) => n(s.weight_kg) > 0 && n(s.reps) > 0)
       .reduce((a, s) => a + n(s.weight_kg) * n(s.reps), 0),
@@ -121,11 +129,13 @@ export function lastSets(t: Tables, exerciseIds: string[]): Row[] {
     .sort(
       (a, b) =>
         String(a.exercise_id).localeCompare(String(b.exercise_id)) ||
-        n(a.set_index) - n(b.set_index),
+        n(a.set_index) - n(b.set_index) ||
+        n(a.drop_index ?? 0) - n(b.drop_index ?? 0),
     )
     .map((s) => ({
       exercise_id: s.exercise_id,
       set_index: s.set_index,
+      drop_index: n(s.drop_index ?? 0),
       weight_kg: s.weight_kg,
       reps: s.reps,
       duration_s: s.duration_s,

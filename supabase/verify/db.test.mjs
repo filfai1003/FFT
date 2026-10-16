@@ -838,6 +838,12 @@ describe('personal API and MCP (server/api.js)', () => {
               { exercise: 'Barbell bench press', sets: 3, reps: '8-10', rest_s: 120 },
               { exercise: 'Cable fly', sets: 3, reps: '12', rest_s: 0, superset_with_next: true },
               { exercise: 'Push-up', sets: 3, reps: '15', rest_s: 90, superset_with_next: true },
+              {
+                exercise: 'Chest press machine',
+                sets: 3,
+                reps: '8-10',
+                drops: { on: 'last', reps: ['10', '12'] },
+              },
             ],
           },
         ],
@@ -855,8 +861,9 @@ describe('personal API and MCP (server/api.js)', () => {
     // Superset: fly + push-up; the last exercise cannot be linked with a next one.
     assert.deepEqual(
       made.days[0].exercises.map((e) => e.superset_with_next ?? false),
-      [false, true, false],
+      [false, true, true, false],
     );
+    assert.deepEqual(made.days[0].exercises[3].drops, { on: 'last', reps: ['10', '12'] });
     // Changing it keeps a backup copy, archived.
     const again = await tool('propose_plans', {
       workout_plan: { ...made, name: 'API plan v2' },
@@ -1169,5 +1176,36 @@ describe('error reporting (report_error)', () => {
     assert.equal(Number(groups.rows[0].n), 2);
     assert.equal(Number(groups.rows[0].users), 2);
     assert.equal(Number(groups.rows[1].users), 0);
+  });
+});
+
+describe('drop sets (drop_index)', () => {
+  it('drops count in volume only: never the max, the 1RM or the set count', async () => {
+    await as(B);
+    await db.exec(`
+      insert into public.workout_sessions (id, started_at, status) values
+        ('77777777-0000-0000-0000-000000000001', '2026-10-12 10:00+00', 'done');
+      insert into public.session_sets (session_id, exercise_id, set_index, drop_index, weight_kg, reps, completed_at)
+      select '77777777-0000-0000-0000-000000000001', e.id, 0, d.k, d.kg, d.reps, now()
+      from (values (0, 50, 8), (1, 90, 10)) as d(k, kg, reps)
+      join public.exercises e on e.slug = 'pec-deck' and e.owner_id is null;
+    `);
+    const r = await one(`
+      select r.actual_max_kg, r.completed_sets from public.exercise_records r
+      join public.exercises e on e.id = r.exercise_id where e.slug = 'pec-deck'`);
+    assert.equal(Number(r.actual_max_kg), 50);
+    assert.equal(Number(r.completed_sets), 1);
+    const d = await one(`
+      select v.sets, v.volume_kg from public.exercise_e1rm_daily v
+      join public.exercises e on e.id = v.exercise_id where e.slug = 'pec-deck'`);
+    assert.equal(Number(d.sets), 1);
+    assert.equal(Number(d.volume_kg), 50 * 8 + 90 * 10);
+    const last = await db.query(
+      `select drop_index from public.last_sets(array(select id from public.exercises where slug = 'pec-deck' and owner_id is null))`,
+    );
+    assert.deepEqual(
+      last.rows.map((x) => Number(x.drop_index)),
+      [0, 1],
+    );
   });
 });

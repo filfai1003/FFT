@@ -6,6 +6,10 @@ import { getSupabase } from '@/lib/supabase';
 export type RawSet = {
   exercise_id: string;
   set_index: number;
+  /** 0 = the set itself, 1, 2… = its drops (drop set). */
+  drop_index?: number | null;
+  /** Filled by nestDrops: the drops done after this set. */
+  drops?: RawSet[];
   weight_kg: number | null;
   reps: number | null;
   duration_s: number | null;
@@ -56,13 +60,28 @@ export type SessionView = {
   exercises: SessionExerciseSets[];
 };
 
+/**
+ * Drop rows go under their set (same set_index), so a drop set counts as one set and is shown as
+ * "80×8 ↘ 60×10". Drops still count in volume.
+ */
+export function nestDrops<T extends { set_index: number; drop_index?: number | null; drops?: T[] }>(
+  rows: T[],
+): T[] {
+  const mains = rows.filter((r) => !r.drop_index).map((r) => ({ ...r, drops: [] as T[] }));
+  for (const d of rows
+    .filter((r) => (r.drop_index ?? 0) > 0)
+    .sort((a, b) => (a.drop_index ?? 0) - (b.drop_index ?? 0)))
+    mains.find((m) => m.set_index === d.set_index)?.drops.push(d);
+  return mains;
+}
+
 export function sessionStats(raw: RawSession): SessionStats {
   const done = raw.session_sets.filter((s) => s.completed_at != null && s.deleted_at == null);
   const volume = done.reduce((sum, s) => sum + Number(s.weight_kg ?? 0) * (s.reps ?? 0), 0);
   const minutes = raw.ended_at
     ? Math.max(1, Math.round((Date.parse(raw.ended_at) - Date.parse(raw.started_at)) / 60000))
     : 0;
-  return { minutes, volumeKg: Math.round(volume), sets: done.length };
+  return { minutes, volumeKg: Math.round(volume), sets: done.filter((s) => !s.drop_index).length };
 }
 
 export function toSessionView(raw: RawSession): SessionView {
@@ -79,7 +98,7 @@ export function toSessionView(raw: RawSession): SessionView {
     .map(([exerciseId, sets]) => ({
       exerciseId,
       position: order.get(exerciseId) ?? 999,
-      sets: [...sets].sort((a, b) => a.set_index - b.set_index),
+      sets: nestDrops([...sets].sort((a, b) => a.set_index - b.set_index)),
     }))
     .sort((a, b) => a.position - b.position);
   return {
@@ -98,7 +117,7 @@ export function toSessionView(raw: RawSession): SessionView {
 }
 
 const SESSION_SELECT =
-  'id, day_name, started_at, ended_at, out_of_order, feeling, notes, plan_id, plan_day_id, workout_plans(name), session_sets(exercise_id, set_index, weight_kg, reps, duration_s, distance_m, completed_at, deleted_at), session_exercises(exercise_id, position, deleted_at)';
+  'id, day_name, started_at, ended_at, out_of_order, feeling, notes, plan_id, plan_day_id, workout_plans(name), session_sets(exercise_id, set_index, drop_index, weight_kg, reps, duration_s, distance_m, completed_at, deleted_at), session_exercises(exercise_id, position, deleted_at)';
 
 export const historyKeys = {
   all: ['history'] as const,
@@ -179,7 +198,7 @@ export function useExerciseSessions(exerciseId: string | undefined, limit = 5) {
       const { data, error } = await getSupabase()
         .from('session_sets')
         .select(
-          'session_id, set_index, weight_kg, reps, duration_s, distance_m, workout_sessions!inner(id, day_name, started_at, status, deleted_at)',
+          'session_id, set_index, drop_index, weight_kg, reps, duration_s, distance_m, workout_sessions!inner(id, day_name, started_at, status, deleted_at)',
         )
         .eq('exercise_id', exerciseId!)
         .not('completed_at', 'is', null)
@@ -191,6 +210,8 @@ export function useExerciseSessions(exerciseId: string | undefined, limit = 5) {
       type Row = {
         session_id: string;
         set_index: number;
+        drop_index?: number | null;
+        drops?: Row[];
         weight_kg: number | null;
         reps: number | null;
         duration_s: number | null;
@@ -212,6 +233,7 @@ export function useExerciseSessions(exerciseId: string | undefined, limit = 5) {
         bySession.set(r.session_id, s);
       }
       return [...bySession.values()]
+        .map((s) => ({ ...s, sets: nestDrops(s.sets) }))
         .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
         .slice(0, limit);
     },

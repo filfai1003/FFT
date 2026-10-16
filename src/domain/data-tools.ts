@@ -51,7 +51,8 @@ export const ABOUT: Record<string, string> = {
   plan_exercises: 'Exercises of a plan day: target sets, reps, rest.',
   workout_sessions: 'Workouts: start/end time, plan day, feeling 1-5, notes, status (done counts).',
   session_exercises: 'Exercises done in a workout, in order.',
-  session_sets: 'Sets of a workout: weight, reps, time, distance; completed_at set = done.',
+  session_sets:
+    'Sets of a workout: weight, reps, time, distance; completed_at set = done. drop_index 0 = the set, 1, 2… = its drops (drop set, same set_index).',
   exercise_records: 'Per exercise: heaviest weight, best estimated 1RM, completed sets, best reps.',
   exercise_e1rm_daily: 'Per exercise and day: best estimated 1RM, best weight, sets, volume.',
 };

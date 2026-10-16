@@ -325,20 +325,22 @@ export function formatSessionDate(iso: string, timeZone: string): string {
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+type SetValues = {
+  weight_kg: number | null;
+  reps: number | null;
+  duration_s: number | null;
+  distance_m: number | null;
+  /** Its drops (drop set), shown after it: "80×8 ↘ 60×10". */
+  drops?: SetValues[];
+};
+
 /** "80×5" / "10" / "1:00" for one set of any kind of exercise. */
-export function setLabel(
-  e: Pick<Exercise, 'logType'>,
-  s: {
-    weight_kg: number | null;
-    reps: number | null;
-    duration_s: number | null;
-    distance_m: number | null;
-  },
-  unit: WeightUnit,
-): string {
+export function setLabel(e: Pick<Exercise, 'logType'>, s: SetValues, unit: WeightUnit): string {
   switch (e.logType) {
     case 'weight_reps':
-      return `${trimNumber(displayWeight(Number(s.weight_kg ?? 0), unit))}×${s.reps ?? 0}`;
+      return [s, ...(s.drops ?? [])]
+        .map((x) => `${trimNumber(displayWeight(Number(x.weight_kg ?? 0), unit))}×${x.reps ?? 0}`)
+        .join(' ↘ ');
     case 'reps':
       return String(s.reps ?? 0);
     case 'time':

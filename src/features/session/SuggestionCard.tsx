@@ -24,7 +24,26 @@ export function SuggestionCard({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const g = exercise.suggestion;
-  if (!g) return null;
+  const drops = (exercise.dropSuggestions ?? []).map((d, k) =>
+    d
+      ? d.kind === 'same'
+        ? t('session.suggest.dropSame', { n: k + 1, weight: trimNumber(d.to) })
+        : t('session.suggest.dropTo', { n: k + 1, from: trimNumber(d.from), to: trimNumber(d.to) })
+      : null,
+  );
+  const dropLine = drops.some(Boolean) ? drops.filter(Boolean).join(' · ') : null;
+  if (!g && !dropLine) return null;
+  if (!g)
+    return (
+      <Card size="small" gap={2}>
+        <Text variant="label" muted>
+          {t('session.suggest.drops')}
+        </Text>
+        <Text variant="bodyS" numeric>
+          {`${dropLine} ${unit}`}
+        </Text>
+      </Card>
+    );
   const w = (n: number) => `${trimNumber(n)} ${unit}`;
   const step = trimNumber(Math.abs(g.to - g.from));
   const why = t('session.suggest.last', { weight: w(g.from), reps: g.reps.join(', ') });
@@ -59,6 +78,11 @@ export function SuggestionCard({
           <Text variant="label" muted numeric>
             {reason}
           </Text>
+          {dropLine ? (
+            <Text variant="label" numeric>
+              {`${t('session.suggest.drops')}: ${dropLine} ${unit}`}
+            </Text>
+          ) : null}
         </View>
         {g.kind !== 'same' ? (
           <Pressable

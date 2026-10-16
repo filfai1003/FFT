@@ -172,3 +172,38 @@ describe('supersets in the format', () => {
     expect(r.workout?.days[0].exercises.map((e) => e.supersetWithNext)).toEqual([true, false]);
   });
 });
+
+describe('drop sets in the format', () => {
+  it('reads drops, keeps at most 4, ignores anything malformed', () => {
+    const r = parseBundle({
+      workout_plan: {
+        name: 'P',
+        days: [
+          {
+            name: 'Push',
+            exercises: [
+              {
+                exercise: 'Chest press machine',
+                sets: 3,
+                reps: '8',
+                drops: { on: 'every', reps: [10, '12'] },
+              },
+              {
+                exercise: 'Pec deck',
+                sets: 3,
+                reps: '12',
+                drops: { reps: ['8', '8', '8', '8', '8'] },
+              },
+              { exercise: 'Cable fly', sets: 3, reps: '12', drops: 'yes' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(r.workout?.days[0].exercises.map((e) => e.drops)).toEqual([
+      { on: 'every', reps: ['10', '12'] },
+      { on: 'last', reps: ['8', '8', '8', '8'] },
+      null,
+    ]);
+  });
+});

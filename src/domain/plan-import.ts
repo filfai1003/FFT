@@ -1,12 +1,13 @@
 import { muscles, type Muscle } from './muscles';
 import { macroKcal, MIN_DAILY_KCAL } from './nutrition';
+import { MAX_DROPS, type DropPlan } from './dropset';
 
 /**
  * The exchange format of workout plans and diets between the app and an AI (manual copy & paste
  * or the chat). Plain JSON, snake_case, either part optional:
  *
  *   { "workout_plan": { "name", "days": [ { "name", "exercises": [ { "exercise", "sets", "reps",
- *       "rest_s", "notes", "superset_with_next" } ] } ] },
+ *       "rest_s", "notes", "superset_with_next", "drops": { "on", "reps" } } ] } ] },
  *     "diet_plan": { "daily": { "kcal", "protein_g", "carbs_g", "fat_g" },
  *       "meals": [ { "name", "main", "description", "kcal", "protein_g", "carbs_g", "fat_g" } ],
  *       "workout_after": "<meal name>" } }
@@ -30,6 +31,8 @@ export type ImportedExercise = {
   restS: number;
   /** Linked with the next exercise of the day: a superset (domain/superset.ts). */
   supersetWithNext: boolean;
+  /** Drop set (domain/dropset.ts), or null. */
+  drops: DropPlan | null;
   notes: string;
   /** Only needed for exercises that are not in the catalogue (they are created). */
   newExercise: { primaryMuscle: Muscle; equipment: string; logType: ImportLogType } | null;
@@ -141,9 +144,21 @@ function parseExercise(raw: unknown, where: string, warnings: string[]): Importe
     reps: text(raw.reps, 20) || '8-12',
     restS: clampInt(raw.rest_s, 0, 1800, 90),
     supersetWithNext: raw.superset_with_next === true,
+    drops: parseDrops(raw.drops),
     notes: text(raw.notes, 200),
     newExercise,
   };
+}
+
+/** {"on": "last" | "every", "reps": ["10", "12"]} -> a drop set; anything else -> none. */
+function parseDrops(raw: unknown): DropPlan | null {
+  if (!isObject(raw) || !Array.isArray(raw.reps)) return null;
+  const reps = raw.reps
+    .map((r) => text(typeof r === 'number' ? String(r) : r, 20))
+    .filter(Boolean)
+    .slice(0, MAX_DROPS);
+  if (reps.length === 0) return null;
+  return { on: raw.on === 'every' ? 'every' : 'last', reps };
 }
 
 function parseWorkout(raw: unknown, errors: string[], warnings: string[]): ImportedWorkout | null {
@@ -323,6 +338,7 @@ export function formatRules(exercises: readonly string[]): string {
     'Rules:',
     `- workout_plan.days: 1 to 14 days, each with 1 to 20 exercises. sets 1-20, reps a string like "8-12", rest_s 0-1800 seconds.`,
     '- "superset_with_next": true on an exercise links it with the NEXT exercise of the same day: a superset, done in turn with one rest after the round (A1 + A2; several in a row make a bigger one). Leave it out for normal exercises; the last exercise of a day cannot have it.',
+    '- "drops" (optional) makes a drop set: {"on": "last" (after the last set) or "every" (after every set), "reps": ["10", "12"] (target reps of each drop, 1 to 4 drops)}. The weight of each drop is chosen during the workout. Leave it out for normal exercises; only for weight x reps exercises.',
     '- "exercise" must be one of the names in the EXERCISE LIST below, spelled exactly. If you really need another exercise, add "primary_muscle" (chest, back, shoulders, biceps, triceps, legs, glutes, abs), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type" (weight_reps, reps, time, distance_time) to that exercise.',
     '- diet_plan.mode: "fixed_meals" when the user wants set meals to follow (meals are required), or "tracking" when they only want a daily calorie and macro target and will log what they eat themselves (then leave "meals" out).',
     '- diet_plan.daily.kcal must be at least 1500 and the macros must match it (4 kcal per g of protein and carbs, 9 per g of fat). Never go below 1500 kcal or more than 25% under the maintenance calories.',

@@ -31,6 +31,7 @@ import {
   keepLastWeight,
   removeExercise,
   removeSet,
+  setDropField,
   setField,
   startRest,
   toggleSet,
@@ -256,6 +257,9 @@ export function SessionScreen() {
               large={oneHand}
               onChange={(setIndex, field, value) => onChange(setIndex, field, value, i)}
               onToggle={(setIndex) => onToggle(setIndex, i)}
+              onDropChange={(setIndex, k, field, value) =>
+                update((s) => setDropField(s, i, setIndex, k, field, value))
+              }
             />
           ))}
           <Pressable

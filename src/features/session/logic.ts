@@ -6,7 +6,14 @@ import {
   type LoggedSet,
 } from '@/domain/strength';
 import { parseDecimal } from '@/domain/numbers';
-import { suggestNextWeight, type Suggestion } from '@/domain/progression';
+import { stepFor, suggestNextWeight, type Suggestion } from '@/domain/progression';
+import {
+  firstDropWeight,
+  hasDrops,
+  suggestDrop,
+  type DropPlan,
+  type DropSuggestion,
+} from '@/domain/dropset';
 import { displayWeight, storedWeight, type WeightUnit } from '@/domain/units';
 import type { LogType } from '@/features/train/exercises';
 import { newId } from '@/lib/uuid';
@@ -24,6 +31,19 @@ export type SessionSet = {
   done: boolean;
   completedAt: string | null;
   /** "24 × 10" from the previous session, or null. */
+  previous: string | null;
+  /** The drops after this set (drop set), done with it: weight and reps of each. */
+  drops?: DropEntry[];
+};
+
+export type DropEntry = {
+  /** Id of its session_sets row (drop_index = position + 1). */
+  id: string;
+  weight: string;
+  reps: string;
+  /** Target reps from the plan ("10"). */
+  target: string;
+  /** "50 × 10" the same drop last time, or null. */
   previous: string | null;
 };
 
@@ -44,6 +64,10 @@ export type SessionExercise = {
    * `to`. `kept`: the user chose last time's weight instead.
    */
   suggestion?: Suggestion & { kept?: boolean };
+  /** Drop set of the plan (null or absent = none). */
+  drops?: DropPlan | null;
+  /** Suggested weight of each drop (by drop position), from the same drop last time. */
+  dropSuggestions?: (DropSuggestion | null)[];
   sets: SessionSet[];
 };
 
@@ -68,6 +92,8 @@ export type PreviousSet = {
   reps: number | null;
   durationS: number | null;
   distanceM: number | null;
+  /** Its drops last time, in order. */
+  drops?: { weightKg: number | null; reps: number | null }[];
 };
 
 export function emptySet(
@@ -130,6 +156,7 @@ export type NewExercise = {
   /** Equipment of the exercise: decides the step of the suggested weight. */
   equipment?: string;
   supersetWithNext?: boolean;
+  drops?: DropPlan | null;
   previous: PreviousSet[];
 };
 
@@ -155,6 +182,23 @@ export function buildExercise(
   const sets = Array.from({ length: e.targetSets }, (_, i) =>
     emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit),
   );
+  // Drop sets: each drop has its own suggestion, from the same drop last time (not the main weight).
+  const drops = e.logType === 'weight_reps' && e.drops?.reps.length ? e.drops : null;
+  const lastDrops = [...e.previous].reverse().find((p) => p.drops?.length)?.drops ?? [];
+  const dropSuggestions = drops
+    ? drops.reps.map((target, k) => {
+        const p = lastDrops[k];
+        return suggestDrop({
+          previous: p
+            ? { weight: p.weightKg != null ? displayWeight(p.weightKg, unit) : null, reps: p.reps }
+            : undefined,
+          target,
+          equipment: e.equipment,
+          unit,
+          smallPlates,
+        });
+      })
+    : undefined;
   return {
     rowId: newId(),
     exerciseId: e.exerciseId,
@@ -165,9 +209,81 @@ export function buildExercise(
     targetReps,
     supersetWithNext: e.supersetWithNext ?? false,
     suggestion,
+    drops,
+    dropSuggestions,
     // Working sets start at the suggested weight (warm-ups at a lighter one stay as they were).
-    sets: suggestion ? withWeight(sets, suggestion.from, suggestion.to) : sets,
+    sets: withDrops(
+      suggestion ? withWeight(sets, suggestion.from, suggestion.to) : sets,
+      drops,
+      dropSuggestions,
+      e.previous,
+      unit,
+      stepFor(e.equipment, unit, smallPlates) ?? 2.5,
+    ),
   };
+}
+
+/** Puts the drops on the sets that have them, pre-filled: suggestion, last time, or about -20%. */
+function withDrops(
+  sets: SessionSet[],
+  drops: DropPlan | null,
+  suggestions: (DropSuggestion | null)[] | undefined,
+  previous: PreviousSet[],
+  unit: WeightUnit,
+  step: number,
+): SessionSet[] {
+  if (!drops) return sets;
+  return sets.map((x, i) => {
+    if (!hasDrops(drops, i, sets.length)) return x;
+    const prev = (previous[i] ?? previous[previous.length - 1])?.drops ?? [];
+    const main = parseDecimal(x.weight) ?? 0;
+    return {
+      ...x,
+      drops: drops.reps.map((target, k) => {
+        const p = prev[k];
+        const last = p?.weightKg != null ? displayWeight(p.weightKg, unit) : null;
+        const weight = suggestions?.[k]?.to ?? last ?? firstDropWeight(main, k + 1, step);
+        return {
+          id: newId(),
+          weight: weight != null ? trimNumber(weight) : '',
+          reps: '',
+          target,
+          previous: last != null && p?.reps != null ? `${trimNumber(last)} × ${p.reps}` : null,
+        };
+      }),
+    };
+  });
+}
+
+/** A new set of an exercise with drops gets them (after every set), or takes them (after the last). */
+function dropsForNewSet(e: SessionExercise, sets: SessionSet[]): SessionSet[] {
+  if (!e.drops?.reps.length || sets.length < 2) return sets;
+  const before = sets[sets.length - 2];
+  const fresh = (d: DropEntry[] | undefined) => d?.map((x) => ({ ...x, id: newId(), reps: '' }));
+  const added = { ...sets[sets.length - 1], drops: fresh(before.drops) };
+  if (e.drops.on === 'every') return [...sets.slice(0, -1), added];
+  // After the last set only: the set that was last gives them up if it is not done yet.
+  if (before.done) return sets;
+  return [...sets.slice(0, -2), { ...before, drops: undefined }, added];
+}
+
+/** Typing in a drop: weight or reps of drop `k` of a set. */
+export function setDropField(
+  s: ActiveSession,
+  exerciseIndex: number,
+  setIndex: number,
+  k: number,
+  field: 'weight' | 'reps',
+  value: string,
+): ActiveSession {
+  return mapExercise(s, exerciseIndex, (e) => ({
+    ...e,
+    sets: e.sets.map((x, i) =>
+      i === setIndex && x.drops
+        ? { ...x, drops: x.drops.map((d, j) => (j === k ? { ...d, [field]: value } : d)) }
+        : x,
+    ),
+  }));
 }
 
 /** Sets not done yet that are at `from` move to `to`. */
@@ -270,8 +386,9 @@ export function addSet(s: ActiveSession, exerciseIndex: number): ActiveSession {
       weight: last?.weight ?? '',
       duration: last?.duration ?? '',
       distance: last?.distance ?? '',
+      drops: undefined,
     };
-    return { ...e, sets: [...e.sets, next] };
+    return { ...e, sets: dropsForNewSet(e, [...e.sets, next]) };
   });
 }
 
@@ -280,10 +397,15 @@ export function removeSet(
   exerciseIndex: number,
   setIndex: number,
 ): ActiveSession {
-  return mapExercise(s, exerciseIndex, (e) => ({
-    ...e,
-    sets: e.sets.filter((_, i) => i !== setIndex),
-  }));
+  return mapExercise(s, exerciseIndex, (e) => {
+    const removed = e.sets[setIndex];
+    const sets = e.sets.filter((_, i) => i !== setIndex);
+    // Drops after the last set: the new last set takes them over.
+    const last = sets[sets.length - 1];
+    if (e.drops?.on === 'last' && removed?.drops && last && !last.drops && !last.done)
+      sets[sets.length - 1] = { ...last, drops: removed.drops };
+    return { ...e, sets };
+  });
 }
 
 export function addExercises(s: ActiveSession, added: NewExercise[]): ActiveSession {
@@ -371,6 +493,10 @@ export function totals(s: ActiveSession, endedAt: Date): SessionTotals {
       for (const x of doneHere) {
         volume +=
           storedWeight(parseDecimal(x.weight) ?? 0, s.weightUnit) * (parseDecimal(x.reps) ?? 0);
+        // Drops count in volume (and only there).
+        for (const d of x.drops ?? [])
+          volume +=
+            storedWeight(parseDecimal(d.weight) ?? 0, s.weightUnit) * (parseDecimal(d.reps) ?? 0);
       }
     }
   }
@@ -491,6 +617,7 @@ export function toRows(
     session_id: string;
     exercise_id: string;
     set_index: number;
+    drop_index: number;
     weight_kg: number | null;
     reps: number | null;
     duration_s: number | null;
@@ -518,6 +645,7 @@ export function toRows(
         session_id: s.id,
         exercise_id: e.exerciseId,
         set_index: i,
+        drop_index: 0,
         weight_kg:
           e.logType === 'weight_reps'
             ? storedWeight(parseDecimal(x.weight) ?? 0, s.weightUnit)
@@ -532,6 +660,25 @@ export function toRows(
           e.logType === 'time' || e.logType === 'distance_time' ? parseDuration(x.duration) : null,
         distance_m: e.logType === 'distance_time' ? toMeters(x.distance) : null,
         completed_at: x.completedAt ?? meta.endedAt.toISOString(),
+      });
+      // Each drop that was filled in is a row of its own, next to its set.
+      (x.drops ?? []).forEach((d, k) => {
+        const w = parseDecimal(d.weight);
+        const r = parseDecimal(d.reps);
+        if (w == null && r == null) return;
+        sets.push({
+          id: d.id,
+          user_id: userId,
+          session_id: s.id,
+          exercise_id: e.exerciseId,
+          set_index: i,
+          drop_index: k + 1,
+          weight_kg: storedWeight(w ?? 0, s.weightUnit),
+          reps: r != null ? Math.round(r) : null,
+          duration_s: null,
+          distance_m: null,
+          completed_at: x.completedAt ?? meta.endedAt.toISOString(),
+        });
       });
     });
   });

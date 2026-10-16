@@ -55,6 +55,8 @@ type Props = {
   large: boolean;
   onChange: (index: number, field: SetField, value: string) => void;
   onToggle: (index: number) => void;
+  /** Typing in drop `k` of this set (drop set). */
+  onDropChange?: (index: number, k: number, field: 'weight' | 'reps', value: string) => void;
 };
 
 export const SetRow = memo(function SetRow({
@@ -64,12 +66,13 @@ export const SetRow = memo(function SetRow({
   large,
   onChange,
   onToggle,
+  onDropChange,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const n = index + 1;
   const check = large ? 56 : 44;
-  return (
+  const row = (
     <View
       style={{
         flexDirection: 'row',
@@ -121,6 +124,49 @@ export const SetRow = memo(function SetRow({
       >
         <Icon name="check" size={22} color={set.done ? colors.bg : colors.textMuted} />
       </Pressable>
+    </View>
+  );
+  if (!set.drops?.length) return row;
+  return (
+    <View>
+      {row}
+      {set.drops.map((d, k) => (
+        <View
+          key={d.id}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 6 }}
+        >
+          <Text variant="label" muted style={{ width: 30, textAlign: 'right' }}>
+            {'↳'}
+          </Text>
+          <Text variant="label" muted style={{ flex: 1 }} numberOfLines={2}>
+            {d.previous
+              ? t('session.dropPrevious', { n: k + 1, previous: d.previous })
+              : t('session.dropTarget', { n: k + 1, reps: d.target })}
+          </Text>
+          <View style={{ width: 70 }}>
+            <Input
+              variant="compact"
+              accessibilityLabel={t('session.dropWeight', { n, k: k + 1 })}
+              value={d.weight}
+              onChangeText={(v) => onDropChange?.(index, k, 'weight', v)}
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+            />
+          </View>
+          <View style={{ width: 60 }}>
+            <Input
+              variant="compact"
+              accessibilityLabel={t('session.dropReps', { n, k: k + 1 })}
+              value={d.reps}
+              placeholder={d.target}
+              onChangeText={(v) => onDropChange?.(index, k, 'reps', v)}
+              keyboardType="number-pad"
+              selectTextOnFocus
+            />
+          </View>
+          <View style={{ width: check }} />
+        </View>
+      ))}
     </View>
   );
 });

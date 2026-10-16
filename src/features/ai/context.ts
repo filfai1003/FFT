@@ -22,6 +22,7 @@ export function exportWorkoutPlan(plan: PlanView) {
         rest_s: e.restS,
         notes: e.notes ?? '',
         ...(e.supersetWithNext ? { superset_with_next: true } : {}),
+        ...(e.drops ? { drops: e.drops } : {}),
       })),
     })),
   };

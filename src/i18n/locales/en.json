@@ -288,7 +288,18 @@
     "supersetDetailOn": "Superset {{label}}: in turn, one rest after the round",
     "supersetLabel": "Superset {{label}}",
     "reorderLabel": "Move {{name}}",
-    "reorderHint": "Hold and slide to change the order"
+    "reorderHint": "Hold and slide to change the order",
+    "dropSet": "Drop set",
+    "dropOff": "Off",
+    "dropLast": "Last set",
+    "dropEvery": "Every set",
+    "dropReps": "Drop {{n}} · reps",
+    "removeDrop": "Remove drop {{n}}",
+    "addDrop": "Add a drop",
+    "dropLastDetail": "After the last set: lower the weight and go on, no rest between drops",
+    "dropEveryDetail": "After every set: lower the weight and go on, no rest between drops",
+    "dropSummary_one": "{{count}} drop",
+    "dropSummary_other": "{{count}} drops"
   },
   "library": {
     "title": "Library",
@@ -455,7 +466,10 @@
       "keep": "Keep {{weight}}",
       "use": "Use {{weight}}",
       "keepLabel": "Keep last time's weight, {{weight}}",
-      "useLabel": "Use the suggested weight, {{weight}}"
+      "useLabel": "Use the suggested weight, {{weight}}",
+      "drops": "Drops",
+      "dropTo": "{{n}}: {{from}} → {{to}}",
+      "dropSame": "{{n}}: {{weight}} again"
     },
     "restLiveTitle": "Resting",
     "restLiveBody": "Next set when the timer ends",
@@ -472,7 +486,11 @@
       "todo": "To do",
       "partial": "Started",
       "done": "Done"
-    }
+    },
+    "dropPrevious": "Drop {{n}} · last {{previous}}",
+    "dropTarget": "Drop {{n}} · {{reps}} reps",
+    "dropWeight": "Set {{n}}, drop {{k}}, weight",
+    "dropReps": "Set {{n}}, drop {{k}}, reps"
   },
   "summary": {
     "done": "Done",

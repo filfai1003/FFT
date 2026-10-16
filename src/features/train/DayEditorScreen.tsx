@@ -15,6 +15,8 @@ import { Toggle } from '@/components/ui/Toggle';
 import { Icon } from '@/components/ui/Icon';
 import { DragHandle, moveActionDelta, useReorder } from '@/components/ui/reorder';
 import { supersetLabels } from '@/domain/superset';
+import { MAX_DROPS, type DropPlan } from '@/domain/dropset';
+import { Segmented } from '@/components/ui/Segmented';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import {
@@ -198,9 +200,17 @@ export function DayEditorScreen() {
                           {e.exercise.name}
                         </Text>
                         <Text variant="label" muted>
-                          {labels[index]
-                            ? `${t('plan.supersetLabel', { label: labels[index] })} · ${t('plan.summary', summaryLine(e))}`
-                            : t('plan.summary', summaryLine(e))}
+                          {[
+                            labels[index]
+                              ? t('plan.supersetLabel', { label: labels[index] })
+                              : null,
+                            t('plan.summary', summaryLine(e)),
+                            e.drops?.reps.length
+                              ? t('plan.dropSummary', { count: e.drops.reps.length })
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         </Text>
                       </View>
                     </Pressable>
@@ -271,7 +281,10 @@ function ExpandedExercise(props: {
   canLink: boolean;
   onChange: (
     p: Partial<
-      Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext'>
+      Pick<
+        DayDraftExercise,
+        'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext' | 'drops'
+      >
     >,
   ) => void;
   onRemove: () => void;
@@ -341,6 +354,10 @@ function ExpandedExercise(props: {
         />
       </View>
 
+      {e.exercise.logType === 'weight_reps' ? (
+        <DropSetEditor drops={e.drops} onChange={(drops) => props.onChange({ drops })} />
+      ) : null}
+
       {props.canLink ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ flex: 1, gap: 2 }}>
@@ -366,5 +383,79 @@ function ExpandedExercise(props: {
         onChangeText={(v) => props.onChange({ notes: v })}
       />
     </Card>
+  );
+}
+
+/** Drop set of a plan exercise: off, after the last set or after every set; target reps per drop. */
+function DropSetEditor({
+  drops,
+  onChange,
+}: {
+  drops: DropPlan | null;
+  onChange: (drops: DropPlan | null) => void;
+}) {
+  const { t } = useTranslation();
+  const mode = drops ? drops.on : 'off';
+  return (
+    <View style={{ gap: 8 }}>
+      <Text variant="label" muted>
+        {t('plan.dropSet')}
+      </Text>
+      <Segmented
+        accessibilityLabel={t('plan.dropSet')}
+        value={mode}
+        onChange={(v) =>
+          onChange(v === 'off' ? null : { on: v, reps: drops?.reps.length ? drops.reps : ['10'] })
+        }
+        options={[
+          { value: 'off', label: t('plan.dropOff') },
+          { value: 'last', label: t('plan.dropLast') },
+          { value: 'every', label: t('plan.dropEvery') },
+        ]}
+      />
+      {drops ? (
+        <>
+          {drops.reps.map((r, k) => (
+            <View key={k} style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  variant="compact"
+                  label={t('plan.dropReps', { n: k + 1 })}
+                  value={r}
+                  placeholder="10"
+                  onChangeText={(v) =>
+                    onChange({ ...drops, reps: drops.reps.map((x, i) => (i === k ? v : x)) })
+                  }
+                />
+              </View>
+              <IconButton
+                icon="close"
+                accessibilityLabel={t('plan.removeDrop', { n: k + 1 })}
+                onPress={() => {
+                  const reps = drops.reps.filter((_, i) => i !== k);
+                  onChange(reps.length ? { ...drops, reps } : null);
+                }}
+              />
+            </View>
+          ))}
+          {drops.reps.length < MAX_DROPS ? (
+            <Button
+              variant="ghost"
+              label={t('plan.addDrop')}
+              icon="plus"
+              onPress={() =>
+                onChange({
+                  ...drops,
+                  reps: [...drops.reps, drops.reps[drops.reps.length - 1] ?? '10'],
+                })
+              }
+            />
+          ) : null}
+          <Text variant="label" muted>
+            {drops.on === 'every' ? t('plan.dropEveryDetail') : t('plan.dropLastDetail')}
+          </Text>
+        </>
+      ) : null}
+    </View>
   );
 }

@@ -33,6 +33,7 @@ export function draftFromExercise(exercise: Exercise): DayDraftExercise {
     exercise,
     notes: '',
     supersetWithNext: false,
+    drops: null,
     ...defaultsFor(exercise),
   };
 }
@@ -47,6 +48,7 @@ export function openDay(planId: string, day: PlanDayView, position: number): Day
     restS: e.restS,
     notes: e.notes ?? '',
     supersetWithNext: e.supersetWithNext,
+    drops: e.drops,
   }));
   return {
     planId,
@@ -122,7 +124,10 @@ export function updateInDay(
   s: DayEditorState,
   id: string,
   patch: Partial<
-    Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext'>
+    Pick<
+      DayDraftExercise,
+      'targetSets' | 'targetReps' | 'restS' | 'notes' | 'supersetWithNext' | 'drops'
+    >
   >,
 ): DayEditorState {
   return { ...s, exercises: s.exercises.map((e) => (e.id === id ? { ...e, ...patch } : e)) };

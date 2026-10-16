@@ -617,6 +617,8 @@ export type Database = {
           id: string;
           notes: string | null;
           superset_with_next: boolean;
+          drop_on: string;
+          drop_reps: string[];
           plan_day_id: string;
           position: number;
           rest_s: number;
@@ -633,6 +635,8 @@ export type Database = {
           id?: string;
           notes?: string | null;
           superset_with_next?: boolean;
+          drop_on?: string;
+          drop_reps?: string[];
           plan_day_id: string;
           position: number;
           rest_s?: number;
@@ -648,6 +652,8 @@ export type Database = {
           id?: string;
           notes?: string | null;
           superset_with_next?: boolean;
+          drop_on?: string;
+          drop_reps?: string[];
           plan_day_id?: string;
           position?: number;
           rest_s?: number;
@@ -832,6 +838,7 @@ export type Database = {
           reps: number | null;
           session_id: string;
           set_index: number;
+          drop_index: number;
           updated_at: string;
           user_id: string;
           weight_kg: number | null;
@@ -848,6 +855,7 @@ export type Database = {
           reps?: number | null;
           session_id: string;
           set_index: number;
+          drop_index?: number;
           updated_at?: string;
           user_id?: string;
           weight_kg?: number | null;
@@ -863,6 +871,7 @@ export type Database = {
           reps?: number | null;
           session_id?: string;
           set_index?: number;
+          drop_index?: number;
           updated_at?: string;
           user_id?: string;
           weight_kg?: number | null;

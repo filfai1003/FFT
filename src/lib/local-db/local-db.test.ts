@@ -231,6 +231,49 @@ describe('offline database', () => {
     expect((history.data as unknown[]).length).toBe(2);
   });
 
+  it('drops (drop set) count in volume only, and last_sets says which rows are drops', async () => {
+    const { c } = setup();
+    const bench = (await c.from('exercises').select('id').eq('slug', 'bench-press').single())
+      .data as { id: string };
+    await c.from('profiles').update({ timezone: 'UTC' }).eq('id', LOCAL_USER_ID);
+    const at = '2026-10-10T10:00:00.000Z';
+    await c.from('workout_sessions').upsert({ id: id(40), started_at: at, status: 'done' });
+    await c.from('session_sets').upsert([
+      {
+        id: id(41),
+        session_id: id(40),
+        exercise_id: bench.id,
+        set_index: 0,
+        drop_index: 0,
+        weight_kg: 80,
+        reps: 8,
+        completed_at: at,
+      },
+      // A drop heavier than the set would only happen by mistake: it must still not be the max.
+      {
+        id: id(42),
+        session_id: id(40),
+        exercise_id: bench.id,
+        set_index: 0,
+        drop_index: 1,
+        weight_kg: 100,
+        reps: 10,
+        completed_at: at,
+      },
+    ]);
+    const records = await c.from('exercise_records').select('*').in('exercise_id', [bench.id]);
+    expect(records.data).toEqual([
+      expect.objectContaining({ actual_max_kg: 80, completed_sets: 1 }),
+    ]);
+    const daily = await c
+      .from('exercise_e1rm_daily')
+      .select('sets, volume_kg, best_weight_kg')
+      .eq('exercise_id', bench.id);
+    expect(daily.data).toEqual([{ sets: 1, volume_kg: 80 * 8 + 100 * 10, best_weight_kg: 80 }]);
+    const last = await c.rpc('last_sets', { p_exercise_ids: [bench.id] });
+    expect((last.data as { drop_index: number }[]).map((r) => r.drop_index)).toEqual([0, 1]);
+  });
+
   it('files: photos go in and come out; delete-account wipes everything', async () => {
     const { c } = setup();
     await c.storage

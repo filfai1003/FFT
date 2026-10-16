@@ -3,6 +3,7 @@ import { rotationState, type FinishedSession, type RotationState } from '@/domai
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { getSupabase } from '@/lib/supabase';
 import { newId } from '@/lib/uuid';
+import type { DropOn, DropPlan } from '@/domain/dropset';
 import { toExercise, type Exercise } from './exercises';
 
 export type PlanStatus = 'draft' | 'active' | 'archived';
@@ -17,6 +18,8 @@ export type PlanExerciseView = {
   notes: string | null;
   /** Linked with the next exercise of the day: a superset (domain/superset.ts). */
   supersetWithNext: boolean;
+  /** Drops after the last set or every set, with their target reps; null = no drop set. */
+  drops: DropPlan | null;
   exercise: Exercise;
 };
 
@@ -60,6 +63,8 @@ type Raw = {
       rest_s: number;
       notes: string | null;
       superset_with_next?: boolean | null;
+      drop_on?: string | null;
+      drop_reps?: string[] | null;
       deleted_at: string | null;
       exercises: Parameters<typeof toExercise>[0] | null;
     }[];
@@ -87,6 +92,9 @@ export function toPlan(raw: Raw): PlanView {
           restS: e.rest_s,
           notes: e.notes,
           supersetWithNext: e.superset_with_next ?? false,
+          drops: e.drop_reps?.length
+            ? { on: (e.drop_on === 'every' ? 'every' : 'last') as DropOn, reps: e.drop_reps }
+            : null,
           exercise: toExercise(e.exercises!),
         })),
     }));
@@ -349,6 +357,8 @@ export function useDuplicatePlan() {
               rest_s: e.restS,
               notes: e.notes,
               superset_with_next: e.supersetWithNext,
+              drop_on: e.drops?.on ?? 'last',
+              drop_reps: e.drops?.reps ?? [],
             })),
           );
           if (exRes.error) throw exRes.error;
@@ -370,6 +380,7 @@ export type DayDraftExercise = {
   restS: number;
   notes: string;
   supersetWithNext: boolean;
+  drops: DropPlan | null;
 };
 
 export function useSaveDay() {
@@ -409,6 +420,9 @@ export function useSaveDay() {
             notes: e.notes.trim() === '' ? null : e.notes.trim(),
             // The last exercise has nothing after it to be linked with.
             superset_with_next: e.supersetWithNext && position < args.exercises.length - 1,
+            drop_on: e.drops?.on ?? 'last',
+            // Empty drops are dropped; none left = no drop set.
+            drop_reps: (e.drops?.reps ?? []).map((r) => r.trim()).filter(Boolean),
             deleted_at: null,
           })),
         );

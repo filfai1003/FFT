@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import type { DropPlan } from '@/domain/dropset';
 import { isOutOfOrder } from '@/domain/rotation';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import type { Exercise } from '@/features/train/exercises';
@@ -14,19 +15,30 @@ export async function fetchPrevious(exerciseIds: string[]): Promise<Record<strin
     const { data, error } = await getSupabase().rpc('last_sets', { p_exercise_ids: exerciseIds });
     if (error || !data) return {};
     const byExercise: Record<string, PreviousSet[]> = {};
-    for (const row of data as {
+    const rows = data as {
       exercise_id: string;
       set_index: number;
+      drop_index?: number | null;
       weight_kg: number | null;
       reps: number | null;
       duration_s: number | null;
       distance_m: number | null;
-    }[]) {
+    }[];
+    for (const row of rows.filter((r) => !r.drop_index)) {
       (byExercise[row.exercise_id] ??= [])[row.set_index] = {
         weightKg: row.weight_kg != null ? Number(row.weight_kg) : null,
         reps: row.reps,
         durationS: row.duration_s,
         distanceM: row.distance_m != null ? Number(row.distance_m) : null,
+      };
+    }
+    // Drops (drop set) go under their set, in order.
+    for (const row of rows.filter((r) => (r.drop_index ?? 0) > 0)) {
+      const set = byExercise[row.exercise_id]?.[row.set_index];
+      if (!set) continue;
+      (set.drops ??= [])[row.drop_index! - 1] = {
+        weightKg: row.weight_kg != null ? Number(row.weight_kg) : null,
+        reps: row.reps,
       };
     }
     // Sets are numbered from 0 in the database: drop holes.
@@ -45,6 +57,7 @@ export function newExerciseFromCatalogue(
     targetReps?: string;
     restS?: number;
     supersetWithNext?: boolean;
+    drops?: DropPlan | null;
   } = {},
 ): NewExercise {
   return {
@@ -57,6 +70,7 @@ export function newExerciseFromCatalogue(
     targetReps: defaults.targetReps,
     equipment: exercise.equipment,
     supersetWithNext: defaults.supersetWithNext ?? false,
+    drops: defaults.drops ?? null,
     previous,
   };
 }
@@ -93,6 +107,7 @@ export function useStartWorkout() {
           targetReps: e.targetReps,
           restS: e.restS,
           supersetWithNext: e.supersetWithNext,
+          drops: e.drops,
         }),
       ),
     });

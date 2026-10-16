@@ -36,6 +36,7 @@ const day: PlanDayView = {
       restS: 150,
       notes: null,
       supersetWithNext: true,
+      drops: { on: 'last', reps: ['10', '12'] },
       exercise: ex('bench'),
     },
     {
@@ -47,6 +48,7 @@ const day: PlanDayView = {
       restS: 60,
       notes: 'slow',
       supersetWithNext: false,
+      drops: null,
       exercise: ex('fly'),
     },
   ],

@@ -13,6 +13,7 @@ import {
   removeSet,
   restRemainingS,
   sessionRecords,
+  setDropField,
   setField,
   startRest,
   toMeters,
@@ -393,5 +394,102 @@ describe('reorder exercises', () => {
     const moved = moveExercise(s, 0, 3);
     expect(moved.exercises.map((e) => e.exerciseId)).toEqual(['b', 'c', 'd', 'a']);
     expect(moved.exercises[moved.index].exerciseId).toBe('b');
+  });
+});
+
+describe('drop sets in the workout', () => {
+  const press: NewExercise = {
+    exerciseId: 'press',
+    name: 'Chest press machine',
+    logType: 'weight_reps',
+    imagePath: null,
+    restS: 90,
+    targetSets: 3,
+    targetReps: '8-10',
+    equipment: 'machine',
+    drops: { on: 'last', reps: ['10', '12'] },
+    previous: [],
+  };
+  const build = (e: NewExercise) =>
+    buildSession({
+      planId: null,
+      planDayId: null,
+      dayName: 'Push',
+      cycleNumber: null,
+      outOfOrder: false,
+      weightUnit: 'kg',
+      now,
+      exercises: [e],
+    });
+
+  it('first time: drops on the last set only, about 20% lighter each', () => {
+    const s = build({
+      ...press,
+      previous: [80, 80, 80].map((w) => ({
+        weightKg: w,
+        reps: 9,
+        durationS: null,
+        distanceM: null,
+      })),
+    });
+    const sets = s.exercises[0].sets;
+    expect(sets.map((x) => x.drops?.length ?? 0)).toEqual([0, 0, 2]);
+    expect(sets[2].drops!.map((d) => [d.weight, d.target])).toEqual([
+      ['62.5', '10'],
+      ['47.5', '12'],
+    ]);
+  });
+
+  it('each drop is suggested from the same drop last time', () => {
+    const prev = (w: number, drops?: { weightKg: number; reps: number }[]) => ({
+      weightKg: w,
+      reps: 9,
+      durationS: null,
+      distanceM: null,
+      drops,
+    });
+    const s = build({
+      ...press,
+      previous: [
+        prev(80),
+        prev(80),
+        prev(80, [
+          { weightKg: 60, reps: 12 },
+          { weightKg: 45, reps: 9 },
+        ]),
+      ],
+    });
+    const e = s.exercises[0];
+    // Drop 1 reached its 10 reps: up; drop 2 fell short of 12: down.
+    expect(e.dropSuggestions?.map((d) => d?.kind)).toEqual(['up', 'down']);
+    expect(e.sets[2].drops!.map((d) => d.weight)).toEqual(['62.5', '42.5']);
+    expect(e.sets[2].drops![0].previous).toBe('60 × 12');
+  });
+
+  it('drops are saved as rows next to their set and count in volume', () => {
+    let s = build({ ...press, targetSets: 1 });
+    s = setField(s, 0, 0, 'weight', '80');
+    s = setField(s, 0, 0, 'reps', '8');
+    s = setDropField(s, 0, 0, 0, 'weight', '60');
+    s = setDropField(s, 0, 0, 0, 'reps', '10');
+    s = toggleSet(s, 0, 0, now).session;
+    const rows = toRows(s, 'user', { endedAt: now, feeling: null, notes: '' });
+    expect(rows.sets.map((r) => [r.set_index, r.drop_index, r.weight_kg, r.reps])).toEqual([
+      [0, 0, 80, 8],
+      [0, 1, 60, 10],
+    ]);
+    expect(totals(s, now).volumeKg).toBe(80 * 8 + 60 * 10);
+  });
+
+  it('after the last set only: a new set takes the drops over', () => {
+    const s = addSet(build(press), 0);
+    expect(s.exercises[0].sets.map((x) => x.drops?.length ?? 0)).toEqual([0, 0, 0, 2]);
+    const back = removeSet(s, 0, 3);
+    expect(back.exercises[0].sets.map((x) => x.drops?.length ?? 0)).toEqual([0, 0, 2]);
+  });
+
+  it('after every set: every set has its drops', () => {
+    const s = addSet(build({ ...press, drops: { on: 'every', reps: ['10'] } }), 0);
+    expect(s.exercises[0].sets.map((x) => x.drops?.length ?? 0)).toEqual([1, 1, 1, 1]);
   });
 });
