@@ -24,6 +24,7 @@ export function buildAgentPrompt(ctx: { today: string; profile: string }): strin
     'Plan format for propose_plans (workout_plan and/or diet_plan; keys and nesting exactly like this, numbers are plain numbers):',
     JSON.stringify(FORMAT_EXAMPLE, null, 2),
     '- workout_plan.days: 1 to 14 days, 1 to 20 exercises each; sets 1-20, reps a string like "8-12", rest_s 0-1800.',
+    '- "superset_with_next": true on an exercise links it with the NEXT exercise of the same day: a superset, done in turn with one rest after the round (A1 + A2; several in a row make a bigger one). Leave it out for normal exercises; the last exercise of a day cannot have it.',
     '- "exercise" must be a name from list_exercises, spelled exactly (call it first). If you really need another exercise add "primary_muscle" (chest, back, shoulders, biceps, triceps, legs, glutes, abs), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type".',
     '- To MODIFY an existing workout plan, send it again with the same "id" and "name" from get_workout_plans and ALL its days. Without an "id" a new plan is created. A diet replaces the current diet.',
     '- diet_plan.mode "fixed_meals" needs 1 to 8 meals adding up to the daily target ("main": true for bigger ones, "workout_after" optional); "tracking" has only the daily target and no meals.',

@@ -6,7 +6,7 @@ import { macroKcal, MIN_DAILY_KCAL } from './nutrition';
  * or the chat). Plain JSON, snake_case, either part optional:
  *
  *   { "workout_plan": { "name", "days": [ { "name", "exercises": [ { "exercise", "sets", "reps",
- *       "rest_s", "notes" } ] } ] },
+ *       "rest_s", "notes", "superset_with_next" } ] } ] },
  *     "diet_plan": { "daily": { "kcal", "protein_g", "carbs_g", "fat_g" },
  *       "meals": [ { "name", "main", "description", "kcal", "protein_g", "carbs_g", "fat_g" } ],
  *       "workout_after": "<meal name>" } }
@@ -28,6 +28,8 @@ export type ImportedExercise = {
   sets: number;
   reps: string;
   restS: number;
+  /** Linked with the next exercise of the day: a superset (domain/superset.ts). */
+  supersetWithNext: boolean;
   notes: string;
   /** Only needed for exercises that are not in the catalogue (they are created). */
   newExercise: { primaryMuscle: Muscle; equipment: string; logType: ImportLogType } | null;
@@ -138,6 +140,7 @@ function parseExercise(raw: unknown, where: string, warnings: string[]): Importe
     sets: clampInt(raw.sets, 1, 20, 3),
     reps: text(raw.reps, 20) || '8-12',
     restS: clampInt(raw.rest_s, 0, 1800, 90),
+    supersetWithNext: raw.superset_with_next === true,
     notes: text(raw.notes, 200),
     newExercise,
   };
@@ -156,7 +159,9 @@ function parseWorkout(raw: unknown, errors: string[], warnings: string[]): Impor
     const exercises = (Array.isArray(d.exercises) ? d.exercises : [])
       .slice(0, 20)
       .map((e) => parseExercise(e, name, warnings))
-      .filter((e): e is ImportedExercise => e != null);
+      .filter((e): e is ImportedExercise => e != null)
+      // The last exercise has nothing after it to be linked with.
+      .map((e, j, all) => (j === all.length - 1 ? { ...e, supersetWithNext: false } : e));
     if (exercises.length === 0) warnings.push(`Day "${name}" has no exercises and is skipped`);
     else days.push({ name, exercises });
   });
@@ -317,6 +322,7 @@ export function formatRules(exercises: readonly string[]): string {
     JSON.stringify(FORMAT_EXAMPLE, null, 2),
     'Rules:',
     `- workout_plan.days: 1 to 14 days, each with 1 to 20 exercises. sets 1-20, reps a string like "8-12", rest_s 0-1800 seconds.`,
+    '- "superset_with_next": true on an exercise links it with the NEXT exercise of the same day: a superset, done in turn with one rest after the round (A1 + A2; several in a row make a bigger one). Leave it out for normal exercises; the last exercise of a day cannot have it.',
     '- "exercise" must be one of the names in the EXERCISE LIST below, spelled exactly. If you really need another exercise, add "primary_muscle" (chest, back, shoulders, biceps, triceps, legs, glutes, abs), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type" (weight_reps, reps, time, distance_time) to that exercise.',
     '- diet_plan.mode: "fixed_meals" when the user wants set meals to follow (meals are required), or "tracking" when they only want a daily calorie and macro target and will log what they eat themselves (then leave "meals" out).',
     '- diet_plan.daily.kcal must be at least 1500 and the macros must match it (4 kcal per g of protein and carbs, 9 per g of fat). Never go below 1500 kcal or more than 25% under the maintenance calories.',

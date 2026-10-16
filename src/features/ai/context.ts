@@ -21,6 +21,7 @@ export function exportWorkoutPlan(plan: PlanView) {
         reps: e.targetReps,
         rest_s: e.restS,
         notes: e.notes ?? '',
+        ...(e.supersetWithNext ? { superset_with_next: true } : {}),
       })),
     })),
   };

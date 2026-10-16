@@ -458,7 +458,12 @@
     "restLiveTitle": "Resting",
     "restLiveBody": "Next set when the timer ends",
     "restChannel": "Rest timer",
-    "superset": "Superset {{label}}"
+    "superset": "Superset {{label}}",
+    "doneSetIn": "Done set {{n}} · {{label}}",
+    "setSavedIn": "Set {{n}} of {{label}} saved",
+    "supersetIntro": "Superset: one set of each in turn, then rest",
+    "upNow": "Next set here",
+    "upNowLabel": "Next set: {{name}}"
   },
   "summary": {
     "done": "Done",

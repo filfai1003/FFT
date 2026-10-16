@@ -258,6 +258,7 @@ export function useApplyImport() {
         target_reps: e.reps,
         rest_s: e.restS,
         notes: e.notes || null,
+        superset_with_next: e.supersetWithNext && position < day.exercises.length - 1,
       }));
       const exRes = await supabase.from('plan_exercises').insert(rows);
       if (exRes.error) throw exRes.error;

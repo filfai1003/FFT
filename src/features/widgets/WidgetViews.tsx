@@ -213,7 +213,7 @@ function WaterView({ s, p }: { s: WidgetSnapshot; p: Palette }) {
       </FlexWidget>
       <FlexWidget
         clickAction="OPEN_URI"
-        clickActionData={{ uri: 'fft://add-water' }}
+        clickActionData={{ uri: 'fft://add-water?from=widget' }}
         style={{
           borderWidth: 1,
           borderColor: hex(p.borderControl),

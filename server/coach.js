@@ -160,7 +160,8 @@ async function plans(q) {
          'id', d.id, 'name', d.name, 'position', d.position,
          'exercises', coalesce((select json_agg(json_build_object(
              'exerciseId', e.exercise_id, 'exercise', x.name, 'position', e.position,
-             'sets', e.target_sets, 'reps', e.target_reps, 'rest_s', e.rest_s, 'notes', e.notes)
+             'sets', e.target_sets, 'reps', e.target_reps, 'rest_s', e.rest_s, 'notes', e.notes,
+             'superset_with_next', e.superset_with_next)
              order by e.position)
            from public.plan_exercises e join public.exercises x on x.id = e.exercise_id
            where e.plan_day_id = d.id and e.deleted_at is null), '[]'::json))
@@ -183,6 +184,7 @@ const exportPlan = (p) => ({
       reps: e.reps,
       rest_s: e.rest_s,
       notes: e.notes ?? '',
+      ...(e.superset_with_next ? { superset_with_next: true } : {}),
     })),
   })),
 });
@@ -413,8 +415,8 @@ async function applyWorkout(q, userId, workout, result) {
       );
       for (const e of d.exercises)
         await q(
-          `insert into public.plan_exercises (id, user_id, plan_day_id, exercise_id, position, target_sets, target_reps, rest_s, notes)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          `insert into public.plan_exercises (id, user_id, plan_day_id, exercise_id, position, target_sets, target_reps, rest_s, notes, superset_with_next)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [
             randomUUID(),
             userId,
@@ -425,6 +427,7 @@ async function applyWorkout(q, userId, workout, result) {
             e.reps,
             e.rest_s,
             e.notes,
+            e.superset_with_next ?? false,
           ],
         );
     }
@@ -458,8 +461,8 @@ async function applyWorkout(q, userId, workout, result) {
       );
     for (const [position, e] of day.exercises.entries())
       await q(
-        `insert into public.plan_exercises (id, user_id, plan_day_id, exercise_id, position, target_sets, target_reps, rest_s, notes)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `insert into public.plan_exercises (id, user_id, plan_day_id, exercise_id, position, target_sets, target_reps, rest_s, notes, superset_with_next)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           randomUUID(),
           userId,
@@ -470,6 +473,7 @@ async function applyWorkout(q, userId, workout, result) {
           e.reps,
           e.restS,
           e.notes || null,
+          e.supersetWithNext && position < day.exercises.length - 1,
         ],
       );
   }
@@ -815,7 +819,7 @@ export const COACH_TOOLS = [
         workout_plan: {
           type: 'object',
           description:
-            'A workout plan: {id?, name, days: [{name, exercises: [{exercise (exact name from list_exercises), sets, reps ("8-12"), rest_s, notes?}]}]}.',
+            'A workout plan: {id?, name, days: [{name, exercises: [{exercise (exact name from list_exercises), sets, reps ("8-12"), rest_s, notes?, superset_with_next? (true = superset with the next exercise: done in turn, one rest per round)}]}]}.',
         },
         diet_plan: {
           type: 'object',

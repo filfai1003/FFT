@@ -19,7 +19,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
-import { afterSetInSuperset, supersetLabels } from '@/domain/superset';
+import { afterSetInSuperset, supersetLabels, supersetOf } from '@/domain/superset';
 import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
 import {
@@ -36,6 +36,7 @@ import {
   toggleSet,
   restoreExercise,
   undoSetDone,
+  type ActiveSession,
   type SetField,
 } from './logic';
 import { useSessionHydrated, useSessionStore } from './store';
@@ -77,42 +78,49 @@ export function SessionScreen() {
   // An empty workout has no exercise: never read through `exercise` unguarded (the compiler may hoist it).
   const sets = exercise?.sets ?? [];
   const exerciseName = exercise?.name ?? '';
-  const targetReps =
-    exercise?.targetReps ??
-    plan.data?.days
-      .find((d) => d.id === active.planDayId)
-      ?.exercises.find((e) => e.exerciseId === exercise?.exerciseId)
-      ?.targetReps.trim();
-  const labels = supersetLabels(active.exercises.map((e) => e.supersetWithNext ?? false));
-  const supersetLabel = labels[index];
-  const previousEx = active.exercises[index - 1];
-  const nextEx = active.exercises[index + 1];
+  const links = active.exercises.map((e) => e.supersetWithNext ?? false);
+  const labels = supersetLabels(links);
+  // A superset is shown whole (its exercises one under the other) and done in turn.
+  const group = active.exercises.length > 0 ? supersetOf(links, index) : [];
+  const inSuperset = group.length > 1;
+  const setsLeft = (i: number) => active.exercises[i]?.sets.filter((x) => !x.done).length ?? 0;
+  // The exercise whose set comes next: this one, else the next of the round that has sets left.
+  const doing = inSuperset
+    ? ([...group.slice(group.indexOf(index)), ...group.slice(0, group.indexOf(index))].find(
+        (i) => setsLeft(i) > 0,
+      ) ?? index)
+    : index;
+  const previousEx = active.exercises[(group[0] ?? index) - 1];
+  const nextEx = active.exercises[(group[group.length - 1] ?? index) + 1];
+  const previousIndex = (group[0] ?? index) - 1;
+  const nextIndex = (group[group.length - 1] ?? index) + 1;
+  const targetRepsOf = (i: number) => {
+    const e = active.exercises[i];
+    return (
+      e?.targetReps ??
+      plan.data?.days
+        .find((d) => d.id === active.planDayId)
+        ?.exercises.find((x) => x.exerciseId === e?.exerciseId)
+        ?.targetReps.trim()
+    );
+  };
 
   const minimize = () => (router.canGoBack() ? goBack(router) : router.replace('/train'));
 
-  const onChange = (setIndex: number, field: SetField, value: string) =>
-    update((s) => setField(s, index, setIndex, field, value));
+  const onChange = (setIndex: number, field: SetField, value: string, at = index) =>
+    update((s) => setField(s, at, setIndex, field, value));
 
-  const onToggle = (setIndex: number) => {
+  const onToggle = (setIndex: number, at = index) => {
     const before = useSessionStore.getState().active!;
-    const setId = before.exercises[index].sets[setIndex].id;
-    const { session, completed } = toggleSet(before, index, setIndex, new Date());
-    // In a superset: straight to the next exercise of the round, rest only after the last one.
-    const flow = completed
-      ? afterSetInSuperset(
-          session.exercises.map((e) => e.supersetWithNext ?? false),
-          index,
-          session.exercises.map((e) => e.sets.filter((x) => !x.done).length),
-        )
-      : null;
-    let next = session;
-    if (flow?.rest) next = startRest(next, before.exercises[index].restS, Date.now());
-    if (flow?.goTo != null) next = goTo(next, flow.goTo);
+    const setId = before.exercises[at].sets[setIndex].id;
+    const { next, completed } = toggleInRound(before, at, setIndex);
     update(() => next);
     if (completed) {
       confirm();
       showToast({
-        message: t('session.setSaved', { n: setIndex + 1 }),
+        message: labels[at]
+          ? t('session.setSavedIn', { n: setIndex + 1, label: labels[at] })
+          : t('session.setSaved', { n: setIndex + 1 }),
         actionLabel: t('common.undo'),
         bottomOffset: BOTTOM_NAV_HEIGHT,
         onAction: () => update((s) => undoSetDone(s, setId)),
@@ -120,25 +128,27 @@ export function SessionScreen() {
     }
   };
 
-  const columns = columnsFor(exercise?.logType ?? 'weight_reps', active.weightUnit);
   const openPicker = () =>
     router.push({ pathname: '/exercise-picker', params: { target: 'session' } });
   // The big button: tick the next set, then move on, then finish.
-  const nextSet = sets.findIndex((x) => !x.done);
+  const doingSets = active.exercises[doing]?.sets ?? sets;
+  const nextSet = doingSets.findIndex((x) => !x.done);
   const primaryKind = !exercise ? 'add' : nextSet >= 0 ? 'set' : nextEx ? 'next' : 'finish';
   const primary = {
     label:
       primaryKind === 'add'
         ? t('session.addExercise')
         : primaryKind === 'set'
-          ? t('session.doneSet', { n: nextSet + 1 })
+          ? labels[doing]
+            ? t('session.doneSetIn', { n: nextSet + 1, label: labels[doing] })
+            : t('session.doneSet', { n: nextSet + 1 })
           : primaryKind === 'next'
             ? t('session.nextExercise')
             : t('session.finish'),
     info:
       primaryKind === 'set'
-        ? columns
-            .map((c) => sets[nextSet]![c.field])
+        ? columnsFor(active.exercises[doing]?.logType ?? 'weight_reps', active.weightUnit)
+            .map((c) => doingSets[nextSet]![c.field])
             .filter(Boolean)
             .join(' × ')
         : primaryKind === 'next'
@@ -147,9 +157,152 @@ export function SessionScreen() {
   };
   function runPrimary() {
     if (primaryKind === 'add') openPicker();
-    else if (primaryKind === 'set') onToggle(nextSet);
-    else if (primaryKind === 'next') update((x) => goTo(x, index + 1));
+    else if (primaryKind === 'set') onToggle(nextSet, doing);
+    else if (primaryKind === 'next') update((x) => goTo(x, nextIndex));
     else setFinishing(true);
+  }
+
+  function renderExercise(i: number) {
+    const e = active!.exercises[i];
+    const reps = targetRepsOf(i);
+    const label = labels[i];
+    const cols = columnsFor(e.logType, active!.weightUnit);
+    const current = inSuperset && i === doing;
+    const body = (
+      <>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <ExerciseThumb
+            exercise={{ ownerId: null, imagePath: e.imagePath }}
+            size={inSuperset ? 44 : 52}
+          />
+          <Pressable
+            accessibilityRole={inSuperset ? 'button' : undefined}
+            disabled={!inSuperset || i === index}
+            onPress={() => update((s) => goTo(s, i))}
+            style={{ flex: 1, gap: 4 }}
+          >
+            <Text variant="label" muted>
+              {t('session.exerciseOf', { current: i + 1, total: active!.exercises.length })}
+            </Text>
+            <Text
+              variant={inSuperset ? 'body' : 'titleM'}
+              medium={inSuperset}
+              accessibilityRole="header"
+            >
+              {label ? `${label} · ${e.name}` : e.name}
+            </Text>
+            {reps ? (
+              <Text variant="label" muted>
+                {t('session.targetReps', { reps: reps.replace('-', '–') })}
+              </Text>
+            ) : null}
+          </Pressable>
+          <IconButton
+            icon="info"
+            accessibilityLabel={t('session.details')}
+            onPress={() =>
+              router.push({
+                pathname: '/train/exercise/[exerciseId]',
+                params: { exerciseId: e.exerciseId, fromSession: active!.id },
+              })
+            }
+          />
+          <IconButton
+            icon="more"
+            accessibilityLabel={t('session.exerciseMenu')}
+            onPress={() => {
+              if (i !== index) update((s) => goTo(s, i));
+              setMenu(true);
+            }}
+          />
+        </View>
+
+        <SuggestionCard
+          exercise={e}
+          unit={active!.weightUnit}
+          onKeep={(keep) => update((s) => keepLastWeight(s, i, keep))}
+        />
+
+        <Card size="small" gap={0}>
+          <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 8 }}>
+            <Text variant="label" muted style={{ width: 30 }}>
+              {t('session.colSet')}
+            </Text>
+            <Text variant="label" muted style={{ flex: 1 }}>
+              {t('session.colPrevious')}
+            </Text>
+            {cols.map((c) => (
+              <Text
+                key={c.field}
+                variant="label"
+                muted
+                style={{
+                  width: c.field === 'weight' || c.field === 'distance' ? 70 : 60,
+                  textAlign: 'center',
+                }}
+              >
+                {c.label}
+              </Text>
+            ))}
+            <View style={{ width: oneHand ? 56 : 44 }} />
+          </View>
+          {e.sets.map((set, k) => (
+            <SetRow
+              key={set.id}
+              index={k}
+              set={set}
+              columns={cols}
+              large={oneHand}
+              onChange={(setIndex, field, value) => onChange(setIndex, field, value, i)}
+              onToggle={(setIndex) => onToggle(setIndex, i)}
+            />
+          ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('session.addSet')}
+            onPress={() => update((s) => addSet(s, i))}
+            style={({ pressed }) => ({
+              height: touch.minTarget,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text variant="label" muted>
+              {t('session.addSetLabel')}
+            </Text>
+          </Pressable>
+        </Card>
+      </>
+    );
+    if (!inSuperset)
+      return (
+        <View key={e.rowId} style={{ gap: 16 }}>
+          {body}
+        </View>
+      );
+    // In a superset: each exercise in its own frame; the one whose set comes next is selected
+    // (2px border in the text colour) and says so in words, never by colour alone.
+    return (
+      <View
+        key={e.rowId}
+        accessibilityLabel={current ? t('session.upNowLabel', { name: e.name }) : undefined}
+        style={{
+          gap: 12,
+          padding: 12,
+          borderRadius: 20,
+          borderWidth: current ? 2 : 1,
+          borderColor: current ? colors.borderSelected : colors.borderDecorative,
+        }}
+      >
+        {current ? (
+          <Text variant="label" medium>
+            {t('session.upNow')}
+          </Text>
+        ) : null}
+        {body}
+      </View>
+    );
   }
 
   return (
@@ -222,104 +375,12 @@ export function SessionScreen() {
 
         {exercise ? (
           <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ExerciseThumb
-                exercise={{ ownerId: null, imagePath: exercise.imagePath }}
-                size={52}
-              />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text variant="label" muted>
-                  {t('session.exerciseOf', { current: index + 1, total: active.exercises.length })}
-                </Text>
-                <Text variant="titleM" accessibilityRole="header">
-                  {exercise.name}
-                </Text>
-                {targetReps || supersetLabel ? (
-                  <Text variant="label" muted>
-                    {[
-                      supersetLabel ? t('session.superset', { label: supersetLabel }) : null,
-                      targetReps
-                        ? t('session.targetReps', { reps: targetReps.replace('-', '–') })
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                ) : null}
-              </View>
-              <IconButton
-                icon="info"
-                accessibilityLabel={t('session.details')}
-                onPress={() =>
-                  router.push({
-                    pathname: '/train/exercise/[exerciseId]',
-                    params: { exerciseId: exercise.exerciseId, fromSession: active.id },
-                  })
-                }
-              />
-              <IconButton
-                icon="more"
-                accessibilityLabel={t('session.exerciseMenu')}
-                onPress={() => setMenu(true)}
-              />
-            </View>
-
-            <SuggestionCard
-              exercise={exercise}
-              unit={active.weightUnit}
-              onKeep={(keep) => update((s) => keepLastWeight(s, index, keep))}
-            />
-
-            <Card size="small" gap={0}>
-              <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 8 }}>
-                <Text variant="label" muted style={{ width: 30 }}>
-                  {t('session.colSet')}
-                </Text>
-                <Text variant="label" muted style={{ flex: 1 }}>
-                  {t('session.colPrevious')}
-                </Text>
-                {columns.map((c) => (
-                  <Text
-                    key={c.field}
-                    variant="label"
-                    muted
-                    style={{
-                      width: c.field === 'weight' || c.field === 'distance' ? 70 : 60,
-                      textAlign: 'center',
-                    }}
-                  >
-                    {c.label}
-                  </Text>
-                ))}
-                <View style={{ width: oneHand ? 56 : 44 }} />
-              </View>
-              {sets.map((set, i) => (
-                <SetRow
-                  key={set.id}
-                  index={i}
-                  set={set}
-                  columns={columns}
-                  large={oneHand}
-                  onChange={onChange}
-                  onToggle={onToggle}
-                />
-              ))}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('session.addSet')}
-                onPress={() => update((s) => addSet(s, index))}
-                style={({ pressed }) => ({
-                  height: touch.minTarget,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Text variant="label" muted>
-                  {t('session.addSetLabel')}
-                </Text>
-              </Pressable>
-            </Card>
+            {inSuperset ? (
+              <Text variant="label" muted>
+                {t('session.supersetIntro', { count: group.length })}
+              </Text>
+            ) : null}
+            {group.map((i) => renderExercise(i))}
 
             <RestCard />
           </>
@@ -363,7 +424,7 @@ export function SessionScreen() {
           }
           icon="chevronLeft"
           disabled={!previousEx}
-          onPress={() => update((s) => goTo(s, index - 1))}
+          onPress={() => update((s) => goTo(s, previousIndex))}
         />
         <Pressable
           accessibilityRole="button"
@@ -397,7 +458,7 @@ export function SessionScreen() {
           label={nextEx ? t('session.nextNamed', { name: nextEx.name }) : t('session.addExercise')}
           icon={nextEx ? 'chevronRight' : 'plus'}
           disabled={!exercise}
-          onPress={() => (nextEx ? update((s) => goTo(s, index + 1)) : openPicker())}
+          onPress={() => (nextEx ? update((s) => goTo(s, nextIndex)) : openPicker())}
         />
       </View>
 
@@ -458,6 +519,25 @@ export function SessionScreen() {
       </Sheet>
     </>
   );
+}
+
+/**
+ * Ticks (or unticks) a set. In a superset it moves straight to the next exercise of the round with
+ * no rest; after the last one the rest starts and it goes back to the first (domain/superset.ts).
+ */
+function toggleInRound(before: ActiveSession, at: number, setIndex: number) {
+  const { session, completed } = toggleSet(before, at, setIndex, new Date());
+  const flow = completed
+    ? afterSetInSuperset(
+        session.exercises.map((e) => e.supersetWithNext ?? false),
+        at,
+        session.exercises.map((e) => e.sets.filter((x) => !x.done).length),
+      )
+    : null;
+  let next = at === before.index ? session : goTo(session, at);
+  if (flow?.rest) next = startRest(next, before.exercises[at].restS, Date.now());
+  if (flow?.goTo != null) next = goTo(next, flow.goTo);
+  return { next, completed };
 }
 
 /** A square side button of the bottom bar (previous / next exercise). */

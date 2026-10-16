@@ -150,3 +150,25 @@ describe('buildImportPrompt', () => {
     expect(p).toContain('Pull-up, Squat');
   });
 });
+
+describe('supersets in the format', () => {
+  it('reads superset_with_next, never on the last exercise of a day', () => {
+    const r = parseBundle(
+      JSON.stringify({
+        workout_plan: {
+          name: 'P',
+          days: [
+            {
+              name: 'Arms',
+              exercises: [
+                { exercise: 'Barbell curl', sets: 3, reps: '10', superset_with_next: true },
+                { exercise: 'Triceps pushdown', sets: 3, reps: '12', superset_with_next: true },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+    expect(r.workout?.days[0].exercises.map((e) => e.supersetWithNext)).toEqual([true, false]);
+  });
+});

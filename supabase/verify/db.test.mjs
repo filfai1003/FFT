@@ -834,7 +834,11 @@ describe('personal API and MCP (server/api.js)', () => {
         days: [
           {
             name: 'Push',
-            exercises: [{ exercise: 'Barbell bench press', sets: 3, reps: '8-10', rest_s: 120 }],
+            exercises: [
+              { exercise: 'Barbell bench press', sets: 3, reps: '8-10', rest_s: 120 },
+              { exercise: 'Cable fly', sets: 3, reps: '12', rest_s: 0, superset_with_next: true },
+              { exercise: 'Push-up', sets: 3, reps: '15', rest_s: 90, superset_with_next: true },
+            ],
           },
         ],
       },
@@ -848,6 +852,11 @@ describe('personal API and MCP (server/api.js)', () => {
     const plans = (await tool('get_workout_plans', {})).workout_plans;
     const made = plans.find((p) => p.id === r.workout_plan_id);
     assert.equal(made.days[0].exercises[0].exercise, 'Barbell bench press');
+    // Superset: fly + push-up; the last exercise cannot be linked with a next one.
+    assert.deepEqual(
+      made.days[0].exercises.map((e) => e.superset_with_next ?? false),
+      [false, true, false],
+    );
     // Changing it keeps a backup copy, archived.
     const again = await tool('propose_plans', {
       workout_plan: { ...made, name: 'API plan v2' },

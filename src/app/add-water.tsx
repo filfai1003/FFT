@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/components/ui/Screen';
@@ -8,11 +8,13 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useToastStore } from '@/lib/toast-store';
 
 /**
- * fft://add-water, from the Water widget: adds one glass to today, then shows Home with UNDO.
+ * fft://add-water?from=widget, from the Water widget: adds one glass to today, then shows Home with
+ * UNDO. Without the parameter (the router reaching this page some other way) it only goes Home.
  */
 export default function AddWater() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const today = useToday();
   const glassMl = usePreferencesStore((s) => s.waterGlassMl);
   const addWater = useAddWater();
@@ -22,6 +24,7 @@ export default function AddWater() {
   useEffect(() => {
     void (async () => {
       router.replace('/');
+      if (from !== 'widget') return;
       const id = await addWater.mutateAsync({ day: today, ml: glassMl }).catch(() => null);
       if (!id) return;
       showToast({
