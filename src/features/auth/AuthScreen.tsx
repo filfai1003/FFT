@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Text } from '@/components/ui/Text';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 import { credentialProblems, signIn, signUp } from './api';
 import { ForgotPasswordSheet } from './ForgotPasswordSheet';
 import { OfflineChoice } from './OfflineChoice';
@@ -117,9 +118,12 @@ export function AuthScreen() {
         ) : null}
 
         {mode === 'signUp' ? (
-          <Text variant="bodyS" muted>
-            {t('auth.legal')}
-          </Text>
+          <View>
+            <Text variant="bodyS" muted>
+              {t('auth.legal')}
+            </Text>
+            <LegalLinks pages={['terms', 'privacy']} />
+          </View>
         ) : null}
 
         <OfflineChoice />

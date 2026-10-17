@@ -76,6 +76,10 @@ Package name: `com.filfai1003.fft`.
   Same look as the app (light, Figtree, follows the phone's dark mode): the download button, the
   install steps, screenshots (`site/screens/`, taken from the web preview at 390×844) and a few exercise
   pictures (`site/exercises/`).
+- Legal pages on the same service (DECISIONS 58): `/privacy`, `/privacy-it`, `/terms`, `/terms-it`,
+  `/delete-account` (`site/*.html` + `site/legal.css`; nginx tries `$uri.html`, so no extension in
+  the address). The app opens them from `SITE_URL` (`src/lib/legal.ts`, `EXPO_PUBLIC_FFT_SITE_URL`
+  overrides it). The delete-account address is the one to give Google Play (Data safety).
 - The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit), next to
   `config.js` (version, size, build). nginx (`site/nginx.conf`) serves both from the page's own
   address (`/fft.apk`, `/config.js`), reading the backend address from the service variable

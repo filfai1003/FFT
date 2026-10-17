@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { MacroSplitCard } from '@/features/diet/MacroSplitCard';
 import { MealPlanEditor } from '@/features/diet/MealPlanEditor';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 import { bodyProblems, starterMeals, targetsFor, type OnboardingDraft } from './logic';
 
 type StepProps = { draft: OnboardingDraft; patch: (p: Partial<OnboardingDraft>) => void };
@@ -249,7 +250,7 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
         onChange={(macroSplit) => patch({ macroSplit, meals: null })}
       />
       <Text variant="bodyS" muted>
-        {t('onboarding.target.safety')}
+        {t('onboarding.target.safety')} {t('onboarding.target.notMedical')}
       </Text>
     </View>
   );
@@ -313,7 +314,10 @@ export function ConsentStep({ draft, patch }: StepProps) {
   const { t } = useTranslation();
   return (
     <View style={{ gap: 16 }}>
-      <Text muted>{t('onboarding.consent.body')}</Text>
+      <View>
+        <Text muted>{t('onboarding.consent.body')}</Text>
+        <LegalLinks pages={['privacy']} />
+      </View>
       <Card gap={0}>
         <ConsentRow
           title={t('onboarding.consent.health')}

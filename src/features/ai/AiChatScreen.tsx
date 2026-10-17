@@ -365,7 +365,7 @@ export function AiChatScreen() {
           </Text>
         ) : null}
         <Text variant="label" muted>
-          {t('ai.privacyShort')}
+          {t('ai.privacyShort')} {t('ai.notMedical')}
         </Text>
       </Screen>
 

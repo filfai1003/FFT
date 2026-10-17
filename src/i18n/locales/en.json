@@ -1,4 +1,10 @@
 {
+  "legal": {
+    "privacy": "Privacy policy",
+    "terms": "Terms of service",
+    "deleteAccount": "How account deletion works",
+    "title": "Policies"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -104,7 +110,7 @@
     "continueSignIn": "Sign in",
     "continueSignUp": "Create account",
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
-    "legal": "By continuing you accept the terms and the privacy policy.",
+    "legal": "By creating an account you accept the terms of service and the privacy policy.",
     "useOffline": "Use without an account",
     "offlineBody": "No account: nothing is stored online. Everything is saved on this device only, so it is not backed up.",
     "forgot": {
@@ -174,7 +180,8 @@
       "raise": "Raise calories by 50",
       "suggested": "Suggested: {{kcal}} · maintenance {{maintenance}} {{pct}}",
       "suggestedSame": "Suggested: {{kcal}} · same as maintenance",
-      "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional."
+      "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional.",
+      "notMedical": "FFT is not medical advice: if you have a health condition, ask your doctor first."
     },
     "mode": {
       "title": "How you track food",
@@ -189,7 +196,7 @@
     },
     "consent": {
       "title": "Your health data",
-      "body": "Weight, food, workouts and photos are health data. We store them encrypted and only to run the app. You can export or delete everything at any time in Privacy & data.",
+      "body": "Weight, food, workouts and photos are health data. We keep them only to run the app: on this phone and, with an account, on our server, where only you can reach them. You can export or delete everything at any time in Privacy & data.",
       "health": "I agree to the processing of my health data",
       "healthDetail": "Required to use the app. You can withdraw it later.",
       "analytics": "Share anonymous usage statistics",
@@ -878,7 +885,7 @@
   },
   "photos": {
     "title": "Photos",
-    "private": "Private · encrypted · only you can see them",
+    "private": "Private · only you can see them",
     "add": "Add photos",
     "all": "All",
     "pose": {
@@ -1099,7 +1106,7 @@
     "workoutsOnlyDetail": "CSV · opens in any spreadsheet",
     "blurDetail": "Safe to open the app in public",
     "lockDetail": "Face ID or passcode to view",
-    "analyticsDetail": "Helps us fix bugs · no health data",
+    "analyticsDetail": "Optional · nothing is collected today",
     "importDetail": "ZIP from Export · nothing is deleted",
     "deleteNote": "Removes all your data and photos within 30 days. This can't be undone."
   },
@@ -1195,6 +1202,7 @@
     "modelPlaceholder": "Model name",
     "baseUrl": "Server address",
     "privacyShort": "Your messages and the data the AI looks at go to your AI provider.",
+    "notMedical": "The coach can be wrong and is not medical advice.",
     "saved": "AI settings saved",
     "removed": "Key removed",
     "removeKey": "Remove key",

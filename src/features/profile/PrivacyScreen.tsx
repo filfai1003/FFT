@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
+import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
@@ -13,6 +15,7 @@ import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { authenticate } from '@/lib/biometrics';
+import { openLegal } from '@/lib/legal';
 import { goBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { activeConsent, deleteAccount, useConsents, useSetConsent } from './account';
@@ -284,6 +287,21 @@ export function PrivacyScreen() {
               onPress={() => setWithdraw(true)}
             />
           </View>
+        </Card>
+
+        <Card size="small" gap={0}>
+          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+            {t('legal.title')}
+          </Text>
+          {(['privacy', 'terms', 'deleteAccount'] as const).map((page, i) => (
+            <ListRow
+              key={page}
+              title={t(`legal.${page}`)}
+              divider={i > 0}
+              right={<Icon name="chevronRight" size={18} color={colors.textMuted} />}
+              onPress={() => openLegal(page)}
+            />
+          ))}
         </Card>
 
         <View style={{ gap: 8, paddingTop: 8 }}>
