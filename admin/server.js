@@ -46,7 +46,7 @@ class HttpError extends Error {
 const quote = (id) => `"${String(id).replace(/"/g, '""')}"`;
 const SCHEMAS = ['public', 'auth', 'storage'];
 // Same as DEFAULT_MODEL in supabase/functions/ai/index.ts (used when no model is set here).
-const AI_DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+const AI_DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
 
 const TABLES_SQL = `
   select n.nspname as schema, c.relname as name, c.relkind as kind, greatest(c.reltuples, 0)::bigint as estimate,
@@ -375,7 +375,7 @@ async function api(req, res, url) {
     needSudo();
     const model = String((await readBody(req)).model ?? '').trim();
     if (model && !/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(model))
-      throw new HttpError(400, 'Use an OpenRouter model id, like anthropic/claude-haiku-4.5');
+      throw new HttpError(400, 'Use an OpenRouter model id, like deepseek/deepseek-v4.1-flash');
     const out = model
       ? await db.run(
           `insert into public.app_settings (key, value) values ('ai_model', $1)

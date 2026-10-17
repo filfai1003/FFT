@@ -1109,7 +1109,7 @@ async function aiPage() {
           'datalist',
           { id: 'aiModels' },
           [
-            'anthropic/claude-haiku-4.5',
+            'deepseek/deepseek-v4.1-flash',
             'anthropic/claude-sonnet-4.5',
             'openai/gpt-5-mini',
             'google/gemini-2.5-flash',
@@ -1129,7 +1129,7 @@ async function aiPage() {
       h(
         'p',
         { class: 'help' },
-        'Model names are on openrouter.ai/models (like anthropic/claude-haiku-4.5). Leave it empty for the default.',
+        'Model names are on openrouter.ai/models (like deepseek/deepseek-v4.1-flash). Leave it empty for the default.',
       ),
     ),
     h(

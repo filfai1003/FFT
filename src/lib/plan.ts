@@ -26,8 +26,6 @@ export const isSyncChoice = (v: unknown): v is SyncChoice =>
   v === 'on' || v === 'off' || v === 'undecided';
 
 /** Monthly prices (shown on the plans page; payments come later). */
-export const PLAN_PRICES_EUR: Record<Exclude<Plan, 'free'>, number> = { premium: 20 };
-
 type PlanState = {
   /** The account these values belong to. */
   userId: string | null;

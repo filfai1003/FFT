@@ -11,9 +11,9 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
-import { euros, effectiveAiSettings, fetchAiCredit, useAiCredit } from './included';
+import { creditPercent, effectiveAiSettings, fetchAiCredit, useAiCredit } from './included';
 import { hasAiKey, useAiSettings, type AiProvider, type AiSettings } from './settings-store';
-import { PLAN_PRICES_EUR, usePlanStore } from '@/lib/plan';
+import { usePlanStore } from '@/lib/plan';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/design/use-theme';
 import { View } from 'react-native';
@@ -169,7 +169,7 @@ function IncludedCard() {
             {t('premium.plan.premium')}
           </Text>
           <Text variant="label" numeric>
-            {t('premium.pricePerMonth', { price: PLAN_PRICES_EUR.premium })}
+            {t('premium.comingSoon')}
           </Text>
         </View>
         <Text variant="displayS">{t('ai.premiumTitle')}</Text>
@@ -196,13 +196,16 @@ function IncludedCard() {
         {t('ai.includedTitle')}
       </Text>
       <Text variant="titleM" numeric>
-        {credit ? t('ai.creditLeft', { amount: euros(credit.balanceMicros) }) : '—'}
+        {credit
+          ? t('ai.creditLeft', {
+              percent: creditPercent(credit.balanceMicros, credit.monthlyMicros),
+            })
+          : '—'}
       </Text>
       {credit ? (
         <Text variant="bodyS" muted>
           {t('ai.creditRule', {
-            monthly: euros(credit.monthlyMicros),
-            cap: euros(credit.capMicros),
+            cap: creditPercent(credit.capMicros, credit.monthlyMicros),
             date: credit.nextGrant ?? '',
           })}
         </Text>

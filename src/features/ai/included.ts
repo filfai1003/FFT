@@ -22,7 +22,9 @@ export const useAiCredit = create<{ credit: AiCredit | null }>(() => ({ credit: 
 const server = () => getAuthClient() as unknown as SupabaseClient;
 
 /** Euros from micro-euros, with cents ("8.42"). */
-export const euros = (micros: number) => (Math.max(micros, 0) / 1_000_000).toFixed(2);
+/** What is left of the monthly AI allowance, in % (over 100 when unused credit carried over). */
+export const creditPercent = (balanceMicros: number, monthlyMicros: number) =>
+  monthlyMicros > 0 ? Math.max(0, Math.round((balanceMicros / monthlyMicros) * 100)) : 0;
 
 export async function fetchAiCredit(): Promise<AiCredit | null> {
   const { data, error } = await server().rpc('my_ai_credit');

@@ -16,7 +16,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...cors, 'content-type': 'application/json' },
   });
 
-const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+const DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });

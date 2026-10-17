@@ -1198,8 +1198,8 @@
   "ai": {
     "includedTitle": "AI included with Premium",
     "seePlans": "See the plans",
-    "creditLeft": "{{amount}} € left",
-    "creditRule": "+{{monthly}} € on {{date}}. What you do not use carries over, up to {{cap}} €.",
+    "creditLeft": "{{percent}}% of this month's AI left",
+    "creditRule": "Back to 100% on {{date}}. What you do not use carries over, up to {{cap}}%.",
     "useIncluded": "Use the included AI",
     "title": "AI coach",
     "chatTitle": "Chat with your AI",
@@ -1371,14 +1371,14 @@
     "attachUnsupported": "This kind of file cannot be sent: use a PDF, a picture or a text file.",
     "premiumTitle": "Your coach, ready to go",
     "perkNoKey": "No API key, no setup",
-    "perkCredit": "10 € of AI every month, unused carries over",
+    "perkCredit": "A monthly AI allowance, unused carries over",
     "perkData": "Can see your training, diet and progress, if you allow it",
     "getPremium": "Get Premium",
     "ownKeyToggle": "Use your own API key",
     "consent": {
       "title": "Before you use the AI coach",
       "intro": "The coach is an AI model. To answer you, the app has to send it what you write.",
-      "whereIncluded": "With the AI included in Premium, it goes through our server to OpenRouter (USA) and the AI model provider it picks (by default Anthropic, USA).",
+      "whereIncluded": "With the AI included in Premium, it goes through our server to OpenRouter (USA) and a provider that runs the AI model (now DeepSeek V4.1), picked among those that keep no data.",
       "whereOwn": "With your own AI key, it goes straight from this device to the provider you chose ({{provider}}), under your agreement with them. Our server is not involved.",
       "what": "What you write and the files and photos you attach are always sent: you choose them. Your stored data (body, diet, training, photos) is sent only for the kinds you allow below. They are all off until you turn them on.",
       "health": "This can include health data, such as your weight, what you eat or your workouts.",
@@ -1479,7 +1479,7 @@
       "premium": "Premium"
     },
     "priceFree": "0 €",
-    "pricePerMonth": "{{price}} € / month",
+    "comingSoon": "Coming soon",
     "yourPlan": "Your plan",
     "perks": {
       "everything": "Every feature",
@@ -1489,10 +1489,10 @@
       "safe": "Nothing lost if you change phone",
       "apiMcp": "API and MCP for your own tools",
       "aiIncluded": "AI coach included, no key",
-      "aiCredit": "10 € of AI a month, unused carries over (max 15 €)",
+      "aiCredit": "A monthly AI allowance, unused carries over (up to 150%)",
       "freeAll": "Everything in Free"
     },
-    "howToGet": "By invitation for now."
+    "howToGet": "Premium is not available yet. Coming soon."
   },
   "sync": {
     "title": "Online sync",

@@ -76,7 +76,7 @@ check(
 );
 check(
   'AI model change refused without sudo',
-  (await call('/api/ai-model', { model: 'anthropic/claude-haiku-4.5' })).status === 403,
+  (await call('/api/ai-model', { model: 'deepseek/deepseek-v4.1-flash' })).status === 403,
 );
 check('AI tab readable', (await call('/api/ai')).status === 200);
 check('password resets readable', (await call('/api/password-resets')).status === 200);

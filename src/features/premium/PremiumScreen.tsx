@@ -10,7 +10,7 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { logOut } from '@/features/profile/account';
 import { goBack } from '@/lib/navigation';
-import { PLAN_PRICES_EUR, usePlanStore, type Plan } from '@/lib/plan';
+import { usePlanStore, type Plan } from '@/lib/plan';
 
 /** What each plan adds to the one before (keys under premium.perks). */
 const PLANS = [
@@ -60,9 +60,7 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
                 {t(`premium.plan.${plan}`)}
               </Text>
               <Text variant="titleM" numeric>
-                {plan === 'free'
-                  ? t('premium.priceFree')
-                  : t('premium.pricePerMonth', { price: PLAN_PRICES_EUR[plan] })}
+                {plan === 'free' ? t('premium.priceFree') : t('premium.comingSoon')}
               </Text>
             </View>
             {mine ? (
