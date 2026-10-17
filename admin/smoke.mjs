@@ -1,7 +1,11 @@
 // Checks the access rules of a running admin panel. Usage:
-//   ADMIN_URL=http://localhost:3100 ADMIN_PASSWORD=… node admin/smoke.mjs
+//   ADMIN_URL=http://localhost:3100 ADMIN_PASSWORD=… ADMIN_TOTP_SECRET=… node admin/smoke.mjs
+import { base32Decode, totpCode } from './auth.js';
+
 const base = process.env.ADMIN_URL ?? 'http://localhost:3100';
 const password = process.env.ADMIN_PASSWORD ?? '';
+const code = () =>
+  totpCode(base32Decode(process.env.ADMIN_TOTP_SECRET ?? ''), Math.floor(Date.now() / 30_000));
 let cookie = '';
 let ok = 0;
 let bad = 0;
@@ -35,7 +39,11 @@ check(
   'wrong password refused',
   (await call('/api/login', { password: 'nope' }, { useCookie: false })).status === 401,
 );
-check('sign in works', (await call('/api/login', { password })).status === 200);
+check(
+  'right password, wrong code refused',
+  (await call('/api/login', { password, code: '000000' }, { useCookie: false })).status === 401,
+);
+check('sign in works', (await call('/api/login', { password, code: code() })).status === 200);
 check('tables list', (await call('/api/tables')).data.tables?.length > 5);
 
 const select = await call('/api/sql', { sql: 'select count(*) as n from public.profiles' });

@@ -6,7 +6,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { createGzip } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
-import { createAuth, createLimiter, SUDO_MS } from './auth.js';
+import { createAuth, createLimiter, createTotp, SUDO_MS } from './auth.js';
 import { createDb } from './db.js';
 
 const { DATABASE_URL, ADMIN_RO_PASSWORD, PORT = '3000' } = process.env;
@@ -19,6 +19,14 @@ if (ADMIN_PASSWORD.length < 16) {
   console.error('ADMIN_PASSWORD needs 16+ characters');
   process.exit(1);
 }
+// Second factor (authenticator app): required. The secret is generated on Railway and added to the
+// app by hand ("enter a setup key"), so it never travels anywhere else.
+const ADMIN_TOTP_SECRET = (process.env.ADMIN_TOTP_SECRET ?? '').trim();
+if (!ADMIN_TOTP_SECRET) {
+  console.error('Missing ADMIN_TOTP_SECRET (base32, for the authenticator app)');
+  process.exit(1);
+}
+const totp = createTotp(ADMIN_TOTP_SECRET);
 // The cookie-signing key is made at every start: nothing to configure, and a restart signs everyone out.
 const SESSION_SECRET = crypto.randomBytes(32).toString('hex');
 
@@ -120,11 +128,14 @@ async function api(req, res, url) {
     const wait = limiter.locked(key);
     if (wait)
       throw new HttpError(429, `Too many attempts. Try again in ${Math.ceil(wait / 60)} min.`);
-    const { password } = await readBody(req);
-    if (!auth.checkPassword(password ?? '')) {
+    const { password, code } = await readBody(req);
+    // Both checked every time, one answer for both: a wrong try tells nothing about which part.
+    const passwordOk = auth.checkPassword(password ?? '');
+    const codeOk = passwordOk && totp.check(code);
+    if (!passwordOk || !codeOk) {
       limiter.fail(key);
       await sleep(700);
-      throw new HttpError(401, 'Wrong password');
+      throw new HttpError(401, 'Wrong password or code');
     }
     limiter.ok(key);
     const session = auth.newSession();

@@ -10,7 +10,7 @@ Qualsiasi evento che rende i dati degli utenti **leggibili da chi non deve**, **
 **persi / non disponibili**, anche per errore e anche senza un attacco. Esempi per FFT:
 
 - qualcuno entra nel pannello admin, nel database o nell'account Railway;
-- trapela un segreto: `ADMIN_PASSWORD`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, la password del
+- trapela un segreto: `ADMIN_PASSWORD` (con `ADMIN_TOTP_SECRET`), `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, la password del
   database, `BACKUP_KEY` insieme ai backup, `OPENROUTER_API_KEY`;
 - un bug fa vedere a un utente i dati di un altro (regole RLS, sync, API/MCP, foto);
 - dati cancellati o corrotti sul server senza un backup utilizzabile;
@@ -37,7 +37,7 @@ Solo quello che serve per il caso:
 
 | Problema | Cosa fare |
 |---|---|
-| Pannello admin violato o `ADMIN_PASSWORD` trapelata | Railway → `admin` → Variables: nuova `ADMIN_PASSWORD`. Se serve, togli il dominio pubblico del servizio `admin` |
+| Pannello admin violato o `ADMIN_PASSWORD` trapelata | Railway → `admin` → Variables: nuova `ADMIN_PASSWORD` e nuovo `ADMIN_TOTP_SECRET` (poi riaggiungilo all'app di autenticazione). Se serve, togli il dominio pubblico del servizio `admin` |
 | `SUPABASE_SERVICE_ROLE_KEY` o `JWT_SECRET` trapelati | Nuovo `JWT_SECRET` e nuove chiavi anon e service-role su Railway (tutti i servizi che le usano). Attenzione: la chiave anon è dentro l'app (variabile EAS), quindi serve un aggiornamento dell'app; tutti gli utenti dovranno rientrare |
 | Password del database trapelata | Cambiala sul servizio Postgres e aggiorna `DATABASE_URL` nei servizi che la usano |
 | Token API usati male | Pannello admin → All data → `api_tokens`: revoca (deleted_at) i token coinvolti |

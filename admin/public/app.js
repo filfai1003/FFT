@@ -188,6 +188,7 @@ function showLogin() {
   $('app').hidden = true;
   $('login').hidden = false;
   $('loginPassword').value = '';
+  $('loginCode').value = '';
   $('loginPassword').focus();
 }
 
@@ -264,7 +265,10 @@ $('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('loginError').textContent = '';
   try {
-    await api('/api/login', { password: $('loginPassword').value });
+    await api('/api/login', {
+      password: $('loginPassword').value,
+      code: $('loginCode').value,
+    });
     showApp();
   } catch (err) {
     $('loginError').textContent = err.message;
