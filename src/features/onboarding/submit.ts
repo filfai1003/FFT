@@ -96,10 +96,9 @@ export async function completeOnboarding(
     );
   }
 
-  const consents = [
-    { type: 'health_data' as const, granted: draft.consentHealth },
-    { type: 'analytics' as const, granted: draft.consentAnalytics },
-  ].filter((c) => c.granted);
+  const consents = [{ type: 'health_data' as const, granted: draft.consentHealth }].filter(
+    (c) => c.granted,
+  );
   steps.push(() =>
     supabase.from('consents').upsert(
       consents.map((c) => ({

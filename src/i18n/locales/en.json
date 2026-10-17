@@ -198,9 +198,7 @@
       "title": "Your health data",
       "body": "Weight, food, workouts and photos are health data. We keep them only to run the app: on this phone and, with an account, on our server, where only you can reach them. You can export or delete everything at any time in Privacy & data.",
       "health": "I agree to the processing of my health data",
-      "healthDetail": "Required to use the app. You can withdraw it later.",
-      "analytics": "Share anonymous usage statistics",
-      "analyticsDetail": "Optional, off by default."
+      "healthDetail": "Required to use the app. You can withdraw it later."
     },
     "ai": {
       "title": "Use FFT with your AI",
@@ -1085,8 +1083,6 @@
     "photos": "Progress photos",
     "blur": "Blur photos until tapped",
     "lock": "Lock photos",
-    "sharing": "Sharing",
-    "analytics": "Anonymous usage stats",
     "consent": "Health data consent",
     "givenOn": "Given {{date}}",
     "notGiven": "Not given",
@@ -1106,9 +1102,8 @@
     "workoutsOnlyDetail": "CSV · opens in any spreadsheet",
     "blurDetail": "Safe to open the app in public",
     "lockDetail": "Face ID or passcode to view",
-    "analyticsDetail": "Optional · nothing is collected today",
     "importDetail": "ZIP from Export · nothing is deleted",
-    "deleteNote": "Removes all your data and photos within 30 days. This can't be undone."
+    "deleteNote": "Removes all your data and photos from this phone and from our server right away. Copies in backups disappear when the backups expire. This can't be undone."
   },
   "gate": {
     "title": "Consent withdrawn",

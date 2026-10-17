@@ -43,7 +43,6 @@ export function PrivacyScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const health = activeConsent(consents.data, 'health_data');
-  const analytics = activeConsent(consents.data, 'analytics');
   const grantedOn = health
     ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
         new Date(health.grantedAt),
@@ -245,20 +244,6 @@ export function PrivacyScreen() {
               detail: t('privacy.lockDetail'),
               value: privacy.lockPhotos,
               onChange: toggleLock,
-            },
-          ])}
-        </Card>
-
-        <Card size="small" gap={0}>
-          <Text variant="label" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.sharing')}
-          </Text>
-          {rows([
-            {
-              name: t('privacy.analytics'),
-              detail: t('privacy.analyticsDetail'),
-              value: analytics != null,
-              onChange: (v) => setConsent.mutate({ type: 'analytics', granted: v }),
             },
           ])}
         </Card>

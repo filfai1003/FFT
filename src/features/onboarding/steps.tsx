@@ -325,12 +325,6 @@ export function ConsentStep({ draft, patch }: StepProps) {
           value={draft.consentHealth}
           onValueChange={(consentHealth) => patch({ consentHealth })}
         />
-        <ConsentRow
-          title={t('onboarding.consent.analytics')}
-          detail={t('onboarding.consent.analyticsDetail')}
-          value={draft.consentAnalytics}
-          onValueChange={(consentAnalytics) => patch({ consentAnalytics })}
-        />
       </Card>
     </View>
   );

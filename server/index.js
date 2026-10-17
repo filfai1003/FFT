@@ -142,8 +142,30 @@ http
   })
   .listen(Number(process.env.PORT ?? 3000), '::', () => console.log('functions listening'));
 
+/**
+ * What the privacy policy promises about retention: handled password requests 30 days, the admin
+ * change log and the sign-in log 12 months, error reports 60 days. Runs at start and every day.
+ */
+async function cleanup() {
+  const rules = [
+    `delete from public.password_reset_requests where handled_at < now() - interval '30 days'`,
+    `delete from public.admin_audit where created_at < now() - interval '12 months'`,
+    `delete from auth.audit_log_entries where created_at < now() - interval '12 months'`,
+    `delete from public.app_errors where created_at < now() - interval '60 days'`,
+  ];
+  for (const sql of rules) {
+    try {
+      await pool.query(sql);
+    } catch (e) {
+      console.error('cleanup failed:', e.message);
+    }
+  }
+}
+
 migrate('./migrations')
   .then(async () => {
+    void cleanup();
+    setInterval(() => void cleanup(), 24 * 60 * 60 * 1000);
     // The API runs each request as the user (row level security): the server's role must be
     // allowed to become `authenticated`.
     await pool.query('begin; set local role authenticated; rollback');
