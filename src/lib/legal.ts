@@ -1,4 +1,3 @@
-import { getLocales } from 'expo-localization';
 import { Linking } from 'react-native';
 
 /**
@@ -11,18 +10,12 @@ export const SITE_URL = (
 
 export type LegalPage = 'privacy' | 'terms' | 'deleteAccount';
 
-/** The page in Italian when the phone is set to Italian (the pages exist in English and Italian). */
-export function legalUrl(page: LegalPage, languageCode?: string | null): string {
+/** The pages exist in English only (DECISIONS 67), whatever the phone's language. */
+export function legalUrl(page: LegalPage): string {
   if (page === 'deleteAccount') return `${SITE_URL}/delete-account`;
-  return `${SITE_URL}/${page}${languageCode === 'it' ? '-it' : ''}`;
+  return `${SITE_URL}/${page}`;
 }
 
 export function openLegal(page: LegalPage) {
-  let language: string | null = null;
-  try {
-    language = getLocales()[0]?.languageCode ?? null;
-  } catch {
-    language = null;
-  }
-  void Linking.openURL(legalUrl(page, language)).catch(() => undefined);
+  void Linking.openURL(legalUrl(page)).catch(() => undefined);
 }

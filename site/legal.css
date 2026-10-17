@@ -143,11 +143,6 @@ th {
 tr:last-child td {
   border-bottom: none;
 }
-.second-language {
-  margin-top: 56px;
-  padding-top: 32px;
-  border-top: 1px solid var(--border);
-}
 .placeholder {
   font-weight: 600;
 }

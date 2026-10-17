@@ -1,92 +1,86 @@
-# Violazione dei dati personali: cosa fare
+# Personal data breach: what to do
 
-Procedura interna di FFT (GDPR art. 33 e 34). Titolare: Filippo Faiella, filfai1003@gmail.com.
-Il **registro delle violazioni** con i dettagli di ogni caso va tenuto **fuori da questo repository**
-(il repository è pubblico): un documento privato, per esempio nel tuo Drive.
+FFT internal procedure (GDPR art. 33 and 34). Controller: Filippo Faiella, filfai1003@gmail.com.
+The **breach register** with the details of each case must be kept **outside this repository**
+(the repository is public): a private document, for example in your Drive.
 
-## Cos'è una violazione
+## What a breach is
 
-Qualsiasi evento che rende i dati degli utenti **leggibili da chi non deve**, **modificati** o
-**persi / non disponibili**, anche per errore e anche senza un attacco. Esempi per FFT:
+Any event that makes users' data **readable by someone who should not see it**, **modified** or
+**lost / unavailable**, even by mistake and even without an attack. Examples for FFT:
 
-- qualcuno entra nel pannello admin, nel database o nell'account Railway;
-- trapela un segreto: `ADMIN_PASSWORD` (con `ADMIN_TOTP_SECRET`), `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, la password del
-  database, `BACKUP_KEY` insieme ai backup, `OPENROUTER_API_KEY`;
-- un bug fa vedere a un utente i dati di un altro (regole RLS, sync, API/MCP, foto);
-- dati cancellati o corrotti sul server senza un backup utilizzabile;
-- un fornitore (Railway, OpenRouter) ti avvisa di una violazione che tocca i tuoi dati;
-- un'email con dati personali mandata alla persona sbagliata.
+- someone gets into the admin panel, the database or the Railway account;
+- a secret leaks: `ADMIN_PASSWORD` (with `ADMIN_TOTP_SECRET`), `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, the database
+  password, `BACKUP_KEY` together with the backups, `OPENROUTER_API_KEY`;
+- a bug lets a user see another user's data (RLS rules, sync, API/MCP, photos);
+- data deleted or corrupted on the server without a usable backup;
+- a provider (Railway, OpenRouter) tells you about a breach that affects your data;
+- an email with personal data sent to the wrong person.
 
-Non è una violazione: un utente che perde il proprio telefono o il proprio token API (è suo), un
-tentativo di accesso bloccato.
+Not a breach: a user who loses their own phone or their own API token (it is theirs), a blocked
+sign-in attempt.
 
-## Il tempo
+## The deadline
 
-Hai **72 ore** per avvisare il Garante, contate da quando **sai ragionevolmente** che c'è una
-violazione (non da quando è successa). Se non hai ancora tutti i dettagli, si notifica entro 72 ore
-quello che si sa e si integra dopo.
+You have **72 hours** to notify the Garante (the Italian supervisory authority, Garante per la
+protezione dei dati personali), counted from when you **become reasonably aware** that there is a
+breach (not from when it happened). If you do not have all the details yet, notify what you know
+within 72 hours and add the rest later.
 
-## Passi
+## Steps
 
-### 1. Annota subito (5 minuti)
-Data e ora in cui te ne sei accorto, come, cosa hai visto. Fai screenshot e copia i log
-(Railway → servizio → Logs; pannello admin → Problems, Change log). Non cancellare niente.
+### 1. Write it down at once (5 minutes)
+Date and time you noticed it, how, what you saw. Take screenshots and copy the logs
+(Railway → service → Logs; admin panel → Problems, Change log). Do not delete anything.
 
-### 2. Ferma la perdita (prima ora)
-Solo quello che serve per il caso:
+### 2. Stop the loss (first hour)
+Only what the case needs:
 
-| Problema | Cosa fare |
+| Problem | What to do |
 |---|---|
-| Pannello admin violato o `ADMIN_PASSWORD` trapelata | Railway → `admin` → Variables: nuova `ADMIN_PASSWORD` e nuovo `ADMIN_TOTP_SECRET` (poi riaggiungilo all'app di autenticazione). Se serve, togli il dominio pubblico del servizio `admin` |
-| `SUPABASE_SERVICE_ROLE_KEY` o `JWT_SECRET` trapelati | Nuovo `JWT_SECRET` e nuove chiavi anon e service-role su Railway (tutti i servizi che le usano). Attenzione: la chiave anon è dentro l'app (variabile EAS), quindi serve un aggiornamento dell'app; tutti gli utenti dovranno rientrare |
-| Password del database trapelata | Cambiala sul servizio Postgres e aggiorna `DATABASE_URL` nei servizi che la usano |
-| Token API usati male | Pannello admin → All data → `api_tokens`: revoca (deleted_at) i token coinvolti |
-| `OPENROUTER_API_KEY` trapelata | Revocala su openrouter.ai e mettine una nuova sul servizio `api` |
-| Bug che mostra dati di altri | Se possibile spegni la funzione (rollback del deploy su Railway → Deployments → Rollback), poi correggi |
-| Account Railway o GitHub violato | Cambia password, attiva/controlla la 2FA, chiudi le sessioni aperte, controlla i deploy recenti |
-| Dati persi | Ripristino dal backup (docs/DEPLOY.md → Backups) |
+| Admin panel breached or `ADMIN_PASSWORD` leaked | Railway → `admin` → Variables: new `ADMIN_PASSWORD` and new `ADMIN_TOTP_SECRET` (then add it again to the authenticator app). If needed, remove the public domain of the `admin` service |
+| `SUPABASE_SERVICE_ROLE_KEY` or `JWT_SECRET` leaked | New `JWT_SECRET` and new anon and service-role keys on Railway (all the services that use them). Careful: the anon key is inside the app (EAS variable), so an app update is needed; all users will have to sign in again |
+| Database password leaked | Change it on the Postgres service and update `DATABASE_URL` in the services that use it |
+| API tokens misused | Admin panel → All data → `api_tokens`: revoke (deleted_at) the tokens involved |
+| `OPENROUTER_API_KEY` leaked | Revoke it on openrouter.ai and put a new one on the `api` service |
+| Bug that shows other people's data | If possible turn the feature off (roll back the deploy on Railway → Deployments → Rollback), then fix it |
+| Railway or GitHub account breached | Change the password, turn on / check 2FA, close open sessions, check the recent deploys |
+| Data lost | Restore from the backup (docs/DEPLOY.md → Backups) |
 
-### 3. Capisci la gravità (entro 24 ore)
-Rispondi per scritto:
-- **Quali dati**: account (email), profilo, peso e misure, dieta, allenamenti, foto, conversazioni AI?
-  Peso, misure, dieta e foto sono **dati sulla salute**: rischio più alto.
-- **Quanti utenti** (pannello admin → People; query nel pannello).
-- **Tipo**: letti da altri (riservatezza), modificati (integrità), persi (disponibilità).
-- **Ancora in corso?** Bloccata?
-- **Conseguenze possibili** per le persone: imbarazzo, discriminazione, furto d'identità, phishing.
+### 3. Understand how serious it is (within 24 hours)
+Answer in writing:
+- **Which data**: account (email), profile, weight and measurements, diet, workouts, photos, AI conversations?
+  Weight, measurements, diet and photos are **health data**: higher risk.
+- **How many users** (admin panel → People; query in the panel).
+- **Type**: read by others (confidentiality), modified (integrity), lost (availability).
+- **Still going on?** Stopped?
+- **Possible consequences** for the people: embarrassment, discrimination, identity theft, phishing.
 
-### 4. Decidi chi avvisare
+### 4. Decide who to notify
 
-| Rischio per le persone | Garante (entro 72 h) | Utenti |
+| Risk for the people | Garante (within 72 h) | Users |
 |---|---|---|
-| Improbabile (es. dati cifrati e chiave al sicuro, bloccato subito, nessun dato letto) | No, ma registralo | No |
-| Possibile | **Sì** | Se il rischio è alto |
-| Alto (es. dati sulla salute letti da estranei, password o email esposte) | **Sì** | **Sì, senza ritardo** |
+| Unlikely (e.g. data encrypted and key safe, stopped at once, no data read) | No, but record it | No |
+| Possible | **Yes** | If the risk is high |
+| High (e.g. health data read by strangers, passwords or emails exposed) | **Yes** | **Yes, without delay** |
 
-Nel dubbio, notifica il Garante.
+When in doubt, notify the Garante.
 
-### 5. Notifica al Garante
-Procedura online sul sito del Garante (garanteprivacy.it → "Data breach" / notifica violazione),
-con il modulo ufficiale. Servono:
-- titolare e contatto (Filippo Faiella, filfai1003@gmail.com);
-- quando è successo e quando te ne sei accorto;
-- natura della violazione, categorie e numero approssimativo di persone e di dati;
-- conseguenze probabili;
-- misure prese e previste (passo 2 e dopo);
-- se e come hai avvisato gli utenti.
+### 5. Notification to the Garante
+Online procedure on the Garante's website (garanteprivacy.it → "Data breach" / breach
+notification), with the official form. You need:
+- controller and contact (Filippo Faiella, filfai1003@gmail.com);
+- when it happened and when you noticed it;
+- nature of the breach, categories and approximate number of people and of records;
+- likely consequences;
+- measures taken and planned (step 2 and after);
+- whether and how you told the users.
 
-Conserva la ricevuta.
+Keep the receipt.
 
-### 6. Avviso agli utenti (se il rischio è alto)
-Email a ciascun utente coinvolto (e, se l'email non è possibile, un avviso nell'app o sul sito).
-Testo semplice, senza tecnicismi:
-
-> **Oggetto: Avviso di sicurezza sul tuo account FFT**
->
-> Ciao, il [data] abbiamo scoperto che [cosa è successo, in una frase]. Sono stati coinvolti questi
-> tuoi dati: [elenco]. Abbiamo già [cosa hai fatto]. Ti consigliamo di [cambiare la password /
-> fare attenzione a email sospette / …]. Per qualsiasi domanda scrivi a filfai1003@gmail.com.
-> Filippo Faiella, FFT
+### 6. Notice to users (if the risk is high)
+Email to each user involved (and, if email is not possible, a notice in the app or on the site).
+Plain text, no jargon:
 
 > **Subject: Security notice about your FFT account**
 >
@@ -95,18 +89,18 @@ Testo semplice, senza tecnicismi:
 > suspicious emails / …]. For any question write to filfai1003@gmail.com.
 > Filippo Faiella, FFT
 
-### 7. Fornitori
-- Se la violazione nasce da un fornitore, chiedigli per iscritto i dettagli: Railway
-  privacy@railway.com (DPA firmato, §8), OpenRouter dal loro supporto.
-- Se tocca loro, avvisali.
+### 7. Providers
+- If the breach comes from a provider, ask them in writing for the details: Railway
+  privacy@railway.com (signed DPA, §8), OpenRouter through their support.
+- If it affects them, tell them.
 
-### 8. Registra e impara (sempre, anche se non notifichi)
-Nel registro privato: data, cosa è successo, dati e persone coinvolti, conseguenze, decisioni prese
-(e perché hai notificato o no), misure. Poi la correzione nel codice o nella configurazione, con un
-test se possibile.
+### 8. Record and learn (always, even if you do not notify)
+In the private register: date, what happened, data and people involved, consequences, decisions
+taken (and why you notified or not), measures. Then the fix in the code or in the configuration,
+with a test if possible.
 
-## Dove guardare per accorgersene
-- Pannello admin → Overview (ultimo backup) e **Problems** (errori, backup falliti).
-- Email di Railway, GitHub, OpenRouter.
-- Railway → Logs (servizi `api`, `auth`, `backend`, `admin`).
-- Segnalazioni degli utenti a filfai1003@gmail.com.
+## Where to look to notice it
+- Admin panel → Overview (last backup) and **Problems** (errors, failed backups).
+- Emails from Railway, GitHub, OpenRouter.
+- Railway → Logs (services `api`, `auth`, `backend`, `admin`).
+- User reports to filfai1003@gmail.com.
