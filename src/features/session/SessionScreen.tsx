@@ -17,6 +17,7 @@ import { usePlan } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { useNow } from '@/lib/use-now';
+import { ExerciseSwiper } from './ExerciseSwiper';
 import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
 import { ReorderSheet } from './ReorderSheet';
@@ -368,8 +369,9 @@ export function SessionScreen() {
                   flex: 1,
                   height: 4,
                   borderRadius: 2,
+                  // The exercises on screen (a whole superset) are lit: the page indicator.
                   backgroundColor:
-                    i === index
+                    i === index || group.includes(i)
                       ? colors.accent
                       : exerciseState(e) === 'done'
                         ? colors.dotOn
@@ -382,12 +384,22 @@ export function SessionScreen() {
 
         {exercise ? (
           <>
-            {inSuperset ? (
-              <Text variant="label" muted>
-                {t('session.supersetIntro', { count: group.length })}
-              </Text>
-            ) : null}
-            {group.map((i) => renderExercise(i))}
+            {/* Swipe left / right for the next / previous exercise (a superset moves as one). */}
+            <ExerciseSwiper
+              page={active.exercises[group[0] ?? index]?.rowId ?? ''}
+              order={group[0] ?? index}
+              canPrevious={previousEx != null}
+              canNext={nextEx != null}
+              onPrevious={() => update((s) => goTo(s, previousIndex))}
+              onNext={() => update((s) => goTo(s, nextIndex))}
+            >
+              {inSuperset ? (
+                <Text variant="label" muted>
+                  {t('session.supersetIntro', { count: group.length })}
+                </Text>
+              ) : null}
+              {group.map((i) => renderExercise(i))}
+            </ExerciseSwiper>
 
             <RestCard />
           </>

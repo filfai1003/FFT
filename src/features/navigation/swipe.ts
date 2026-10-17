@@ -59,6 +59,31 @@ export function settlePage(
 }
 
 /**
+ * A released swipe between neighbours (exercises): 1 = to the next, -1 = to the previous,
+ * 0 = back where it was (not far or fast enough, or nothing on that side).
+ */
+export function swipeStep(
+  dx: number,
+  vx: number,
+  width: number,
+  canPrevious: boolean,
+  canNext: boolean,
+): -1 | 0 | 1 {
+  'worklet';
+  const page = settlePage(1, dx, vx, width, 3);
+  if (page === 2 && canNext) return 1;
+  if (page === 0 && canPrevious) return -1;
+  return 0;
+}
+
+/** The content offset under the finger: free towards a neighbour, resisting where there is none. */
+export function swipeOffset(dx: number, canPrevious: boolean, canNext: boolean): number {
+  'worklet';
+  if ((dx > 0 && !canPrevious) || (dx < 0 && !canNext)) return dx / 4;
+  return dx;
+}
+
+/**
  * Where the tab bar's pill sits for a page position: the bar's slots are the tabs with the round
  * "+" action in the middle (not a page), so pages after the middle skip one slot.
  */

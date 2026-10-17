@@ -139,6 +139,16 @@ describe('editing', () => {
     expect(s.index).toBe(0);
   });
 
+  it('swiping to another exercise and back keeps what was typed', () => {
+    let s = setField(session(), 0, 1, 'weight', '42.5');
+    s = setField(s, 0, 1, 'reps', '9');
+    s = goTo(s, 1);
+    s = setField(s, 1, 0, 'duration', '45');
+    s = goTo(s, 0);
+    expect(s.exercises[0].sets[1]).toMatchObject({ weight: '42.5', reps: '9' });
+    expect(s.exercises[1].sets[0].duration).toBe('45');
+  });
+
   it('moving exercises keeps the one on screen', () => {
     let s = goTo(session(), 0);
     s = moveExercise(s, 0, 1);

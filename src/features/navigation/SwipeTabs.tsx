@@ -15,7 +15,7 @@ import {
 } from 'expo-router/react-navigation';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -29,7 +29,8 @@ import { motion, tabDuration } from '@/design/transitions';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { useTabSwipeLock } from './swipe-lock';
-import { dragPosition, settlePage, swipeIntent } from './swipe';
+import { dragPosition, settlePage } from './swipe';
+import { useHorizontalPan } from './swipe-gesture';
 
 /**
  * The app's tab navigator (DECISIONS 70): the same router as Expo Router's Tabs (so routes, deep
@@ -195,9 +196,6 @@ function SwipeTabView({
   const fromPage = useSharedValue(basePage);
   const toPage = useSharedValue(basePage);
   const startPage = useSharedValue(basePage);
-  const startX = useSharedValue(0);
-  const startY = useSharedValue(0);
-  const decided = useSharedValue(false);
   // A page change that a swipe already animated (-1 = none): the effect below must not animate
   // it again.
   const settling = useSharedValue(-1);
@@ -250,47 +248,19 @@ function SwipeTabView({
     navigation.navigate(route.name);
   };
 
-  const pan = Gesture.Pan()
-    .enabled(swipeEnabled)
-    .manualActivation(true)
-    .onTouchesDown((e) => {
-      const touch = e.allTouches[0];
-      if (!touch) return;
-      startX.set(touch.absoluteX);
-      startY.set(touch.absoluteY);
-      decided.set(false);
-    })
-    .onTouchesMove((e, manager) => {
-      if (decided.get()) return;
-      const touch = e.allTouches[0];
-      if (!touch || e.numberOfTouches > 1) {
-        decided.set(true);
-        manager.fail();
-        return;
-      }
-      const intent = swipeIntent(
-        touch.absoluteX - startX.get(),
-        touch.absoluteY - startY.get(),
-        startX.get(),
-        width.get(),
-      );
-      if (intent === 'activate') {
-        decided.set(true);
-        manager.activate();
-      } else if (intent === 'fail') {
-        decided.set(true);
-        manager.fail();
-      }
-    })
+  const pan = useHorizontalPan(swipeEnabled)
     .onStart(() => {
+      'worklet';
       cancelAnimation(position);
       mode.set(PAGER);
       startPage.set(Math.round(position.get()));
     })
     .onUpdate((e) => {
+      'worklet';
       position.set(dragPosition(startPage.get(), e.translationX, width.get(), count));
     })
     .onEnd((e) => {
+      'worklet';
       const from = startPage.get();
       const target = settlePage(from, e.translationX, e.velocityX, width.get(), count);
       const distance = Math.abs(position.get() - target);
