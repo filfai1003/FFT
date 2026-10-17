@@ -259,10 +259,9 @@
           end-to-end.
         </li>
         <li>
-          <strong>Backup</strong>: Railway conserva backup automatici del database e dello spazio
-          delle foto nella stessa regione UE, per
-          <span class="placeholder">[BACKUP RETENTION]</span>.
-          <!-- TODO: backup retention -->
+          <strong>Backup</strong>: ogni notte il database e le foto vengono copiati, cifrati
+          (AES-256-GCM, con una chiave tenuta separata dalle copie), in uno spazio di archiviazione
+          del nostro hosting nella stessa regione UE. Le copie sono conservate per al massimo 12 mesi: copie giornaliere per 30 giorni, poi una copia al mese per 12 mesi.
         </li>
       </ul>
       <p>
@@ -361,8 +360,7 @@
         Dall'app: Profile &gt; Privacy &amp; data &gt; Delete account. Vengono eliminati subito
         l'account sul server con tutti i dati e le foto, e tutti i dati su quel dispositivo,
         comprese le conversazioni AI. I tuoi dati possono restare nei backup del server finché
-        questi non scadono (<span class="placeholder">[BACKUP RETENTION]</span>), poi spariscono.
-        <!-- TODO: backup retention -->
+        questi non scadono (al massimo 12 mesi: copie giornaliere per 30 giorni, poi una copia al mese per 12 mesi), poi spariscono.
         Sugli altri dispositivi dove hai usato FFT, disinstalla l'app (o cancella i dati del sito
         nel browser) per eliminare la copia che resta lì. Da telefono puoi invece scegliere
         <strong>Delete the account, keep my data on this phone</strong>: l'account e la sua copia

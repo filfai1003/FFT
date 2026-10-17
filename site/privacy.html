@@ -253,9 +253,9 @@
           area, reachable only through short-lived signed links; they are not end-to-end encrypted.
         </li>
         <li>
-          <strong>Backups</strong>: Railway keeps automatic backups of the database and of the photo
-          storage in the same EU region, for <span class="placeholder">[BACKUP RETENTION]</span>.
-          <!-- TODO: backup retention -->
+          <strong>Backups</strong>: every night the database and the photos are copied, encrypted
+          (AES-256-GCM, with a key kept apart from the copies), into a storage bucket of our hosting
+          in the same EU region. They are kept for at most 12 months: daily copies for 30 days, then one copy a month for 12 months.
         </li>
       </ul>
       <p>
@@ -351,8 +351,7 @@
         In the app: Profile &gt; Privacy &amp; data &gt; Delete account. This deletes, right away,
         your account on the server with all its data and photos, and all the data on that device,
         including your AI conversations there. Your data may remain in the server backups until they
-        expire (<span class="placeholder">[BACKUP RETENTION]</span>), then it is gone.
-        <!-- TODO: backup retention -->
+        expire (at most 12 months: daily copies for 30 days, then one copy a month for 12 months), then it is gone.
         On other devices where you used FFT, remove the app (or clear the browser's site data) to
         remove the copy there. On a phone you can instead choose
         <strong>Delete the account, keep my data on this phone</strong>: the account and its server
