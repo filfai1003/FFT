@@ -21,6 +21,7 @@ import { useSharedCategories, useSyncChoice } from '@/lib/plan';
 import { useToastStore } from '@/lib/toast-store';
 import { setSharedCategories, turnSyncOff, turnSyncOn } from './sync';
 import { EncryptionSection } from './Encryption';
+import { endRelayHere, useRelayStore } from './relay';
 import { SyncCategoryList, toggled } from './SyncCategories';
 
 /**
@@ -157,6 +158,8 @@ export function TurnSyncOnSheet({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [categories, setCategories] = useState<DataCategory[]>(() => [...DATA_CATEGORIES]);
+  // The relay between phones and the copy exclude each other (DECISIONS 65).
+  const relayed = useRelayStore((s) => (userId ? s.paired[userId] === true : false));
 
   const confirm = async () => {
     if (!userId) return;
@@ -164,6 +167,8 @@ export function TurnSyncOnSheet({
     setFailed(false);
     try {
       await turnSyncOn(userId, categories);
+      // The server ended the relay with it (set_sync); this phone forgets it.
+      if (relayed) await endRelayHere(userId);
       await queryClient.invalidateQueries();
       onClose();
       showToast({ message: t('serverCopy.turnedOn') });
@@ -194,6 +199,7 @@ export function TurnSyncOnSheet({
       }
     >
       <Text muted>{t('serverCopy.turnOnBody')}</Text>
+      {relayed ? <Text variant="bodyS">{t('relay.endsRelay')}</Text> : null}
       <ServerCopyFacts />
       <Text variant="bodyS" style={{ paddingTop: 4 }}>
         {t('serverCopy.categoriesTitle')}

@@ -1903,3 +1903,97 @@ describe('end-to-end encryption of the copy on the server (DECISIONS 64)', () =>
     await rejects(`select public.vault_on_of('${V}')`, '42501');
   });
 });
+
+describe('encrypted relay between phones (DECISIONS 65)', () => {
+  const R = '66666666-0000-0000-0000-000000000006';
+  const P1 = '11111111-aaaa-4aaa-8aaa-000000000001';
+  const P2 = '11111111-aaaa-4aaa-8aaa-000000000002';
+  const send = (msgs) => db.exec(`select public.relay_send('${JSON.stringify(msgs)}'::jsonb)`);
+
+  before(async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${R}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'r@test.dev');
+    `);
+  });
+
+  it('only accounts without a copy on the server can pair phones', async () => {
+    await as(R);
+    await rejects(`select public.relay_register('${P1}', 'Pixel')`, '42501'); // not chosen yet
+    await db.exec('select public.set_sync(true)');
+    await rejects(`select public.relay_register('${P1}', 'Pixel')`, '42501');
+    await db.exec('select public.set_sync(false)');
+    await db.exec(`select public.relay_register('${P1}', 'Pixel')`);
+    await db.exec(`select public.relay_register('${P2}', 'Galaxy')`);
+    const list = (await one('select public.relay_list() as l')).l;
+    assert.deepEqual(
+      list.map((d) => d.name),
+      ['Pixel', 'Galaxy'],
+    );
+    await rejects(`select public.relay_register('not-an-id', 'x')`, '23514');
+  });
+
+  it('a message goes to a paired phone, is fetched, and is deleted once received', async () => {
+    await as(R);
+    await send([{ to: P2, from: P1, payload: 'sealed-1' }]);
+    await rejects(
+      `select public.relay_send('${JSON.stringify([{ to: '22222222-aaaa-4aaa-8aaa-000000000009', from: P1, payload: 'x' }])}'::jsonb)`,
+      '42501',
+    );
+    const inbox = (await one(`select public.relay_fetch('${P2}') as m`)).m;
+    assert.equal(inbox.length, 1);
+    assert.equal(inbox[0].from, P1);
+    assert.equal(inbox[0].payload, 'sealed-1');
+    assert.equal((await one(`select public.relay_fetch('${P1}') as m`)).m.length, 0);
+    await db.exec(`select public.relay_ack('${P2}', array['${inbox[0].id}']::uuid[])`);
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
+  });
+
+  it('nobody else sees or deletes them', async () => {
+    await as(R);
+    await send([{ to: P2, from: P1, payload: 'sealed-2' }]);
+    await as(A);
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
+    assert.equal(await count('select count(*) as n from public.relay_devices'), 0);
+    await db.exec(`select public.relay_remove('${P2}')`);
+    await rejects(`select public.relay_register('${P1}', 'Mine now')`, '42501');
+    await as(R);
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 1);
+  });
+
+  it('size limits: one message at most 8 MB, at most 50 at a time', async () => {
+    await as(R);
+    const many = Array.from({ length: 51 }, () => ({ to: P2, from: P1, payload: 'x' }));
+    await rejects(`select public.relay_send('${JSON.stringify(many)}'::jsonb)`, '54000');
+    await rejects(
+      `insert into public.relay_messages (to_device, from_device, payload) values ('${P2}', '${P1}', repeat('x', 8000001))`,
+      '23514',
+    );
+  });
+
+  it('unpairing a phone deletes what waited for it; old messages go after 30 days', async () => {
+    await as(R);
+    await db.exec(`select public.relay_remove('${P2}')`);
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
+    assert.equal(await count('select count(*) as n from public.relay_devices'), 1);
+    await db.exec(`select public.relay_register('${P2}', 'Galaxy')`);
+    await send([{ to: P2, from: P1, payload: 'old' }]);
+    await admin();
+    await db.exec(`update public.relay_messages set created_at = now() - interval '31 days'`);
+    // The nightly clean-up of server/index.js.
+    await db.exec(
+      `delete from public.relay_messages where created_at < now() - interval '30 days'`,
+    );
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
+  });
+
+  it('turning the copy on ends the relay', async () => {
+    await as(R);
+    await send([{ to: P2, from: P1, payload: 'sealed-3' }]);
+    await db.exec('select public.set_sync(true)');
+    assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
+    assert.equal(await count('select count(*) as n from public.relay_devices'), 0);
+    await rejects(`select public.relay_register('${P1}', 'Pixel')`, '42501');
+  });
+});

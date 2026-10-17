@@ -152,6 +152,9 @@ async function cleanup() {
     `delete from public.admin_audit where created_at < now() - interval '12 months'`,
     `delete from auth.audit_log_entries where created_at < now() - interval '12 months'`,
     `delete from public.app_errors where created_at < now() - interval '60 days'`,
+    // Relay between phones (DECISIONS 65): a message is deleted once delivered, and in any case
+    // after 30 days (a phone that never came back).
+    `delete from public.relay_messages where created_at < now() - interval '30 days'`,
   ];
   for (const sql of rules) {
     try {

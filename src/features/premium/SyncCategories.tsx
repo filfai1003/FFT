@@ -14,10 +14,13 @@ export function SyncCategoryList({
   value,
   onToggle,
   readOnly = false,
+  alwaysNote = 'copy',
 }: {
   value: readonly DataCategory[];
   onToggle: (category: DataCategory, on: boolean) => void;
   readOnly?: boolean;
+  /** What always goes: into the copy on the server, or to the paired phones (DECISIONS 65). */
+  alwaysNote?: 'copy' | 'relay';
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -56,7 +59,7 @@ export function SyncCategoryList({
         );
       })}
       <Text variant="label" muted style={{ paddingTop: 8 }}>
-        {t('serverCopy.alwaysSent')}
+        {alwaysNote === 'relay' ? t('relay.alwaysSent') : t('serverCopy.alwaysSent')}
       </Text>
     </View>
   );

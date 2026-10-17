@@ -90,11 +90,11 @@ const chunks = <T>(list: T[], size = CHUNK): T[][] => {
   return out;
 };
 
-const pick = (table: string, row: Row): Row =>
+export const pick = (table: string, row: Row): Row =>
   Object.fromEntries((columns[table] ?? []).filter((c) => c in row).map((c) => [c, row[c]]));
 
 /** Only the user's own rows go up (catalogue exercises and Open Food Facts foods are shared). */
-function isOwn(db: LocalDb, table: string, row: Row, userId: string): boolean {
+export function isOwn(db: LocalDb, table: string, row: Row, userId: string): boolean {
   if (table === 'exercises' || table === 'foods') return row.owner_id === userId;
   if (table === 'food_servings')
     return (db.tables.foods ?? []).some((f) => f.id === row.food_id && f.owner_id === userId);
@@ -103,7 +103,7 @@ function isOwn(db: LocalDb, table: string, row: Row, userId: string): boolean {
 }
 
 /** The file a row points to, if it has one kept on the device. */
-function fileOf(table: string, row: Row): { bucket: string; path: string } | null {
+export function fileOf(table: string, row: Row): { bucket: string; path: string } | null {
   if (table === 'progress_photos' && row.storage_path)
     return { bucket: PHOTOS, path: String(row.storage_path) };
   if (table === 'exercises' && row.owner_id && row.image_path)

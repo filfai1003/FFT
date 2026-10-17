@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
 import type { DataCategory } from '@/domain/data-categories';
-import { getLocalDb } from '@/lib/local-db';
+import { getLocalDb, hasOwnData } from '@/lib/local-db';
+import { loadRelay, relayDevices } from './relay';
 import { loadPlan, resetPlan, savePlan, usePlanStore, type SyncChoice } from '@/lib/plan';
 import {
   applyCategoryChange,
@@ -24,11 +25,32 @@ export type PlanPhase =
   /** The web app without a copy on the server: it has no data to show. */
   | { kind: 'webOff' }
   /** The copy is end-to-end encrypted and this device does not have the key yet. */
-  | { kind: 'unlock' };
+  | { kind: 'unlock' }
+
+  /** A new phone of an account whose other phones sync through the relay: pair it first? */
+  | { kind: 'pair' };
 
 /** Accounts whose passphrase the user chose to enter later (this run only; phones only). */
 const unlockLater = new Set<string>();
 export const askUnlockLater = (userId: string) => unlockLater.add(userId);
+
+/** Accounts whose phone the user chose not to pair now (this run only). */
+const pairLater = new Set<string>();
+export const askPairLater = (userId: string) => pairLater.add(userId);
+
+/** This phone holds nothing yet, is not paired, and the account has paired phones. */
+async function shouldOfferPairing(userId: string): Promise<boolean> {
+  if (await loadRelay(userId)) return false;
+  const db = getLocalDb(userId);
+  await db.ready;
+  if (hasOwnData(db)) return false;
+  const devices = await withTimeout(
+    relayDevices().catch(() => []),
+    5000,
+    [] as Awaited<ReturnType<typeof relayDevices>>,
+  );
+  return devices.length > 0;
+}
 
 const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T) =>
   Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
@@ -140,6 +162,10 @@ export function usePlanGate() {
       }
       if (sync === 'undecided') return set({ kind: 'choose' });
       if (Platform.OS === 'web') return set({ kind: 'webOff' });
+      // A new phone of an account whose phones sync through the relay (DECISIONS 65): offered to
+      // pair before anything is made here (a fresh profile would win over the real one).
+      if (sync === 'off' && !pairLater.has(userId) && (await shouldOfferPairing(userId)))
+        return set({ kind: 'pair' });
       set({ kind: 'ready' });
     })();
     return () => {

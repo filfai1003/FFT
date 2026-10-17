@@ -1235,6 +1235,16 @@ const TABLE_INFO = {
     'Encryption keys (wrapped)',
     'End-to-end encrypted accounts: their key, locked with their passphrase and recovery key. Opens nothing without them.',
   ],
+  relay_devices: [
+    'App',
+    'Paired phones',
+    'Accounts without a copy on the server: phones that sync through the encrypted relay.',
+  ],
+  relay_messages: [
+    'App',
+    'Relay messages',
+    'Encrypted messages between paired phones, deleted once delivered (30 days at most).',
+  ],
   vault_rows: [
     'App',
     'Encrypted items',

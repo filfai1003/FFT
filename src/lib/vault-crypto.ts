@@ -90,6 +90,13 @@ export async function passphraseKey(
 export const recoveryWrapKey = (recovery: Uint8Array) =>
   hkdf(sha256, recovery, undefined, 'fft-vault-recovery-1', 32);
 
+/**
+ * The key of the relay between phones (DECISIONS 65), from the pairing code (160 random bits,
+ * shown as a QR code and as 32 characters): it never reaches the server.
+ */
+export const relayKeyFromCode = (code: Uint8Array) =>
+  hkdf(sha256, code, undefined, 'fft-relay-1', 32);
+
 // --- recovery key: 160 random bits, 32 characters in 8 groups --------------------------------
 // Crockford's base32: no I, L, O, U (they look like 1, 1, 0, V); read back case-insensitively.
 const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
