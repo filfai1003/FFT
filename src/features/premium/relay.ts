@@ -260,6 +260,9 @@ function changes(db: LocalDb, userId: string, pending: Pending[]) {
   return { ups, deletes };
 }
 
+/** Under the gateway's 1 MB body limit, with room for the JSON around the payloads. */
+const MAX_REQUEST_PAYLOAD = 950_000;
+
 async function send(key: Uint8Array, from: string, to: string[], messages: RelayMessage[]) {
   const sealed = to.flatMap((peer) =>
     messages.map((m) => ({
@@ -279,7 +282,13 @@ async function send(key: Uint8Array, from: string, to: string[], messages: Relay
     size = 0;
   };
   for (const m of sealed) {
-    if (batch.length >= 20 || size + m.payload.length > 1_000_000) await flush();
+    // The gateway refuses request bodies over 1 MB (docs/DEPLOY.md): a message that big would fail
+    // at every sync and hold back everything after it, so it is left out and reported instead.
+    if (m.payload.length > MAX_REQUEST_PAYLOAD) {
+      reportError(new Error(`relay message too big (${m.payload.length} bytes), not sent`));
+      continue;
+    }
+    if (batch.length >= 20 || size + m.payload.length > MAX_REQUEST_PAYLOAD) await flush();
     batch.push(m);
     size += m.payload.length;
   }
