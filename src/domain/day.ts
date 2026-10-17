@@ -9,6 +9,15 @@ export function localDay(now: Date, timeZone: string): string {
   }).format(now);
 }
 
+/** The hour (0–23) of `now` in the given time zone. */
+export function localHour(now: Date, timeZone: string): number {
+  const hour = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hour12: false })
+    .formatToParts(now)
+    .find((p) => p.type === 'hour')?.value;
+  // Some engines write midnight as "24".
+  return Number(hour ?? 0) % 24;
+}
+
 export function deviceTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 }

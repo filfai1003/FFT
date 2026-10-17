@@ -1,5 +1,5 @@
 import { IconButton } from '@/components/ui/IconButton';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
@@ -52,11 +52,19 @@ export function FixedMealsLog() {
   const showToast = useToastStore((s) => s.show);
   const [calendar, setCalendar] = useState(false);
   const [adjusting, setAdjusting] = useState<FixedMeal | null>(null);
+  // fft://diet?adjust=<meal id>: "Different" on the Diet widget opens that meal's sheet (today).
+  const { adjust: adjustLink } = useLocalSearchParams<{ adjust?: string }>();
+  const [linkHandled, setLinkHandled] = useState<string | null>(null);
 
   const meals = plan.data?.meals ?? [];
   const stored = checks.data ?? [];
   const checkOf = (id: string) => stored.find((c) => c.fixedMealId === id);
   const next = nextFixedMeal(meals, stored);
+  const linkedMeal =
+    adjustLink && adjustLink !== linkHandled && day === today
+      ? (meals.find((m) => m.id === adjustLink) ?? null)
+      : null;
+  const sheetMeal = adjusting ?? linkedMeal;
   // Foods logged "instead of" a meal count too (they are food_logs rows).
   const eaten = sumMacros([eatenFromChecks(stored), ...(foodLog.data ?? []).map((e) => e.macros)]);
 
@@ -248,10 +256,13 @@ export function FixedMealsLog() {
         onSelect={setDay}
       />
       <AdjustMealSheet
-        meal={adjusting}
+        meal={sheetMeal}
         day={day}
-        check={adjusting ? checkOf(adjusting.id) : undefined}
-        onClose={() => setAdjusting(null)}
+        check={sheetMeal ? checkOf(sheetMeal.id) : undefined}
+        onClose={() => {
+          setAdjusting(null);
+          setLinkHandled(adjustLink ?? null);
+        }}
       />
     </>
   );

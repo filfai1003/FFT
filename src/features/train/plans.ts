@@ -181,22 +181,24 @@ type RotationRow = {
 
 export type PlanSession = RotationRow;
 
+export async function fetchPlanSessions(planId: string): Promise<PlanSession[]> {
+  const { data, error } = await getSupabase()
+    .from('workout_sessions')
+    .select('id, plan_day_id, cycle_number, started_at, out_of_order, day_name')
+    .eq('plan_id', planId)
+    .eq('status', 'done')
+    .is('deleted_at', null)
+    .order('started_at', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data as RotationRow[];
+}
+
 export function usePlanSessions(planId: string | undefined) {
   return useQuery({
     queryKey: planKeys.sessions(planId ?? ''),
     enabled: !!planId,
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('workout_sessions')
-        .select('id, plan_day_id, cycle_number, started_at, out_of_order, day_name')
-        .eq('plan_id', planId!)
-        .eq('status', 'done')
-        .is('deleted_at', null)
-        .order('started_at', { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data as RotationRow[];
-    },
+    queryFn: () => fetchPlanSessions(planId!),
   });
 }
 
@@ -210,7 +212,12 @@ export type Rotation = {
 export function useRotation(plan: PlanView | null | undefined): Rotation | null {
   const sessions = usePlanSessions(plan?.id);
   if (!plan || !sessions.data) return null;
-  const finished: FinishedSession[] = sessions.data.map((s) => ({
+  return rotationOf(plan, sessions.data);
+}
+
+/** The same, outside React (home screen widgets). */
+export function rotationOf(plan: PlanView, sessions: readonly PlanSession[]): Rotation {
+  const finished: FinishedSession[] = sessions.map((s) => ({
     planDayId: s.plan_day_id,
     cycleNumber: s.cycle_number,
   }));
@@ -219,7 +226,7 @@ export function useRotation(plan: PlanView | null | undefined): Rotation | null 
     finished,
   );
   const doneThisCycle = new Map<string, PlanSession>();
-  for (const s of sessions.data) {
+  for (const s of sessions) {
     if (
       s.plan_day_id &&
       (s.cycle_number ?? 1) === state.cycle &&

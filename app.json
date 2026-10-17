@@ -48,10 +48,10 @@
           "widgets": [
             {
               "name": "Calories",
-              "label": "Calories",
-              "description": "Calories left today and your macros",
+              "label": "Diet",
+              "description": "Mark your next meal, add water or log food",
               "minWidth": "250dp",
-              "minHeight": "110dp",
+              "minHeight": "130dp",
               "targetCellWidth": 4,
               "targetCellHeight": 2,
               "resizeMode": "horizontal|vertical",
@@ -59,11 +59,11 @@
             },
             {
               "name": "Workout",
-              "label": "Next workout",
-              "description": "Your next plan day, one tap to train",
-              "minWidth": "110dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 2,
+              "label": "Workout",
+              "description": "Start your next workout, tick sets as you go",
+              "minWidth": "180dp",
+              "minHeight": "130dp",
+              "targetCellWidth": 3,
               "targetCellHeight": 2,
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000
@@ -82,7 +82,18 @@
             {
               "name": "Weight",
               "label": "Weight",
-              "description": "Your latest weight and the 7-day change",
+              "description": "Log today's weight in a few taps",
+              "minWidth": "180dp",
+              "minHeight": "150dp",
+              "targetCellWidth": 3,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "Supplements",
+              "label": "Supplements",
+              "description": "Tick today's supplements",
               "minWidth": "110dp",
               "minHeight": "110dp",
               "targetCellWidth": 2,
@@ -91,15 +102,15 @@
               "updatePeriodMillis": 1800000
             },
             {
-              "name": "Supplements",
-              "label": "Supplements",
-              "description": "What you took today",
-              "minWidth": "110dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 2,
-              "targetCellHeight": 2,
+              "name": "Coach",
+              "label": "AI coach",
+              "description": "Ask the coach in one tap",
+              "minWidth": "250dp",
+              "minHeight": "180dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 3,
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 86400000
             }
           ]
         }

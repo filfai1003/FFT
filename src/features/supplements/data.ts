@@ -33,23 +33,28 @@ export function useSupplements() {
 }
 
 /** Which supplements were taken on each day of the range: day → set of supplement ids. */
+export async function fetchSupplementLogs(
+  from: string,
+  to: string,
+): Promise<Map<string, Set<string>>> {
+  const { data, error } = await getSupabase()
+    .from('supplement_logs')
+    .select('day, supplement_id')
+    .gte('day', from)
+    .lte('day', to)
+    .is('deleted_at', null);
+  if (error) throw error;
+  const byDay = new Map<string, Set<string>>();
+  for (const r of data) {
+    byDay.set(r.day, (byDay.get(r.day) ?? new Set()).add(r.supplement_id));
+  }
+  return byDay;
+}
+
 export function useSupplementLogs(from: string, to: string) {
   return useQuery({
     queryKey: supplementKeys.logs(from, to),
-    queryFn: async (): Promise<Map<string, Set<string>>> => {
-      const { data, error } = await getSupabase()
-        .from('supplement_logs')
-        .select('day, supplement_id')
-        .gte('day', from)
-        .lte('day', to)
-        .is('deleted_at', null);
-      if (error) throw error;
-      const byDay = new Map<string, Set<string>>();
-      for (const r of data) {
-        byDay.set(r.day, (byDay.get(r.day) ?? new Set()).add(r.supplement_id));
-      }
-      return byDay;
-    },
+    queryFn: () => fetchSupplementLogs(from, to),
   });
 }
 
@@ -68,32 +73,39 @@ function useInvalidate() {
   return () => queryClient.invalidateQueries({ queryKey: supplementKeys.all });
 }
 
+/** Ticks (or unticks) a supplement for a day (the app and the widget). */
+export async function setSupplementTaken(
+  userId: string,
+  v: { day: string; supplementId: string; taken: boolean },
+) {
+  const db = getSupabase();
+  if (v.taken) {
+    const { error } = await db.from('supplement_logs').insert({
+      id: newId(),
+      user_id: userId,
+      day: v.day,
+      supplement_id: v.supplementId,
+    });
+    // Already ticked (another device, a double tap): nothing to do.
+    if (error && error.code !== '23505') throw error;
+  } else {
+    const { error } = await db
+      .from('supplement_logs')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('day', v.day)
+      .eq('supplement_id', v.supplementId)
+      .is('deleted_at', null);
+    if (error) throw error;
+  }
+}
+
 /** Ticks (or unticks) a supplement for a day. */
 export function useSetTaken() {
   const userId = useAuth((s) => s.userId);
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (v: { day: string; supplementId: string; taken: boolean }) => {
-      const db = getSupabase();
-      if (v.taken) {
-        const { error } = await db.from('supplement_logs').insert({
-          id: newId(),
-          user_id: userId!,
-          day: v.day,
-          supplement_id: v.supplementId,
-        });
-        // Already ticked (another device, a double tap): nothing to do.
-        if (error && error.code !== '23505') throw error;
-      } else {
-        const { error } = await db
-          .from('supplement_logs')
-          .update({ deleted_at: new Date().toISOString() })
-          .eq('day', v.day)
-          .eq('supplement_id', v.supplementId)
-          .is('deleted_at', null);
-        if (error) throw error;
-      }
-    },
+    mutationFn: (v: { day: string; supplementId: string; taken: boolean }) =>
+      setSupplementTaken(userId!, v),
     onSuccess: invalidate,
   });
 }

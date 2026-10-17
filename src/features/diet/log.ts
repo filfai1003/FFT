@@ -58,41 +58,40 @@ export function toLogEntry(r: LogRow): LogEntry {
   };
 }
 
-export function useDayLog(day: string) {
-  return useQuery({
-    queryKey: dietKeys.day(day),
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('food_logs')
-        .select('*')
-        .eq('day', day)
-        .is('deleted_at', null)
-        .order('created_at');
-      if (error) throw error;
-      return (data as unknown as LogRow[]).map(toLogEntry);
-    },
-  });
+/** The food entries of a day, in the order they were logged (also read by the home screen widgets). */
+export async function fetchDayLog(day: string): Promise<LogEntry[]> {
+  const { data, error } = await getSupabase()
+    .from('food_logs')
+    .select('*')
+    .eq('day', day)
+    .is('deleted_at', null)
+    .order('created_at');
+  if (error) throw error;
+  return (data as unknown as LogRow[]).map(toLogEntry);
 }
 
-/** Today / diary / charts read the day's calories and macros ONLY from this view. */
+export function useDayLog(day: string) {
+  return useQuery({ queryKey: dietKeys.day(day), queryFn: () => fetchDayLog(day) });
+}
+
+/** Today / diary / charts / widgets read the day's calories and macros ONLY from this view. */
+export async function fetchDayTotals(day: string): Promise<Macros> {
+  const { data, error } = await getSupabase()
+    .from('daily_nutrition_totals')
+    .select('kcal, protein_g, carbs_g, fat_g')
+    .eq('day', day)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    kcal: Number(data?.kcal ?? 0),
+    protein: Number(data?.protein_g ?? 0),
+    carbs: Number(data?.carbs_g ?? 0),
+    fat: Number(data?.fat_g ?? 0),
+  };
+}
+
 export function useDayTotals(day: string) {
-  return useQuery({
-    queryKey: dietKeys.totals(day),
-    queryFn: async (): Promise<Macros> => {
-      const { data, error } = await getSupabase()
-        .from('daily_nutrition_totals')
-        .select('kcal, protein_g, carbs_g, fat_g')
-        .eq('day', day)
-        .maybeSingle();
-      if (error) throw error;
-      return {
-        kcal: Number(data?.kcal ?? 0),
-        protein: Number(data?.protein_g ?? 0),
-        carbs: Number(data?.carbs_g ?? 0),
-        fat: Number(data?.fat_g ?? 0),
-      };
-    },
-  });
+  return useQuery({ queryKey: dietKeys.totals(day), queryFn: () => fetchDayTotals(day) });
 }
 
 type GoalRow = {
@@ -142,23 +141,25 @@ export function useGoalForDay(day: string): GoalWithMaintenance | null {
 }
 
 /** Days (YYYY-MM-DD) in [from, to] with a finished workout, in the profile time zone. */
+export async function fetchTrainedDays(from: string, to: string, tz: string) {
+  const { data, error } = await getSupabase()
+    .from('workout_sessions')
+    .select('started_at')
+    .eq('status', 'done')
+    .is('deleted_at', null)
+    .gte('started_at', new Date(`${addDays(from, -1)}T00:00:00Z`).toISOString())
+    .lte('started_at', new Date(`${addDays(to, 2)}T00:00:00Z`).toISOString());
+  if (error) throw error;
+  return new Set(
+    (data as { started_at: string }[]).map((s) => localDay(new Date(s.started_at), tz)),
+  );
+}
+
 export function useTrainedDays(from: string, to: string) {
   const tz = useProfile().data?.timezone ?? deviceTimeZone();
   return useQuery({
     queryKey: dietKeys.trained(from, to),
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('workout_sessions')
-        .select('started_at')
-        .eq('status', 'done')
-        .is('deleted_at', null)
-        .gte('started_at', new Date(`${addDays(from, -1)}T00:00:00Z`).toISOString())
-        .lte('started_at', new Date(`${addDays(to, 2)}T00:00:00Z`).toISOString());
-      if (error) throw error;
-      return new Set(
-        (data as { started_at: string }[]).map((s) => localDay(new Date(s.started_at), tz)),
-      );
-    },
+    queryFn: () => fetchTrainedDays(from, to, tz),
   });
 }
 
@@ -216,102 +217,107 @@ export function useLogFood() {
  * "Same as yesterday": copies entries (another day's meal) into a day and meal as new entries,
  * values as they were logged. Returns the new ids (for UNDO).
  */
+export async function copyEntries(
+  userId: string,
+  { entries, day, meal }: { entries: LogEntry[]; day: string; meal: Meal },
+): Promise<string[]> {
+  const rows = entries.map((e) => ({
+    id: newId(),
+    user_id: userId,
+    day,
+    meal,
+    food_id: e.foodId,
+    name: e.name,
+    quantity_label: e.quantityLabel,
+    grams: e.grams,
+    kcal: e.macros.kcal,
+    protein_g: e.macros.protein,
+    carbs_g: e.macros.carbs,
+    fat_g: e.macros.fat,
+    deleted_at: null,
+  }));
+  const { error } = await getSupabase().from('food_logs').upsert(rows);
+  if (error) throw error;
+  return rows.map((r) => r.id);
+}
+
 export function useCopyEntries() {
   const userId = useUserId();
   const invalidate = useInvalidateDiet();
   return useMutation({
-    mutationFn: async ({
-      entries,
-      day,
-      meal,
-    }: {
-      entries: LogEntry[];
-      day: string;
-      meal: Meal;
-    }) => {
-      const rows = entries.map((e) => ({
-        id: newId(),
-        user_id: userId!,
-        day,
-        meal,
-        food_id: e.foodId,
-        name: e.name,
-        quantity_label: e.quantityLabel,
-        grams: e.grams,
-        kcal: e.macros.kcal,
-        protein_g: e.macros.protein,
-        carbs_g: e.macros.carbs,
-        fat_g: e.macros.fat,
-        deleted_at: null,
-      }));
-      const { error } = await getSupabase().from('food_logs').upsert(rows);
-      if (error) throw error;
-      return rows.map((r) => r.id);
-    },
+    mutationFn: (args: { entries: LogEntry[]; day: string; meal: Meal }) =>
+      copyEntries(userId!, args),
     onSuccess: invalidate,
   });
+}
+
+/** Soft delete of a food entry (and restore, for UNDO). */
+export async function setLogDeleted(id: string, deleted: boolean) {
+  const { error } = await getSupabase()
+    .from('food_logs')
+    .update({ deleted_at: deleted ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 /** Soft delete (and restore, for UNDO). */
 export function useSetLogDeleted() {
   const invalidate = useInvalidateDiet();
   return useMutation({
-    mutationFn: async ({ id, deleted }: { id: string; deleted: boolean }) => {
-      const { error } = await getSupabase()
-        .from('food_logs')
-        .update({ deleted_at: deleted ? new Date().toISOString() : null })
-        .eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, deleted }: { id: string; deleted: boolean }) => setLogDeleted(id, deleted),
     onSuccess: invalidate,
   });
 }
 
+export async function fetchWater(day: string) {
+  const { data, error } = await getSupabase()
+    .from('water_logs')
+    .select('id, ml')
+    .eq('day', day)
+    .is('deleted_at', null)
+    .order('created_at');
+  if (error) throw error;
+  const rows = data as { id: string; ml: number }[];
+  return { totalMl: rows.reduce((a, r) => a + r.ml, 0), rows };
+}
+
 export function useWater(day: string) {
-  return useQuery({
-    queryKey: dietKeys.water(day),
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('water_logs')
-        .select('id, ml')
-        .eq('day', day)
-        .is('deleted_at', null)
-        .order('created_at');
-      if (error) throw error;
-      const rows = data as { id: string; ml: number }[];
-      return { totalMl: rows.reduce((a, r) => a + r.ml, 0), rows };
-    },
-  });
+  return useQuery({ queryKey: dietKeys.water(day), queryFn: () => fetchWater(day) });
+}
+
+/** Adds water to a day. Returns the row id (for UNDO). */
+export async function addWater(
+  userId: string,
+  { day, ml, id }: { day: string; ml: number; id?: string },
+): Promise<string> {
+  const rowId = id ?? newId();
+  const { error } = await getSupabase()
+    .from('water_logs')
+    .upsert({ id: rowId, user_id: userId, day, ml, deleted_at: null });
+  if (error) throw error;
+  return rowId;
 }
 
 export function useAddWater() {
   const userId = useUserId();
   const invalidate = useInvalidateDiet();
   return useMutation({
-    mutationFn: async ({ day, ml, id }: { day: string; ml: number; id?: string }) => {
-      const rowId = id ?? newId();
-      const { error } = await getSupabase()
-        .from('water_logs')
-        .upsert({ id: rowId, user_id: userId!, day, ml, deleted_at: null });
-      if (error) throw error;
-      return rowId;
-    },
+    mutationFn: (args: { day: string; ml: number; id?: string }) => addWater(userId!, args),
     onSuccess: invalidate,
   });
 }
 
+export async function removeWater(id: string) {
+  const { error } = await getSupabase()
+    .from('water_logs')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export function useRemoveWater() {
   const invalidate = useInvalidateDiet();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await getSupabase()
-        .from('water_logs')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: invalidate,
-  });
+  return useMutation({ mutationFn: removeWater, onSuccess: invalidate });
 }
 
 /** New calorie/macro goal from today on (history is kept: one row per start date). */

@@ -46,7 +46,7 @@ export function AiChatScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const barHeight = useActionBarHeight();
-  const params = useLocalSearchParams<{ id?: string; fresh?: string }>();
+  const params = useLocalSearchParams<{ id?: string; fresh?: string; focus?: string }>();
   const settings = useAiSettings();
   const ctx = useAiContext();
   const access = useAiAccess();
@@ -91,6 +91,8 @@ export function AiChatScreen() {
 
   const [files, setFiles] = useState<Attachment[]>([]);
   const [attaching, setAttaching] = useState(false);
+  const typeNow = params.focus === '1' && ready && consented;
+
   const attach = async (pick: () => Promise<Attachment | null>) => {
     setAttaching(false);
     try {
@@ -421,6 +423,10 @@ export function AiChatScreen() {
           />
           <View style={{ flex: 1 }}>
             <Input
+              // "Ask…" on the Coach widget: the keyboard comes up once the chat can be typed in
+              // (a new key mounts the field again, with the focus).
+              key={typeNow ? 'typing' : 'field'}
+              autoFocus={typeNow}
               accessibilityLabel={t('ai.message')}
               placeholder={t('ai.messagePlaceholder')}
               value={text}

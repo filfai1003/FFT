@@ -21,11 +21,12 @@ import { FinishSheet } from './FinishSheet';
 import { RestCard } from './RestCard';
 import { ReorderSheet } from './ReorderSheet';
 import { SwapSheet } from './SwapSheet';
-import { afterSetInSuperset, supersetLabels, supersetOf } from '@/domain/superset';
+import { supersetLabels, supersetOf } from '@/domain/superset';
 import { SuggestionCard } from './SuggestionCard';
 import { SetRow, columnsFor } from './SetRow';
 import {
   addSet,
+  doingIndex,
   exerciseState,
   formatClock,
   goTo,
@@ -34,11 +35,9 @@ import {
   removeSet,
   setDropField,
   setField,
-  startRest,
-  toggleSet,
+  toggleInRound,
   restoreExercise,
   undoSetDone,
-  type ActiveSession,
   type SetField,
 } from './logic';
 import { useSessionHydrated, useSessionStore } from './store';
@@ -87,13 +86,8 @@ export function SessionScreen() {
   // A superset is shown whole (its exercises one under the other) and done in turn.
   const group = active.exercises.length > 0 ? supersetOf(links, index) : [];
   const inSuperset = group.length > 1;
-  const setsLeft = (i: number) => active.exercises[i]?.sets.filter((x) => !x.done).length ?? 0;
   // The exercise whose set comes next: this one, else the next of the round that has sets left.
-  const doing = inSuperset
-    ? ([...group.slice(group.indexOf(index)), ...group.slice(0, group.indexOf(index))].find(
-        (i) => setsLeft(i) > 0,
-      ) ?? index)
-    : index;
+  const doing = doingIndex(active, index);
   const previousEx = active.exercises[(group[0] ?? index) - 1];
   const nextEx = active.exercises[(group[group.length - 1] ?? index) + 1];
   const previousIndex = (group[0] ?? index) - 1;
@@ -117,7 +111,7 @@ export function SessionScreen() {
   const onToggle = (setIndex: number, at = index) => {
     const before = useSessionStore.getState().active!;
     const setId = before.exercises[at].sets[setIndex].id;
-    const { next, completed } = toggleInRound(before, at, setIndex);
+    const { next, completed } = toggleInRound(before, at, setIndex, new Date());
     update(() => next);
     if (completed) {
       confirm();
@@ -532,25 +526,6 @@ export function SessionScreen() {
       </Sheet>
     </>
   );
-}
-
-/**
- * Ticks (or unticks) a set. In a superset it moves straight to the next exercise of the round with
- * no rest; after the last one the rest starts and it goes back to the first (domain/superset.ts).
- */
-function toggleInRound(before: ActiveSession, at: number, setIndex: number) {
-  const { session, completed } = toggleSet(before, at, setIndex, new Date());
-  const flow = completed
-    ? afterSetInSuperset(
-        session.exercises.map((e) => e.supersetWithNext ?? false),
-        at,
-        session.exercises.map((e) => e.sets.filter((x) => !x.done).length),
-      )
-    : null;
-  let next = at === before.index ? session : goTo(session, at);
-  if (flow?.rest) next = startRest(next, before.exercises[at].restS, Date.now());
-  if (flow?.goTo != null) next = goTo(next, flow.goTo);
-  return { next, completed };
 }
 
 /** A square side button of the bottom bar (previous / next exercise). */

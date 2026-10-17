@@ -67,20 +67,19 @@ export const progressKeys = {
 };
 
 /** Every body entry, oldest first (a lifetime of check-ins is a few hundred rows at most). */
+export async function fetchBodyEntries(): Promise<BodyEntry[]> {
+  const { data, error } = await getSupabase()
+    .from('body_metrics')
+    .select('*')
+    .is('deleted_at', null)
+    .order('day', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data as unknown as Row[]).map(toEntry);
+}
+
 export function useBodyEntries() {
-  return useQuery({
-    queryKey: progressKeys.body,
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('body_metrics')
-        .select('*')
-        .is('deleted_at', null)
-        .order('day', { ascending: true })
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return (data as unknown as Row[]).map(toEntry);
-    },
-  });
+  return useQuery({ queryKey: progressKeys.body, queryFn: fetchBodyEntries });
 }
 
 export type BodyGoal = {
@@ -189,90 +188,123 @@ export type CheckInInput = {
  * One check-in per day: fields left empty keep what is already saved for that day, so logging
  * the weight in the morning and the waist at night ends up in the same entry.
  */
+/**
+ * Saves a check-in (the app's check-in screen and the Weight widget). Returns the day's entry:
+ * its id, null when nothing was written, and whether it was created now (else updated).
+ */
+export async function saveCheckIn(
+  userId: string,
+  c: CheckInInput,
+): Promise<{ id: string | null; created: boolean }> {
+  const supabase = getSupabase();
+  const existing = await supabase
+    .from('body_metrics')
+    .select('id')
+    .eq('day', c.day)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (existing.error) throw existing.error;
+
+  const fields: Record<string, number | string> = {};
+  if (c.weightKg != null) fields.weight_kg = c.weightKg;
+  if (c.bodyFatPct != null) fields.body_fat_pct = c.bodyFatPct;
+  if (c.method) fields.bf_method = c.method;
+  for (const k of measureKeys) {
+    const v = c.measures?.[k];
+    if (v != null) fields[`${k}_cm`] = v;
+  }
+  if (c.notes && c.notes.trim()) fields.notes = c.notes.trim();
+
+  let entry: { id: string | null; created: boolean } = {
+    id: existing.data[0]?.id ?? null,
+    created: false,
+  };
+  if (Object.keys(fields).length > 0) {
+    if (existing.data[0]) {
+      const res = await supabase
+        .from('body_metrics')
+        .update(fields as Update<'body_metrics'>)
+        .eq('id', existing.data[0].id);
+      if (res.error) throw res.error;
+    } else {
+      const id = newId();
+      const res = await supabase.from('body_metrics').insert({
+        id,
+        user_id: userId,
+        day: c.day,
+        ...(fields as Update<'body_metrics'>),
+      });
+      if (res.error) throw res.error;
+      entry = { id, created: true };
+    }
+  }
+
+  for (const pose of poses) {
+    const uri = c.photos?.[pose];
+    if (!uri) continue;
+    const path = await uploadPrivateImage(
+      'progress-photos',
+      userId,
+      `${c.day}-${pose}-${newId().slice(0, 8)}.jpg`,
+      uri,
+    );
+    const old = await supabase
+      .from('progress_photos')
+      .select('id')
+      .eq('day', c.day)
+      .eq('pose', pose)
+      .is('deleted_at', null);
+    if (old.data?.length) {
+      await supabase
+        .from('progress_photos')
+        .update({ deleted_at: new Date().toISOString() })
+        .in(
+          'id',
+          old.data.map((o) => o.id),
+        );
+    }
+    const res = await supabase
+      .from('progress_photos')
+      .insert({ id: newId(), user_id: userId, day: c.day, pose, storage_path: path });
+    if (res.error) throw res.error;
+  }
+  return entry;
+}
+
 export function useSaveCheckIn() {
   const userId = useAuth((s) => s.userId);
   const invalidate = useInvalidateBody();
   return useMutation({
     mutationFn: async (c: CheckInInput) => {
-      const supabase = getSupabase();
-      const existing = await supabase
-        .from('body_metrics')
-        .select('id')
-        .eq('day', c.day)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (existing.error) throw existing.error;
-
-      const fields: Record<string, number | string> = {};
-      if (c.weightKg != null) fields.weight_kg = c.weightKg;
-      if (c.bodyFatPct != null) fields.body_fat_pct = c.bodyFatPct;
-      if (c.method) fields.bf_method = c.method;
-      for (const k of measureKeys) {
-        const v = c.measures?.[k];
-        if (v != null) fields[`${k}_cm`] = v;
-      }
-      if (c.notes && c.notes.trim()) fields.notes = c.notes.trim();
-
-      if (Object.keys(fields).length > 0) {
-        const res = existing.data[0]
-          ? await supabase
-              .from('body_metrics')
-              .update(fields as Update<'body_metrics'>)
-              .eq('id', existing.data[0].id)
-          : await supabase.from('body_metrics').insert({
-              id: newId(),
-              user_id: userId!,
-              day: c.day,
-              ...(fields as Update<'body_metrics'>),
-            });
-        if (res.error) throw res.error;
-      }
-
-      for (const pose of poses) {
-        const uri = c.photos?.[pose];
-        if (!uri) continue;
-        const path = await uploadPrivateImage(
-          'progress-photos',
-          userId!,
-          `${c.day}-${pose}-${newId().slice(0, 8)}.jpg`,
-          uri,
-        );
-        const old = await supabase
-          .from('progress_photos')
-          .select('id')
-          .eq('day', c.day)
-          .eq('pose', pose)
-          .is('deleted_at', null);
-        if (old.data?.length) {
-          await supabase
-            .from('progress_photos')
-            .update({ deleted_at: new Date().toISOString() })
-            .in(
-              'id',
-              old.data.map((o) => o.id),
-            );
-        }
-        const res = await supabase
-          .from('progress_photos')
-          .insert({ id: newId(), user_id: userId!, day: c.day, pose, storage_path: path });
-        if (res.error) throw res.error;
-      }
+      await saveCheckIn(userId!, c);
     },
     onSuccess: invalidate,
   });
 }
 
+/** Soft delete of a body entry (and restore, for UNDO). */
+export async function setEntryDeleted(id: string, deleted: boolean) {
+  const { error } = await getSupabase()
+    .from('body_metrics')
+    .update({ deleted_at: deleted ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+/** Puts back the weight an entry had before (UNDO of a weight saved from the widget). */
+export async function setEntryWeight(id: string, weightKg: number | null) {
+  const { error } = await getSupabase()
+    .from('body_metrics')
+    .update({ weight_kg: weightKg })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export function useDeleteEntry() {
   const invalidate = useInvalidateBody();
   return useMutation({
-    mutationFn: async ({ id, deleted }: { id: string; deleted: boolean }) => {
-      const { error } = await getSupabase()
-        .from('body_metrics')
-        .update({ deleted_at: deleted ? new Date().toISOString() : null })
-        .eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: ({ id, deleted }: { id: string; deleted: boolean }) => setEntryDeleted(id, deleted),
     onSuccess: invalidate,
   });
 }
