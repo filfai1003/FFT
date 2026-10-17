@@ -43,13 +43,20 @@ async function tokenFor(hash) {
   const [r] = (
     await db.query(
       `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
-              public.sync_categories_of(a.user_id) as categories
+              public.sync_categories_of(a.user_id) as categories,
+              public.vault_on_of(a.user_id) as encrypted
        from public.api_token_access($1) a`,
       [hash],
     )
   ).rows;
   return r
-    ? { userId: r.user_id, scope: r.scope, sync: r.sync === true, categories: r.categories }
+    ? {
+        userId: r.user_id,
+        scope: r.scope,
+        sync: r.sync === true,
+        categories: r.categories,
+        encrypted: r.encrypted === true,
+      }
     : null;
 }
 const count = async (sql, params) => Number((await one(sql, params)).n);
@@ -1563,10 +1570,9 @@ describe('the copy on the server by category (DECISIONS 63)', () => {
 
   it('every category is kept by default (accounts that already had a copy keep everything)', async () => {
     await as(F);
-    assert.deepEqual((await one('select public.my_sync_state() as s')).s, {
-      enabled: true,
-      categories: ['body', 'diet', 'training', 'photos'],
-    });
+    const state = (await one('select public.my_sync_state() as s')).s;
+    assert.equal(state.enabled, true);
+    assert.deepEqual(state.categories, ['body', 'diet', 'training', 'photos']);
     await as(A);
     assert.deepEqual((await one('select public.my_sync_state() as s')).s.categories, [
       'body',
@@ -1666,5 +1672,234 @@ describe('the copy on the server by category (DECISIONS 63)', () => {
     await db.exec(`select public.set_sync_categories(array['body', 'diet', 'training', 'photos'])`);
     await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`);
     assert.equal((await call('GET', '/v1/water')).status, 200);
+  });
+});
+
+describe('end-to-end encryption of the copy on the server (DECISIONS 64)', () => {
+  const V = '77777777-0000-0000-0000-000000000007';
+  const W = '88888888-0000-0000-0000-000000000077';
+  const KEYS = `insert into public.vault_keys (kdf, salt, wrapped_by_passphrase, wrapped_by_recovery, key_check)
+    values ('{"alg":"scrypt","N":16384,"r":8,"p":1}', 'c2FsdA==', 'pp', 'rr', 'check')`;
+  const api = createApi({
+    tokenFor,
+    async asUser(uid, fn) {
+      await as(uid);
+      return fn(async (sql, params) => (await db.query(sql, params)).rows);
+    },
+  });
+  const oauth = createOAuth({
+    sql: async (text, params) => {
+      await admin();
+      return (await db.query(text, params)).rows;
+    },
+    signIn: async (email, password) => (password === 'right' && email === 'v@test.dev' ? V : null),
+    base: 'https://api.test',
+  });
+  let token = '';
+  const push = (rows) => db.exec(`select public.vault_push('${JSON.stringify(rows)}'::jsonb)`);
+  const sealed = (id) => one(`select * from public.vault_rows where row_id = '${id}'`);
+
+  before(async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${V}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'v@test.dev');
+    `);
+    await as(V);
+    await db.exec('select public.set_sync(true)');
+    await db.exec(`insert into public.water_logs (id, day, ml) values ('${W}', '2026-10-17', 250)`);
+    token = (await one(`select public.create_api_token('Claude') as t`)).t;
+  });
+
+  it('no sealed item before the key is set up; the key is the owner’s only', async () => {
+    await as(V);
+    await rejects(
+      `select public.vault_push('[{"tbl": "water_logs", "row_id": "x", "updated_at": "2026-10-17T10:00:00Z", "ciphertext": "abc"}]'::jsonb)`,
+      '42501',
+    );
+    await db.exec(KEYS);
+    assert.deepEqual((await one('select public.my_sync_state() as s')).s.vault, true);
+    const kept = (await one('select public.my_vault_keys() as k')).k;
+    assert.equal(kept.salt, 'c2FsdA==');
+    assert.equal(kept.user_id, undefined);
+    await as(A);
+    assert.equal(await count('select count(*) as n from public.vault_keys'), 0);
+    await rejects(
+      `insert into public.vault_keys (user_id, kdf, salt, wrapped_by_passphrase, wrapped_by_recovery, key_check)
+       values ('${V}', '{}', 's', 'p', 'r', 'c')`,
+      '42501',
+    );
+  });
+
+  it('sealed rows: the newest change wins, the same change twice counts once, deletions win', async () => {
+    await as(V);
+    const row = (at, extra = {}) => ({
+      tbl: 'water_logs',
+      row_id: W,
+      updated_at: at,
+      ciphertext: `sealed-${at}`,
+      ...extra,
+    });
+    await push([row('2026-10-17T10:00:00Z')]);
+    await push([row('2026-10-17T09:00:00Z')]); // older, arriving later
+    assert.equal((await sealed(W)).ciphertext, 'sealed-2026-10-17T10:00:00Z');
+    await push([row('2026-10-17T11:00:00Z')]);
+    assert.equal((await sealed(W)).ciphertext, 'sealed-2026-10-17T11:00:00Z');
+    await push([row('2026-10-17T10:30:00Z', { deleted: true })]); // deleted before the change
+    assert.equal((await sealed(W)).deleted, false);
+    await push([row('2026-10-17T11:00:00Z', { deleted: true })]);
+    const gone = await sealed(W);
+    assert.equal(gone.deleted, true);
+    assert.equal(gone.ciphertext, null, 'a deletion keeps nothing of the row');
+    await push([row('2026-10-17T12:00:00Z')]);
+    assert.equal((await sealed(W)).deleted, false);
+    await rejects(
+      `select public.vault_push('[{"tbl": "secrets", "row_id": "x", "updated_at": "2026-10-17T10:00:00Z", "ciphertext": "a"}]'::jsonb)`,
+      '23514',
+    );
+    const pulled = (await one(`select public.vault_pull('epoch') as p`)).p;
+    assert.equal(pulled.rows.length, 1);
+    assert.equal(pulled.rows[0].row_id, W);
+    assert.ok(pulled.now);
+    assert.deepEqual((await one('select public.vault_counts() as c')).c, { water_logs: 1 });
+    await as(A);
+    assert.equal(await count('select count(*) as n from public.vault_rows'), 0);
+  });
+
+  it('turned on: the readable copy is deleted and refused; sealed items still go', async () => {
+    await as(V);
+    await db.exec('select public.set_vault(true)');
+    assert.equal((await one('select public.my_sync_state() as s')).s.encrypted, true);
+    assert.equal(await count('select count(*) as n from public.water_logs'), 0);
+    await rejects(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`, '42501');
+    await rejects(
+      `select public.sync_push('water_logs', '[{"id": "${W}", "user_id": "${V}", "day": "2026-10-17", "ml": 250, "updated_at": "2026-10-18T10:00:00Z"}]'::jsonb, '[]'::jsonb)`,
+      '42501',
+    );
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('progress-photos', '${V}/a.jpg')`,
+      '42501',
+    );
+    await push([
+      { tbl: 'body_metrics', row_id: 'b1', updated_at: '2026-10-17T10:00:00Z', ciphertext: 'x' },
+    ]);
+    assert.equal(await count('select count(*) as n from public.vault_rows'), 2);
+  });
+
+  it('sealed photos: own folder, a known kind, the category kept', async () => {
+    await as(V);
+    await db.exec(
+      `insert into storage.objects (bucket_id, name) values ('vault-files', '${V}/p-abc')`,
+    );
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('vault-files', '${V}/x-abc')`,
+      '42501',
+    );
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('vault-files', '${A}/p-abc')`,
+      '42501',
+    );
+    await db.exec(`select public.set_sync_categories(array['body', 'diet', 'training'])`);
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('vault-files', '${V}/p-def')`,
+      '42501',
+    );
+    await db.exec(`select public.set_sync_categories(array['diet', 'training', 'photos'])`);
+    assert.equal(
+      await count(`select count(*) as n from public.vault_rows where tbl = 'body_metrics'`),
+      0,
+      'a category turned off leaves the sealed copy too',
+    );
+    await db.exec(`select public.set_sync_categories(array['body', 'diet', 'training', 'photos'])`);
+  });
+
+  it('the key of an encrypted copy cannot be replaced; the passphrase wrap can', async () => {
+    await as(V);
+    await rejects(`update public.vault_keys set key_check = 'other'`, '55000');
+    await db.exec(`update public.vault_keys set wrapped_by_passphrase = 'pp2', salt = 'c2FsdDI='`);
+    assert.equal((await one('select wrapped_by_passphrase as w from public.vault_keys')).w, 'pp2');
+  });
+
+  it('the API, MCP, new tokens and the AI app sign-in say the copy is encrypted', async () => {
+    const rest = await api({
+      method: 'GET',
+      path: '/v1/me',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(rest.status, 403);
+    assert.match(rest.body.error, /end-to-end encrypted/);
+    const mcp = await api({
+      method: 'POST',
+      path: '/mcp',
+      headers: { authorization: `Bearer ${token}` },
+      body: { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    });
+    assert.equal(mcp.status, 403);
+    assert.match(mcp.body.error, /end-to-end encrypted/);
+    await as(V);
+    await rejects(`select public.create_api_token('again')`, '55000');
+    const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
+    const reg = await oauth({
+      method: 'POST',
+      path: '/oauth/register',
+      body: { redirect_uris: [REDIRECT], client_name: 'Claude' },
+      query: {},
+      headers: {},
+      ip: '9.9.9.9',
+    });
+    const res = await oauth({
+      method: 'POST',
+      path: '/oauth/authorize',
+      body: {
+        client_id: JSON.parse(reg.body).client_id,
+        redirect_uri: REDIRECT,
+        state: 's',
+        code_challenge: 'c'.repeat(43),
+        code_challenge_method: 'S256',
+        email: 'v@test.dev',
+        password: 'right',
+      },
+      query: {},
+      headers: {},
+      ip: '9.9.9.9',
+    });
+    assert.equal(res.status, 400);
+    assert.match(res.body, /end-to-end encrypted/);
+  });
+
+  it('turned off: readable writes again, then the sealed copy and the key go', async () => {
+    await as(V);
+    await rejects('select public.clear_vault()', '55000');
+    await db.exec('select public.set_vault(false)');
+    await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`);
+    await db.exec('select public.clear_vault()');
+    assert.equal(await count('select count(*) as n from public.vault_rows'), 0);
+    assert.equal(await count('select count(*) as n from public.vault_keys'), 0);
+    const me = await api({
+      method: 'GET',
+      path: '/v1/me',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    assert.equal(me.status, 200);
+  });
+
+  it('turning the whole copy off also deletes the sealed copy and the key', async () => {
+    await as(V);
+    await db.exec(
+      `select public.save_vault_keys('{"kdf": {"alg": "scrypt", "N": 16384, "r": 8, "p": 1}, "salt": "s", "wrapped_by_passphrase": "p", "wrapped_by_recovery": "r", "key_check": "c"}'::jsonb)`,
+    );
+    await push([
+      { tbl: 'water_logs', row_id: 'w9', updated_at: '2026-10-17T10:00:00Z', ciphertext: 'x' },
+    ]);
+    await db.exec('select public.set_vault(true)');
+    await db.exec('select public.set_sync(false)');
+    assert.equal(await count('select count(*) as n from public.vault_rows'), 0);
+    assert.equal(await count('select count(*) as n from public.vault_keys'), 0);
+    assert.equal((await one('select public.my_sync_state() as s')).s.encrypted, false);
+    await rejects(`select public.set_vault(true)`, '55000');
+    await admin();
+    await db.exec('set role anon');
+    await rejects('select public.set_vault(true)', '42501');
+    await rejects(`select public.vault_on_of('${V}')`, '42501');
   });
 });

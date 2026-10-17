@@ -20,6 +20,7 @@ import { DATA_CATEGORIES, type DataCategory } from '@/domain/data-categories';
 import { useSharedCategories, useSyncChoice } from '@/lib/plan';
 import { useToastStore } from '@/lib/toast-store';
 import { setSharedCategories, turnSyncOff, turnSyncOn } from './sync';
+import { EncryptionSection } from './Encryption';
 import { SyncCategoryList, toggled } from './SyncCategories';
 
 /**
@@ -412,6 +413,7 @@ export function ServerCopyCard() {
           </Text>
         ) : null}
         {on ? <CategoriesOnServer web={web} /> : null}
+        {on ? <EncryptionSection web={web} /> : null}
       </Card>
       <TurnSyncOnSheet visible={sheet === 'on'} onClose={() => setSheet(null)} />
       <TurnSyncOffSheet visible={sheet === 'off'} onClose={() => setSheet(null)} />

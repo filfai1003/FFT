@@ -434,6 +434,12 @@ async function api(req, res, url) {
               (select max(f.day) from public.food_logs f where f.user_id = u.id and f.deleted_at is null) as last_food_day,
               (select count(*) from public.body_metrics b where b.user_id = u.id and b.deleted_at is null) as body_entries,
               (select count(*) from public.workout_plans wp where wp.user_id = u.id and wp.deleted_at is null) as plans,
+              -- Copy on the server (DECISIONS 62-64): kept or not, which categories, end-to-end
+              -- encrypted (then only the number of sealed items is known, never their content).
+              (select s.enabled from public.account_sync s where s.user_id = u.id) as server_copy,
+              (select s.categories from public.account_sync s where s.user_id = u.id) as categories,
+              coalesce((select s.encrypted from public.account_sync s where s.user_id = u.id), false) as encrypted,
+              (select count(*) from public.vault_rows vr where vr.user_id = u.id and not vr.deleted) as encrypted_items,
               (select coalesce(round(sum(a.cost_micros) / 1000000.0, 2), 0) from public.ai_usage a
                  where a.user_id = u.id and a.created_at > now() - interval '30 days') as ai_cost_30d,
               (select coalesce(json_agg(json_build_object('name', t.name, 'app', t.client_id is not null,

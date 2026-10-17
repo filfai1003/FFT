@@ -5,8 +5,24 @@ import {
   DATA_CATEGORIES,
   type DataCategory,
 } from '@/domain/data-categories';
-import { getLocalClient, getLocalDb, writeLocalFile, type Row } from '@/lib/local-db';
+import {
+  getLocalClient,
+  getLocalDb,
+  readLocalFile,
+  writeLocalFile,
+  type Row,
+} from '@/lib/local-db';
+import { kv } from '@/lib/local-db/kv';
 import { usePlanStore } from '@/lib/plan';
+import { sealRow, WrongSecretError } from '@/lib/vault-crypto';
+import {
+  changePassphrase,
+  setUpEncryption,
+  turnEncryptionOff,
+  turnEncryptionOn,
+  unlockEncryption,
+} from './vault';
+import { forgetVaultKey, vaultKey } from './vault-key';
 import {
   checkSync,
   fetchSyncChoice,
@@ -70,7 +86,10 @@ const mockServer = (() => {
     if (offline) return { data: null, error: { message: 'TypeError: Failed to fetch' } };
     if (name === 'my_sync') return { data: syncChoice, error: null };
     if (name === 'my_sync_state')
-      return { data: { enabled: syncChoice, categories: [...categories] }, error: null };
+      return {
+        data: { enabled: syncChoice, categories: [...categories], encrypted },
+        error: null,
+      };
     if (name === 'set_sync_categories') {
       // Like public.set_sync_categories: a category left out is deleted (no tombstones).
       const next = args.p_categories as DataCategory[];
@@ -85,14 +104,18 @@ const mockServer = (() => {
       if (!syncChoice) {
         tables.clear();
         tombstones.length = 0;
+        vault.clear();
+        vaultKeys = null;
+        encrypted = false;
       }
       return { data: null, error: null };
     }
     if (name === 'sync_push') {
       const t = args.p_table as string;
-      // Row level security: a category the account does not keep is refused.
+      // Row level security: a category the account does not keep is refused, and everything
+      // while the copy is end-to-end encrypted.
       const c = categoryOf(t);
-      if (c && !categories.includes(c))
+      if ((c && !categories.includes(c)) || encrypted)
         return { data: null, error: { message: 'row-level security', code: '42501' } };
       const store = table(t);
       for (const row of args.p_rows as Row[]) {
@@ -126,10 +149,92 @@ const mockServer = (() => {
         out[t] = [...store.values()].filter((r) => r.deleted_at == null).length;
       return { data: out, error: null };
     }
+    // End-to-end encryption (DECISIONS 64), with the rules of …_vault.sql.
+    if (name === 'my_vault_keys') return { data: vaultKeys, error: null };
+    if (name === 'save_vault_keys') {
+      const next = args.p_record as Record<string, unknown>;
+      if (vaultKeys && next.key_check !== vaultKeys.key_check) {
+        if (encrypted) return { data: null, error: { message: 'cannot replace', code: '55000' } };
+        vault.clear();
+      }
+      vaultKeys = next;
+      return { data: null, error: null };
+    }
+    if (name === 'vault_push') {
+      if (!syncChoice || !vaultKeys)
+        return { data: null, error: { message: 'row-level security', code: '42501' } };
+      for (const item of args.p_rows as SealedItem[]) {
+        const k = `${item.tbl}:${item.row_id}`;
+        const old = vault.get(k);
+        const newer =
+          !old ||
+          old.updated_at < item.updated_at ||
+          (item.deleted && !old.deleted && old.updated_at <= item.updated_at);
+        if (!newer) continue;
+        vault.set(k, {
+          ...item,
+          deleted: item.deleted === true,
+          ciphertext: item.deleted ? null : item.ciphertext,
+          server_at: ++clock,
+        });
+      }
+      return { data: null, error: null };
+    }
+    if (name === 'vault_pull') {
+      const since = new Date(args.p_since as string).getTime() === 0 ? 0 : vaultCursor;
+      vaultCursor = clock;
+      return {
+        data: {
+          now: new Date().toISOString(),
+          rows: [...vault.values()]
+            .filter((v) => v.server_at > since)
+            .map(({ server_at: _s, ...v }) => v),
+        },
+        error: null,
+      };
+    }
+    if (name === 'vault_counts') {
+      const out: Record<string, number> = {};
+      for (const v of vault.values()) if (!v.deleted) out[v.tbl] = (out[v.tbl] ?? 0) + 1;
+      return { data: out, error: null };
+    }
+    if (name === 'set_vault') {
+      if (args.p_on && !vaultKeys)
+        return { data: null, error: { message: 'no key', code: '55000' } };
+      encrypted = args.p_on === true;
+      if (encrypted) {
+        tables.clear();
+        tombstones.length = 0;
+      }
+      return { data: null, error: null };
+    }
+    if (name === 'clear_vault') {
+      if (encrypted) return { data: null, error: { message: 'encrypted', code: '55000' } };
+      vault.clear();
+      vaultKeys = null;
+      return { data: null, error: null };
+    }
     return { data: null, error: { message: name, code: '42883' } };
   };
   let cursorBase = 0;
+  let vaultCursor = 0;
+  let encrypted = false;
+  let vaultKeys: Record<string, unknown> | null = null;
+  type SealedItem = {
+    tbl: string;
+    row_id: string;
+    updated_at: string;
+    deleted?: boolean;
+    ciphertext: string | null;
+  };
+  const vault = new Map<string, SealedItem & { server_at: number }>();
   return {
+    vault,
+    encrypted: () => encrypted,
+    vaultKeys: () => vaultKeys,
+    /** Another device's sealed change, already on the server. */
+    putSealed: (item: SealedItem) =>
+      vault.set(`${item.tbl}:${item.row_id}`, { ...item, server_at: ++clock }),
     tables,
     calls,
     bucket,
@@ -150,12 +255,18 @@ const mockServer = (() => {
             bucket(b).set(path, new Uint8Array(bytes));
             return { data: null, error: null };
           },
-          download: async () => ({ data: null, error: { message: 'none' } }),
-          list: async (folder: string) => {
+          // Only the sealed files come down in these tests.
+          download: async (path: string) => {
+            const bytes = b === 'vault-files' ? bucket(b).get(path) : undefined;
+            if (!bytes) return { data: null, error: { message: 'none' } };
+            const copy = bytes.slice();
+            return { data: { type: '', arrayBuffer: async () => copy.buffer }, error: null };
+          },
+          list: async (folder: string, opts?: { search?: string }) => {
             calls.push(`list ${b}`);
             if (offline) return { data: null, error: { message: 'Failed to fetch' } };
             const names = [...bucket(b).keys()]
-              .filter((k) => k.startsWith(`${folder}/`))
+              .filter((k) => k.startsWith(`${folder}/${opts?.search ?? ''}`))
               .slice(0, 100)
               .map((k) => ({ name: k.slice(folder.length + 1) }));
             return { data: names, error: null };
@@ -503,5 +614,151 @@ describe('the copy on the server by category', () => {
     expect(Object.keys(db.outbox)).not.toContain(`water_logs:${id(1005)}`);
     applyCategoryChange(db, ['body', 'training'], ['body', 'diet', 'training']);
     expect(Object.keys(db.outbox)).toContain(`water_logs:${id(1005)}`);
+  });
+});
+
+// End-to-end encryption of the copy (DECISIONS 64). Runs after the tests above.
+describe('end-to-end encrypted copy', () => {
+  const D = '2026-10-18';
+  const PHOTO = id(1004); // the progress photo of the category tests, still on this phone
+  const photoKey = `progress-photos/${U}/${PHOTO}.jpg`;
+  let recovery = '';
+  const later = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+
+  beforeAll(async () => {
+    usePlanStore.setState({
+      userId: U,
+      plan: 'free',
+      sync: 'on',
+      home: 'online',
+      categories: ['body', 'diet', 'training'],
+      encrypted: false,
+    });
+    await setSharedCategories(U, ['body', 'diet', 'training', 'photos']);
+    await syncOnce(U);
+  });
+  afterAll(() =>
+    usePlanStore.setState({
+      userId: null,
+      plan: null,
+      sync: null,
+      home: 'device',
+      categories: null,
+      encrypted: false,
+    }),
+  );
+
+  it('turned on: everything goes up sealed, then the readable copy is deleted', async () => {
+    recovery = await setUpEncryption(U, 'a long passphrase');
+    expect(recovery).toMatch(/^([0-9A-Z]{4}-){7}[0-9A-Z]{4}$/);
+    expect(JSON.stringify(mockServer.vaultKeys())).not.toContain('a long passphrase');
+    await turnEncryptionOn(U);
+    expect(mockServer.encrypted()).toBe(true);
+    expect(usePlanStore.getState().encrypted).toBe(true);
+    expect(mockServer.table('water_logs').size).toBe(0);
+    expect(mockServer.bucket('progress-photos').size).toBe(0);
+    const sealedWater = mockServer.vault.get(`water_logs:${id(1001)}`);
+    expect(sealedWater?.ciphertext).toBeTruthy();
+    expect(sealedWater?.ciphertext).not.toContain('2026');
+    // The photo went up sealed, under a name that does not tell which one it is.
+    const sealedFiles = [...mockServer.bucket('vault-files').keys()];
+    expect(sealedFiles.some((k) => k.startsWith(`${U}/p-`) && !k.includes(PHOTO))).toBe(true);
+  });
+
+  it('a change goes up sealed only', async () => {
+    const before = mockServer.calls.length;
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(1100), day: D, ml: 330 });
+    await syncOnce(U);
+    const calls = mockServer.calls.slice(before);
+    expect(calls).toContain('vault_push');
+    expect(calls).not.toContain('sync_push');
+    expect(water(id(1100))).toBeUndefined();
+    expect(mockServer.vault.get(`water_logs:${id(1100)}`)?.deleted).toBe(false);
+    expect((await checkSync(U)).differences).toEqual([]);
+  });
+
+  it("another device's sealed change comes down and opens; the newest change wins", async () => {
+    const key = (await vaultKey(U))!;
+    const row = { ...localWater(id(1100)), ml: 500, updated_at: later(60) };
+    mockServer.putSealed({
+      tbl: 'water_logs',
+      row_id: id(1100),
+      updated_at: String(row.updated_at),
+      ciphertext: sealRow(key, 'water_logs', id(1100), row),
+    });
+    await pull(U);
+    expect(localWater(id(1100))?.ml).toBe(500);
+    // Deleted there, later still.
+    mockServer.putSealed({
+      tbl: 'water_logs',
+      row_id: id(1100),
+      updated_at: later(120),
+      deleted: true,
+      ciphertext: null,
+    });
+    await pull(U);
+    expect(localWater(id(1100))).toBeUndefined();
+  });
+
+  it('a sealed item that does not open (altered, or another key) is left out', async () => {
+    mockServer.putSealed({
+      tbl: 'water_logs',
+      row_id: id(1101),
+      updated_at: later(60),
+      ciphertext: 'AAAA',
+    });
+    await expect(pull(U)).resolves.toBeDefined();
+    expect(localWater(id(1101))).toBeUndefined();
+    mockServer.vault.delete(`water_logs:${id(1101)}`);
+  });
+
+  it('a sealed photo missing here comes down and opens', async () => {
+    const original = await readLocalFile(photoKey);
+    await kv.removeFile(photoKey);
+    await pull(U, { full: true });
+    expect(new Uint8Array((await readLocalFile(photoKey))!)).toEqual(new Uint8Array(original!));
+  });
+
+  it('a device without the key sends and fetches nothing until the passphrase is entered', async () => {
+    await forgetVaultKey(U);
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(1102), day: D, ml: 120 });
+    expect(await push(U)).toBe(0);
+    expect(await pull(U)).toBe(false);
+    await expect(unlockEncryption(U, 'a wrong passphrase', 'passphrase')).rejects.toBeInstanceOf(
+      WrongSecretError,
+    );
+    await expect(unlockEncryption(U, 'AAAA-BBBB', 'recovery')).rejects.toBeInstanceOf(
+      WrongSecretError,
+    );
+    await unlockEncryption(U, 'a long passphrase', 'passphrase');
+    await syncOnce(U);
+    expect(mockServer.vault.get(`water_logs:${id(1102)}`)?.ciphertext).toBeTruthy();
+  });
+
+  it('the recovery key opens it too; a new passphrase replaces the old one', async () => {
+    await forgetVaultKey(U);
+    await unlockEncryption(U, recovery, 'recovery');
+    await changePassphrase(U, 'another long passphrase');
+    await forgetVaultKey(U);
+    await expect(unlockEncryption(U, 'a long passphrase', 'passphrase')).rejects.toBeInstanceOf(
+      WrongSecretError,
+    );
+    await unlockEncryption(U, 'another long passphrase', 'passphrase');
+    expect(await vaultKey(U)).not.toBeNull();
+  });
+
+  it('turned off: everything goes up readable, then the sealed copy and the key go', async () => {
+    await turnEncryptionOff(U);
+    expect(mockServer.encrypted()).toBe(false);
+    expect(usePlanStore.getState().encrypted).toBe(false);
+    expect(water(id(1102))).toMatchObject({ ml: 120 });
+    expect(mockServer.vault.size).toBe(0);
+    expect(mockServer.vaultKeys()).toBeNull();
+    expect(mockServer.bucket('vault-files').size).toBe(0);
+    expect(await vaultKey(U)).toBeNull();
   });
 });

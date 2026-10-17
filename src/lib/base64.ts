@@ -14,3 +14,25 @@ export function bytesToBase64(bytes: Uint8Array): string {
   }
   return out;
 }
+
+const VALUES = new Map([...ALPHABET].map((ch, i) => [ch, i]));
+
+/** base64 → bytes (no atob, for the same reason). Throws on characters outside the alphabet. */
+export function base64ToBytes(text: string): Uint8Array {
+  const clean = text.replace(/=+$/, '');
+  const out = new Uint8Array(Math.floor((clean.length * 3) / 4));
+  let bits = 0;
+  let value = 0;
+  let o = 0;
+  for (let i = 0; i < clean.length; i++) {
+    const v = VALUES.get(clean[i]);
+    if (v === undefined) throw new Error('not base64');
+    value = ((value << 6) | v) & 0xffffff;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[o++] = (value >> bits) & 0xff;
+    }
+  }
+  return out.subarray(0, o);
+}

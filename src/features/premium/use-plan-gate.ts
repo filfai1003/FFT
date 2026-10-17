@@ -12,7 +12,9 @@ import {
   fetchSyncState,
   finishServerCleanup,
   startSync,
+  switchCopyMode,
 } from './sync';
+import { forgetVaultKey, vaultKey } from './vault-key';
 
 export type PlanPhase =
   | { kind: 'checking' }
@@ -20,7 +22,13 @@ export type PlanPhase =
   /** A new account that has not said yet whether to keep a copy on the server. */
   | { kind: 'choose' }
   /** The web app without a copy on the server: it has no data to show. */
-  | { kind: 'webOff' };
+  | { kind: 'webOff' }
+  /** The copy is end-to-end encrypted and this device does not have the key yet. */
+  | { kind: 'unlock' };
+
+/** Accounts whose passphrase the user chose to enter later (this run only; phones only). */
+const unlockLater = new Set<string>();
+export const askUnlockLater = (userId: string) => unlockLater.add(userId);
 
 const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T) =>
   Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
@@ -51,16 +59,25 @@ export function usePlanGate() {
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
       const asking = Promise.all([fetchPlan(), fetchSyncState()]).then(([plan, state]) =>
-        state == null ? null : { plan, sync: state.sync, categories: state.categories },
+        state == null
+          ? null
+          : {
+              plan,
+              sync: state.sync,
+              categories: state.categories,
+              encrypted: state.encrypted,
+            },
       );
       const keep = async (answer: {
         plan: Awaited<ReturnType<typeof fetchPlan>>;
         sync: SyncChoice;
         categories: DataCategory[];
+        encrypted: boolean;
       }) => {
         // Categories changed on another device (DECISIONS 63): what is no longer kept on the
         // server is not sent from here either; what is kept again goes up in full.
         const before = usePlanStore.getState().categories ?? answer.categories;
+        const wasEncrypted = usePlanStore.getState().encrypted;
         await savePlan(userId, {
           ...(answer.plan ? { plan: answer.plan } : {}),
           sync: answer.sync,
@@ -69,6 +86,14 @@ export function usePlanGate() {
         const db = getLocalDb(userId);
         await db.ready;
         applyCategoryChange(db, before, answer.categories);
+        // Encryption turned on or off on another device (DECISIONS 64): everything here goes up
+        // again in the new form (what the server refused meanwhile is not lost).
+        if (answer.sync === 'on' && answer.encrypted !== wasEncrypted) {
+          await switchCopyMode(userId, answer.encrypted);
+          if (!answer.encrypted) await forgetVaultKey(userId);
+          return true;
+        }
+        return false;
       };
       let fetched: SyncChoice | null = null;
       if (saved.sync == null || saved.plan == null) {
@@ -80,8 +105,8 @@ export function usePlanGate() {
       } else {
         void asking.then(async (answer) => {
           if (answer == null || !live) return;
-          await keep(answer);
-          if (answer.sync !== saved.sync) setAttempt((n) => n + 1);
+          const switched = await keep(answer);
+          if (answer.sync !== saved.sync || switched) setAttempt((n) => n + 1);
         });
       }
       // null: never known here and the server could not be reached: nothing is synced meanwhile.
@@ -94,6 +119,14 @@ export function usePlanGate() {
           await startSync(userId);
           await savePlan(userId, { home: 'online' });
         }
+        // An encrypted copy and no key here yet: the passphrase is asked (on a phone it can wait;
+        // the sync waits with it). The web app has nothing to show without it.
+        if (
+          usePlanStore.getState().encrypted &&
+          !(await vaultKey(userId)) &&
+          (Platform.OS === 'web' || !unlockLater.has(userId))
+        )
+          return set({ kind: 'unlock' });
         return set({ kind: 'ready' });
       }
       if (sync === 'off') {

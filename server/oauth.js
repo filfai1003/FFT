@@ -29,6 +29,8 @@ const requestedScope = (scope) => {
 const SCOPES = ['read', 'write'];
 const SYNC_OFF =
   'Your FFT data is kept only on your phone, so there is nothing an AI app could use. To connect one, turn on Keep a copy on the server in the FFT app (Profile > Privacy & data), then sign in again.';
+const ENCRYPTED =
+  'Your copy on the server is end-to-end encrypted: our server cannot read it, so an AI app cannot use it. To connect one, turn the encryption off in the FFT app (Profile > Privacy & data), then sign in again.';
 
 /** https anywhere, or http only on this computer (desktop apps listening locally). */
 const allowedRedirect = (u) => {
@@ -216,8 +218,13 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     if (!userId) return page(p, client, 'Wrong email or password.');
     // The AI app would read and write the copy on the server: none when the user keeps the data
     // on the phone only (DECISIONS 62).
-    const [synced] = await sql('select public.sync_enabled_of($1) as on', [userId]);
+    const [synced] = await sql(
+      'select public.sync_enabled_of($1) as on, public.vault_on_of($1) as encrypted',
+      [userId],
+    );
     if (synced?.on !== true) return page(p, client, SYNC_OFF);
+    // End-to-end encrypted (DECISIONS 64): the server cannot read the data for the AI app.
+    if (synced?.encrypted === true) return page(p, client, ENCRYPTED);
     const code = secret('fftac_');
     // The user's choice on the page wins over the app's `scope`.
     const scope = SCOPES.includes(p.access) ? p.access : requestedScope(p.scope);

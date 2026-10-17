@@ -84,6 +84,19 @@
               AI apps and the API cannot see it.
             </li>
             <li>
+              <strong>End-to-end encryption</strong> (optional, for the whole copy): your data and
+              photos are encrypted on your phone, with a key only you have, before they are sent.
+              The key is protected by a passphrase you choose (not your login password) and by a
+              recovery key shown to you once; we keep the key only in that locked form and never
+              see your passphrase or recovery key. Our server then stores data it cannot read: we
+              can only see your account, how many items there are, their size, when they changed
+              and which kind of record each one is (for example "water log"). The API and AI apps
+              cannot work while encryption is on. If you lose both the passphrase and the recovery
+              key, nobody (us included) can read the copy on the server; your phone keeps its data.
+              Turning encryption off sends your data again in readable form and deletes the
+              encrypted copy.
+            </li>
+            <li>
               <strong>Copy on the server off</strong>: your data stays on the phone. The server only
               keeps your account (email, password and an empty profile and settings record). The
               web app, other devices and AI apps cannot see your data.
@@ -277,12 +290,16 @@
 
           Only Railway's private network reaches the database; every table has rules so that each
           account can only read and change its own rows. Progress photos are in a private storage
-          area, reachable only through short-lived signed links; they are not end-to-end encrypted.
+          area, reachable only through short-lived signed links. They and the rest of the copy are
+          end-to-end encrypted only if you turn that on (section 2); otherwise our server can
+          read them.
         </li>
         <li>
           <strong>Backups</strong>: every night the database and the photos are copied, encrypted
           (AES-256-GCM, with a key kept apart from the copies), into a storage bucket of our hosting
           in the same EU region. They are kept for at most 12 months: daily copies for 30 days, then one copy a month for 12 months.
+          For accounts with end-to-end encryption on, the backups hold only the encrypted copy:
+          we cannot read it there either.
         </li>
       </ul>
       <p>
@@ -428,7 +445,10 @@
         All connections to our server are encrypted (HTTPS/TLS). Our hosting provider, Railway, is
         SOC 2 Type II certified, and its data processing agreement with us commits it to keep the
         database encrypted at rest. Our nightly backups are, in addition, encrypted by us
-        (AES-256-GCM) before they are stored.
+        (AES-256-GCM) before they are stored. With end-to-end encryption on (section 2), your
+        copy on the server is encrypted on your phone with XChaCha20-Poly1305 under a random
+        256-bit key, itself locked with your passphrase (scrypt) and your recovery key; the server
+        never receives the key, the passphrase or the recovery key.
         The database has no public address and each account can only reach its own rows. Passwords
         and API tokens are stored only as hashes. Requests are rate-limited. No system is perfectly
         secure: if a breach puts your data at risk, we will tell you and the authority as the law

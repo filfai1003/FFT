@@ -14,7 +14,8 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
-import { usePlanStore, useSyncChoice } from '@/lib/plan';
+import { useCopyEncrypted, usePlanStore, useSyncChoice } from '@/lib/plan';
+import { EncryptedApiCard } from './Encryption';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { ConnectAiButtons } from './ConnectAiButtons';
@@ -46,7 +47,9 @@ export function ApiScreen() {
   const allowed = usePlanStore((s) => s.userId != null);
   // Tokens and AI apps read and write the copy on the server: none without it (DECISIONS 62).
   // Existing tokens stay listed so they can be revoked.
-  const synced = useSyncChoice() === 'on';
+  // An end-to-end encrypted copy cannot be read by the server either (DECISIONS 64).
+  const encrypted = useCopyEncrypted();
+  const synced = useSyncChoice() === 'on' && !encrypted;
   const tokens = useApiTokens(allowed);
   const create = useCreateApiToken();
   const setRevoked = useSetApiTokenRevoked();
@@ -126,6 +129,7 @@ export function ApiScreen() {
           <>
             {/* The API and AI apps read the copy on the server (DECISIONS 62). */}
             <SyncNeededCard />
+            <EncryptedApiCard />
             {synced ? (
               <>
                 <Card gap={10}>

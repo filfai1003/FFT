@@ -484,6 +484,9 @@ const READ_ONLY = 'This token is read only: it can read your data but not change
 /** The account turned its copy on the server off (DECISIONS 62): there is no data here. */
 export const SYNC_OFF =
   'Keep a copy on the server is off for this FFT account, so its data is only on the phone. Turn it on in the FFT app (Profile > Privacy & data) to use the API and AI apps.';
+/** The account's copy is end-to-end encrypted (DECISIONS 64): the server cannot read it. */
+export const ENCRYPTED =
+  'The copy on the server of this FFT account is end-to-end encrypted: the server cannot read it, so the API and AI apps cannot work while the encryption is on. It can be turned off in the FFT app (Profile > Privacy & data).';
 
 /**
  * The category of data each tool reads or changes (DECISIONS 63). A category the user does not
@@ -583,8 +586,9 @@ const ROUTES = [
 /**
  * The API, independent of HTTP and of how the database is reached (tests use an embedded
  * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write', sync: boolean,
- * categories?: string[] } or null (sync: the account keeps a copy on the server, DECISIONS 62;
- * without it every call is refused; categories: what it keeps there, DECISIONS 63);
+ * categories?: string[], encrypted?: boolean } or null (sync: the account keeps a copy on the
+ * server, DECISIONS 62; without it every call is refused; categories: what it keeps there,
+ * DECISIONS 63; encrypted: end-to-end, DECISIONS 64, every call is refused);
  * `db.asUser(userId, fn)` runs fn(q) in one transaction as that user (q(sql, params) → rows).
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
@@ -611,6 +615,8 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
       throw new ApiError(401, 'this token was revoked, or the plan no longer includes the API');
     // The account keeps its data on the phone only: nothing to read or write here.
     if (found.sync !== true) throw new ApiError(403, SYNC_OFF);
+    // End-to-end encrypted (DECISIONS 64): the server cannot read the data.
+    if (found.encrypted === true) throw new ApiError(403, ENCRYPTED);
     if (limited(found.userId))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
     return {
@@ -780,7 +786,8 @@ export function pgDatabase(pool) {
     async tokenFor(hash) {
       const r = await pool.query(
         `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
-                public.sync_categories_of(a.user_id) as categories
+                public.sync_categories_of(a.user_id) as categories,
+                public.vault_on_of(a.user_id) as encrypted
          from public.api_token_access($1) a`,
         [hash],
       );
@@ -791,6 +798,7 @@ export function pgDatabase(pool) {
             scope: row.scope,
             sync: row.sync === true,
             categories: row.categories,
+            encrypted: row.encrypted === true,
           }
         : null;
     },

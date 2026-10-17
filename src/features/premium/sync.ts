@@ -18,6 +18,7 @@ import {
   type DataCategory,
 } from '@/domain/data-categories';
 import {
+  copyEncrypted,
   isPlan,
   savePlan,
   sharedCategories,
@@ -25,6 +26,8 @@ import {
   type Plan,
   type SyncChoice,
 } from '@/lib/plan';
+import { hiddenName, openFile, openRow, sealFile, sealRow } from '@/lib/vault-crypto';
+import { forgetVaultKey, vaultKey } from './vault-key';
 import { reportError } from '@/lib/error-report';
 import { getAuthClient } from '@/lib/supabase';
 
@@ -69,6 +72,8 @@ export const SYNC_ORDER = [
 
 const PHOTOS = 'progress-photos';
 const EXERCISE_IMAGES = 'user-exercise-images';
+/** Sealed photos of an end-to-end encrypted copy (DECISIONS 64). */
+const VAULT_FILES = 'vault-files';
 const CHUNK = 200;
 const EPOCH = '1970-01-01T00:00:00.000Z';
 /** Pull a little before the last cursor: rows committed late are not missed (applying twice is harmless). */
@@ -76,6 +81,8 @@ const OVERLAP_MS = 2 * 60 * 1000;
 
 const server = () => getAuthClient() as unknown as SupabaseClient;
 const cursorKey = (userId: string) => `fft.sync.${userId}`;
+const vaultCursorKey = (userId: string) => `fft.sync.sealed.${userId}`;
+const vaultClearKey = (userId: string) => `fft.sync.sealed-to-clear.${userId}`;
 
 const chunks = <T>(list: T[], size = CHUNK): T[][] => {
   const out: T[][] = [];
@@ -152,8 +159,81 @@ export function resumeSync(userId: string) {
 /** Rows the server refused in the last push (0 = everything arrived). */
 let refusedLastPush = 0;
 
+/** How the outbox goes up: readable rows, or sealed ones (end-to-end encryption, DECISIONS 64). */
+type Sender = {
+  upsert(table: string, rows: Row[]): Promise<PushError | null>;
+  remove(table: string, dels: { id: string; at: string }[]): Promise<PushError | null>;
+  file(f: { bucket: string; path: string }): Promise<void>;
+};
+type PushError = { message: string; code?: string };
+
+const readable: Sender = {
+  upsert: (table, rows) => pushRows(table, rows, []),
+  remove: (table, dels) => pushRows(table, [], dels),
+  file: uploadFile,
+};
+
+/** Where a sealed file lives on the server: a name that does not tell which photo it is. */
+const sealedPath = (userId: string, key: Uint8Array, f: { bucket: string; path: string }) =>
+  `${userId}/${f.bucket === PHOTOS ? 'p-' : 't-'}${hiddenName(key, `${f.bucket}/${f.path}`)}`;
+
+const isoTime = (v: unknown) => {
+  const t = Date.parse(String(v ?? ''));
+  return Number.isNaN(t) ? new Date().toISOString() : new Date(t).toISOString();
+};
+
+function sealedSender(userId: string, key: Uint8Array): Sender {
+  const send = async (items: Record<string, unknown>[]) =>
+    (await server().rpc('vault_push', { p_rows: items })).error;
+  return {
+    upsert: (table, rows) =>
+      send(
+        rows.map((r) => {
+          const id = String(r[pkOf(table)]);
+          return {
+            tbl: table,
+            row_id: id,
+            updated_at: isoTime(r.updated_at),
+            ciphertext: sealRow(key, table, id, r),
+          };
+        }),
+      ),
+    remove: (table, dels) =>
+      send(
+        dels.map((d) => ({ tbl: table, row_id: d.id, updated_at: isoTime(d.at), deleted: true })),
+      ),
+    file: async (f) => {
+      const bytes = await readLocalFile(`${f.bucket}/${f.path}`);
+      if (!bytes) return;
+      const name = `${f.bucket}/${f.path}`;
+      await server()
+        .storage.from(VAULT_FILES)
+        .upload(sealedPath(userId, key, f), sealFile(key, name, new Uint8Array(bytes)), {
+          contentType: 'application/octet-stream',
+          upsert: true,
+        });
+    },
+  };
+}
+
 export async function push(userId: string): Promise<number> {
   if (halted.has(userId) || serverCopyOff(userId)) return 0;
+  if (copyEncrypted(userId)) {
+    // Locked (the passphrase was not entered on this device yet): everything waits.
+    const key = await vaultKey(userId);
+    return key ? sendOutbox(userId, sealedSender(userId, key)) : 0;
+  }
+  return sendOutbox(userId, readable);
+}
+
+/**
+ * Sends the outbox sealed with `key`, whatever the state of the copy: used while encryption is
+ * being turned on (the sealed copy goes up before the readable one is deleted).
+ */
+export const sendSealed = (userId: string, key: Uint8Array) =>
+  sendOutbox(userId, sealedSender(userId, key));
+
+async function sendOutbox(userId: string, sender: Sender): Promise<number> {
   const db = getLocalDb(userId);
   await db.ready;
   const pending = Object.values(db.outbox);
@@ -184,12 +264,11 @@ export async function push(userId: string): Promise<number> {
     for (const part of chunks(rows)) {
       for (const { row } of part) {
         const f = fileOf(table, row);
-        if (f) await uploadFile(f);
+        if (f) await sender.file(f);
       }
-      const error = await pushRows(
+      const error = await sender.upsert(
         table,
         part.map((r) => r.row),
-        [],
       );
       if (!error) {
         sent.push(...part.map((r) => r.p));
@@ -198,7 +277,7 @@ export async function push(userId: string): Promise<number> {
       if (isNetworkError(error)) throw new Error(error.message);
       // One bad row must not block the others: send them one by one, drop the refused ones.
       for (const r of part) {
-        const e = await pushRows(table, [r.row], []);
+        const e = await sender.upsert(table, [r.row]);
         if (e && isNetworkError(e)) throw new Error(e.message);
         // Left out for good: say so (a row lost without a trace is how a breakfast went missing).
         if (e) refusedLastPush += 1;
@@ -212,9 +291,8 @@ export async function push(userId: string): Promise<number> {
   for (const table of [...SYNC_ORDER].reverse()) {
     const dels = (byTable.get(table) ?? []).filter((p) => p.op === 'delete');
     for (const part of chunks(dels)) {
-      const error = await pushRows(
+      const error = await sender.remove(
         table,
-        [],
         part.map((p) => ({ id: p.key, at: p.at })),
       );
       if (error && isNetworkError(error)) throw new Error(error.message);
@@ -234,6 +312,10 @@ function isNetworkError(e: { message?: string; code?: string }) {
 /** Brings back what changed on the server since the last pull. Returns whether anything changed here. */
 export async function pull(userId: string, opts: { full?: boolean } = {}): Promise<boolean> {
   if (serverCopyOff(userId)) return false;
+  if (copyEncrypted(userId)) {
+    const key = await vaultKey(userId);
+    return key ? pullSealed(userId, key, opts) : false;
+  }
   const db = getLocalDb(userId);
   await db.ready;
   // The device started with no readable database: everything comes back, not only what is new.
@@ -273,6 +355,86 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
   return changed;
 }
 
+type SealedItem = {
+  tbl: string;
+  row_id: string;
+  updated_at: string;
+  deleted: boolean;
+  ciphertext: string | null;
+};
+
+/**
+ * The same with an end-to-end encrypted copy: sealed rows are opened here with the data key (an
+ * item that does not open, e.g. altered on the server, is left out and reported); photos are
+ * downloaded sealed and opened.
+ */
+async function pullSealed(
+  userId: string,
+  key: Uint8Array,
+  opts: { full?: boolean },
+): Promise<boolean> {
+  const db = getLocalDb(userId);
+  await db.ready;
+  const full = opts.full || db.freshStart;
+  const saved = full ? null : await AsyncStorage.getItem(vaultCursorKey(userId));
+  const since = saved ? new Date(new Date(saved).getTime() - OVERLAP_MS).toISOString() : EPOCH;
+  const { data, error } = await server().rpc('vault_pull', { p_since: since });
+  if (error) throw new Error(error.message);
+  const result = data as { now: string; rows: SealedItem[] };
+
+  const byTable = new Map<string, { rows: Row[]; deleted: { id: string; at: string }[] }>();
+  const slot = (t: string) => {
+    if (!byTable.has(t)) byTable.set(t, { rows: [], deleted: [] });
+    return byTable.get(t)!;
+  };
+  let unreadable = 0;
+  for (const item of result.rows ?? []) {
+    if (item.deleted) {
+      slot(item.tbl).deleted.push({ id: item.row_id, at: isoTime(item.updated_at) });
+      continue;
+    }
+    try {
+      const row = openRow(key, item.tbl, item.row_id, String(item.ciphertext));
+      if (String(row[pkOf(item.tbl)]) !== item.row_id) throw new Error('row id does not match');
+      slot(item.tbl).rows.push(row);
+    } catch {
+      unreadable += 1;
+    }
+  }
+  if (unreadable > 0)
+    reportError(new Error(`${unreadable} sealed items could not be opened`), 'sync');
+
+  let changed = false;
+  const categories = sharedCategories(userId);
+  for (const table of SYNC_ORDER) {
+    const got = byTable.get(table);
+    if (!got || !tableShared(table, categories)) continue;
+    if (db.applyRemote(table, got.rows, got.deleted)) changed = true;
+    for (const row of got.rows) {
+      const f = fileOf(table, row);
+      if (!f || (await readLocalFile(`${f.bucket}/${f.path}`))) continue;
+      const res = await server()
+        .storage.from(VAULT_FILES)
+        .download(sealedPath(userId, key, f));
+      if (res.error || !res.data) continue;
+      try {
+        const bytes = openFile(
+          key,
+          `${f.bucket}/${f.path}`,
+          new Uint8Array(await res.data.arrayBuffer()),
+        );
+        await writeLocalFile(`${f.bucket}/${f.path}`, bytes, 'image/jpeg');
+        changed = true;
+      } catch {
+        reportError(new Error('a sealed file could not be opened'), 'sync');
+      }
+    }
+  }
+  await AsyncStorage.setItem(vaultCursorKey(userId), result.now);
+  db.freshStart = false;
+  return changed;
+}
+
 /** One round: send, then receive (a device that lost its database receives first). */
 export async function syncOnce(userId: string): Promise<boolean> {
   if (halted.has(userId) || serverCopyOff(userId)) return false;
@@ -288,6 +450,9 @@ export async function syncOnce(userId: string): Promise<boolean> {
   // Done only when the server took everything (otherwise: again at the next sync).
   if (!resend && refusedLastPush === 0)
     await AsyncStorage.setItem(resendKey(userId), new Date().toISOString());
+  // Encryption was turned off: once the readable copy is all up, the sealed one goes.
+  if (!copyEncrypted(userId) && Object.keys(db.outbox).length === 0)
+    await finishVaultClear(userId).catch((e: unknown) => reportError(e, 'sync'));
   const changed = (await pull(userId)) || recovered;
   useSyncStatus.setState({ lastAt: new Date().toISOString(), refused: refusedLastPush });
   return changed;
@@ -316,7 +481,10 @@ export type SyncCheck = {
 export async function checkSync(userId: string): Promise<SyncCheck> {
   await syncOnce(userId);
   const db = getLocalDb(userId);
-  const { data, error } = await server().rpc('sync_counts');
+  // An encrypted copy: the sealed rows are counted (the server cannot tell what is in them).
+  const { data, error } = await server().rpc(
+    copyEncrypted(userId) ? 'vault_counts' : 'sync_counts',
+  );
   if (error) throw new Error(error.message);
   const online = data as Record<string, number>;
   const categories = sharedCategories(userId);
@@ -376,20 +544,29 @@ const asChoice = (v: unknown): SyncChoice =>
   v === true ? 'on' : v === false ? 'off' : 'undecided';
 
 /** The copy on the server as the server says: on / off / undecided, and the categories kept. */
-export type SyncState = { sync: SyncChoice; categories: DataCategory[] };
+export type SyncState = {
+  sync: SyncChoice;
+  categories: DataCategory[];
+  /** End-to-end encrypted (DECISIONS 64). */
+  encrypted: boolean;
+};
 
 /** What the server says about the copy on the server; null when it cannot be reached. */
 export async function fetchSyncState(): Promise<SyncState | null> {
   try {
     const res = await server().rpc('my_sync_state');
     if (!res.error && res.data && typeof res.data === 'object') {
-      const d = res.data as { enabled?: unknown; categories?: unknown };
-      return { sync: asChoice(d.enabled), categories: normalizeCategories(d.categories) };
+      const d = res.data as { enabled?: unknown; categories?: unknown; encrypted?: unknown };
+      return {
+        sync: asChoice(d.enabled),
+        categories: normalizeCategories(d.categories),
+        encrypted: d.encrypted === true,
+      };
     }
     // A server from before DECISIONS 63: on / off only, everything kept.
     const old = await server().rpc('my_sync');
     if (old.error) return null;
-    return { sync: asChoice(old.data), categories: normalizeCategories(null) };
+    return { sync: asChoice(old.data), categories: normalizeCategories(null), encrypted: false };
   } catch {
     return null;
   }
@@ -404,42 +581,61 @@ export async function fetchSyncChoice(): Promise<SyncChoice | null> {
 export const tablesOf = (categories: readonly DataCategory[]) =>
   categories.flatMap((c) => CATEGORY_TABLES[c]);
 
-/** The private buckets holding the files of some categories. */
-const bucketsOf = (categories: readonly DataCategory[]) => [
-  ...(categories.includes('photos') ? [PHOTOS] : []),
-  ...(categories.includes('training') ? [EXERCISE_IMAGES] : []),
+/**
+ * Files to remove from the server: a bucket ("progress-photos"), or the files of a bucket whose
+ * name starts with something ("vault-files:p-" = the sealed progress photos).
+ */
+type CleanupTarget = string;
+const ALL_FILES: CleanupTarget[] = [PHOTOS, EXERCISE_IMAGES, VAULT_FILES];
+const isTarget = (v: unknown): v is CleanupTarget =>
+  typeof v === 'string' && ALL_FILES.includes(v.split(':')[0]);
+
+/** The files of some categories, readable and sealed. */
+const filesOf = (categories: readonly DataCategory[]): CleanupTarget[] => [
+  ...(categories.includes('photos') ? [PHOTOS, `${VAULT_FILES}:p-`] : []),
+  ...(categories.includes('training') ? [EXERCISE_IMAGES, `${VAULT_FILES}:t-`] : []),
 ];
 
-/** Buckets whose files still wait to be removed (both: an older device wrote only a time). */
-async function bucketsToClean(userId: string): Promise<string[]> {
+/** Files that still wait to be removed (all of them: an older device wrote only a time). */
+async function filesToClean(userId: string): Promise<CleanupTarget[]> {
   const saved = await AsyncStorage.getItem(cleanupKey(userId));
   if (!saved) return [];
   try {
     const list = JSON.parse(saved) as unknown;
-    if (Array.isArray(list)) return list.filter((b) => b === PHOTOS || b === EXERCISE_IMAGES);
+    if (Array.isArray(list)) return list.filter(isTarget);
   } catch {
     // A time (written before DECISIONS 63): every bucket.
   }
   return [PHOTOS, EXERCISE_IMAGES];
 }
 
-async function noteCleanup(userId: string, buckets: string[]) {
-  const next = [...new Set([...(await bucketsToClean(userId)), ...buckets])];
+export async function noteCleanup(userId: string, targets: CleanupTarget[]) {
+  const next = [...new Set([...(await filesToClean(userId)), ...targets])];
   await AsyncStorage.setItem(cleanupKey(userId), JSON.stringify(next));
 }
 
+/** Every file of an account: the readable ones and the sealed ones. */
+export const EVERY_FILE: CleanupTarget[] = ALL_FILES;
+/** The readable files only (encryption turned on: the sealed ones stay). */
+export const READABLE_FILES: CleanupTarget[] = [PHOTOS, EXERCISE_IMAGES];
+
 /**
- * Removes every file of the account from private buckets (listed on the server, so files this
- * phone never downloaded go too). The rows are already gone (set_sync(false), or the category was
- * turned off).
+ * Removes files of the account from private buckets (listed on the server, so files this phone
+ * never downloaded go too). The rows are already gone (set_sync(false), a category turned off,
+ * encryption turned on or off).
  */
-async function removeServerFiles(userId: string, buckets: string[]) {
-  for (const bucket of buckets) {
+async function removeServerFiles(userId: string, targets: CleanupTarget[]) {
+  for (const target of targets) {
+    const [bucket, prefix = ''] = target.split(':');
     // Pages of 100 (at most 20 000 files); a page that removes nothing ends it (no endless loop).
     for (let round = 0; round < 200; round++) {
-      const { data, error } = await server().storage.from(bucket).list(userId, { limit: 100 });
+      const { data, error } = await server()
+        .storage.from(bucket)
+        .list(userId, prefix ? { limit: 100, search: prefix } : { limit: 100 });
       if (error) throw new Error(error.message);
-      const names = ((data ?? []) as { name: string }[]).map((f) => `${userId}/${f.name}`);
+      const names = ((data ?? []) as { name: string }[])
+        .filter((f) => f.name.startsWith(prefix))
+        .map((f) => `${userId}/${f.name}`);
       if (names.length === 0) break;
       const removed = await server().storage.from(bucket).remove(names);
       if (removed.error) throw new Error(removed.error.message);
@@ -453,10 +649,10 @@ async function removeServerFiles(userId: string, buckets: string[]) {
  * now. Returns true when nothing is left to remove.
  */
 export async function finishServerCleanup(userId: string): Promise<boolean> {
-  const buckets = await bucketsToClean(userId);
-  if (buckets.length === 0) return true;
+  const targets = await filesToClean(userId);
+  if (targets.length === 0) return true;
   try {
-    await removeServerFiles(userId, buckets);
+    await removeServerFiles(userId, targets);
     await AsyncStorage.removeItem(cleanupKey(userId));
     return true;
   } catch {
@@ -486,10 +682,50 @@ export async function turnSyncOff(userId: string): Promise<void> {
     resumeSync(userId);
     throw e;
   }
-  await noteCleanup(userId, [PHOTOS, EXERCISE_IMAGES]);
-  await savePlan(userId, { sync: 'off', home: 'device' });
+  // The sealed copy and its key went with it (set_sync(false), DECISIONS 64).
+  await noteCleanup(userId, EVERY_FILE);
+  await savePlan(userId, { sync: 'off', home: 'device', encrypted: false });
+  await AsyncStorage.removeItem(vaultClearKey(userId));
+  await forgetVaultKey(userId);
   await detachSync(userId);
   resumeSync(userId);
+  await finishServerCleanup(userId);
+}
+
+/**
+ * The copy became end-to-end encrypted, or readable again (here or on another device): this
+ * device sends everything again in the new form (changes the server refused meanwhile are not
+ * lost) and fetches everything from the start.
+ */
+export async function switchCopyMode(
+  userId: string,
+  encrypted: boolean,
+  { resend = true }: { resend?: boolean } = {},
+) {
+  const db = getLocalDb(userId);
+  await db.ready;
+  await savePlan(userId, { encrypted });
+  if (resend && db.tracking) db.markAllDirty();
+  await AsyncStorage.removeItem(cursorKey(userId));
+  await AsyncStorage.removeItem(vaultCursorKey(userId));
+}
+
+/** Encryption was turned off: the sealed copy goes once the readable one is all up. */
+export async function markVaultClear(userId: string) {
+  await AsyncStorage.setItem(vaultClearKey(userId), new Date().toISOString());
+}
+
+/**
+ * Deletes the sealed copy, its key and its files (encryption turned off and the readable copy
+ * up). Nothing happens when none waits.
+ */
+export async function finishVaultClear(userId: string): Promise<void> {
+  if (!(await AsyncStorage.getItem(vaultClearKey(userId)))) return;
+  const { error } = await server().rpc('clear_vault');
+  if (error) throw new Error(error.message);
+  await noteCleanup(userId, [VAULT_FILES]);
+  await AsyncStorage.removeItem(vaultClearKey(userId));
+  await forgetVaultKey(userId);
   await finishServerCleanup(userId);
 }
 
@@ -541,8 +777,8 @@ export async function setSharedCategories(
   await db.ready;
   await savePlan(userId, { categories: kept });
   applyCategoryChange(db, before, kept);
-  if (bucketsOf(removed).length > 0) {
-    await noteCleanup(userId, bucketsOf(removed));
+  if (filesOf(removed).length > 0) {
+    await noteCleanup(userId, filesOf(removed));
     await finishServerCleanup(userId);
   }
 }

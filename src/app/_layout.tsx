@@ -13,7 +13,8 @@ import { startAuthListener, useSessionStore } from '@/features/auth/session-stor
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
 import { SyncChoiceScreen, WebSyncOffScreen } from '@/features/premium/ServerCopy';
-import { usePlanGate } from '@/features/premium/use-plan-gate';
+import { VaultUnlockScreen } from '@/features/premium/Encryption';
+import { askUnlockLater, usePlanGate } from '@/features/premium/use-plan-gate';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
@@ -83,9 +84,24 @@ export default function RootLayout() {
  */
 function AppNavigator() {
   const { phase, retry } = usePlanGate();
+  const userId = useSessionStore((s) => s.userId);
   if (phase.kind === 'checking') return <Screen>{null}</Screen>;
   if (phase.kind === 'choose') return <SyncChoiceScreen onDone={retry} />;
   if (phase.kind === 'webOff') return <WebSyncOffScreen onRetry={retry} />;
+  if (phase.kind === 'unlock')
+    return (
+      <VaultUnlockScreen
+        onDone={retry}
+        onLater={
+          Platform.OS === 'web' || !userId
+            ? undefined
+            : () => {
+                askUnlockLater(userId);
+                retry();
+              }
+        }
+      />
+    );
   return <AppRoutes />;
 }
 

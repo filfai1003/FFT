@@ -42,6 +42,8 @@ type PlanState = {
    * asked on this device (everything, as before categories existed).
    */
   categories: DataCategory[] | null;
+  /** The copy on the server is end-to-end encrypted (DECISIONS 64), as this device last knew. */
+  encrypted: boolean;
 };
 
 export const usePlanStore = create<PlanState>(() => ({
@@ -50,6 +52,7 @@ export const usePlanStore = create<PlanState>(() => ({
   sync: null,
   home: 'device',
   categories: null,
+  encrypted: false,
 }));
 
 const key = (userId: string) => `fft.plan.${userId}`;
@@ -79,6 +82,7 @@ export async function loadPlan(userId: string): Promise<PlanState> {
     sync: isSyncChoice(saved.sync) ? saved.sync : premium === true ? 'on' : null,
     home: saved.home === 'online' ? 'online' : 'device',
     categories: Array.isArray(saved.categories) ? normalizeCategories(saved.categories) : null,
+    encrypted: saved.encrypted === true,
   };
   usePlanStore.setState(state);
   return state;
@@ -95,6 +99,7 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
         sync: next.sync,
         home: next.home,
         categories: next.categories,
+        encrypted: next.encrypted,
       }),
     );
   } catch {
@@ -103,8 +108,24 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
 }
 
 export function resetPlan() {
-  usePlanStore.setState({ userId: null, plan: null, sync: null, home: 'device', categories: null });
+  usePlanStore.setState({
+    userId: null,
+    plan: null,
+    sync: null,
+    home: 'device',
+    categories: null,
+    encrypted: false,
+  });
 }
+
+/** Whether this account's copy on the server is end-to-end encrypted (as this device knows). */
+export function copyEncrypted(userId: string): boolean {
+  const s = usePlanStore.getState();
+  return s.userId === userId && s.encrypted;
+}
+
+/** The current account's copy on the server is end-to-end encrypted. */
+export const useCopyEncrypted = () => usePlanStore((s) => s.userId != null && s.encrypted);
 
 /** The categories an account keeps on the server (all of them when not known yet). */
 export function sharedCategories(userId: string): DataCategory[] {
