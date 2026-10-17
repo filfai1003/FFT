@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import { DATA_CATEGORIES, normalizeCategories, type DataCategory } from '@/domain/data-categories';
 
 /**
  * The account's plan and where its data lives (DECISIONS 42, 47, 62).
@@ -36,6 +37,11 @@ type PlanState = {
   sync: SyncChoice | null;
   /** Where this device last left the data: 'online' = the sync runs for it. */
   home: DataHome;
+  /**
+   * The categories kept on the server (DECISIONS 63), as the server last said; null = never
+   * asked on this device (everything, as before categories existed).
+   */
+  categories: DataCategory[] | null;
 };
 
 export const usePlanStore = create<PlanState>(() => ({
@@ -43,6 +49,7 @@ export const usePlanStore = create<PlanState>(() => ({
   plan: null,
   sync: null,
   home: 'device',
+  categories: null,
 }));
 
 const key = (userId: string) => `fft.plan.${userId}`;
@@ -71,6 +78,7 @@ export async function loadPlan(userId: string): Promise<PlanState> {
             : null,
     sync: isSyncChoice(saved.sync) ? saved.sync : premium === true ? 'on' : null,
     home: saved.home === 'online' ? 'online' : 'device',
+    categories: Array.isArray(saved.categories) ? normalizeCategories(saved.categories) : null,
   };
   usePlanStore.setState(state);
   return state;
@@ -82,7 +90,12 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
   try {
     await AsyncStorage.setItem(
       key(userId),
-      JSON.stringify({ plan: next.plan, sync: next.sync, home: next.home }),
+      JSON.stringify({
+        plan: next.plan,
+        sync: next.sync,
+        home: next.home,
+        categories: next.categories,
+      }),
     );
   } catch {
     // Still applies for this run.
@@ -90,8 +103,18 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
 }
 
 export function resetPlan() {
-  usePlanStore.setState({ userId: null, plan: null, sync: null, home: 'device' });
+  usePlanStore.setState({ userId: null, plan: null, sync: null, home: 'device', categories: null });
 }
+
+/** The categories an account keeps on the server (all of them when not known yet). */
+export function sharedCategories(userId: string): DataCategory[] {
+  const s = usePlanStore.getState();
+  return s.userId === userId && s.categories ? s.categories : [...DATA_CATEGORIES];
+}
+
+const ALL = [...DATA_CATEGORIES];
+/** The current account's categories kept on the server (all when not known yet). */
+export const useSharedCategories = () => usePlanStore((s) => s.categories ?? ALL);
 
 /** The current account's copy on the server: 'on', 'off', 'undecided' or null (not known yet). */
 export const useSyncChoice = () => usePlanStore((s) => (s.userId == null ? null : s.sync));

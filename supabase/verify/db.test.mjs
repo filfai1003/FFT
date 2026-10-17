@@ -42,11 +42,15 @@ async function tokenFor(hash) {
   await admin();
   const [r] = (
     await db.query(
-      'select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync from public.api_token_access($1) a',
+      `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
+              public.sync_categories_of(a.user_id) as categories
+       from public.api_token_access($1) a`,
       [hash],
     )
   ).rows;
-  return r ? { userId: r.user_id, scope: r.scope, sync: r.sync === true } : null;
+  return r
+    ? { userId: r.user_id, scope: r.scope, sync: r.sync === true, categories: r.categories }
+    : null;
 }
 const count = async (sql, params) => Number((await one(sql, params)).n);
 
@@ -1522,5 +1526,145 @@ describe('keep a copy on the server is optional (DECISIONS 62)', () => {
     );
     assert.equal((await one('select name from public.profiles')).name, 'Dee');
     assert.equal((await me()).status, 200);
+  });
+});
+
+describe('the copy on the server by category (DECISIONS 63)', () => {
+  const F = 'ffffffff-0000-0000-0000-00000000000f';
+  const W = '88888888-0000-0000-0000-0000000000f1';
+  const api = createApi({
+    tokenFor,
+    async asUser(uid, fn) {
+      await as(uid);
+      return fn(async (sql, params) => (await db.query(sql, params)).rows);
+    },
+  });
+  let token = '';
+  const call = (method, path, body) =>
+    api({ method, path, query: {}, body, headers: { authorization: `Bearer ${token}` } });
+  const tool = async (name, args = {}) => call('POST', `/v1/tools/${name}`, args);
+
+  before(async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${F}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'f@test.dev');
+    `);
+    await as(F);
+    await db.exec('select public.set_sync(true)');
+    await db.exec(`
+      insert into public.water_logs (id, day, ml) values ('${W}', '2026-10-17', 250);
+      insert into public.food_logs (day, meal, name, kcal) values ('2026-10-17', 'lunch', 'Pasta', 600);
+      insert into public.body_metrics (day, weight_kg) values ('2026-10-17', 70);
+      insert into storage.objects (bucket_id, name) values ('progress-photos', '${F}/a.jpg');
+    `);
+    token = (await one(`select public.create_api_token('Claude') as t`)).t;
+  });
+
+  it('every category is kept by default (accounts that already had a copy keep everything)', async () => {
+    await as(F);
+    assert.deepEqual((await one('select public.my_sync_state() as s')).s, {
+      enabled: true,
+      categories: ['body', 'diet', 'training', 'photos'],
+    });
+    await as(A);
+    assert.deepEqual((await one('select public.my_sync_state() as s')).s.categories, [
+      'body',
+      'diet',
+      'training',
+      'photos',
+    ]);
+  });
+
+  it('a category turned off is deleted from the server, with no tombstones; the rest stays', async () => {
+    await as(F);
+    const kept = (
+      await one(`select public.set_sync_categories(array['photos', 'body', 'training']) as c`)
+    ).c;
+    assert.deepEqual(kept, ['body', 'training', 'photos']);
+    assert.equal(await count('select count(*) as n from public.water_logs'), 0);
+    assert.equal(await count('select count(*) as n from public.food_logs'), 0);
+    assert.equal(await count('select count(*) as n from public.body_metrics'), 1);
+    assert.equal(
+      await count(
+        `select count(*) as n from public.sync_tombstones where table_name in ('water_logs', 'food_logs')`,
+      ),
+      0,
+      'other devices must not delete their own copy',
+    );
+    await admin();
+    assert.equal(
+      (await count(`select count(*) as n from public.water_logs where user_id <> '${F}'`)) > 0,
+      true,
+      'other accounts keep theirs',
+    );
+  });
+
+  it('writes of a category that is off are refused, also through sync_push (an old app)', async () => {
+    await as(F);
+    await rejects(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`, '42501');
+    await rejects(
+      `select public.sync_push('water_logs', '[{"id": "${W}", "user_id": "${F}", "day": "2026-10-17", "ml": 250, "updated_at": "2026-10-17T10:00:00Z"}]'::jsonb, '[]'::jsonb)`,
+      '42501',
+    );
+    await db.exec(`insert into public.body_metrics (day, weight_kg) values ('2026-10-18', 71)`);
+    await db.exec(`select public.set_sync_categories(array['body', 'diet', 'training'])`);
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('progress-photos', '${F}/b.jpg')`,
+      '42501',
+    );
+    assert.equal(await count('select count(*) as n from public.progress_photos'), 0);
+    await db.exec(`select public.set_sync_categories(array['body', 'training', 'photos'])`);
+  });
+
+  it('only known categories; only a signed-in user', async () => {
+    await as(F);
+    await rejects(`select public.set_sync_categories(array['diet', 'secrets'])`, '22023');
+    await admin();
+    await db.exec('set role anon');
+    await rejects(`select public.set_sync_categories(array['diet'])`, '42501');
+    await rejects(`select public.sync_categories_of('${F}')`, '42501');
+  });
+
+  it('the API and MCP say a category is not shared; mixed answers leave it out', async () => {
+    const water = await call('GET', '/v1/water');
+    assert.equal(water.status, 403);
+    assert.match(water.body.error, /^Diet is not shared with the server/);
+    assert.equal((await tool('log_food', { meal: 'lunch', name: 'x', kcal: 1 })).status, 403);
+    const q = await tool('query_data', { table: 'food_logs' });
+    assert.equal(q.status, 403);
+    assert.equal((await tool('query_data', { table: 'body_metrics' })).status, 200);
+    const day = await call('GET', '/v1/days/2026-10-17');
+    assert.equal(day.status, 200);
+    assert.equal(day.body.food_logs, undefined);
+    assert.ok(day.body.body);
+    assert.match(day.body.not_shared, /Diet/);
+    const map = await tool('list_data');
+    assert.equal(
+      map.body.tables.some((t) => t.table === 'water_logs'),
+      false,
+    );
+    const init = await call('POST', '/mcp', {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2025-06-18' },
+    });
+    assert.match(init.body.result.instructions, /Not shared with the server.*Diet/);
+    const mcp = await call('POST', '/mcp', {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'list_water', arguments: {} },
+    });
+    assert.equal(mcp.body.result.isError, true);
+    assert.match(mcp.body.result.content[0].text, /Diet is not shared/);
+  });
+
+  it('turned on again: the category can be stored and the API answers', async () => {
+    await as(F);
+    await db.exec(`select public.set_sync_categories(array['body', 'diet', 'training', 'photos'])`);
+    await db.exec(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`);
+    assert.equal((await call('GET', '/v1/water')).status, 200);
   });
 });

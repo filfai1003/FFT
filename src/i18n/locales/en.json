@@ -1557,7 +1557,7 @@
       "recover": "Get your data back if you lose or change your phone"
     },
     "meansTitle": "What it means",
-    "means": "A copy of your workouts, food, body measurements, photos and settings is stored on our server in the EU. When you turn it off, that copy is deleted.",
+    "means": "A copy of the data you choose (body, diet, training, progress photos) and of your profile and settings is stored on our server in the EU. When you turn it off, that copy is deleted.",
     "optionOn": "Keep a copy on the server",
     "optionOnDetail": "Synced with the web app and your other devices; AI apps can connect.",
     "optionOff": "Only on this phone",
@@ -1577,6 +1577,27 @@
     "neededTitle": "AI apps need the copy on the server",
     "neededBody": "Claude, ChatGPT and your own tools read your data from our server, and right now it is only on this phone. Keep a copy on the server to connect them.",
     "webTitle": "Your data is only on your phone",
-    "webBody": "This account keeps its data on the phone only, so there is nothing to show here. To use FFT in the browser, keep a copy on the server: here, or in the app on your phone under Profile > Privacy & data."
+    "webBody": "This account keeps its data on the phone only, so there is nothing to show here. To use FFT in the browser, keep a copy on the server: here, or in the app on your phone under Profile > Privacy & data.",
+    "categoriesTitle": "What is kept on the server",
+    "category": {
+      "body": "Body",
+      "diet": "Diet",
+      "training": "Training",
+      "photos": "Progress photos"
+    },
+    "categoryDetail": {
+      "body": "Weight, body fat, measurements and body goals",
+      "diet": "Foods you logged, your own foods, meal plans, calorie targets, water and supplements",
+      "training": "Workout plans, workouts and sets, your own exercises and their pictures",
+      "photos": "Your progress photos (the pictures and their dates)"
+    },
+    "categoryKept": "Kept",
+    "categoryNotKept": "Not kept",
+    "alwaysSent": "Always part of the copy: your profile (name, birth date, sex, height, goal), your settings and your consents. Your other devices need them to start.",
+    "categoryOffTitle": "Delete {{name}} from the server?",
+    "categoryOffBody": "{{name}} stays on this phone. Its copy on our server is deleted now, and this cannot be undone. The web app, your other devices and AI apps no longer see it, and what they change in it does not reach this phone. You can turn it on again later: this phone then sends it again.",
+    "categoryOffConfirm": "Delete from the server",
+    "categoryRemoved": "{{name}} was deleted from the server. It stays on this phone.",
+    "categoryAdded": "{{name}} is kept on the server again. It is being sent."
   }
 }

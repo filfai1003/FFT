@@ -16,9 +16,11 @@ import { useTheme } from '@/design/use-theme';
 import { signOut } from '@/features/auth/api';
 import { useSessionStore } from '@/features/auth/session-store';
 import { LegalLinks } from '@/features/legal/LegalLinks';
-import { useSyncChoice } from '@/lib/plan';
+import { DATA_CATEGORIES, type DataCategory } from '@/domain/data-categories';
+import { useSharedCategories, useSyncChoice } from '@/lib/plan';
 import { useToastStore } from '@/lib/toast-store';
-import { turnSyncOff, turnSyncOn } from './sync';
+import { setSharedCategories, turnSyncOff, turnSyncOn } from './sync';
+import { SyncCategoryList, toggled } from './SyncCategories';
 
 /**
  * Keep a copy on the server (DECISIONS 62): what it gives and what it means, the choice a new
@@ -59,6 +61,8 @@ export function SyncChoiceScreen({ onDone }: { onDone: () => void }) {
   const barHeight = useActionBarHeight();
   const userId = useSessionStore((s) => s.userId);
   const [choice, setChoice] = useState<'on' | 'off' | null>(null);
+  // Every category is kept unless the user turns some off (DECISIONS 63).
+  const [categories, setCategories] = useState<DataCategory[]>(() => [...DATA_CATEGORIES]);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -67,7 +71,7 @@ export function SyncChoiceScreen({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setFailed(false);
     try {
-      if (choice === 'on') await turnSyncOn(userId);
+      if (choice === 'on') await turnSyncOn(userId, categories);
       else await turnSyncOff(userId);
       onDone();
     } catch {
@@ -105,6 +109,15 @@ export function SyncChoiceScreen({ onDone }: { onDone: () => void }) {
             onPress={() => setChoice('off')}
           />
         </View>
+        {choice === 'on' ? (
+          <Card gap={6}>
+            <Text variant="bodyS">{t('serverCopy.categoriesTitle')}</Text>
+            <SyncCategoryList
+              value={categories}
+              onToggle={(c, on) => setCategories((list) => toggled(list, c, on))}
+            />
+          </Card>
+        ) : null}
         {failed ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {t('serverCopy.saveFailed')}
@@ -142,13 +155,14 @@ export function TurnSyncOnSheet({
   const showToast = useToastStore((s) => s.show);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [categories, setCategories] = useState<DataCategory[]>(() => [...DATA_CATEGORIES]);
 
   const confirm = async () => {
     if (!userId) return;
     setBusy(true);
     setFailed(false);
     try {
-      await turnSyncOn(userId);
+      await turnSyncOn(userId, categories);
       await queryClient.invalidateQueries();
       onClose();
       showToast({ message: t('serverCopy.turnedOn') });
@@ -180,6 +194,13 @@ export function TurnSyncOnSheet({
     >
       <Text muted>{t('serverCopy.turnOnBody')}</Text>
       <ServerCopyFacts />
+      <Text variant="bodyS" style={{ paddingTop: 4 }}>
+        {t('serverCopy.categoriesTitle')}
+      </Text>
+      <SyncCategoryList
+        value={categories}
+        onToggle={(c, on) => setCategories((list) => toggled(list, c, on))}
+      />
       {failed ? (
         <Text variant="bodyS" danger accessibilityRole="alert">
           {t('serverCopy.failed')}
@@ -246,6 +267,110 @@ function TurnSyncOffSheet({ visible, onClose }: { visible: boolean; onClose: () 
   );
 }
 
+/**
+ * Turning a category off deletes it on the server: confirmed first (it cannot be undone), like
+ * turning the whole copy off.
+ */
+function CategoryOffSheet({
+  category,
+  onClose,
+}: {
+  category: DataCategory | null;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const userId = useSessionStore((s) => s.userId);
+  const shared = useSharedCategories();
+  const showToast = useToastStore((s) => s.show);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const name = category ? t(`serverCopy.category.${category}`) : '';
+
+  const confirm = async () => {
+    if (!userId || !category) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      await setSharedCategories(userId, toggled(shared, category, false));
+      await queryClient.invalidateQueries();
+      onClose();
+      showToast({ message: t('serverCopy.categoryRemoved', { name }) });
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet
+      visible={category != null}
+      onClose={onClose}
+      title={t('serverCopy.categoryOffTitle', { name })}
+      closeLabel={t('common.close')}
+      footer={
+        <View style={{ gap: 8 }}>
+          <Button
+            size="large"
+            variant="danger"
+            label={busy ? t('serverCopy.working') : t('serverCopy.categoryOffConfirm')}
+            disabled={busy}
+            onPress={() => void confirm()}
+          />
+          <Button variant="secondary" label={t('serverCopy.keepOn')} onPress={onClose} />
+        </View>
+      }
+    >
+      <Text muted>{t('serverCopy.categoryOffBody', { name })}</Text>
+      {failed ? (
+        <Text variant="bodyS" danger accessibilityRole="alert">
+          {t('serverCopy.failed')}
+        </Text>
+      ) : null}
+    </Sheet>
+  );
+}
+
+/** The categories kept on the server, with a switch each (on: sent at once; off: asks first). */
+function CategoriesOnServer({ web }: { web: boolean }) {
+  const { t } = useTranslation();
+  const userId = useSessionStore((s) => s.userId);
+  const shared = useSharedCategories();
+  const showToast = useToastStore((s) => s.show);
+  const [asking, setAsking] = useState<DataCategory | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const toggle = async (category: DataCategory, on: boolean) => {
+    if (!on) return setAsking(category);
+    if (!userId) return;
+    setFailed(false);
+    try {
+      await setSharedCategories(userId, toggled(shared, category, true));
+      showToast({
+        message: t('serverCopy.categoryAdded', { name: t(`serverCopy.category.${category}`) }),
+      });
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  return (
+    <View style={{ gap: 6, paddingTop: 4 }}>
+      <Text variant="label" muted>
+        {t('serverCopy.categoriesTitle')}
+      </Text>
+      <SyncCategoryList value={shared} readOnly={web} onToggle={(c, on) => void toggle(c, on)} />
+      {failed ? (
+        <Text variant="bodyS" danger accessibilityRole="alert">
+          {t('serverCopy.failed')}
+        </Text>
+      ) : null}
+      <CategoryOffSheet category={asking} onClose={() => setAsking(null)} />
+    </View>
+  );
+}
+
 /** Privacy & data: the switch. Off asks first and deletes the copy; on explains first. */
 export function ServerCopyCard() {
   const { t } = useTranslation();
@@ -286,6 +411,7 @@ export function ServerCopyCard() {
             {t('serverCopy.webNote')}
           </Text>
         ) : null}
+        {on ? <CategoriesOnServer web={web} /> : null}
       </Card>
       <TurnSyncOnSheet visible={sheet === 'on'} onClose={() => setSheet(null)} />
       <TurnSyncOffSheet visible={sheet === 'off'} onClose={() => setSheet(null)} />

@@ -1,4 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  CATEGORY_TABLES,
+  categoryOf,
+  DATA_CATEGORIES,
+  type DataCategory,
+} from '@/domain/data-categories';
 import { getLocalClient, getLocalDb, writeLocalFile, type Row } from '@/lib/local-db';
 import { usePlanStore } from '@/lib/plan';
 import {
@@ -14,6 +20,8 @@ import {
   syncOnce,
   turnSyncOff,
   turnSyncOn,
+  setSharedCategories,
+  applyCategoryChange,
 } from './sync';
 
 const U = '11111111-2222-4333-8444-555555555555';
@@ -56,10 +64,21 @@ const mockServer = (() => {
     return files.get(b)!;
   };
   let syncChoice: boolean | null = true;
+  let categories: DataCategory[] = [...DATA_CATEGORIES];
   const rpc = async (name: string, args: Record<string, unknown>) => {
     calls.push(name);
     if (offline) return { data: null, error: { message: 'TypeError: Failed to fetch' } };
     if (name === 'my_sync') return { data: syncChoice, error: null };
+    if (name === 'my_sync_state')
+      return { data: { enabled: syncChoice, categories: [...categories] }, error: null };
+    if (name === 'set_sync_categories') {
+      // Like public.set_sync_categories: a category left out is deleted (no tombstones).
+      const next = args.p_categories as DataCategory[];
+      for (const c of categories)
+        if (!next.includes(c)) for (const t of CATEGORY_TABLES[c]) tables.delete(t);
+      categories = DATA_CATEGORIES.filter((c) => next.includes(c));
+      return { data: categories, error: null };
+    }
     if (name === 'set_sync') {
       // Like public.set_sync: off deletes the account's rows (the files go through storage).
       syncChoice = args.p_enabled as boolean;
@@ -71,6 +90,10 @@ const mockServer = (() => {
     }
     if (name === 'sync_push') {
       const t = args.p_table as string;
+      // Row level security: a category the account does not keep is refused.
+      const c = categoryOf(t);
+      if (c && !categories.includes(c))
+        return { data: null, error: { message: 'row-level security', code: '42501' } };
       const store = table(t);
       for (const row of args.p_rows as Row[]) {
         const key = String(row[pkOf(t)]);
@@ -111,6 +134,7 @@ const mockServer = (() => {
     calls,
     bucket,
     syncChoice: () => syncChoice,
+    categories: () => categories,
     tombstones,
     table,
     setOffline: (v: boolean) => (offline = v),
@@ -384,5 +408,100 @@ describe('keep a copy on the server: on and off', () => {
     expect(await finishServerCleanup(U)).toBe(true);
     expect(mockServer.bucket('progress-photos').size).toBe(0);
     mockServer.client.storage.from = realFrom;
+  });
+});
+
+// The copy on the server by category (DECISIONS 63). Runs after the tests above (copy off).
+describe('the copy on the server by category', () => {
+  const D = '2026-10-17';
+  const PHOTO = id(1004);
+  const photoPath = `${U}/${PHOTO}.jpg`;
+  const later = () => new Date(Date.now() + 120_000).toISOString();
+
+  beforeAll(async () => {
+    usePlanStore.setState({
+      userId: U,
+      plan: 'free',
+      sync: 'off',
+      home: 'device',
+      categories: null,
+    });
+    await turnSyncOn(U, ['body', 'training', 'photos']);
+  });
+  afterAll(() =>
+    usePlanStore.setState({
+      userId: null,
+      plan: null,
+      sync: null,
+      home: 'device',
+      categories: null,
+    }),
+  );
+
+  it('turned on without the diet: the diet never goes up and does not wait either', async () => {
+    expect(mockServer.categories()).toEqual(['body', 'training', 'photos']);
+    expect(usePlanStore.getState().categories).toEqual(['body', 'training', 'photos']);
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(1001), day: D, ml: 200 });
+    await phone()
+      .from('body_metrics')
+      .insert({ id: id(1002), day: D, weight_kg: 70 });
+    await syncOnce(U);
+    expect(water(id(1001))).toBeUndefined();
+    expect(mockServer.calls.some((c) => c === 'sync_push')).toBe(true);
+    expect(mockServer.table('body_metrics').get(id(1002))).toMatchObject({ weight_kg: 70 });
+    expect(getLocalDb(U).outbox).toEqual({});
+  });
+
+  it('nothing of a category that is off is taken from the server', async () => {
+    mockServer.put('water_logs', {
+      id: id(1003),
+      user_id: U,
+      day: D,
+      ml: 999,
+      updated_at: later(),
+    });
+    await pull(U, { full: true });
+    expect(localWater(id(1003))).toBeUndefined();
+    mockServer.table('water_logs').delete(id(1003));
+  });
+
+  it('a category turned on: every row of it here goes up', async () => {
+    await setSharedCategories(U, ['body', 'diet', 'training', 'photos']);
+    expect(Object.keys(getLocalDb(U).outbox)).toEqual(
+      expect.arrayContaining([`water_logs:${id(1001)}`]),
+    );
+    expect(Object.keys(getLocalDb(U).outbox).some((k) => k.startsWith('body_metrics:'))).toBe(
+      false,
+    );
+    await syncOnce(U);
+    expect(water(id(1001))).toMatchObject({ ml: 200 });
+  });
+
+  it('a category turned off is deleted on the server, files included; this phone keeps it', async () => {
+    await phone()
+      .from('progress_photos')
+      .insert({ id: PHOTO, day: D, pose: 'side', storage_path: photoPath });
+    await writeLocalFile(`progress-photos/${photoPath}`, new Uint8Array([4, 5]), 'image/jpeg');
+    await syncOnce(U);
+    expect(mockServer.bucket('progress-photos').has(photoPath)).toBe(true);
+    await setSharedCategories(U, ['body', 'diet', 'training']);
+    expect(mockServer.table('progress_photos').size).toBe(0);
+    expect(mockServer.bucket('progress-photos').size).toBe(0);
+    expect(getLocalDb(U).tables.progress_photos.some((r) => r.id === PHOTO)).toBe(true);
+    expect(usePlanStore.getState().categories).toEqual(['body', 'diet', 'training']);
+  });
+
+  it('changed on another device: waiting changes of a category turned off are forgotten', async () => {
+    const db = getLocalDb(U);
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(1005), day: D, ml: 50 });
+    expect(Object.keys(db.outbox)).toContain(`water_logs:${id(1005)}`);
+    applyCategoryChange(db, ['body', 'diet', 'training'], ['body', 'training']);
+    expect(Object.keys(db.outbox)).not.toContain(`water_logs:${id(1005)}`);
+    applyCategoryChange(db, ['body', 'training'], ['body', 'diet', 'training']);
+    expect(Object.keys(db.outbox)).toContain(`water_logs:${id(1005)}`);
   });
 });

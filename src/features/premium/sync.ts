@@ -11,7 +11,20 @@ import {
   type Pending,
   type Row,
 } from '@/lib/local-db';
-import { isPlan, savePlan, usePlanStore, type Plan, type SyncChoice } from '@/lib/plan';
+import {
+  CATEGORY_TABLES,
+  normalizeCategories,
+  tableShared,
+  type DataCategory,
+} from '@/domain/data-categories';
+import {
+  isPlan,
+  savePlan,
+  sharedCategories,
+  usePlanStore,
+  type Plan,
+  type SyncChoice,
+} from '@/lib/plan';
 import { reportError } from '@/lib/error-report';
 import { getAuthClient } from '@/lib/supabase';
 
@@ -146,8 +159,14 @@ export async function push(userId: string): Promise<number> {
   const pending = Object.values(db.outbox);
   if (pending.length === 0) return 0;
   const byTable = new Map<string, Pending[]>();
-  for (const p of pending) byTable.set(p.table, [...(byTable.get(p.table) ?? []), p]);
   const sent: Pending[] = [];
+  // Categories the user does not keep on the server never go up (DECISIONS 63): forgotten here,
+  // queued again in full if the category is turned on.
+  const categories = sharedCategories(userId);
+  for (const p of pending) {
+    if (!tableShared(p.table, categories)) sent.push(p);
+    else byTable.set(p.table, [...(byTable.get(p.table) ?? []), p]);
+  }
   refusedLastPush = 0;
 
   for (const table of SYNC_ORDER) {
@@ -229,7 +248,10 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
   };
 
   let changed = false;
+  const categories = sharedCategories(userId);
   for (const table of SYNC_ORDER) {
+    // A category not kept on the server: nothing of it is taken from there.
+    if (!tableShared(table, categories)) continue;
     const rows = (result[table] as Row[] | undefined) ?? [];
     const deleted = result.tombstones.filter((t) => t.table === table);
     if (db.applyRemote(table, rows, deleted)) changed = true;
@@ -297,7 +319,8 @@ export async function checkSync(userId: string): Promise<SyncCheck> {
   const { data, error } = await server().rpc('sync_counts');
   if (error) throw new Error(error.message);
   const online = data as Record<string, number>;
-  const differences = SYNC_ORDER.flatMap((table) => {
+  const categories = sharedCategories(userId);
+  const differences = SYNC_ORDER.filter((t) => tableShared(t, categories)).flatMap((table) => {
     const device = (db.tables[table] ?? []).filter(
       (r) => r.deleted_at == null && isOwn(db, table, r, userId),
     ).length;
@@ -349,23 +372,69 @@ export async function detachSync(userId: string) {
 
 const cleanupKey = (userId: string) => `fft.sync.files-to-remove.${userId}`;
 
+const asChoice = (v: unknown): SyncChoice =>
+  v === true ? 'on' : v === false ? 'off' : 'undecided';
+
+/** The copy on the server as the server says: on / off / undecided, and the categories kept. */
+export type SyncState = { sync: SyncChoice; categories: DataCategory[] };
+
 /** What the server says about the copy on the server; null when it cannot be reached. */
-export async function fetchSyncChoice(): Promise<SyncChoice | null> {
+export async function fetchSyncState(): Promise<SyncState | null> {
   try {
-    const res = await server().rpc('my_sync');
-    if (res.error) return null;
-    return res.data === true ? 'on' : res.data === false ? 'off' : 'undecided';
+    const res = await server().rpc('my_sync_state');
+    if (!res.error && res.data && typeof res.data === 'object') {
+      const d = res.data as { enabled?: unknown; categories?: unknown };
+      return { sync: asChoice(d.enabled), categories: normalizeCategories(d.categories) };
+    }
+    // A server from before DECISIONS 63: on / off only, everything kept.
+    const old = await server().rpc('my_sync');
+    if (old.error) return null;
+    return { sync: asChoice(old.data), categories: normalizeCategories(null) };
   } catch {
     return null;
   }
 }
 
+/** What the server says about the copy on the server (on / off / undecided); null = unreachable. */
+export async function fetchSyncChoice(): Promise<SyncChoice | null> {
+  return (await fetchSyncState())?.sync ?? null;
+}
+
+/** The tables of some categories. */
+export const tablesOf = (categories: readonly DataCategory[]) =>
+  categories.flatMap((c) => CATEGORY_TABLES[c]);
+
+/** The private buckets holding the files of some categories. */
+const bucketsOf = (categories: readonly DataCategory[]) => [
+  ...(categories.includes('photos') ? [PHOTOS] : []),
+  ...(categories.includes('training') ? [EXERCISE_IMAGES] : []),
+];
+
+/** Buckets whose files still wait to be removed (both: an older device wrote only a time). */
+async function bucketsToClean(userId: string): Promise<string[]> {
+  const saved = await AsyncStorage.getItem(cleanupKey(userId));
+  if (!saved) return [];
+  try {
+    const list = JSON.parse(saved) as unknown;
+    if (Array.isArray(list)) return list.filter((b) => b === PHOTOS || b === EXERCISE_IMAGES);
+  } catch {
+    // A time (written before DECISIONS 63): every bucket.
+  }
+  return [PHOTOS, EXERCISE_IMAGES];
+}
+
+async function noteCleanup(userId: string, buckets: string[]) {
+  const next = [...new Set([...(await bucketsToClean(userId)), ...buckets])];
+  await AsyncStorage.setItem(cleanupKey(userId), JSON.stringify(next));
+}
+
 /**
- * Removes every file of the account from the two private buckets (listed on the server, so files
- * this phone never downloaded go too). The rows are already gone (set_sync(false)).
+ * Removes every file of the account from private buckets (listed on the server, so files this
+ * phone never downloaded go too). The rows are already gone (set_sync(false), or the category was
+ * turned off).
  */
-async function removeServerFiles(userId: string) {
-  for (const bucket of [PHOTOS, EXERCISE_IMAGES]) {
+async function removeServerFiles(userId: string, buckets: string[]) {
+  for (const bucket of buckets) {
     // Pages of 100 (at most 20 000 files); a page that removes nothing ends it (no endless loop).
     for (let round = 0; round < 200; round++) {
       const { data, error } = await server().storage.from(bucket).list(userId, { limit: 100 });
@@ -384,9 +453,10 @@ async function removeServerFiles(userId: string) {
  * now. Returns true when nothing is left to remove.
  */
 export async function finishServerCleanup(userId: string): Promise<boolean> {
-  if (!(await AsyncStorage.getItem(cleanupKey(userId)))) return true;
+  const buckets = await bucketsToClean(userId);
+  if (buckets.length === 0) return true;
   try {
-    await removeServerFiles(userId);
+    await removeServerFiles(userId, buckets);
     await AsyncStorage.removeItem(cleanupKey(userId));
     return true;
   } catch {
@@ -416,7 +486,7 @@ export async function turnSyncOff(userId: string): Promise<void> {
     resumeSync(userId);
     throw e;
   }
-  await AsyncStorage.setItem(cleanupKey(userId), new Date().toISOString());
+  await noteCleanup(userId, [PHOTOS, EXERCISE_IMAGES]);
   await savePlan(userId, { sync: 'off', home: 'device' });
   await detachSync(userId);
   resumeSync(userId);
@@ -424,19 +494,72 @@ export async function turnSyncOff(userId: string): Promise<void> {
 }
 
 /**
- * Turns the copy on the server on: the server notes it, then everything on this phone (every row
- * and its photos) is queued and goes up with the next sync, which then brings back what other
- * devices have.
+ * Turns the copy on the server on: the server notes it (and the categories to keep, DECISIONS 63:
+ * all of them unless the user chose fewer), then everything on this phone of those categories
+ * (every row and its photos) is queued and goes up with the next sync, which then brings back what
+ * other devices have.
  */
-export async function turnSyncOn(userId: string): Promise<void> {
+export async function turnSyncOn(
+  userId: string,
+  categories: readonly DataCategory[] = normalizeCategories(null),
+): Promise<void> {
   // Old files waiting to be removed go first: removing them later would remove the new uploads.
   await finishServerCleanup(userId);
   await AsyncStorage.removeItem(cleanupKey(userId));
   const { error } = await server().rpc('set_sync', { p_enabled: true });
   if (error) throw new Error(error.message);
+  const kept = await server().rpc('set_sync_categories', { p_categories: [...categories] });
+  if (kept.error) throw new Error(kept.error.message);
+  await savePlan(userId, { categories: normalizeCategories(kept.data ?? categories) });
   resumeSync(userId);
   await startSync(userId);
   await savePlan(userId, { sync: 'on', home: 'online' });
+}
+
+/**
+ * Chooses the categories kept on the server (DECISIONS 63). A category turned off is deleted
+ * from the server at once (rows by the server, files here through the storage API, retried at the
+ * next start if the network drops); this phone keeps everything. A category turned on: every row
+ * of it here is queued to go up.
+ */
+export async function setSharedCategories(
+  userId: string,
+  next: readonly DataCategory[],
+): Promise<void> {
+  const before = sharedCategories(userId);
+  const wanted = normalizeCategories(next);
+  const added = wanted.filter((c) => !before.includes(c));
+  // Files of a category turned off a moment ago go first: removing them later would remove the
+  // new uploads.
+  if (added.length > 0 && !(await finishServerCleanup(userId)))
+    throw new Error('files of the server copy are still being removed');
+  const { data, error } = await server().rpc('set_sync_categories', { p_categories: wanted });
+  if (error) throw new Error(error.message);
+  const kept = normalizeCategories(data ?? wanted);
+  const removed = before.filter((c) => !kept.includes(c));
+  const db = getLocalDb(userId);
+  await db.ready;
+  await savePlan(userId, { categories: kept });
+  applyCategoryChange(db, before, kept);
+  if (bucketsOf(removed).length > 0) {
+    await noteCleanup(userId, bucketsOf(removed));
+    await finishServerCleanup(userId);
+  }
+}
+
+/**
+ * The categories changed (here or on another device): the waiting changes of those turned off are
+ * forgotten, every row of those turned on is queued (while this device syncs).
+ */
+export function applyCategoryChange(
+  db: LocalDb,
+  before: readonly DataCategory[],
+  after: readonly DataCategory[],
+) {
+  const removed = before.filter((c) => !after.includes(c));
+  const added = after.filter((c) => !before.includes(c));
+  if (removed.length > 0) db.dropPending(tablesOf(removed));
+  if (added.length > 0 && db.tracking) db.markAllDirty(tablesOf(added));
 }
 
 /** What the server says about the account; null when it cannot be reached. */

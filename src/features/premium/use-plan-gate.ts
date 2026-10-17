@@ -2,8 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
-import { loadPlan, resetPlan, savePlan, type SyncChoice } from '@/lib/plan';
-import { detachSync, fetchPlan, fetchSyncChoice, finishServerCleanup, startSync } from './sync';
+import type { DataCategory } from '@/domain/data-categories';
+import { getLocalDb } from '@/lib/local-db';
+import { loadPlan, resetPlan, savePlan, usePlanStore, type SyncChoice } from '@/lib/plan';
+import {
+  applyCategoryChange,
+  detachSync,
+  fetchPlan,
+  fetchSyncState,
+  finishServerCleanup,
+  startSync,
+} from './sync';
 
 export type PlanPhase =
   | { kind: 'checking' }
@@ -41,11 +50,26 @@ export function usePlanGate() {
       set({ kind: 'checking' });
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
-      const asking = Promise.all([fetchPlan(), fetchSyncChoice()]).then(([plan, sync]) =>
-        sync == null ? null : { plan, sync },
+      const asking = Promise.all([fetchPlan(), fetchSyncState()]).then(([plan, state]) =>
+        state == null ? null : { plan, sync: state.sync, categories: state.categories },
       );
-      const keep = (answer: { plan: Awaited<ReturnType<typeof fetchPlan>>; sync: SyncChoice }) =>
-        savePlan(userId, { ...(answer.plan ? { plan: answer.plan } : {}), sync: answer.sync });
+      const keep = async (answer: {
+        plan: Awaited<ReturnType<typeof fetchPlan>>;
+        sync: SyncChoice;
+        categories: DataCategory[];
+      }) => {
+        // Categories changed on another device (DECISIONS 63): what is no longer kept on the
+        // server is not sent from here either; what is kept again goes up in full.
+        const before = usePlanStore.getState().categories ?? answer.categories;
+        await savePlan(userId, {
+          ...(answer.plan ? { plan: answer.plan } : {}),
+          sync: answer.sync,
+          categories: answer.categories,
+        });
+        const db = getLocalDb(userId);
+        await db.ready;
+        applyCategoryChange(db, before, answer.categories);
+      };
       let fetched: SyncChoice | null = null;
       if (saved.sync == null || saved.plan == null) {
         const answer = await withTimeout(asking, 8000, null);

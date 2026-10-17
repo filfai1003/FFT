@@ -1210,7 +1210,7 @@ const TABLE_INFO = {
   account_sync: [
     'App',
     'Copy on the server',
-    'Whether each account keeps a copy of its data on the server (no row: not chosen yet).',
+    'Whether each account keeps a copy of its data on the server (no row: not chosen yet) and which categories it keeps there (body, diet, training, photos).',
   ],
 };
 const GROUP_ORDER = ['People', 'Training', 'Diet', 'Body', 'Supplements', 'AI', 'App'];
