@@ -273,8 +273,15 @@ export async function readWorkouts(limit: number) {
   };
 }
 
-/** Your own foods, or a search among all the foods the app has. */
-export async function readFoods(query: string | undefined, ownerId: string | null) {
+/**
+ * Your own foods, or a search among all the foods the app has. Without `includeOwn` (the diet is
+ * not shared with the coach) only the app's catalogue is searched.
+ */
+export async function readFoods(
+  query: string | undefined,
+  ownerId: string | null,
+  includeOwn = true,
+) {
   const supabase = getSupabase();
   let q = supabase
     .from('foods')
@@ -282,6 +289,7 @@ export async function readFoods(query: string | undefined, ownerId: string | nul
       'id, owner_id, name, brand, barcode, kcal_100g, protein_100g, carbs_100g, fat_100g, source',
     )
     .is('deleted_at', null);
+  if (!includeOwn) q = q.is('owner_id', null);
   if (query) q = q.ilike('name', `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
   else if (ownerId) q = q.eq('owner_id', ownerId);
   const found = await rows(q.order('name').limit(query ? 200 : 25));
@@ -302,6 +310,54 @@ export async function readFoods(query: string | undefined, ownerId: string | nul
         fat_g: n(f.fat_100g),
       },
     })),
+  };
+}
+
+type Shared = { diet: boolean; training: boolean };
+
+/** One day (readDay) with only what the user shared: diet fields and/or workouts. */
+export function dayShared(day: Awaited<ReturnType<typeof readDay>>, access: Shared) {
+  const { target, eaten, diet_status, food_log, fixed_meals, water_ml, workouts, ...rest } = day;
+  return {
+    ...rest,
+    ...(access.diet ? { target, eaten, diet_status, food_log, fixed_meals, water_ml } : {}),
+    ...(access.training ? { workouts } : {}),
+  };
+}
+
+/** A range of days (readHistory) with only what the user shared. */
+export function historyShared(h: Awaited<ReturnType<typeof readHistory>>, access: Shared) {
+  const { summary } = h;
+  return {
+    from: h.from,
+    to: h.to,
+    summary: {
+      days: summary.days,
+      ...(access.diet
+        ? {
+            days_with_food_logged: summary.days_with_food_logged,
+            days_on_target: summary.days_on_target,
+            average_kcal_on_logged_days: summary.average_kcal_on_logged_days,
+          }
+        : {}),
+      ...(access.training
+        ? { workouts: summary.workouts, days_trained: summary.days_trained }
+        : {}),
+    },
+    days: h.days.map((d) => ({
+      day: d.day,
+      ...(access.diet
+        ? {
+            eaten_kcal: d.eaten_kcal,
+            protein_g: d.protein_g,
+            target_kcal: d.target_kcal,
+            diet: d.diet,
+            water_ml: d.water_ml,
+          }
+        : {}),
+      ...(access.training ? { trained: d.trained } : {}),
+    })),
+    ...(access.training ? { workouts: h.workouts } : {}),
   };
 }
 

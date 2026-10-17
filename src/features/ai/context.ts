@@ -7,6 +7,7 @@ import { useToday } from '@/features/profile/use-today';
 import { useExercises } from '@/features/train/exercises';
 import { usePlans, type PlanView } from '@/features/train/plans';
 import type { Goal } from '@/domain/diet';
+import type { AiAccess } from './access';
 
 /** A plan in the exchange format (what the AI is shown, and what it gives back). */
 export function exportWorkoutPlan(plan: PlanView) {
@@ -47,9 +48,51 @@ export function exportDiet(goal: Goal | null, plan: FixedPlan | null, mode: stri
   };
 }
 
+export type ProfileFacts = {
+  goal?: string | null;
+  sex?: string | null;
+  birthDate?: string | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  activity?: string | null;
+  experience?: string | null;
+  location?: string | null;
+  targetKcal?: number | null;
+  maintenanceKcal?: number | null;
+};
+
+/**
+ * The one-line profile an AI is told. Never the name, the email or the birth date: the age in
+ * whole years only. With `access` (the coach), only what the user shared: profile and body facts
+ * need "profile", calorie targets need "diet" (DECISIONS 66).
+ */
+export function profileLine(
+  f: ProfileFacts,
+  access: Pick<AiAccess, 'profile' | 'diet'> = { profile: true, diet: true },
+  now: Date = new Date(),
+): string {
+  const body = access.profile;
+  const diet = access.diet;
+  const parts = [
+    body && f.goal ? `goal ${f.goal.replace('_', ' ')}` : null,
+    body && f.sex ? `sex ${f.sex}` : null,
+    body && f.birthDate ? `age ${ageInYears(new Date(f.birthDate), now)}` : null,
+    body && f.heightCm ? `height ${f.heightCm} cm` : null,
+    body && f.weightKg ? `weight ${f.weightKg} kg` : null,
+    body && f.activity ? `daily activity ${f.activity}` : null,
+    body && f.experience ? `training experience ${f.experience}` : null,
+    body && f.location ? `trains at: ${f.location}` : null,
+    diet && f.targetKcal ? `current target ${f.targetKcal} kcal` : null,
+    diet && f.maintenanceKcal ? `maintenance ${f.maintenanceKcal} kcal` : null,
+  ].filter(Boolean);
+  if (parts.length) return parts.join(', ');
+  return body || diet ? 'not given' : 'not shared by the user';
+}
+
 /**
  * What an AI is told about the user: goal, body and training basics (never the name or the birth
- * date), the plans they have now and the exercises it may use.
+ * date), the plans they have now and the exercises it may use. `profileText` is the full line
+ * (manual mode: the user copies it themselves); the coach uses `profileFor(access)`.
  */
 export function useAiContext() {
   const profile = useProfile();
@@ -61,25 +104,26 @@ export function useAiContext() {
   const exercises = useExercises();
 
   const p = profile.data;
-  const parts = [
-    p?.goal ? `goal ${p.goal.replace('_', ' ')}` : null,
-    p?.sex ? `sex ${p.sex}` : null,
-    p?.birth_date ? `age ${ageInYears(new Date(p.birth_date), new Date())}` : null,
-    p?.height_cm ? `height ${p.height_cm} cm` : null,
-    weight.data ? `weight ${weight.data.weightKg} kg` : null,
-    p?.activity_level ? `daily activity ${p.activity_level}` : null,
-    p?.experience ? `training experience ${p.experience}` : null,
-    p?.training_location ? `trains at: ${p.training_location}` : null,
-    goal ? `current target ${goal.kcal} kcal` : null,
-    goal?.maintenanceKcal ? `maintenance ${goal.maintenanceKcal} kcal` : null,
-  ].filter(Boolean);
+  const facts: ProfileFacts = {
+    goal: p?.goal,
+    sex: p?.sex,
+    birthDate: p?.birth_date,
+    heightCm: p?.height_cm,
+    weightKg: weight.data?.weightKg,
+    activity: p?.activity_level,
+    experience: p?.experience,
+    location: p?.training_location,
+    targetKcal: goal?.kcal,
+    maintenanceKcal: goal?.maintenanceKcal,
+  };
 
   const workoutPlans = (plans.data ?? [])
     .filter((x) => x.status !== 'archived')
     .map(exportWorkoutPlan);
   return {
     ready: !profile.isPending && !plans.isPending && !exercises.isPending,
-    profileText: parts.length ? parts.join(', ') : 'not given',
+    profileText: profileLine(facts),
+    profileFor: (access: AiAccess) => profileLine(facts, access),
     current: {
       workout_plans: workoutPlans,
       diet_plan: exportDiet(goal, fixed.data ?? null, p?.diet_mode ?? null),

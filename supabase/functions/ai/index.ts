@@ -4,6 +4,7 @@
 // Variables: OPENROUTER_API_KEY, optional AI_MODEL (default below) and EUR_PER_USD (cost rate).
 // The model set in the admin panel (public.app_settings, key ai_model) wins over AI_MODEL.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { upstreamBody } from './upstream.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -16,8 +17,6 @@ const json = (body: unknown, status = 200) =>
   });
 
 const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
-/** One answer can never cost more than this many output tokens. */
-const MAX_TOKENS = 2048;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -68,15 +67,8 @@ Deno.serve(async (req) => {
       authorization: `Bearer ${key}`,
       'X-Title': 'FFT',
     },
-    body: JSON.stringify({
-      model,
-      messages: body.messages,
-      ...(Array.isArray(body.tools) && body.tools.length > 0 ? { tools: body.tools } : {}),
-      max_tokens: MAX_TOKENS,
-      usage: { include: true },
-      // Health data: only providers that neither store nor train on prompts (privacy policy).
-      provider: { data_collection: 'deny' },
-    }),
+    // Health data: no identifier, and only providers that keep nothing (see upstreamBody).
+    body: JSON.stringify(upstreamBody(model, body.messages, body.tools)),
   });
   const reply = await res.json().catch(() => ({}));
   if (!res.ok) {

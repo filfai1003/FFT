@@ -7,6 +7,7 @@ import { LocalDb, type Kv } from '@/lib/local-db/engine';
 import { LOCAL_USER_ID } from '@/lib/local-db/schema';
 import { runTool, undoCall } from './run';
 import { useAgentTools } from './use-tools';
+import { FULL_ACCESS, NO_ACCESS, type AiAccess } from '../access';
 
 function memoryKv(): Kv {
   const texts = new Map<string, string>();
@@ -24,22 +25,22 @@ function memoryKv(): Kv {
 const mockClient = createLocalClient(new LocalDb(memoryKv(), LOCAL_USER_ID));
 jest.mock('@/lib/supabase', () => ({ getSupabase: () => mockClient }));
 
-async function setup() {
+async function setup(access: AiAccess = FULL_ACCESS) {
   useSessionStore.setState({ userId: LOCAL_USER_ID });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  const hook = await renderHook(() => useAgentTools(), { wrapper });
+  const hook = await renderHook(() => useAgentTools(access), { wrapper });
   await waitFor(() => expect(hook.result.current.length).toBeGreaterThan(10));
   // every tool call goes through the approval step, as in the app
+  const asked: string[] = [];
   const call = (name: string, input: Record<string, unknown>) =>
-    runTool(
-      { id: `${name}-${Math.random()}`, name, input },
-      hook.result.current,
-      async () => 'approved',
-    );
-  return { call, tools: hook.result.current };
+    runTool({ id: `${name}-${Math.random()}`, name, input }, hook.result.current, async (c) => {
+      asked.push(c.name);
+      return 'approved';
+    });
+  return { call, tools: hook.result.current, asked };
 }
 
 describe('the assistant changing data (after approval)', () => {
@@ -191,5 +192,66 @@ describe('the assistant changing data (after approval)', () => {
     expect(ok.outcome).toBe('done');
     const diet = JSON.parse((await call('get_diet', {})).content);
     expect(diet.diet_plan.daily.kcal).toBe(2400);
+  });
+});
+
+describe('what the coach may see (DECISIONS 66)', () => {
+  const parsed = async (r: Promise<{ content: string }>) => JSON.parse((await r).content);
+
+  it('nothing shared: every data tool says so, and changes are not even proposed', async () => {
+    const { call, asked } = await setup(NO_ACCESS);
+    for (const [name, category] of [
+      ['get_body', 'profile'],
+      ['get_diet', 'diet'],
+      ['get_workouts', 'training'],
+      ['get_workout_plans', 'training'],
+      ['get_strength', 'training'],
+      ['get_day', 'diet'],
+      ['get_history', 'diet'],
+      ['search_foods', 'diet'],
+    ] as const)
+      expect(await parsed(call(name, {}))).toMatchObject({ not_shared: category });
+    expect(await parsed(call('query_data', { table: 'progress_photos' }))).toMatchObject({
+      not_shared: 'photos',
+    });
+    expect(await parsed(call('query_data', { table: 'profiles' }))).toMatchObject({
+      not_shared: 'profile',
+    });
+    const map = await parsed(call('list_data', {}));
+    expect(map.tables).toEqual([]);
+    expect(map.not_shared).toEqual(['profile', 'diet', 'training', 'photos']);
+
+    expect(await parsed(call('log_body', { weight_kg: 80 }))).toMatchObject({
+      not_shared: 'profile',
+    });
+    expect(await parsed(call('log_water', { ml: 200 }))).toMatchObject({ not_shared: 'diet' });
+    expect(
+      await parsed(call('propose_plans', { workout_plan: { name: 'x', days: [] } })),
+    ).toMatchObject({ not_shared: 'training' });
+    expect(asked).toEqual([]);
+
+    const overview = await parsed(call('get_overview', {}));
+    expect(overview.profile).toBe('not shared by the user');
+    expect(overview).not.toHaveProperty('latest_weight');
+    expect(overview).not.toHaveProperty('today_status');
+    expect(overview).not.toHaveProperty('workout_plans');
+  });
+
+  it('diet shared only: the day shows food but no workouts, the body stays hidden', async () => {
+    const { call } = await setup({ ...NO_ACCESS, diet: true });
+    await call('log_water', { ml: 300, day: '2026-10-05' });
+    const day = await parsed(call('get_day', { day: '2026-10-05' }));
+    expect(day.water_ml).toBe(300);
+    expect(day).not.toHaveProperty('workouts');
+    const history = await parsed(call('get_history', { days: 3 }));
+    expect(history).not.toHaveProperty('workouts');
+    expect(history.days[0]).not.toHaveProperty('trained');
+    expect(await parsed(call('get_body', {}))).toMatchObject({ not_shared: 'profile' });
+    const tables = (await parsed(call('list_data', {}))).tables.map(
+      (t: { table: string }) => t.table,
+    );
+    expect(tables).toContain('food_logs');
+    expect(tables).not.toContain('body_metrics');
+    expect(tables).not.toContain('session_sets');
   });
 });

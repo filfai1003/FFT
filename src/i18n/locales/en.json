@@ -695,7 +695,8 @@
     "labelAiSettings": "AI coach",
     "labelCameraTitle": "Nutrition label",
     "labelNeedCamera": "Allow the camera to photograph the label, or pick a photo.",
-    "scanBarcode": "Scan the barcode"
+    "scanBarcode": "Scan the barcode",
+    "labelNeedsConsent": "Reading labels uses the AI coach: agree to it first in the AI coach settings."
   },
   "scanner": {
     "close": "Close scanner",
@@ -1114,7 +1115,10 @@
     "blurDetail": "Safe to open the app in public",
     "lockDetail": "Face ID or passcode to view",
     "importDetail": "ZIP from Export · nothing is deleted",
-    "deleteNote": "Removes all your data and photos from this phone and from our server right away. Copies in backups disappear when the backups expire. This can't be undone."
+    "deleteNote": "Removes all your data and photos from this phone and from our server right away. Copies in backups disappear when the backups expire. This can't be undone.",
+    "aiConsent": "AI coach consent",
+    "aiConsentDetail": "Needed to send messages to the AI coach",
+    "aiWithdrawn": "AI coach consent withdrawn. The coach asks again next time."
   },
   "gate": {
     "title": "Consent withdrawn",
@@ -1212,7 +1216,7 @@
     "model": "Model",
     "modelPlaceholder": "Model name",
     "baseUrl": "Server address",
-    "privacyShort": "Your messages and the data the AI looks at go to your AI provider.",
+    "privacyShort": "Your messages and the data you let the coach see go to the AI provider, without your name.",
     "notMedical": "The coach can be wrong and is not medical advice.",
     "saved": "AI settings saved",
     "removed": "Key removed",
@@ -1368,9 +1372,43 @@
     "premiumTitle": "Your coach, ready to go",
     "perkNoKey": "No API key, no setup",
     "perkCredit": "10 € of AI every month, unused carries over",
-    "perkData": "Sees all your training, diet and progress",
+    "perkData": "Can see your training, diet and progress, if you allow it",
     "getPremium": "Get Premium",
-    "ownKeyToggle": "Use your own API key"
+    "ownKeyToggle": "Use your own API key",
+    "consent": {
+      "title": "Before you use the AI coach",
+      "intro": "The coach is an AI model. To answer you, the app has to send it what you write.",
+      "whereIncluded": "With the AI included in Premium, it goes through our server to OpenRouter (USA) and the AI model provider it picks (by default Anthropic, USA).",
+      "whereOwn": "With your own AI key, it goes straight from this device to the provider you chose ({{provider}}), under your agreement with them. Our server is not involved.",
+      "what": "What you write and the files and photos you attach are always sent: you choose them. Your stored data (body, diet, training, photos) is sent only for the kinds you allow below. They are all off until you turn them on.",
+      "health": "This can include health data, such as your weight, what you eat or your workouts.",
+      "anonymous": "It is sent without your name, email, account or device, and without your birth date (only your age, if you share your profile).",
+      "noTraining": "With the included AI, only providers that do not keep it and do not use it to train models are used.",
+      "later": "You can change what the coach sees in the AI coach settings, and withdraw this consent in Privacy & data.",
+      "agree": "I agree, use the coach",
+      "decline": "No, not now",
+      "declined": "Nothing was sent. You can agree later in the AI coach settings.",
+      "given": "You agreed on {{date}}. Withdraw it in Privacy & data."
+    },
+    "access": {
+      "title": "What the coach can see",
+      "detail": "Off: the coach cannot look at it. What you write and attach is always sent.",
+      "profile": "Profile & body",
+      "profileDetail": "Age, sex, height, weight, measurements, goal",
+      "diet": "Diet",
+      "dietDetail": "Targets, foods eaten, meals, water, supplements",
+      "training": "Training",
+      "trainingDetail": "Workouts, plans, strength",
+      "photos": "Progress photos",
+      "photosDetail": "Which photos you took (day and pose). A picture is sent only when you attach it"
+    },
+    "cannotSee": {
+      "profile": "The coach cannot see your profile and body data. Allow it in Settings",
+      "diet": "The coach cannot see your diet. Allow it in Settings",
+      "training": "The coach cannot see your training. Allow it in Settings",
+      "photos": "The coach cannot see your progress photos. Allow it in Settings"
+    },
+    "allowInSettings": "Open AI coach settings"
   },
   "reminders": {
     "dailyAt": "Every day at {{time}}",

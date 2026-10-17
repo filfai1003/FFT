@@ -1,3 +1,4 @@
+import type { AiCategory } from '../access';
 import type { Attachment } from './attachments';
 
 /** One tool the assistant asked to use. */
@@ -56,4 +57,9 @@ export type ToolDef = ToolSpec & {
   /** Lines for the approval card: what will change (may look up names, e.g. a food from its id). */
   describe?: (input: Record<string, unknown>) => ChangeLine[] | Promise<ChangeLine[]>;
   run: (input: Record<string, unknown>) => Promise<ToolRun>;
+  /**
+   * The category of data this call needs that the user has NOT shared with the coach, or null.
+   * A blocked call never runs (nor asks for approval): the model is told the data is not shared.
+   */
+  gate?: (input: Record<string, unknown>) => AiCategory | null;
 };

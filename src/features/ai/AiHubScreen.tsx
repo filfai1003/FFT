@@ -17,6 +17,7 @@ import { PLAN_PRICES_EUR, usePlanStore } from '@/lib/plan';
 import { Icon } from '@/components/ui/Icon';
 import { useTheme } from '@/design/use-theme';
 import { View } from 'react-native';
+import { AiPrivacySection } from './AiConsent';
 
 /**
  * AI coach settings. Premium comes first (the coach with no key, the point of the page); your own
@@ -58,6 +59,10 @@ export function AiHubScreen() {
       <Text variant="screenTitle">{t('ai.title')}</Text>
 
       <IncludedCard />
+
+      <AiPrivacySection
+        onDecline={() => showToast({ message: t('ai.consent.declined'), bottomOffset: barHeight })}
+      />
 
       {!ownKey ? (
         <Button

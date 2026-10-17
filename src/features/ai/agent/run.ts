@@ -1,4 +1,5 @@
 import { newId } from '@/lib/uuid';
+import { notShared } from '../access';
 import { AiError } from '../client';
 import type { AiSettings } from '../settings-store';
 import { callModel } from './provider';
@@ -9,6 +10,13 @@ export const MAX_STEPS = 20;
 const MAX_RESULT_CHARS = 12_000;
 
 export type Approval = 'approved' | 'rejected';
+
+/** The coach was asked to send something before the user agreed to it. */
+export class AiConsentMissing extends AiError {
+  constructor() {
+    super('The AI coach needs your consent first.');
+  }
+}
 
 /** UNDO closures of the changes made in this app session, by tool call id. */
 const undoers = new Map<string, () => Promise<void>>();
@@ -43,6 +51,9 @@ export async function runTool(
 ): Promise<ToolResult> {
   const def = tools.find((t) => t.name === call.name);
   if (!def) return { ...failure(`Unknown tool "${call.name}"`), callId: call.id };
+  const blocked = def.gate?.(call.input) ?? null;
+  if (blocked)
+    return { callId: call.id, outcome: 'done', content: JSON.stringify(notShared(blocked)) };
   try {
     if (def.write) {
       const answer = await approve(call, def);
@@ -68,6 +79,8 @@ export async function runTool(
  * caller), so the conversation is never lost, even if a step fails.
  */
 export async function runAgent(opts: {
+  /** The user agreed to the coach (consent screen). Without it nothing is sent (DECISIONS 66). */
+  consented: boolean;
   settings: AiSettings;
   system: string;
   messages: AgentMessage[];
@@ -76,6 +89,7 @@ export async function runAgent(opts: {
   onMessage: (m: AgentMessage) => void;
   signal?: AbortSignal;
 }): Promise<void> {
+  if (!opts.consented) throw new AiConsentMissing();
   const history = [...opts.messages];
   const push = (m: AgentMessage) => {
     history.push(m);

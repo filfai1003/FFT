@@ -32,6 +32,8 @@ import { useAgentTools } from './agent/use-tools';
 import { aiReady, effectiveAiSettings } from './included';
 import { useAiSettings } from './settings-store';
 import { usePlanStore } from '@/lib/plan';
+import { notSharedCategory, useAiAccess } from './access';
+import { AiConsentCard, useAiConsent } from './AiConsent';
 
 type Pending = { call: ToolCall; resolve: (a: Approval) => void };
 
@@ -47,7 +49,11 @@ export function AiChatScreen() {
   const params = useLocalSearchParams<{ id?: string; fresh?: string }>();
   const settings = useAiSettings();
   const ctx = useAiContext();
-  const tools = useAgentTools();
+  const access = useAiAccess();
+  const tools = useAgentTools(access);
+  // Nothing is sent before the user agrees to the coach (DECISIONS 66).
+  const aiConsent = useAiConsent();
+  const consented = aiConsent.consent != null;
   const today = useToday();
   const userId = useSessionStore((s) => s.userId);
   const conversations = useConversations((s) => s.conversations);
@@ -108,7 +114,8 @@ export function AiChatScreen() {
   const send = async (draft?: string) => {
     const content = (draft ?? text).trim();
     const attachments = draft === undefined ? files : [];
-    if ((!content && attachments.length === 0) || sending || !ctx.ready || !userId) return;
+    if ((!content && attachments.length === 0) || sending || !ctx.ready || !userId || !consented)
+      return;
     if (draft === undefined) {
       setText('');
       setFiles([]);
@@ -133,8 +140,9 @@ export function AiChatScreen() {
     abort.current = new AbortController();
     try {
       await runAgent({
+        consented,
         settings: effectiveAiSettings(settings, plan),
-        system: buildAgentPrompt({ today, profile: ctx.profileText }),
+        system: buildAgentPrompt({ today, profile: ctx.profileFor(access), access }),
         messages: [...repaired, user],
         tools,
         signal: abort.current.signal,
@@ -189,7 +197,7 @@ export function AiChatScreen() {
 
   // A message typed in the Today bar is sent as soon as the chat can answer.
   useEffect(() => {
-    if (ready && ctx.ready && !sending) {
+    if (ready && consented && ctx.ready && !sending) {
       const draft = useChatDraft.getState().take();
       if (draft) void Promise.resolve().then(() => send(draft));
     }
@@ -241,6 +249,13 @@ export function AiChatScreen() {
               }
             />
           </Card>
+        ) : !aiConsent.loaded ? null : !consented ? (
+          <AiConsentCard
+            onDecline={() => {
+              showToast({ message: t('ai.consent.declined') });
+              goBack(router);
+            }}
+          />
         ) : messages.length === 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {(['day', 'week', 'strength'] as const).map((k) => (
@@ -311,20 +326,36 @@ export function AiChatScreen() {
                   <Markdown text={m.text} />
                 </View>
               ) : null}
-              {m.toolCalls.map((call) => (
-                <View key={call.id} style={{ alignSelf: 'stretch' }}>
-                  <ToolCard
-                    call={call}
-                    def={tools.find((d: ToolDef) => d.name === call.name)}
-                    result={results.get(call.id)}
-                    pending={pending?.call.id === call.id}
-                    busy={false}
-                    onApprove={() => pending?.resolve('approved')}
-                    onReject={() => pending?.resolve('rejected')}
-                    onUndo={() => activeId && void undo(activeId, call.id)}
-                  />
-                </View>
-              ))}
+              {m.toolCalls.map((call) => {
+                const result = results.get(call.id);
+                const hidden = result ? notSharedCategory(result.content) : null;
+                return (
+                  <View key={call.id} style={{ alignSelf: 'stretch', gap: 8 }}>
+                    <ToolCard
+                      call={call}
+                      def={tools.find((d: ToolDef) => d.name === call.name)}
+                      result={result}
+                      pending={pending?.call.id === call.id}
+                      busy={false}
+                      onApprove={() => pending?.resolve('approved')}
+                      onReject={() => pending?.resolve('rejected')}
+                      onUndo={() => activeId && void undo(activeId, call.id)}
+                    />
+                    {hidden && !access[hidden] ? (
+                      <Card size="small" gap={8}>
+                        <Text variant="bodyS">{t(`ai.cannotSee.${hidden}`)}</Text>
+                        <Button
+                          label={t('ai.allowInSettings')}
+                          variant="ghost"
+                          onPress={() =>
+                            router.push({ pathname: '/profile/ai', params: { from: '/ai-chat' } })
+                          }
+                        />
+                      </Card>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           );
         })}
@@ -385,7 +416,7 @@ export function AiChatScreen() {
           <IconButton
             icon="plus"
             accessibilityLabel={t('ai.attach')}
-            disabled={!ready || sending}
+            disabled={!ready || !consented || sending}
             onPress={() => setAttaching(true)}
           />
           <View style={{ flex: 1 }}>
@@ -395,13 +426,15 @@ export function AiChatScreen() {
               value={text}
               onChangeText={setText}
               onSubmitEditing={() => void send()}
-              editable={ready && !pending}
+              editable={ready && consented && !pending}
             />
           </View>
           <Button
             label={t('ai.send')}
             block={false}
-            disabled={!ready || sending || (!text.trim() && files.length === 0) || !ctx.ready}
+            disabled={
+              !ready || !consented || sending || (!text.trim() && files.length === 0) || !ctx.ready
+            }
             onPress={() => void send()}
           />
         </View>

@@ -33,6 +33,8 @@ import { useSaveCheckIn, type MeasureKey } from '@/features/progress/data';
 import { getSupabase } from '@/lib/supabase';
 import { useApplyImport } from '../apply';
 import { useAiContext } from '../context';
+import type { AiAccess, AiCategory } from '../access';
+import { AI_CATEGORIES, notShared } from '../access';
 import { day as dayArg, num, optNum, optStr, round, str, type Input } from './args';
 import { DATA_TOOL_SPECS } from '@/domain/data-tools';
 import {
@@ -45,6 +47,8 @@ import { newId } from '@/lib/uuid';
 import { listData, queryData, strengthReport } from './explore';
 
 import {
+  dayShared,
+  historyShared,
   readBody,
   readDay,
   readDiet,
@@ -184,7 +188,14 @@ export function useReadContext() {
     timeZone: profile.data?.timezone ?? deviceTimeZone(),
     dietMode: profile.data?.diet_mode ?? null,
   };
-  return { userId, today, ctx, profileText: ai.profileText, ready: ai.ready };
+  return {
+    userId,
+    today,
+    ctx,
+    profileText: ai.profileText,
+    profileFor: ai.profileFor,
+    ready: ai.ready,
+  };
 }
 
 /**
@@ -192,10 +203,11 @@ export function useReadContext() {
  * user's data is marked `write`, is shown to the user first and runs only after they approve it
  * (and most can be taken back afterwards with UNDO).
  */
-export function useAgentTools(): ToolDef[] {
+export function useAgentTools(access: AiAccess): ToolDef[] {
   const queryClient = useQueryClient();
-  const { userId, today, ctx, profileText } = useReadContext();
+  const { userId, today, ctx, profileFor } = useReadContext();
   const refresh = () => queryClient.invalidateQueries();
+  const notSharedList = AI_CATEGORIES.filter((c) => !access[c]);
 
   const saveCheckIn = useSaveCheckIn();
   const saveFood = useSaveFood();
@@ -227,6 +239,7 @@ export function useAgentTools(): ToolDef[] {
         "Start here. The user's profile, goal, diet mode, calorie and macro target, latest weight and body fat, the active workout plans, and everything about today so far (what was eaten, meals followed, water, workouts).",
       schema: obj({}),
       run: async () => {
+        const shares = access.diet || access.training;
         const [day, body, plans] = await Promise.all([
           readDay(ctx, ctx.today),
           readBody(ctx, 365),
@@ -236,16 +249,27 @@ export function useAgentTools(): ToolDef[] {
         const latestFat = body.entries.find((e) => e.body_fat_pct != null);
         return {
           today: ctx.today,
-          profile: profileText,
-          diet_mode: ctx.dietMode,
-          latest_weight: latest ? { kg: latest.weight_kg, day: latest.day } : null,
-          latest_body_fat: latestFat ? { pct: latestFat.body_fat_pct, day: latestFat.day } : null,
-          workout_plans: plans.workout_plans.map((p) => ({
-            id: p.id,
-            name: p.name,
-            days: p.days.map((d) => d.name),
-          })),
-          today_status: day,
+          profile: profileFor(access),
+          ...(access.diet ? { diet_mode: ctx.dietMode } : {}),
+          ...(access.profile
+            ? {
+                latest_weight: latest ? { kg: latest.weight_kg, day: latest.day } : null,
+                latest_body_fat: latestFat
+                  ? { pct: latestFat.body_fat_pct, day: latestFat.day }
+                  : null,
+              }
+            : {}),
+          ...(access.training
+            ? {
+                workout_plans: plans.workout_plans.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  days: p.days.map((d) => d.name),
+                })),
+              }
+            : {}),
+          ...(shares ? { today_status: dayShared(day, access) } : {}),
+          ...(notSharedList.length ? { not_shared: notSharedList } : {}),
         };
       },
     },
@@ -254,14 +278,23 @@ export function useAgentTools(): ToolDef[] {
       description:
         'One day in detail: the target, what was eaten (food log entries with their ids, or the fixed meals with done/adjusted/skipped/pending), water, workouts, and whether the diet was followed.',
       schema: obj({ day: dayField }),
-      run: async (input) => readDay(ctx, dayArg(input, 'day', ctx.today)),
+      run: async (input) =>
+        access.diet || access.training
+          ? dayShared(await readDay(ctx, dayArg(input, 'day', ctx.today)), access)
+          : notShared('diet'),
     },
     {
       name: 'get_history',
       description:
         'How the user did over the last days: calories against the target per day, diet followed or not, workouts done, water, plus a summary (days on target, workouts, average calories).',
       schema: obj({ days: number('How many days back, 1 to 90. Default 14.') }),
-      run: async (input) => readHistory(ctx, Math.round(optNum(input, 'days', 1, 90) ?? 14)),
+      run: async (input) =>
+        access.diet || access.training
+          ? historyShared(
+              await readHistory(ctx, Math.round(optNum(input, 'days', 1, 90) ?? 14)),
+              access,
+            )
+          : notShared('diet'),
     },
     {
       name: 'get_body',
@@ -293,22 +326,27 @@ export function useAgentTools(): ToolDef[] {
       description:
         "Foods the app knows. Without a query: the user's own foods. With a query: search by name. Gives food_id, needed to log or change a food.",
       schema: obj({ query: text('Part of the food name (optional).') }),
-      run: async (input) => readFoods(optStr(input, 'query', 60), userId),
+      run: async (input) => {
+        const query = optStr(input, 'query', 60);
+        // Without the diet shared, only the app's catalogue (not the user's own foods).
+        if (!query && !access.diet) return notShared('diet');
+        return readFoods(query, userId, access.diet);
+      },
     },
     {
       name: 'list_data',
       ...specOf('list_data'),
-      run: async () => listData(),
+      run: async () => listData(access),
     },
     {
       name: 'query_data',
       ...specOf('query_data'),
-      run: async (input) => queryData(input),
+      run: async (input) => queryData(input, access),
     },
     {
       name: 'get_strength',
       ...specOf('get_strength'),
-      run: async (input) => strengthReport(input, ctx.today),
+      run: async (input) => strengthReport(input, ctx.today, access),
     },
     {
       name: 'list_exercises',
@@ -321,6 +359,8 @@ export function useAgentTools(): ToolDef[] {
         const muscle = optStr(input, 'muscle', 20)?.toLowerCase();
         let q = getSupabase().from('exercises').select('name, primary_muscle, equipment');
         q = q.is('deleted_at', null);
+        // The user's own exercises are training data: only the catalogue when it is not shared.
+        if (!access.training) q = q.is('owner_id', null);
         if (muscle) q = q.eq('primary_muscle', muscle);
         const { data, error } = await q.order('name');
         if (error) throw new Error(error.message);
@@ -930,5 +970,37 @@ export function useAgentTools(): ToolDef[] {
     },
   ];
 
-  return [...reads, ...writes];
+  /** Tools that need one category as a whole; mixed ones check inside (overview, day, foods…). */
+  const needs: Record<string, AiCategory> = {
+    get_body: 'profile',
+    log_body: 'profile',
+    get_workouts: 'training',
+    get_workout_plans: 'training',
+    get_diet: 'diet',
+    add_supplement: 'diet',
+    set_supplement: 'diet',
+    create_food: 'diet',
+    update_food: 'diet',
+    delete_food: 'diet',
+    log_food: 'diet',
+    remove_food_log: 'diet',
+    log_water: 'diet',
+    set_meal_status: 'diet',
+    set_nutrition_goal: 'diet',
+  };
+  const gateOf = (name: string): ToolDef['gate'] => {
+    if (name === 'propose_plans')
+      return (input) =>
+        input.workout_plan != null && !access.training
+          ? 'training'
+          : input.diet_plan != null && !access.diet
+            ? 'diet'
+            : null;
+    const category = needs[name];
+    return category ? () => (access[category] ? null : category) : undefined;
+  };
+  return [...reads, ...writes].map((t) => {
+    const gate = gateOf(t.name);
+    return gate ? { ...t, gate } : t;
+  });
 }
