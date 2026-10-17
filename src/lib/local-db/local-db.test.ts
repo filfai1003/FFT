@@ -544,4 +544,27 @@ describe('the database file survives crashes and restarts', () => {
     await db.flush();
     expect(kv.texts.get(key)).toContain(id(900));
   });
+
+  it('noting changes for the sync is remembered: a widget writing with the app closed fills the outbox', async () => {
+    const { db, c, kv } = setup();
+    await db.ready;
+    db.tracking = true;
+    await c.from('water_logs').insert({ id: id(901), day: '2026-10-14', ml: 250 });
+    await db.flush();
+    // Another start (a widget task with the app closed): nobody has turned the sync on yet.
+    const again = new LocalDb(kv, LOCAL_USER_ID);
+    await again.ready;
+    expect(again.tracking).toBe(true);
+    await createLocalClient(again)
+      .from('water_logs')
+      .insert({ id: id(902), day: '2026-10-14', ml: 250 });
+    expect(Object.keys(again.outbox)).toContain(`water_logs:${id(902)}`);
+    // Never noted: stays off.
+    const fresh = setup();
+    await fresh.db.ready;
+    await fresh.db.flush();
+    const reopened = new LocalDb(fresh.kv, LOCAL_USER_ID);
+    await reopened.ready;
+    expect(reopened.tracking).toBe(false);
+  });
 });

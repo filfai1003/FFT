@@ -91,27 +91,26 @@ type CheckRow = {
   fat_g: number | string;
 };
 
+export async function fetchFixedChecks(day: string): Promise<StoredCheck[]> {
+  const { data, error } = await getSupabase()
+    .from('fixed_meal_checks')
+    .select('*')
+    .eq('day', day)
+    .is('deleted_at', null);
+  if (error) throw error;
+  return (data as unknown as CheckRow[]).map<StoredCheck>((c) => ({
+    id: c.id,
+    fixedMealId: c.fixed_meal_id,
+    status: c.status as FixedCheck['status'],
+    kcal: c.kcal,
+    proteinG: Number(c.protein_g),
+    carbsG: Number(c.carbs_g),
+    fatG: Number(c.fat_g),
+  }));
+}
+
 export function useFixedChecks(day: string) {
-  return useQuery({
-    queryKey: fixedKeys.checks(day),
-    queryFn: async () => {
-      const { data, error } = await getSupabase()
-        .from('fixed_meal_checks')
-        .select('*')
-        .eq('day', day)
-        .is('deleted_at', null);
-      if (error) throw error;
-      return (data as unknown as CheckRow[]).map<StoredCheck>((c) => ({
-        id: c.id,
-        fixedMealId: c.fixed_meal_id,
-        status: c.status as FixedCheck['status'],
-        kcal: c.kcal,
-        proteinG: Number(c.protein_g),
-        carbsG: Number(c.carbs_g),
-        fatG: Number(c.fat_g),
-      }));
-    },
-  });
+  return useQuery({ queryKey: fixedKeys.checks(day), queryFn: () => fetchFixedChecks(day) });
 }
 
 function useInvalidate() {
@@ -119,58 +118,62 @@ function useInvalidate() {
   return () => queryClient.invalidateQueries({ queryKey: dietKeys.all });
 }
 
+export type SetCheckArgs = {
+  day: string;
+  mealId: string;
+  check: Omit<FixedCheck, 'fixedMealId'> | null;
+};
+
 /**
  * Sets (or clears) the check of one meal for one day. One check per meal per day: an existing one
- * is updated, a new one inserted. `null` removes it (UNDO of a tick).
+ * is updated, a new one inserted. `null` removes it (UNDO of a tick). Also used by the widgets.
  */
+export async function setFixedCheck(userId: string, args: SetCheckArgs) {
+  const supabase = getSupabase();
+  const existing = await supabase
+    .from('fixed_meal_checks')
+    .select('id')
+    .eq('day', args.day)
+    .eq('fixed_meal_id', args.mealId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+
+  if (!args.check) {
+    if (existing.data) {
+      const { error } = await supabase
+        .from('fixed_meal_checks')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', existing.data.id);
+      if (error) throw error;
+    }
+    return;
+  }
+  const row = {
+    status: args.check.status,
+    kcal: args.check.kcal,
+    protein_g: args.check.proteinG,
+    carbs_g: args.check.carbsG,
+    fat_g: args.check.fatG,
+    checked_at: new Date().toISOString(),
+  };
+  const { error } = existing.data
+    ? await supabase.from('fixed_meal_checks').update(row).eq('id', existing.data.id)
+    : await supabase.from('fixed_meal_checks').insert({
+        id: newId(),
+        user_id: userId,
+        day: args.day,
+        fixed_meal_id: args.mealId,
+        ...row,
+      });
+  if (error) throw error;
+}
+
 export function useSetCheck() {
   const userId = useAuth((s) => s.userId);
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async (args: {
-      day: string;
-      mealId: string;
-      check: Omit<FixedCheck, 'fixedMealId'> | null;
-    }) => {
-      const supabase = getSupabase();
-      const existing = await supabase
-        .from('fixed_meal_checks')
-        .select('id')
-        .eq('day', args.day)
-        .eq('fixed_meal_id', args.mealId)
-        .is('deleted_at', null)
-        .maybeSingle();
-      if (existing.error) throw existing.error;
-
-      if (!args.check) {
-        if (existing.data) {
-          const { error } = await supabase
-            .from('fixed_meal_checks')
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('id', existing.data.id);
-          if (error) throw error;
-        }
-        return;
-      }
-      const row = {
-        status: args.check.status,
-        kcal: args.check.kcal,
-        protein_g: args.check.proteinG,
-        carbs_g: args.check.carbsG,
-        fat_g: args.check.fatG,
-        checked_at: new Date().toISOString(),
-      };
-      const { error } = existing.data
-        ? await supabase.from('fixed_meal_checks').update(row).eq('id', existing.data.id)
-        : await supabase.from('fixed_meal_checks').insert({
-            id: newId(),
-            user_id: userId!,
-            day: args.day,
-            fixed_meal_id: args.mealId,
-            ...row,
-          });
-      if (error) throw error;
-    },
+    mutationFn: (args: SetCheckArgs) => setFixedCheck(userId!, args),
     onSuccess: invalidate,
   });
 }

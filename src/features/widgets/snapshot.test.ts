@@ -1,21 +1,10 @@
-import { forToday, type WidgetSnapshot } from './snapshot';
+import { widgetSnapshot } from '@/test/widget-snapshot';
+import { forToday } from './snapshot';
 
-const yesterday: WidgetSnapshot = {
+const yesterday = widgetSnapshot({
   day: '2026-10-15',
-  calories: {
-    eaten: 1800,
-    target: 2300,
-    macros: [
-      { key: 'protein', eaten: 120, target: 160 },
-      { key: 'carbs', eaten: 200, target: 260 },
-      { key: 'fat', eaten: 60, target: 70 },
-    ],
-  },
-  water: { ml: 1500, glassMl: 250, goalGlasses: 8 },
-  workout: { kind: 'done', name: 'Push', exercises: 0 },
-  weight: { kg: 80.2, change7: -0.4, day: '2026-10-15' },
-  supplements: [{ name: 'Creatine', taken: true }],
-};
+  workout: { kind: 'done', name: 'Push', exercises: 0, dayId: null, active: null },
+});
 
 describe('widget snapshot', () => {
   it('a snapshot of today is shown as it is', () => {
@@ -26,12 +15,14 @@ describe('widget snapshot', () => {
     const s = forToday(yesterday, '2026-10-16')!;
     expect(s.day).toBe('2026-10-16');
     expect(s.calories.eaten).toBe(0);
-    expect(s.calories.target).toBe(2300);
+    expect(s.calories.target).toBe(2400);
     expect(s.calories.macros.every((m) => m.eaten === 0)).toBe(true);
     expect(s.water.ml).toBe(0);
     expect(s.workout.kind).toBe('none');
     expect(s.weight.kg).toBe(80.2);
-    expect(s.supplements).toEqual([{ name: 'Creatine', taken: false }]);
+    expect(s.supplements.map((x) => x.taken)).toEqual([false, false]);
+    // Yesterday's meal is not known from the old snapshot: no "same as yesterday" offer.
+    expect(s.diet.yesterdayCount).toBe(0);
   });
 
   it('nothing saved yet: nothing to show', () => {

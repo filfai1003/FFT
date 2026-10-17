@@ -195,6 +195,9 @@ function AppRoutes() {
           <Stack.Screen name="ai-chat" />
           <Stack.Screen name="ai-chats" />
           <Stack.Screen name="add-water" options={{ animation: 'none' }} />
+          {/* Home screen widget links (DECISIONS 68): they pass straight on to the right page. */}
+          <Stack.Screen name="start-workout" options={{ animation: 'none' }} />
+          <Stack.Screen name="ask" options={{ animation: 'none' }} />
         </Stack.Protected>
       </Stack>
     </>

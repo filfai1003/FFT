@@ -18,7 +18,13 @@ const FORMAT = 1;
 /** Rows made empty by the app (profile, settings): any real version, e.g. from the server, wins. */
 export const SEEDED_AT = '1970-01-01T00:00:00.000Z';
 
-type SavedDb = { format: number; tables: Record<string, Row[]>; outbox?: Record<string, Pending> };
+type SavedDb = {
+  format: number;
+  tables: Record<string, Row[]>;
+  outbox?: Record<string, Pending>;
+  /** Changes were being noted for the sync: a home screen widget writing with the app closed notes its own too. */
+  tracking?: boolean;
+};
 
 /** A saved database, or null when the text is missing, cut short or of another format. */
 function parseDb(text: string | null): SavedDb | null {
@@ -100,6 +106,9 @@ export class LocalDb {
     }
     this.freshStart = saved == null;
     this.outbox = saved?.outbox ?? {};
+    // Set by the app's sync (or relay) right away; kept so a write made with the app closed (a
+    // home screen widget) still reaches the outbox.
+    this.tracking = this.tracking || saved?.tracking === true;
     for (const name of tableNames) this.tables[name] = saved?.tables[name] ?? [];
     if (this.seed() || !text) await this.save();
   }
@@ -269,7 +278,12 @@ export class LocalDb {
       this.saveTimer = null;
     }
     // One write at a time, in order: the last one always holds the latest state.
-    const text = JSON.stringify({ format: FORMAT, tables: this.tables, outbox: this.outbox });
+    const text = JSON.stringify({
+      format: FORMAT,
+      tables: this.tables,
+      outbox: this.outbox,
+      tracking: this.tracking,
+    });
     this.saving = this.saving.catch(() => {}).then(() => this.kv.setText(dbKey(this.userId), text));
     await this.saving;
   }

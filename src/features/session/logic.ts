@@ -6,7 +6,8 @@ import {
   type LoggedSet,
 } from '@/domain/strength';
 import { parseDecimal } from '@/domain/numbers';
-import { stepFor, suggestNextWeight, type Suggestion } from '@/domain/progression';
+import { parseTargetReps, stepFor, suggestNextWeight, type Suggestion } from '@/domain/progression';
+import { afterSetInSuperset, supersetOf } from '@/domain/superset';
 import {
   firstDropWeight,
   hasDrops,
@@ -375,6 +376,83 @@ export function toggleSet(
     ),
   }));
   return { session, completed };
+}
+
+/**
+ * Ticks (or unticks) a set. In a superset it moves straight to the next exercise of the round with
+ * no rest; after the last one the rest starts and it goes back to the first (domain/superset.ts).
+ * The workout screen and the Workout widget both tick sets through this.
+ */
+export function toggleInRound(
+  before: ActiveSession,
+  at: number,
+  setIndex: number,
+  now: Date,
+): { next: ActiveSession; completed: boolean } {
+  const { session, completed } = toggleSet(before, at, setIndex, now);
+  const flow = completed
+    ? afterSetInSuperset(
+        session.exercises.map((e) => e.supersetWithNext ?? false),
+        at,
+        session.exercises.map((e) => e.sets.filter((x) => !x.done).length),
+      )
+    : null;
+  let next = at === before.index ? session : goTo(session, at);
+  if (flow?.rest) next = startRest(next, before.exercises[at].restS, now.getTime());
+  if (flow?.goTo != null) next = goTo(next, flow.goTo);
+  return { next, completed };
+}
+
+/**
+ * The exercise whose set comes next when `index` is on screen: itself, or in a superset the next
+ * exercise of the round that still has sets left.
+ */
+export function doingIndex(s: ActiveSession, index: number): number {
+  const group =
+    s.exercises.length > 0
+      ? supersetOf(
+          s.exercises.map((e) => e.supersetWithNext ?? false),
+          index,
+        )
+      : [];
+  if (group.length < 2) return index;
+  const setsLeft = (i: number) => s.exercises[i]?.sets.filter((x) => !x.done).length ?? 0;
+  const pos = group.indexOf(index);
+  return [...group.slice(pos), ...group.slice(0, pos)].find((i) => setsLeft(i) > 0) ?? index;
+}
+
+/** The set the big "Done set" button ticks next (exercise and set index), or null when none. */
+export function nextSetTarget(s: ActiveSession): { exercise: number; set: number } | null {
+  if (s.exercises.length === 0) return null;
+  const index = Math.min(s.index, s.exercises.length - 1);
+  const exercise = doingIndex(s, index);
+  const set = s.exercises[exercise]?.sets.findIndex((x) => !x.done) ?? -1;
+  return set >= 0 ? { exercise, set } : null;
+}
+
+/**
+ * The values a set is saved with when it is ticked without typing (the Workout widget): what is
+ * already filled in, the weight pre-filled from the suggestion, and for empty reps the plan's
+ * target (the bottom of a range) or else the reps of the set done before. Null when something
+ * still has to be typed (no weight, no reps to go by, timed or distance exercises).
+ */
+export function quickSetValues(
+  e: SessionExercise,
+  setIndex: number,
+): { weight: string; reps: string } | null {
+  const set = e.sets[setIndex];
+  if (!set || (e.logType !== 'weight_reps' && e.logType !== 'reps')) return null;
+  const weight = set.weight.trim();
+  if (e.logType === 'weight_reps' && !(parseDecimal(weight) != null && parseDecimal(weight)! > 0))
+    return null;
+  const typed = parseDecimal(set.reps);
+  const doneBefore = [...e.sets.slice(0, setIndex)].reverse().find((x) => x.done);
+  const reps =
+    typed != null && typed > 0
+      ? set.reps.trim()
+      : (parseTargetReps(e.targetReps)?.min.toString() ??
+        (doneBefore && parseDecimal(doneBefore.reps) ? doneBefore.reps.trim() : null));
+  return reps ? { weight: e.logType === 'weight_reps' ? weight : '', reps } : null;
 }
 
 export function addSet(s: ActiveSession, exerciseIndex: number): ActiveSession {

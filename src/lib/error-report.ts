@@ -52,7 +52,13 @@ export function reportError(error: unknown, kind: ErrorKind = 'handled', context
 /** Sends the waiting reports now (a background task that is about to end). */
 export async function flushErrors() {
   if (timer) clearTimeout(timer);
-  await flush();
+  timer = null;
+  if (queue.length === 0) return;
+  try {
+    await flush();
+  } catch {
+    // Best effort, like every report.
+  }
 }
 
 async function flush() {

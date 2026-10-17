@@ -1,25 +1,36 @@
 import '@/i18n';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
-import { deviceTimeZone, localDay } from '@/domain/day';
-import { forToday, readSnapshot } from './snapshot';
 import { flushErrors, reportError } from '@/lib/error-report';
+import { handleWidgetClick, widgetView } from './controller';
+import { WIDGET_NAMES, type WidgetName } from './snapshot';
 import { fallbackWidget, widgetFor } from './WidgetViews';
 
+const widgetName = (name: string): WidgetName =>
+  (WIDGET_NAMES as readonly string[]).includes(name) ? (name as WidgetName) : 'Calories';
+
 /**
- * Runs in the background when a widget is added, resized or due for its periodic update (every
- * 30 minutes, so a new day starts from zero even if the app is not opened). Taps are deep links
- * handled by the app, so there is nothing to do on WIDGET_CLICK.
+ * Runs in the background when a widget is added, resized, due for its periodic update (every 30
+ * minutes: it rebuilds from the database, so a new day starts right with the app closed) or
+ * tapped on a quick action (DECISIONS 68). Taps on links open the app without coming here.
  */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
-  if (props.widgetAction === 'WIDGET_DELETED' || props.widgetAction === 'WIDGET_CLICK') return;
+  if (props.widgetAction === 'WIDGET_DELETED') return;
   try {
-    const today = localDay(new Date(), deviceTimeZone());
-    const snapshot = forToday(await readSnapshot(), today);
-    props.renderWidget(widgetFor(props.widgetInfo.widgetName, snapshot));
+    if (props.widgetAction === 'WIDGET_CLICK') {
+      await handleWidgetClick(
+        props.clickAction,
+        props.clickActionData ?? {},
+        widgetName(props.widgetInfo.widgetName),
+      );
+      return;
+    }
+    const { snapshot, state } = await widgetView();
+    props.renderWidget(widgetFor(props.widgetInfo.widgetName, snapshot, state, props.widgetInfo));
   } catch (e) {
     reportError(e, 'widget', { widget: props.widgetInfo.widgetName });
     props.renderWidget(fallbackWidget());
-    // The task ends right after: send the report now.
+  } finally {
+    // The task ends right after: send any report now.
     await flushErrors();
   }
 }
