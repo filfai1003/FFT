@@ -16,7 +16,7 @@ export type Kv = {
 const dbKey = (userId: string) => `database-${userId}.json`;
 const FORMAT = 1;
 /** Rows made empty by the app (profile, settings): any real version, e.g. from the server, wins. */
-const SEEDED_AT = '1970-01-01T00:00:00.000Z';
+export const SEEDED_AT = '1970-01-01T00:00:00.000Z';
 
 type SavedDb = { format: number; tables: Record<string, Row[]>; outbox?: Record<string, Pending> };
 

@@ -1,7 +1,7 @@
 import { createLocalClient } from './client';
 import { LocalDb, type Kv } from './engine';
 import { LOCAL_USER_ID } from './schema';
-import { moveLocalData } from './index';
+import { copyLocalData, hasOwnData, moveLocalData } from './index';
 
 function memoryKv(): Kv & { texts: Map<string, string> } {
   const texts = new Map<string, string>();
@@ -373,6 +373,102 @@ describe('offline database', () => {
     const old = createLocalClient(new LocalDb(kv, LOCAL_USER_ID));
     expect((await old.from('water_logs').select('id')).data).toEqual([]);
     expect((await old.from('profiles').select('name').single()).data).toEqual({ name: null });
+  });
+});
+
+describe('copying an account to the account-less database (account deleted, data kept)', () => {
+  const ACC = 'cccccccc-0000-4000-8000-000000000003';
+  const account = () => {
+    const kv = memoryKv();
+    const db = new LocalDb(kv, ACC);
+    return { kv, db, c: createLocalClient(db) };
+  };
+
+  it('keeps every row and id, gives them to the account-less user and copies the photos', async () => {
+    const { kv, db, c } = account();
+    db.tracking = true; // a synced account: its outbox must not come along
+    await c.from('profiles').update({ name: 'Ada' }).eq('id', ACC);
+    await c.from('user_settings').update({ weight_unit: 'lb' }).eq('user_id', ACC);
+    await c.from('water_logs').insert({ id: id(80), day: '2026-10-16', ml: 300 });
+    await c.from('consents').insert({ id: id(81), type: 'health_data', policy_version: '2026-10' });
+    await c.from('exercises').insert({
+      id: id(82),
+      owner_id: ACC,
+      name: 'Band pull',
+      primary_muscle: 'back',
+      image_path: `${ACC}/band.jpg`,
+    });
+    await c.storage.from('user-exercise-images').upload(`${ACC}/band.jpg`, new Uint8Array([7]));
+    await c.storage.from('progress-photos').upload(`${ACC}/front.jpg`, new Uint8Array([1, 2]));
+    await c
+      .from('progress_photos')
+      .insert({ id: id(83), day: '2026-10-16', pose: 'front', storage_path: `${ACC}/front.jpg` });
+    await c
+      .from('progress_photos')
+      .insert({ id: id(84), day: '2026-10-15', pose: 'side', storage_path: `${ACC}/gone.jpg` });
+    expect(Object.keys(db.outbox).length).toBeGreaterThan(0);
+    await db.flush();
+
+    const res = await copyLocalData(ACC, LOCAL_USER_ID, kv);
+    expect(res).toMatchObject({ ok: true, files: 2, missingFiles: 1 });
+
+    const local = new LocalDb(kv, LOCAL_USER_ID);
+    const l = createLocalClient(local);
+    expect((await l.from('profiles').select('id, name').single()).data).toEqual({
+      id: LOCAL_USER_ID,
+      name: 'Ada',
+    });
+    expect((await l.from('user_settings').select('user_id, weight_unit').single()).data).toEqual({
+      user_id: LOCAL_USER_ID,
+      weight_unit: 'lb',
+    });
+    expect((await l.from('water_logs').select('id, user_id')).data).toEqual([
+      { id: id(80), user_id: LOCAL_USER_ID },
+    ]);
+    expect((await l.from('consents').select('id, user_id, type')).data).toEqual([
+      { id: id(81), user_id: LOCAL_USER_ID, type: 'health_data' },
+    ]);
+    const photo = await l.from('progress_photos').select('storage_path').eq('id', id(83)).single();
+    expect(photo.data).toEqual({ storage_path: `${LOCAL_USER_ID}/front.jpg` });
+    expect(await kv.readFile(`progress-photos/${LOCAL_USER_ID}/front.jpg`)).toEqual(
+      new Uint8Array([1, 2]),
+    );
+    const own = await l.from('exercises').select('owner_id, image_path').eq('id', id(82)).single();
+    expect(own.data).toEqual({ owner_id: LOCAL_USER_ID, image_path: `${LOCAL_USER_ID}/band.jpg` });
+    expect(await kv.readFile(`user-exercise-images/${LOCAL_USER_ID}/band.jpg`)).toEqual(
+      new Uint8Array([7]),
+    );
+    expect(local.outbox).toEqual({});
+
+    // the source is untouched; erasing it afterwards leaves the copies alone
+    expect(db.tables.water_logs).toHaveLength(1);
+    await db.wipe();
+    expect(await kv.readFile(`progress-photos/${ACC}/front.jpg`)).toBeNull();
+    expect(await kv.readFile(`progress-photos/${LOCAL_USER_ID}/front.jpg`)).not.toBeNull();
+  });
+
+  it('refuses, writing nothing, when the account-less database already has data', async () => {
+    const { kv, db, c } = account();
+    await c.from('water_logs').insert({ id: id(90), day: '2026-10-16', ml: 300 });
+    await db.flush();
+    const earlier = new LocalDb(kv, LOCAL_USER_ID);
+    await createLocalClient(earlier)
+      .from('body_metrics')
+      .insert({ id: id(91), day: '2026-10-01', weight_kg: 70 });
+    await earlier.flush();
+    const saved = kv.texts.get(`database-${LOCAL_USER_ID}.json`);
+    expect(await copyLocalData(ACC, LOCAL_USER_ID, kv)).toEqual({ ok: false, reason: 'not-empty' });
+    expect(kv.texts.get(`database-${LOCAL_USER_ID}.json`)).toBe(saved);
+  });
+
+  it('an account-less database that was only opened (or emptied by Create an account) counts as empty', async () => {
+    const { kv } = account();
+    const empty = new LocalDb(kv, LOCAL_USER_ID);
+    await empty.ready;
+    expect(hasOwnData(empty)).toBe(false);
+    await empty.wipeTables();
+    expect(hasOwnData(empty)).toBe(false);
+    expect((await copyLocalData(ACC, LOCAL_USER_ID, kv)).ok).toBe(true);
   });
 });
 

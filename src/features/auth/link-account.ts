@@ -9,13 +9,16 @@ export type LinkResult =
   | { ok: true; needsConfirmation: boolean }
   | { ok: false; error: 'taken' | 'failed'; message?: string };
 
-/** Anything else on the device that belongs to the account-less user follows the data. */
-function moveDeviceStores(to: string) {
+/**
+ * Anything else on the device that belongs to one user (AI conversations, finished workouts)
+ * follows the data.
+ */
+export function moveDeviceStores(from: string, to: string) {
   useConversations.setState((s) => ({
     conversations: Object.fromEntries(
       Object.entries(s.conversations).map(([id, c]) => [
         id,
-        c.userId === LOCAL_USER_ID ? { ...c, userId: to } : c,
+        c.userId === from ? { ...c, userId: to } : c,
       ]),
     ),
   }));
@@ -23,7 +26,7 @@ function moveDeviceStores(to: string) {
     finished: Object.fromEntries(
       Object.entries(s.finished).map(([id, f]) => [
         id,
-        f.userId === LOCAL_USER_ID ? { ...f, userId: to } : f,
+        f.userId === from ? { ...f, userId: to } : f,
       ]),
     ),
   }));
@@ -49,7 +52,7 @@ export async function linkAccount(
     return { ok: false, error: 'taken' };
 
   await moveLocalData(LOCAL_USER_ID, user.id);
-  moveDeviceStores(user.id);
+  moveDeviceStores(LOCAL_USER_ID, user.id);
   await leaveOfflineMode(queryClient);
   return { ok: true, needsConfirmation: data.session == null };
 }

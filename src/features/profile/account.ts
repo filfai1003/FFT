@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { updateWidgets } from '@/features/widgets/update';
-import { useSessionStore as useAuth } from '@/features/auth/session-store';
+import { enterOfflineMode, useSessionStore as useAuth } from '@/features/auth/session-store';
 import { signOut } from '@/features/auth/api';
+import { moveDeviceStores } from '@/features/auth/link-account';
+import { haltSync, pull, resumeSync } from '@/features/premium/sync';
+import { copyLocalData, LOCAL_USER_ID, wipeLocalData, type CopyResult } from '@/lib/local-db';
+import { resetPlan } from '@/lib/plan';
 import { useConversations } from '@/features/ai/agent/conversations';
 import { useSessionStore as useWorkout } from '@/features/session/store';
 import { syncPendingSessions } from '@/features/session/sync';
@@ -120,4 +124,65 @@ export async function deleteAccount(queryClient: { clear: () => void }): Promise
   await signOut().catch(() => undefined);
   clearLocalUserData(queryClient);
   return null;
+}
+
+export type KeepDataResult =
+  | { ok: true; missingFiles: number }
+  /** `not-empty`: this phone already has account-less data (nothing was deleted). */
+  | { ok: false; reason: 'not-empty' | 'failed'; message?: string };
+
+/**
+ * Deletes the online account but keeps its data on this phone: the app goes on in the
+ * account-less mode with everything the account had here (DECISIONS 59). In this order, so that
+ * nothing is lost when a step fails:
+ * 1. finished workouts are written to the account's database and the newest rows and photos of
+ *    other devices are fetched (best effort);
+ * 2. the account's sync stops: nothing in its outbox is sent any more;
+ * 3. the data is copied into the account-less database (if that fails, nothing is deleted);
+ * 4. the server account is deleted (if that fails, the copy is removed and the sync goes on);
+ * 5. the account's own database on this phone is erased, conversations and finished workouts
+ *    move to the account-less user, the plan is forgotten and the account-less mode starts.
+ */
+export async function deleteAccountKeepData(queryClient: {
+  clear: () => void;
+}): Promise<KeepDataResult> {
+  const userId = useAuth.getState().userId;
+  if (getMode() !== 'cloud' || !userId || userId === LOCAL_USER_ID)
+    return { ok: false, reason: 'failed' };
+
+  await syncPendingSessions();
+  await pull(userId).catch(() => undefined);
+  haltSync(userId);
+
+  let copied: CopyResult;
+  try {
+    copied = await copyLocalData(userId, LOCAL_USER_ID);
+  } catch (e) {
+    resumeSync(userId);
+    return { ok: false, reason: 'failed', message: e instanceof Error ? e.message : String(e) };
+  }
+  if (!copied.ok) {
+    resumeSync(userId);
+    return { ok: false, reason: 'not-empty' };
+  }
+
+  const online = await getAuthClient()
+    .functions.invoke('delete-account')
+    .catch((e: unknown) => ({ error: { message: e instanceof Error ? e.message : String(e) } }));
+  if (online.error) {
+    // The account stays: the copy goes (the account-less database was empty before).
+    await wipeLocalData(LOCAL_USER_ID);
+    resumeSync(userId);
+    return { ok: false, reason: 'failed', message: online.error.message };
+  }
+
+  await wipeLocalData(userId);
+  moveDeviceStores(userId, LOCAL_USER_ID);
+  resetPlan();
+  // Account-less first: the sign-out that follows is then not taken for "back to sign in".
+  await enterOfflineMode(queryClient);
+  await getAuthClient()
+    .auth.signOut()
+    .catch(() => undefined);
+  return { ok: true, missingFiles: copied.missingFiles };
 }
