@@ -428,9 +428,9 @@
       <h2 id="sicurezza">10. Sicurezza</h2>
       <p>
         Tutte le connessioni al nostro server sono cifrate (HTTPS/TLS). Il nostro fornitore di
-        hosting, Railway, ha la certificazione SOC 2 Type II e dichiara che i dati conservati,
-        compresi database, file e backup, sono cifrati a riposo (AES-256).
-        <!-- TODO: confirm encryption at rest in Railway's DPA / Trust Center (trust.railway.com, railway.com/legal/dpa) -->
+        hosting, Railway, ha la certificazione SOC 2 Type II e, nell'accordo sul trattamento dei
+        dati firmato con noi, si impegna a tenere il database cifrato a riposo. I nostri backup
+        notturni sono inoltre cifrati da noi (AES-256-GCM) prima di essere archiviati.
         Il database non ha un indirizzo pubblico e ogni account può raggiungere solo le proprie
         righe. Password e token API sono conservati solo come hash. Le richieste hanno dei limiti.
         Nessun sistema è sicuro al 100%: se una violazione mette a rischio i tuoi dati, informeremo

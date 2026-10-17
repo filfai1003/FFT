@@ -412,9 +412,9 @@
       <h2 id="security">10. Security</h2>
       <p>
         All connections to our server are encrypted (HTTPS/TLS). Our hosting provider, Railway, is
-        SOC 2 Type II certified and states that stored data, including databases, files and backups,
-        is encrypted at rest (AES-256).
-        <!-- TODO: confirm encryption at rest in Railway's DPA / Trust Center (trust.railway.com, railway.com/legal/dpa) -->
+        SOC 2 Type II certified, and its data processing agreement with us commits it to keep the
+        database encrypted at rest. Our nightly backups are, in addition, encrypted by us
+        (AES-256-GCM) before they are stored.
         The database has no public address and each account can only reach its own rows. Passwords
         and API tokens are stored only as hashes. Requests are rate-limited. No system is perfectly
         secure: if a breach puts your data at risk, we will tell you and the authority as the law
