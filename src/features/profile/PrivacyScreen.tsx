@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
@@ -16,9 +16,16 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { authenticate } from '@/lib/biometrics';
 import { openLegal } from '@/lib/legal';
+import { getMode } from '@/lib/mode';
 import { goBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
-import { activeConsent, deleteAccount, useConsents, useSetConsent } from './account';
+import {
+  activeConsent,
+  deleteAccount,
+  deleteAccountKeepData,
+  useConsents,
+  useSetConsent,
+} from './account';
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
 import { importExport, pickExportFile } from './import';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -41,6 +48,10 @@ export function PrivacyScreen() {
   const [removing, setRemoving] = useState(false);
   const [typed, setTyped] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const confirmed = typed.trim().toUpperCase() === t('privacy.deleteWord');
+  // Keeping the data means going on without an account: phones only (the web app needs one).
+  const canKeep = getMode() === 'cloud' && Platform.OS !== 'web';
 
   const health = activeConsent(consents.data, 'health_data');
   const grantedOn = health
@@ -292,7 +303,7 @@ export function PrivacyScreen() {
         <View style={{ gap: 8, paddingTop: 8 }}>
           <Button label={t('privacy.delete')} variant="danger" onPress={() => setRemoving(true)} />
           <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
-            {t('privacy.deleteNote')}
+            {canKeep ? t('privacy.deleteNoteKeep') : t('privacy.deleteNote')}
           </Text>
         </View>
       </Screen>
@@ -333,21 +344,72 @@ export function PrivacyScreen() {
         title={t('privacy.deleteTitle')}
         closeLabel={t('common.close')}
         footer={
-          <Button
-            size="large"
-            variant="danger"
-            label={t('privacy.deleteConfirm')}
-            disabled={typed.trim().toUpperCase() !== t('privacy.deleteWord')}
-            onPress={async () => {
-              const message = await deleteAccount(queryClient);
-              if (message) setError(message);
-              else showToast({ message: t('privacy.deleted') });
-              setRemoving(false);
-            }}
-          />
+          <View style={{ gap: 8 }}>
+            <Button
+              size="large"
+              variant="danger"
+              label={t('privacy.deleteConfirm')}
+              disabled={!confirmed || deleting}
+              onPress={async () => {
+                setDeleting(true);
+                const message = await deleteAccount(queryClient);
+                setDeleting(false);
+                if (message) setError(message);
+                else showToast({ message: t('privacy.deleted') });
+                setRemoving(false);
+              }}
+            />
+            {canKeep ? (
+              <Button
+                size="large"
+                variant="secondary"
+                label={t('privacy.deleteKeep')}
+                disabled={!confirmed || deleting}
+                onPress={async () => {
+                  setDeleting(true);
+                  const r = await deleteAccountKeepData(queryClient);
+                  setDeleting(false);
+                  setRemoving(false);
+                  if (r.ok) {
+                    router.replace('/');
+                    showToast({
+                      message:
+                        r.missingFiles > 0
+                          ? t('privacy.deletedKeptMissing', { count: r.missingFiles })
+                          : t('privacy.deletedKept'),
+                    });
+                  } else
+                    setError(
+                      r.reason === 'not-empty'
+                        ? t('privacy.keepNotEmpty')
+                        : (r.message ?? t('privacy.keepFailed')),
+                    );
+                }}
+              />
+            ) : null}
+          </View>
         }
       >
-        <Text muted>{t('privacy.deleteBody')}</Text>
+        <Text muted>{canKeep ? t('privacy.deleteChoiceBody') : t('privacy.deleteBody')}</Text>
+        {canKeep ? (
+          <View style={{ gap: 6 }}>
+            <Text variant="bodyS">{t('privacy.deleteAllTitle')}</Text>
+            <Text variant="label" muted>
+              {t('privacy.deleteAllDetail')}
+            </Text>
+            <Text variant="bodyS" style={{ paddingTop: 6 }}>
+              {t('privacy.deleteKeep')}
+            </Text>
+            <Text variant="label" muted>
+              {t('privacy.deleteKeepDetail')}
+            </Text>
+          </View>
+        ) : null}
+        {deleting ? (
+          <Text variant="label" muted accessibilityRole="alert">
+            {t('privacy.deleting')}
+          </Text>
+        ) : null}
         <Input
           label={t('privacy.typeToConfirm', { word: t('privacy.deleteWord') })}
           value={typed}

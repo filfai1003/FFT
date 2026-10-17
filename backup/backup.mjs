@@ -1,4 +1,4 @@
-// Nightly backup (Railway cron service `backup`, DECISIONS 59): the database and the user photos,
+// Nightly backup (Railway cron service `backup`, DECISIONS 60): the database and the user photos,
 // encrypted, into the Railway bucket `backups` in the EU (Amsterdam).
 //   db/<time>.sql.gz.enc          the whole database (pg_dump of public, auth, storage), gzip, AES-256-GCM
 //   photos/<bucket>/<path>.enc    each user photo, AES-256-GCM, copied once (photos never change)

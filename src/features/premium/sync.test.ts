@@ -1,6 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocalClient, getLocalDb, type Row } from '@/lib/local-db';
-import { checkSync, push, pull, resendAll, startSync, syncOnce } from './sync';
+import {
+  checkSync,
+  haltSync,
+  push,
+  pull,
+  resendAll,
+  resumeSync,
+  startSync,
+  syncOnce,
+} from './sync';
 
 const U = '11111111-2222-4333-8444-555555555555';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -207,5 +216,19 @@ describe('premium sync', () => {
   it('catalogue exercises are never sent', async () => {
     const pushed = [...mockServer.table('exercises').values()];
     expect(pushed.every((e) => e.owner_id === U)).toBe(true);
+  });
+
+  it('an account being deleted sends nothing more, until the deletion is called off', async () => {
+    haltSync(U);
+    await phone()
+      .from('water_logs')
+      .insert({ id: id(950), day: '2026-10-17', ml: 120 });
+    expect(await syncOnce(U)).toBe(false);
+    expect(await push(U)).toBe(0);
+    expect(water(id(950))).toBeUndefined();
+    expect(Object.keys(getLocalDb(U).outbox)).toHaveLength(1);
+    resumeSync(U);
+    await syncOnce(U);
+    expect(water(id(950))).toMatchObject({ ml: 120 });
   });
 });

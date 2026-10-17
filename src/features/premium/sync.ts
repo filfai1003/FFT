@@ -107,11 +107,28 @@ async function pushRows(table: string, rows: Row[], deletes: { id: string; at: s
   return error;
 }
 
+/** Accounts being deleted: their sync is stopped for the rest of this run. */
+const halted = new Set<string>();
+
+/**
+ * Stops every upload of an account that is about to be deleted: whatever waits in its outbox is
+ * never sent (the background sync and "Check sync" do nothing for it any more).
+ */
+export function haltSync(userId: string) {
+  halted.add(userId);
+}
+
+/** The deletion did not happen after all: the sync goes on, the outbox was kept. */
+export function resumeSync(userId: string) {
+  halted.delete(userId);
+}
+
 /** Sends the outbox. Rows the server refuses for good (e.g. a rule) are dropped, not retried forever. */
 /** Rows the server refused in the last push (0 = everything arrived). */
 let refusedLastPush = 0;
 
 export async function push(userId: string): Promise<number> {
+  if (halted.has(userId)) return 0;
   const db = getLocalDb(userId);
   await db.ready;
   const pending = Object.values(db.outbox);
@@ -223,6 +240,7 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
 
 /** One round: send, then receive (a device that lost its database receives first). */
 export async function syncOnce(userId: string): Promise<boolean> {
+  if (halted.has(userId)) return false;
   const db = getLocalDb(userId);
   await db.ready;
   const recovered = db.freshStart ? await pull(userId) : false;
