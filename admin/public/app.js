@@ -556,6 +556,12 @@ async function overviewPage() {
           h('dd', {}, num(o.ai_connections)),
           h('dt', {}, 'Database size'),
           h('dd', {}, o.db_size),
+          h('dt', {}, 'Last backup'),
+          h(
+            'dd',
+            { title: o.last_backup ?? '' },
+            o.last_backup_at ? ago(o.last_backup_at) : 'None yet',
+          ),
         ),
       ),
     ),
@@ -930,6 +936,7 @@ const KINDS = {
   mutation: 'A change failed to save',
   sync: 'Sync problem',
   widget: 'Home screen widget',
+  backup: 'Nightly backup',
   handled: 'Reported by the app',
 };
 let problemDays = '7';

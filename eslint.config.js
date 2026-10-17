@@ -5,7 +5,7 @@ const prettier = require('eslint-config-prettier/flat');
 module.exports = defineConfig([
   expo,
   prettier,
-  { ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*', 'server/*', 'admin/*', 'site/*', 'tools/*', 'build/*'] },
+  { ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*', 'server/*', 'admin/*', 'site/*', 'tools/*', 'build/*', 'backup/*', '.claude/*'] },
   { files: ['jest.setup.js'], languageOptions: { globals: { jest: 'readonly' } } },
   {
     // UI copy must go through i18n: no literal text inside JSX.

@@ -90,3 +90,22 @@ Package name: `com.filfai1003.fft`.
   then `docker run` it with `tools/android-build/build.sh` (see the script header); the APK lands in `build/`.
 - `app.config.js` turns on over-the-air updates (`runtimeVersion` fingerprint, `updates.url`) only when
   `EAS_BUILD`, `CI` or `FFT_UPDATES` is set, so the local web dev server is not affected.
+
+## Backups (service `backup`, nightly)
+- A Railway cron service (`backup/`, Dockerfile `backup/Dockerfile`, schedule `0 3 * * *` UTC) dumps
+  the database (`pg_dump` of public, auth and storage) and copies the user photos
+  (`progress-photos`, `user-exercise-images`) into the Railway bucket `backups` (region ams, EU).
+  Everything is encrypted with AES-256-GCM using the service variable `BACKUP_KEY` (64 hex
+  characters). **Keep a copy of `BACKUP_KEY` somewhere safe outside Railway: without it the backups
+  cannot be read.**
+- Kept: every nightly dump for 30 days, then the first dump of each month for 12 months. Photo
+  copies whose original was deleted go 30 days later.
+- The admin panel shows the last run (Overview > Last backup); a failed run appears under Problems
+  ("Nightly backup").
+- Restore a backup:
+  1. Download the file from the bucket (`db/<time>.sql.gz.enc`), with any S3 client using the
+     bucket's credentials from Railway.
+  2. `BACKUP_KEY=<key> node backup/restore.mjs <file>.sql.gz.enc dump.sql` (decrypts and un-gzips).
+  3. Load it into an EMPTY Postgres 17 database: `psql "$DATABASE_URL" -f dump.sql`.
+  4. Photos: download `photos/<bucket>/<path>.enc`, decrypt each with `restore.mjs`, and upload
+     them back to the same bucket and path in storage.

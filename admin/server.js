@@ -407,6 +407,8 @@ async function api(req, res, url) {
             where created_at > now() - interval '30 days') as ai_cost_30d,
          (select count(*) from public.api_tokens where deleted_at is null) as ai_connections,
          pg_size_pretty(pg_database_size(current_database())) as db_size,
+         (select value from public.app_settings where key = 'backup_last' and deleted_at is null) as last_backup,
+         (select updated_at from public.app_settings where key = 'backup_last' and deleted_at is null) as last_backup_at,
          (select coalesce(json_agg(json_build_object('day', d::date, 'n',
              (select count(*) from auth.users where created_at::date = d::date)) order by d), '[]')
             from generate_series(current_date - 13, current_date, interval '1 day') d) as signups`,
