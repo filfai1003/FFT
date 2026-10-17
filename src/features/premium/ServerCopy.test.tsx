@@ -6,11 +6,13 @@ import { usePlanStore } from '@/lib/plan';
 import { renderUI } from '@/test/render';
 import { ServerCopyCard, SyncChoiceScreen, SyncNeededCard } from './ServerCopy';
 
-const mockTurnOn = jest.fn(async () => undefined);
+const mockTurnOn = jest.fn(async (..._args: unknown[]) => undefined);
 const mockTurnOff = jest.fn(async () => undefined);
+const mockSetCategories = jest.fn(async (..._args: unknown[]) => undefined);
 jest.mock('./sync', () => ({
-  turnSyncOn: () => mockTurnOn(),
+  turnSyncOn: (...args: unknown[]) => mockTurnOn(...args),
   turnSyncOff: () => mockTurnOff(),
+  setSharedCategories: (...args: unknown[]) => mockSetCategories(...args),
 }));
 jest.mock('@/features/auth/api', () => ({ signOut: jest.fn() }));
 
@@ -52,6 +54,39 @@ describe('keep a copy on the server', () => {
     expect(screen.getByText(/cannot be undone/)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Turn off and delete the copy' }));
     await waitFor(() => expect(mockTurnOff).toHaveBeenCalled());
+  });
+
+  it('choosing the copy shows the categories, all on; one can be left out', async () => {
+    const onDone = jest.fn();
+    await withQuery(<SyncChoiceScreen onDone={onDone} />);
+    expect(screen.queryByRole('switch', { name: 'Diet' })).toBeNull();
+    await fireEvent.press(screen.getByRole('radio', { name: /^Keep a copy on the server/ }));
+    const diet = screen.getByRole('switch', { name: 'Diet' });
+    expect(diet.props.accessibilityState).toEqual({ checked: true });
+    expect(screen.getByText(/Always part of the copy: your profile/)).toBeTruthy();
+    await fireEvent.press(diet);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(mockTurnOn).toHaveBeenCalledWith(U, ['body', 'training', 'photos']);
+  });
+
+  it('a category turned off in Privacy & data asks first; on goes at once', async () => {
+    mockSetCategories.mockClear();
+    usePlanStore.setState({
+      userId: U,
+      plan: 'free',
+      sync: 'on',
+      home: 'online',
+      categories: ['body', 'diet', 'training', 'photos'],
+    });
+    await withQuery(<ServerCopyCard />);
+    await fireEvent.press(screen.getByRole('switch', { name: 'Progress photos' }));
+    expect(mockSetCategories).not.toHaveBeenCalled();
+    expect(screen.getByText(/Progress photos stays on this phone/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Delete from the server' }));
+    await waitFor(() =>
+      expect(mockSetCategories).toHaveBeenCalledWith(U, ['body', 'diet', 'training']),
+    );
   });
 
   it('where AI apps need it: explained and offered when off, hidden when on', async () => {

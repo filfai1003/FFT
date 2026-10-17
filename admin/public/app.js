@@ -693,14 +693,22 @@ async function personPage(id) {
         '← All people',
       ),
     ),
-    h(
-      'div',
-      { class: 'stats' },
-      stat(num(p.workouts), 'Workouts finished'),
-      stat(num(p.food_logs), 'Foods logged'),
-      stat(num(p.body_entries), 'Body check-ins'),
-      stat(num(p.plans), 'Workout plans'),
-    ),
+    // An end-to-end encrypted copy (DECISIONS 64): the server cannot read it, only count it.
+    p.encrypted
+      ? h(
+          'div',
+          { class: 'stats' },
+          stat(num(p.encrypted_items), 'Encrypted items'),
+          stat('E2E', 'End-to-end encrypted: content not readable here'),
+        )
+      : h(
+          'div',
+          { class: 'stats' },
+          stat(num(p.workouts), 'Workouts finished'),
+          stat(num(p.food_logs), 'Foods logged'),
+          stat(num(p.body_entries), 'Body check-ins'),
+          stat(num(p.plans), 'Workout plans'),
+        ),
     h(
       'div',
       { class: 'grid-2' },
@@ -726,6 +734,16 @@ async function personPage(id) {
             ),
           ),
           p.note ? [h('dt', {}, 'Note'), h('dd', {}, p.note)] : null,
+          h('dt', {}, 'Copy on the server'),
+          h(
+            'dd',
+            {},
+            p.server_copy == null
+              ? 'Not chosen yet'
+              : !p.server_copy
+                ? 'Off (data only on the phone)'
+                : `${p.encrypted ? 'End-to-end encrypted' : 'Readable'} · ${(p.categories ?? []).join(', ') || 'profile and settings only'}`,
+          ),
           h('dt', {}, 'Joined'),
           h('dd', {}, dateTime(p.created_at)),
           h('dt', {}, 'Finished sign-up'),
@@ -1214,7 +1232,27 @@ const TABLE_INFO = {
   account_sync: [
     'App',
     'Copy on the server',
-    'Whether each account keeps a copy of its data on the server (no row: not chosen yet).',
+    'Whether each account keeps a copy of its data on the server (no row: not chosen yet), which categories it keeps there (body, diet, training, photos) and whether it is end-to-end encrypted.',
+  ],
+  vault_keys: [
+    'App',
+    'Encryption keys (wrapped)',
+    'End-to-end encrypted accounts: their key, locked with their passphrase and recovery key. Opens nothing without them.',
+  ],
+  relay_devices: [
+    'App',
+    'Paired phones',
+    'Accounts without a copy on the server: phones that sync through the encrypted relay.',
+  ],
+  relay_messages: [
+    'App',
+    'Relay messages',
+    'Encrypted messages between paired phones, deleted once delivered (30 days at most).',
+  ],
+  vault_rows: [
+    'App',
+    'Encrypted items',
+    'End-to-end encrypted accounts: one sealed item per row (table, id and time in clear, the content unreadable).',
   ],
 };
 const GROUP_ORDER = ['People', 'Training', 'Diet', 'Body', 'Supplements', 'AI', 'App'];

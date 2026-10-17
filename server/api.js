@@ -5,6 +5,12 @@
 // phones with the next sync. Docs: docs/API.md.
 import { createHash } from 'node:crypto';
 import { COACH_TOOLS, ToolError } from './coach.js';
+import {
+  CATEGORY_LABELS,
+  categoryOf,
+  DATA_CATEGORIES,
+  normalizeCategories,
+} from '../src/domain/data-categories.ts';
 
 const MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -478,6 +484,84 @@ const READ_ONLY = 'This token is read only: it can read your data but not change
 /** The account turned its copy on the server off (DECISIONS 62): there is no data here. */
 export const SYNC_OFF =
   'Keep a copy on the server is off for this FFT account, so its data is only on the phone. Turn it on in the FFT app (Profile > Privacy & data) to use the API and AI apps.';
+/** The account's copy is end-to-end encrypted (DECISIONS 64): the server cannot read it. */
+export const ENCRYPTED =
+  'The copy on the server of this FFT account is end-to-end encrypted: the server cannot read it, so the API and AI apps cannot work while the encryption is on. It can be turned off in the FFT app (Profile > Privacy & data).';
+
+/**
+ * The category of data each tool reads or changes (DECISIONS 63). A category the user does not
+ * keep on the server is not there: its tools answer 403 with notShared(). Tools left out work on
+ * what is always kept (profile) or on every category (list_data, get_day, get_goals: they leave
+ * out what is not shared and say so); query_data and propose_plans look at their arguments.
+ */
+const TOOL_CATEGORY = {
+  list_food_logs: 'diet',
+  search_foods: 'diet',
+  log_food: 'diet',
+  remove_food_log: 'diet',
+  list_water: 'diet',
+  log_water: 'diet',
+  list_body_metrics: 'body',
+  log_body: 'body',
+  list_workouts: 'training',
+  get_strength: 'training',
+  get_workout_plans: 'training',
+  get_diet: 'diet',
+  list_exercises: 'training',
+  create_food: 'diet',
+  update_food: 'diet',
+  delete_food: 'diet',
+  set_meal_status: 'diet',
+  set_nutrition_goal: 'diet',
+  add_supplement: 'diet',
+  set_supplement: 'diet',
+};
+/** The categories a call needs, from the tool and its arguments. */
+function categoriesNeeded(name, args) {
+  if (TOOL_CATEGORY[name]) return [TOOL_CATEGORY[name]];
+  if (name === 'query_data') {
+    const c = categoryOf(String(args?.table ?? '').trim());
+    return c ? [c] : [];
+  }
+  if (name === 'propose_plans')
+    return [
+      ...(args?.workout_plan != null ? ['training'] : []),
+      ...(args?.diet_plan != null ? ['diet'] : []),
+    ];
+  return [];
+}
+export const notShared = (category) =>
+  `${CATEGORY_LABELS[category]} is not shared with the server: the user keeps it only on the phone (FFT app: Profile > Privacy & data > Keep a copy on the server). Ask the user to turn it on to use it here.`;
+/** One line for answers that leave out categories the user does not share (null: none). */
+const notSharedNote = (missing) =>
+  missing.length === 0
+    ? null
+    : `Not shared with the server (kept only on the phone): ${missing.map((c) => CATEGORY_LABELS[c]).join(', ')}.`;
+/** What a connection does not see, for the MCP instructions. */
+const missingNote = (auth) =>
+  notSharedNote(DATA_CATEGORIES.filter((c) => !auth.categories.includes(c)));
+
+/**
+ * Answers that cover several categories (a day, the goals, the map of the data) leave out the
+ * parts of categories that are not shared, and say so.
+ */
+function leaveOut(name, result, missing) {
+  const note = notSharedNote(missing);
+  if (!note || result == null || typeof result !== 'object' || Array.isArray(result)) return result;
+  const out = { ...result };
+  if (name === 'get_day') {
+    if (missing.includes('diet'))
+      for (const k of ['eaten', 'goal', 'water_ml', 'food_logs']) delete out[k];
+    if (missing.includes('body')) delete out.body;
+    if (missing.includes('training')) delete out.workouts;
+  } else if (name === 'get_goals') {
+    if (missing.includes('diet')) delete out.nutrition;
+    if (missing.includes('body')) delete out.body;
+  } else if (name === 'list_data' && Array.isArray(out.tables)) {
+    out.tables = out.tables.filter((t) => !missing.includes(categoryOf(String(t.table ?? ''))));
+  } else return result;
+  return { ...out, not_shared: note };
+}
 
 /** Dates come as YYYY-MM-DD strings (server/index.js sets the parser) or as UTC-midnight Dates. */
 const dayOf = (v) =>
@@ -501,8 +585,10 @@ const ROUTES = [
 
 /**
  * The API, independent of HTTP and of how the database is reached (tests use an embedded
- * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write', sync: boolean } or null
- * (sync: the account keeps a copy on the server, DECISIONS 62; without it every call is refused);
+ * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write', sync: boolean,
+ * categories?: string[], encrypted?: boolean } or null (sync: the account keeps a copy on the
+ * server, DECISIONS 62; without it every call is refused; categories: what it keeps there,
+ * DECISIONS 63; encrypted: end-to-end, DECISIONS 64, every call is refused);
  * `db.asUser(userId, fn)` runs fn(q) in one transaction as that user (q(sql, params) → rows).
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
@@ -529,15 +615,26 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
       throw new ApiError(401, 'this token was revoked, or the plan no longer includes the API');
     // The account keeps its data on the phone only: nothing to read or write here.
     if (found.sync !== true) throw new ApiError(403, SYNC_OFF);
+    // End-to-end encrypted (DECISIONS 64): the server cannot read the data.
+    if (found.encrypted === true) throw new ApiError(403, ENCRYPTED);
     if (limited(found.userId))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
-    return { userId: found.userId, scope: found.scope === 'read' ? 'read' : 'write' };
+    return {
+      userId: found.userId,
+      scope: found.scope === 'read' ? 'read' : 'write',
+      // A lookup without categories (older server): everything is shared, as before DECISIONS 63.
+      categories:
+        found.categories == null ? [...DATA_CATEGORIES] : normalizeCategories(found.categories),
+    };
   }
 
-  /** Runs a tool for an authenticated token ({ userId, scope }). */
-  const call = async ({ userId, scope }, name, args) => {
+  /** Runs a tool for an authenticated token ({ userId, scope, categories }). */
+  const call = async ({ userId, scope, categories }, name, args) => {
     if (!allowed(scope, byName[name])) throw new ApiError(403, READ_ONLY);
-    return db.asUser(userId, async (q) => {
+    const off = categoriesNeeded(name, args).find((c) => !categories.includes(c));
+    if (off) throw new ApiError(403, notShared(off));
+    const missing = DATA_CATEGORIES.filter((c) => !categories.includes(c));
+    const result = await db.asUser(userId, async (q) => {
       const [p] = await q(
         `select coalesce(p.timezone, 'UTC') as tz, public.my_plan() as plan,
                 (now() at time zone coalesce(p.timezone, 'UTC'))::date::text as today
@@ -554,6 +651,7 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
         throw e;
       }
     });
+    return leaveOut(name, result, missing);
   };
 
   async function rest(method, path, query, headers, body) {
@@ -606,7 +704,8 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
             "The user's FFT fitness data, with the same tools as the in-app coach. Start with get_profile; for anything else call list_data once, then query_data (small precise questions, group and aggregate instead of pulling many rows). Dates are the user's local dates (YYYY-MM-DD); units are metric. " +
             (auth.scope === 'read'
               ? 'This connection is read only (the user chose so): it can read the data but not change it.'
-              : "Never set a calorie target below 1500 kcal or more than 25% under maintenance (the server refuses). Changes appear on the user's phones at the next sync."),
+              : "Never set a calorie target below 1500 kcal or more than 25% under maintenance (the server refuses). Changes appear on the user's phones at the next sync.") +
+            (missingNote(auth) ? ` ${missingNote(auth)} Tools about it answer with an error.` : ''),
         });
       }
       case 'ping':
@@ -686,11 +785,22 @@ export function pgDatabase(pool) {
   return {
     async tokenFor(hash) {
       const r = await pool.query(
-        'select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync from public.api_token_access($1) a',
+        `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
+                public.sync_categories_of(a.user_id) as categories,
+                public.vault_on_of(a.user_id) as encrypted
+         from public.api_token_access($1) a`,
         [hash],
       );
       const row = r.rows[0];
-      return row ? { userId: row.user_id, scope: row.scope, sync: row.sync === true } : null;
+      return row
+        ? {
+            userId: row.user_id,
+            scope: row.scope,
+            sync: row.sync === true,
+            categories: row.categories,
+            encrypted: row.encrypted === true,
+          }
+        : null;
     },
     async asUser(userId, fn) {
       const client = await pool.connect();

@@ -76,11 +76,46 @@
               con il nostro server, così sono uguali su ogni dispositivo e nell'app web, le app AI
               che colleghi (Claude, ChatGPT, i tuoi strumenti) possono usarli, e li recuperi se perdi
               il telefono. L'app funziona anche offline e invia le modifiche appena può.
+              Scegli tu cosa entra nella copia, per categoria: <strong>corpo</strong> (peso, massa
+              grassa, misure, obiettivi corporei), <strong>alimentazione</strong> (diario
+              alimentare, i tuoi alimenti, piani pasti, obiettivi di calorie, acqua, integratori),
+              <strong>allenamento</strong> (schede, allenamenti e serie, i tuoi esercizi e le loro
+              immagini) e <strong>foto dei progressi</strong>. Sono tutte attive finché non ne
+              disattivi qualcuna. Il profilo (nome, data di nascita, sesso, altezza, obiettivo), le
+              impostazioni e i consensi fanno sempre parte della copia, perché servono agli altri
+              dispositivi per partire. Una categoria che disattivi viene eliminata subito dal
+              nostro server e non viene più inviata (il server stesso la rifiuta); le app AI e
+              l'API non la vedono.
+            </li>
+            <li>
+              <strong>Cifratura end-to-end</strong> (facoltativa, per tutta la copia): i tuoi dati e
+              le foto vengono cifrati sul telefono, con una chiave che hai solo tu, prima di essere
+              inviati. La chiave è protetta da una passphrase che scegli tu (non la password di
+              accesso) e da una chiave di recupero che ti viene mostrata una sola volta;
+              conserviamo la chiave solo in questa forma bloccata e non vediamo mai la passphrase né
+              la chiave di recupero. Il nostro server conserva così dati che non può leggere: vede
+              solo il tuo account, quanti elementi ci sono, le loro dimensioni, quando sono cambiati
+              e di che tipo di record si tratta (per esempio "acqua"). L'API e le app AI non
+              funzionano finché la cifratura è attiva. Se perdi sia la passphrase sia la chiave di
+              recupero, nessuno (nemmeno noi) può leggere la copia sul server; il telefono conserva
+              i suoi dati. Disattivare la cifratura invia di nuovo i dati in forma leggibile ed
+              elimina la copia cifrata.
             </li>
             <li>
               <strong>Copia sul server disattivata</strong>: i tuoi dati restano sul telefono. Il
               server conserva solo l'account (email, password e un profilo e impostazioni vuoti).
               L'app web, gli altri dispositivi e le app AI non vedono i tuoi dati.
+            </li>
+            <li>
+              <strong>Sincronizzazione con un altro telefono</strong> (facoltativa, solo con la
+              copia sul server disattivata): i tuoi telefoni si scambiano le modifiche attraverso il
+              nostro server, cifrate end-to-end con una chiave che hanno solo i tuoi telefoni (passa
+              da un telefono all'altro con un codice QR e non arriva mai al server). Il server non
+              conserva alcuna copia: ogni messaggio viene eliminato appena il telefono a cui è
+              destinato lo ha ricevuto, e un messaggio non consegnato entro 30 giorni viene
+              eliminato comunque. Vede solo il tuo account, un identificativo casuale e il modello
+              di ogni telefono associato, e la dimensione e l'ora di ogni messaggio. Scegli tu le
+              categorie scambiate, come per la copia sul server.
             </li>
           </ul>
           Puoi cambiarla in qualsiasi momento in Privacy &amp; data &gt; Keep a copy on the server.
@@ -283,13 +318,16 @@
 
           Solo la rete privata di Railway raggiunge il database; ogni tabella ha regole per cui ogni
           account può leggere e modificare solo le proprie righe. Le foto dei progressi sono in uno
-          spazio privato, raggiungibile solo tramite link firmati di breve durata; non sono cifrate
-          end-to-end.
+          spazio privato, raggiungibile solo tramite link firmati di breve durata. Loro e il resto
+          della copia sono cifrati end-to-end solo se attivi questa opzione (sezione 2);
+          altrimenti il nostro server può leggerli.
         </li>
         <li>
           <strong>Backup</strong>: ogni notte il database e le foto vengono copiati, cifrati
           (AES-256-GCM, con una chiave tenuta separata dalle copie), in uno spazio di archiviazione
           del nostro hosting nella stessa regione UE. Le copie sono conservate per al massimo 12 mesi: copie giornaliere per 30 giorni, poi una copia al mese per 12 mesi.
+          Per gli account con la cifratura end-to-end attiva, i backup contengono solo la copia
+          cifrata: nemmeno lì possiamo leggerla.
         </li>
       </ul>
       <p>
@@ -375,7 +413,8 @@
         <li>
           <strong>Account e dati dell'app</strong>: la copia sul server è conservata finché non la
           disattivi o non elimini l'account (allora è eliminata subito; può restare nei backup
-          finché scadono). Gran parte di ciò
+          finché scadono). I messaggi tra i tuoi telefoni associati (sezione 2) sono conservati
+          finché il telefono a cui sono destinati li riceve, al massimo 30 giorni. Gran parte di ciò
           che elimini nell'app viene eliminato anche dal server, lasciando solo un segnaposto
           (tabella e id della riga) perché anche gli altri dispositivi lo eliminino; alcune cose
           (per esempio pasti o voci di piano sostituiti) restano segnate come eliminate perché lo
@@ -456,7 +495,11 @@
         Tutte le connessioni al nostro server sono cifrate (HTTPS/TLS). Il nostro fornitore di
         hosting, Railway, ha la certificazione SOC 2 Type II e, nell'accordo sul trattamento dei
         dati firmato con noi, si impegna a tenere il database cifrato a riposo. I nostri backup
-        notturni sono inoltre cifrati da noi (AES-256-GCM) prima di essere archiviati.
+        notturni sono inoltre cifrati da noi (AES-256-GCM) prima di essere archiviati. Con la
+        cifratura end-to-end attiva (sezione 2), la tua copia sul server è cifrata sul telefono
+        con XChaCha20-Poly1305 sotto una chiave casuale di 256 bit, a sua volta bloccata con la tua
+        passphrase (scrypt) e con la chiave di recupero; il server non riceve mai la chiave, la
+        passphrase o la chiave di recupero.
         Il database non ha un indirizzo pubblico e ogni account può raggiungere solo le proprie
         righe. Password e token API sono conservati solo come hash. Le richieste hanno dei limiti.
         Nessun sistema è sicuro al 100%: se una violazione mette a rischio i tuoi dati, informeremo

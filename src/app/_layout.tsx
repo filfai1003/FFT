@@ -13,7 +13,10 @@ import { startAuthListener, useSessionStore } from '@/features/auth/session-stor
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
 import { SyncChoiceScreen, WebSyncOffScreen } from '@/features/premium/ServerCopy';
-import { usePlanGate } from '@/features/premium/use-plan-gate';
+import { VaultUnlockScreen } from '@/features/premium/Encryption';
+import { RelayJoinScreen } from '@/features/premium/RelayCard';
+import { askPairLater, askUnlockLater, usePlanGate } from '@/features/premium/use-plan-gate';
+import { useRelay } from '@/features/premium/use-relay';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
@@ -83,9 +86,31 @@ export default function RootLayout() {
  */
 function AppNavigator() {
   const { phase, retry } = usePlanGate();
+  const userId = useSessionStore((s) => s.userId);
   if (phase.kind === 'checking') return <Screen>{null}</Screen>;
   if (phase.kind === 'choose') return <SyncChoiceScreen onDone={retry} />;
   if (phase.kind === 'webOff') return <WebSyncOffScreen onRetry={retry} />;
+  if (phase.kind === 'pair' && userId) {
+    const later = () => {
+      askPairLater(userId);
+      retry();
+    };
+    return <RelayJoinScreen onDone={later} onLater={later} />;
+  }
+  if (phase.kind === 'unlock')
+    return (
+      <VaultUnlockScreen
+        onDone={retry}
+        onLater={
+          Platform.OS === 'web' || !userId
+            ? undefined
+            : () => {
+                askUnlockLater(userId);
+                retry();
+              }
+        }
+      />
+    );
   return <AppRoutes />;
 }
 
@@ -111,6 +136,13 @@ function AppRoutes() {
     (p) => p.home === 'online' && p.sync === 'on' && p.userId === userId,
   );
   useSync(userId, signedIn && getMode() === 'cloud' && syncing, { paused: consentWithdrawn });
+  // No copy on the server: paired phones exchange changes through the encrypted relay
+  // (DECISIONS 65). Paused like the sync while the consent is withdrawn.
+  const copyOff = usePlanStore((p) => p.sync === 'off' && p.userId === userId);
+  useRelay(
+    userId,
+    signedIn && getMode() === 'cloud' && copyOff && Platform.OS !== 'web' && !consentWithdrawn,
+  );
 
   if (status === 'loading' || (signedIn && profile.isPending)) return <Screen>{null}</Screen>;
 

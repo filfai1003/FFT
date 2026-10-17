@@ -2,8 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
-import { loadPlan, resetPlan, savePlan, type SyncChoice } from '@/lib/plan';
-import { detachSync, fetchPlan, fetchSyncChoice, finishServerCleanup, startSync } from './sync';
+import type { DataCategory } from '@/domain/data-categories';
+import { getLocalDb, hasOwnData } from '@/lib/local-db';
+import { loadRelay, relayDevices } from './relay';
+import { loadPlan, resetPlan, savePlan, usePlanStore, type SyncChoice } from '@/lib/plan';
+import {
+  applyCategoryChange,
+  detachSync,
+  fetchPlan,
+  fetchSyncState,
+  finishServerCleanup,
+  startSync,
+  switchCopyMode,
+} from './sync';
+import { forgetVaultKey, vaultKey } from './vault-key';
 
 export type PlanPhase =
   | { kind: 'checking' }
@@ -11,7 +23,34 @@ export type PlanPhase =
   /** A new account that has not said yet whether to keep a copy on the server. */
   | { kind: 'choose' }
   /** The web app without a copy on the server: it has no data to show. */
-  | { kind: 'webOff' };
+  | { kind: 'webOff' }
+  /** The copy is end-to-end encrypted and this device does not have the key yet. */
+  | { kind: 'unlock' }
+
+  /** A new phone of an account whose other phones sync through the relay: pair it first? */
+  | { kind: 'pair' };
+
+/** Accounts whose passphrase the user chose to enter later (this run only; phones only). */
+const unlockLater = new Set<string>();
+export const askUnlockLater = (userId: string) => unlockLater.add(userId);
+
+/** Accounts whose phone the user chose not to pair now (this run only). */
+const pairLater = new Set<string>();
+export const askPairLater = (userId: string) => pairLater.add(userId);
+
+/** This phone holds nothing yet, is not paired, and the account has paired phones. */
+async function shouldOfferPairing(userId: string): Promise<boolean> {
+  if (await loadRelay(userId)) return false;
+  const db = getLocalDb(userId);
+  await db.ready;
+  if (hasOwnData(db)) return false;
+  const devices = await withTimeout(
+    relayDevices().catch(() => []),
+    5000,
+    [] as Awaited<ReturnType<typeof relayDevices>>,
+  );
+  return devices.length > 0;
+}
 
 const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T) =>
   Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
@@ -41,11 +80,43 @@ export function usePlanGate() {
       set({ kind: 'checking' });
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
-      const asking = Promise.all([fetchPlan(), fetchSyncChoice()]).then(([plan, sync]) =>
-        sync == null ? null : { plan, sync },
+      const asking = Promise.all([fetchPlan(), fetchSyncState()]).then(([plan, state]) =>
+        state == null
+          ? null
+          : {
+              plan,
+              sync: state.sync,
+              categories: state.categories,
+              encrypted: state.encrypted,
+            },
       );
-      const keep = (answer: { plan: Awaited<ReturnType<typeof fetchPlan>>; sync: SyncChoice }) =>
-        savePlan(userId, { ...(answer.plan ? { plan: answer.plan } : {}), sync: answer.sync });
+      const keep = async (answer: {
+        plan: Awaited<ReturnType<typeof fetchPlan>>;
+        sync: SyncChoice;
+        categories: DataCategory[];
+        encrypted: boolean;
+      }) => {
+        // Categories changed on another device (DECISIONS 63): what is no longer kept on the
+        // server is not sent from here either; what is kept again goes up in full.
+        const before = usePlanStore.getState().categories ?? answer.categories;
+        const wasEncrypted = usePlanStore.getState().encrypted;
+        await savePlan(userId, {
+          ...(answer.plan ? { plan: answer.plan } : {}),
+          sync: answer.sync,
+          categories: answer.categories,
+        });
+        const db = getLocalDb(userId);
+        await db.ready;
+        applyCategoryChange(db, before, answer.categories);
+        // Encryption turned on or off on another device (DECISIONS 64): everything here goes up
+        // again in the new form (what the server refused meanwhile is not lost).
+        if (answer.sync === 'on' && answer.encrypted !== wasEncrypted) {
+          await switchCopyMode(userId, answer.encrypted);
+          if (!answer.encrypted) await forgetVaultKey(userId);
+          return true;
+        }
+        return false;
+      };
       let fetched: SyncChoice | null = null;
       if (saved.sync == null || saved.plan == null) {
         const answer = await withTimeout(asking, 8000, null);
@@ -56,8 +127,8 @@ export function usePlanGate() {
       } else {
         void asking.then(async (answer) => {
           if (answer == null || !live) return;
-          await keep(answer);
-          if (answer.sync !== saved.sync) setAttempt((n) => n + 1);
+          const switched = await keep(answer);
+          if (answer.sync !== saved.sync || switched) setAttempt((n) => n + 1);
         });
       }
       // null: never known here and the server could not be reached: nothing is synced meanwhile.
@@ -70,6 +141,14 @@ export function usePlanGate() {
           await startSync(userId);
           await savePlan(userId, { home: 'online' });
         }
+        // An encrypted copy and no key here yet: the passphrase is asked (on a phone it can wait;
+        // the sync waits with it). The web app has nothing to show without it.
+        if (
+          usePlanStore.getState().encrypted &&
+          !(await vaultKey(userId)) &&
+          (Platform.OS === 'web' || !unlockLater.has(userId))
+        )
+          return set({ kind: 'unlock' });
         return set({ kind: 'ready' });
       }
       if (sync === 'off') {
@@ -83,6 +162,10 @@ export function usePlanGate() {
       }
       if (sync === 'undecided') return set({ kind: 'choose' });
       if (Platform.OS === 'web') return set({ kind: 'webOff' });
+      // A new phone of an account whose phones sync through the relay (DECISIONS 65): offered to
+      // pair before anything is made here (a fresh profile would win over the real one).
+      if (sync === 'off' && !pairLater.has(userId) && (await shouldOfferPairing(userId)))
+        return set({ kind: 'pair' });
       set({ kind: 'ready' });
     })();
     return () => {

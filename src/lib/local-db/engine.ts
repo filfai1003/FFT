@@ -180,9 +180,13 @@ export class LocalDb {
     for (const l of this.listeners) l();
   }
 
-  /** Every row goes to the outbox (first sync of a premium account: the phone's data goes up). */
-  markAllDirty() {
+  /**
+   * Every row (of `only`, when given) goes to the outbox: the first sync sends the phone's data,
+   * a category turned on sends its rows.
+   */
+  markAllDirty(only?: readonly string[]) {
     for (const [table, rows] of Object.entries(this.tables)) {
+      if (only && !only.includes(table)) continue;
       const pk = pkOf(table);
       for (const r of rows) {
         const key = String(r[pk]);
@@ -194,6 +198,13 @@ export class LocalDb {
         };
       }
     }
+    this.scheduleSave();
+  }
+
+  /** Forgets the waiting changes of some tables (a category no longer sent, DECISIONS 63). */
+  dropPending(tables: readonly string[]) {
+    for (const [k, p] of Object.entries(this.outbox))
+      if (tables.includes(p.table)) delete this.outbox[k];
     this.scheduleSave();
   }
 

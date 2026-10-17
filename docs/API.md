@@ -17,6 +17,21 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
   here. Its tokens answer `403` with `{ "error": "Keep a copy on the server is off …" }` (REST
   and MCP), `create_api_token` refuses (SQLSTATE 55000) and the sign-in for AI apps shows why
   instead of giving a code. Tokens stay listed in the app and work again once the copy is on.
+- Categories (DECISIONS 63): the user chooses which categories the copy holds (body, diet,
+  training, progress photos; profile and settings always). A tool or endpoint of a category that
+  is off answers `403` with `{ "error": "Diet is not shared with the server: …" }` (MCP: a result
+  with `isError: true`): diet = food logs, water, foods, goals' calories, fixed meals,
+  supplements; body = body metrics; training = workouts, plans, exercises, strength. `query_data`
+  looks at its `table`, `propose_plans` at the parts sent. Answers that mix categories
+  (`get_day`, `get_goals`, `list_data`) leave out what is not shared and add `not_shared` with a
+  sentence saying what; MCP `initialize` says it in its instructions. The api service reads them
+  with `sync_categories_of(user)`.
+- End-to-end encryption (DECISIONS 64): while the account's copy is end-to-end encrypted the
+  server cannot read it, so every call answers `403` with
+  `{ "error": "The copy on the server of this FFT account is end-to-end encrypted: …" }` (REST
+  and MCP), `create_api_token` refuses (SQLSTATE 55000) and the sign-in for AI apps shows why.
+  Tokens stay listed and work again once encryption is off. The api service reads it with
+  `vault_on_of(user)`.
 - Limit: 120 requests a minute per account. Bodies are JSON (at most 64 KB).
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units
   are metric. Writes reach the user's phones with the next sync.
@@ -88,5 +103,6 @@ that changes data (the app asks for each change and offers Undo).
 
 Ranges default to the last 7 days, at most a year. Errors: `{ "error": "…" }` with 400 (bad
 input or a database rule, e.g. a weight out of range), 401 (no token, revoked, or the plan no
-longer includes the API), 403 (a read-only token asked to change data, or the account turned its
-copy on the server off), 404, 429. In MCP a tool error is a result with `isError: true`.
+longer includes the API), 403 (a read-only token asked to change data, the account turned its
+copy on the server off, the copy is end-to-end encrypted, or the tool's category is not
+shared), 404, 429. In MCP a tool error is a result with `isError: true`.
