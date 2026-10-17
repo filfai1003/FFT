@@ -53,14 +53,15 @@ function AppTabBar({ state, navigation }: TabBarProps) {
 }
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   return (
     <>
       <Tabs
         tabBar={(props) => <AppTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          animation: 'fade',
+          // A short sideways shift between tabs; none with "reduce motion" (DECISIONS 69).
+          animation: reduceMotion ? 'none' : 'shift',
           sceneStyle: { backgroundColor: colors.bg },
         }}
       >

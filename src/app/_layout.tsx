@@ -27,6 +27,8 @@ import { useSettingsSync } from '@/features/settings/use-settings-sync';
 import { useAppFonts } from '@/design/fonts';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/design/use-theme';
+import { useStackOptions, useTransition } from '@/design/transitions';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 import { WidgetBridge } from '@/features/widgets/WidgetBridge';
@@ -71,12 +73,15 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <KeyboardProvider>
-      <QueryClientProvider client={queryClient}>
-        <AppNavigator />
-        <ToastHost />
-      </QueryClientProvider>
-    </KeyboardProvider>
+    // Swipes between tabs and between exercises use react-native-gesture-handler (DECISIONS 70).
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
+        <QueryClientProvider client={queryClient}>
+          <AppNavigator />
+          <ToastHost />
+        </QueryClientProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -117,7 +122,10 @@ function AppNavigator() {
 /** Chooses what the user can reach: sign in, onboarding, or the app. */
 function AppRoutes() {
   const { t } = useTranslation();
-  const { colors, mode } = useTheme();
+  const { mode } = useTheme();
+  const rootOptions = useStackOptions('fade');
+  const push = useTransition('push');
+  const modal = useTransition('modal');
   const status = useSessionStore((s) => s.status);
   const profile = useProfile();
   useSettingsSync();
@@ -163,14 +171,9 @@ function AppRoutes() {
       <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
       {/* Android home screen widgets follow the data (DECISIONS 51). */}
       {Platform.OS === 'android' && signedIn && onboarded ? <WidgetBridge /> : null}
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-          animation: 'fade',
-          animationDuration: 160,
-        }}
-      >
+      {/* Switching between sign in, onboarding and the app fades; pages opened on top slide in
+          from the right, forms and the workout rise from the bottom (DECISIONS 69). */}
+      <Stack screenOptions={rootOptions}>
         <Stack.Protected guard={status === 'unconfigured'}>
           <Stack.Screen name="setup" />
         </Stack.Protected>
@@ -182,18 +185,11 @@ function AppRoutes() {
         </Stack.Protected>
         <Stack.Protected guard={signedIn && onboarded}>
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="(modals)"
-            options={{
-              presentation: 'modal',
-              animation: 'slide_from_bottom',
-              animationDuration: 220,
-            }}
-          />
-          <Stack.Screen name="session" options={{ gestureEnabled: false }} />
-          <Stack.Screen name="profile" />
-          <Stack.Screen name="ai-chat" />
-          <Stack.Screen name="ai-chats" />
+          <Stack.Screen name="(modals)" options={{ presentation: 'modal', ...modal }} />
+          <Stack.Screen name="session" options={{ gestureEnabled: false, ...modal }} />
+          <Stack.Screen name="profile" options={push} />
+          <Stack.Screen name="ai-chat" options={push} />
+          <Stack.Screen name="ai-chats" options={push} />
           <Stack.Screen name="add-water" options={{ animation: 'none' }} />
         </Stack.Protected>
       </Stack>
