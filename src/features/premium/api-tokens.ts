@@ -15,12 +15,16 @@ export const API_URL = (
 export const MCP_URL = `${API_URL}/mcp`;
 export const REST_URL = `${API_URL}/v1`;
 
+/** read = only the tools that do not change data; write = everything (DECISIONS 59). */
+export type ApiTokenScope = 'read' | 'write';
+
 export type ApiToken = {
   id: string;
   name: string;
   prefix: string;
   createdAt: string;
   lastUsedAt: string | null;
+  scope: ApiTokenScope;
 };
 
 const server = () => getAuthClient() as unknown as SupabaseClient;
@@ -33,7 +37,7 @@ export function useApiTokens(enabled: boolean) {
     queryFn: async (): Promise<ApiToken[]> => {
       const { data, error } = await server()
         .from('api_tokens')
-        .select('id, name, prefix, created_at, last_used_at')
+        .select('id, name, prefix, created_at, last_used_at, scope')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -43,6 +47,7 @@ export function useApiTokens(enabled: boolean) {
         prefix: r.prefix as string,
         createdAt: r.created_at as string,
         lastUsedAt: (r.last_used_at as string | null) ?? null,
+        scope: r.scope === 'read' ? 'read' : 'write',
       }));
     },
   });
@@ -52,8 +57,17 @@ export function useApiTokens(enabled: boolean) {
 export function useCreateApiToken() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (name: string): Promise<string> => {
-      const { data, error } = await server().rpc('create_api_token', { p_name: name });
+    mutationFn: async ({
+      name,
+      scope,
+    }: {
+      name: string;
+      scope: ApiTokenScope;
+    }): Promise<string> => {
+      const { data, error } = await server().rpc('create_api_token', {
+        p_name: name,
+        p_scope: scope,
+      });
       if (error) throw error;
       return data as string;
     },

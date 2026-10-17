@@ -623,9 +623,11 @@ describe('server settings (admin panel)', () => {
 describe('personal API and MCP (server/api.js)', () => {
   // The api service, on this database: each call runs as the token's user (RLS applies).
   const testDb = {
-    async userForToken(hash) {
+    async tokenFor(hash) {
       await admin();
-      return (await one('select public.api_token_user($1) as u', [hash])).u;
+      const [r] = (await db.query('select user_id, scope from public.api_token_access($1)', [hash]))
+        .rows;
+      return r ? { userId: r.user_id, scope: r.scope } : null;
     },
     async asUser(uid, fn) {
       await admin();
@@ -760,6 +762,64 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal((await go()).status, 200);
     assert.equal((await go()).status, 200);
     assert.equal((await go()).status, 429);
+  });
+
+  it('tokens are read and write by default; a read-only token can be made', async () => {
+    await as(A);
+    assert.equal(
+      (await one(`select scope from public.api_tokens where token_hash = $1`, [hashToken(token)]))
+        .scope,
+      'write',
+    );
+    const read = (await one(`select public.create_api_token('Reader', 'read') as t`)).t;
+    assert.equal(
+      (await one(`select scope from public.api_tokens where name = 'Reader'`)).scope,
+      'read',
+    );
+    await rejects(`select public.create_api_token('Bad', 'admin')`, '22023');
+    // Users cannot widen a token themselves.
+    await rejects(`update public.api_tokens set scope = 'write' where name = 'Reader'`, '42501');
+    await rejects(`select * from public.api_token_access('${hashToken(read)}')`, '42501');
+    await admin();
+    assert.deepEqual(
+      (await db.query('select user_id, scope from public.api_token_access($1)', [hashToken(read)]))
+        .rows,
+      [{ user_id: A, scope: 'read' }],
+    );
+    assert.equal((await one('select public.api_token_user($1) as u', [hashToken(read)])).u, A);
+  });
+
+  it('a read-only token reads but every change is refused (REST and MCP)', async () => {
+    await as(A);
+    const read = (await one(`select public.create_api_token('Reader 2', 'read') as t`)).t;
+    const before = await count(`select count(*) as n from public.water_logs`);
+    // Reading works.
+    assert.equal((await call('GET', '/v1/me', undefined, read)).status, 200);
+    assert.equal((await call('POST', '/v1/tools/get_goals', {}, read)).status, 200);
+    // REST writes: 403 with a clear message.
+    const post = await call('POST', '/v1/water', { day: D, ml: 250 }, read);
+    assert.equal(post.status, 403);
+    assert.match(post.body.error, /read only/);
+    assert.equal((await call('POST', '/v1/tools/log_water', { ml: 250 }, read)).status, 403);
+    assert.equal((await call('DELETE', `/v1/food-logs/${A}`, undefined, read)).status, 403);
+    // MCP: only the read-only tools are listed, write tools are refused.
+    const rpc = async (method, params) =>
+      (await call('POST', '/mcp', { jsonrpc: '2.0', id: ++rpcId, method, params }, read)).body;
+    const listed = (await rpc('tools/list')).result.tools;
+    assert.ok(listed.length > 0);
+    assert.ok(listed.every((t) => t.annotations.readOnlyHint));
+    const names = listed.map((t) => t.name);
+    assert.ok(names.includes('get_day') && names.includes('query_data'));
+    assert.ok(!names.includes('log_water') && !names.includes('propose_plans'));
+    assert.match((await rpc('initialize', {})).result.instructions, /read only/);
+    const refused = (await rpc('tools/call', { name: 'log_water', arguments: { ml: 250 } })).result;
+    assert.equal(refused.isError, true);
+    assert.match(refused.content[0].text, /read only/);
+    assert.ok(!(await rpc('tools/call', { name: 'get_profile', arguments: {} })).result.isError);
+    await as(A);
+    assert.equal(await count(`select count(*) as n from public.water_logs`), before);
+    // The read-and-write token still lists every tool.
+    assert.ok((await mcp('tools/list')).result.tools.some((t) => t.name === 'log_water'));
   });
 
   // The in-app coach's tools on the server (server/coach.js + src/domain, the same code as the app).
@@ -923,9 +983,12 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
   });
   const api = createApi(
     {
-      async userForToken(hash) {
+      async tokenFor(hash) {
         await admin();
-        return (await one('select public.api_token_user($1) as u', [hash])).u;
+        const [r] = (
+          await db.query('select user_id, scope from public.api_token_access($1)', [hash])
+        ).rows;
+        return r ? { userId: r.user_id, scope: r.scope } : null;
       },
       async asUser(uid, fn) {
         await as(uid);
@@ -983,7 +1046,10 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       state: 'xyz',
     });
     assert.equal(pageRes.status, 200);
-    assert.match(pageRes.body, /<b>Claude<\/b> wants to read and change your FFT data/);
+    assert.match(pageRes.body, /<b>Claude<\/b> wants to use your FFT data/);
+    // The permission is a visible choice; with no scope asked, read and write is preselected.
+    assert.match(pageRes.body, /name="access" value="write" checked/);
+    assert.match(pageRes.body, /name="access" value="read">/);
     assert.equal(
       (
         await go('GET', '/oauth/authorize', undefined, {
@@ -1085,6 +1151,88 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       client_id: clientId,
     });
     assert.equal(JSON.parse(after.body).error, 'invalid_grant');
+  });
+
+  it('a read-only connection: chosen on the page (or asked with scope=read), kept on refresh', async () => {
+    const ask = (scope) =>
+      go('GET', '/oauth/authorize', undefined, {
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: REDIRECT,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        scope,
+      });
+    assert.match((await ask('read')).body, /name="access" value="read" checked/);
+    assert.match((await ask('read write')).body, /name="access" value="write" checked/);
+    const exchange = async (location) =>
+      JSON.parse(
+        (
+          await go('POST', '/oauth/token', {
+            grant_type: 'authorization_code',
+            code: new URL(location).searchParams.get('code'),
+            redirect_uri: REDIRECT,
+            client_id: clientId,
+            code_verifier: verifier,
+          })
+        ).body,
+      );
+    const mcpAs = async (t, method, params) =>
+      (
+        await api({
+          method: 'POST',
+          path: '/mcp',
+          headers: { authorization: `Bearer ${t}` },
+          body: { jsonrpc: '2.0', id: 1, method, params },
+        })
+      ).body.result;
+
+    // The app asked for write, the user picked read only on the page: the user wins.
+    const r = await authorize('c@test.dev', 'right', { scope: 'write', access: 'read' });
+    assert.equal(r.status, 302);
+    const t = await exchange(r.headers.location);
+    assert.equal(t.scope, 'read');
+    await as(C);
+    assert.equal(
+      (
+        await one(
+          `select scope from public.api_tokens where client_id is not null and deleted_at is null`,
+        )
+      ).scope,
+      'read',
+    );
+    const names = (await mcpAs(t.access_token, 'tools/list')).tools.map((x) => x.name);
+    assert.ok(names.includes('get_day') && !names.includes('log_food'));
+    const refused = await mcpAs(t.access_token, 'tools/call', {
+      name: 'log_water',
+      arguments: { ml: 200 },
+    });
+    assert.equal(refused.isError, true);
+
+    // Refresh keeps read only.
+    const renewed = JSON.parse(
+      (
+        await go('POST', '/oauth/token', {
+          grant_type: 'refresh_token',
+          refresh_token: t.refresh_token,
+          client_id: clientId,
+        })
+      ).body,
+    );
+    assert.equal(renewed.scope, 'read');
+    assert.equal(
+      (
+        await mcpAs(renewed.access_token, 'tools/call', {
+          name: 'log_water',
+          arguments: { ml: 200 },
+        })
+      ).isError,
+      true,
+    );
+
+    // No choice sent (an older page): the app's scope=read is honoured.
+    const plain = await authorize('c@test.dev', 'right', { scope: 'read' });
+    assert.equal((await exchange(plain.headers.location)).scope, 'read');
   });
 });
 

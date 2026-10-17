@@ -472,6 +472,9 @@ export const TOOLS = [
   ...COACH_TOOLS,
 ];
 const byName = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
+/** What a token may call: a 'read' token only the tools that do not change data. */
+const allowed = (scope, tool) => scope === 'write' || !tool.write;
+const READ_ONLY = 'This token is read only: it can read your data but not change it.';
 
 /** Dates come as YYYY-MM-DD strings (server/index.js sets the parser) or as UTC-midnight Dates. */
 const dayOf = (v) =>
@@ -495,8 +498,8 @@ const ROUTES = [
 
 /**
  * The API, independent of HTTP and of how the database is reached (tests use an embedded
- * Postgres). `db.userForToken(hash)` → user id or null; `db.asUser(userId, fn)` runs fn(q) in
- * one transaction as that user (q(sql, params) → rows).
+ * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write' } or null;
+ * `db.asUser(userId, fn)` runs fn(q) in one transaction as that user (q(sql, params) → rows).
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
   const hits = new Map();
@@ -517,16 +520,18 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     if (!token.startsWith('fft_'))
       throw new ApiError(401, 'missing or invalid token (Authorization: Bearer fft_…)');
-    const userId = await db.userForToken(hashToken(token));
-    if (!userId)
+    const found = await db.tokenFor(hashToken(token));
+    if (!found?.userId)
       throw new ApiError(401, 'this token was revoked, or the plan no longer includes the API');
-    if (limited(userId))
+    if (limited(found.userId))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
-    return userId;
+    return { userId: found.userId, scope: found.scope === 'read' ? 'read' : 'write' };
   }
 
-  const call = (userId, name, args) =>
-    db.asUser(userId, async (q) => {
+  /** Runs a tool for an authenticated token ({ userId, scope }). */
+  const call = async ({ userId, scope }, name, args) => {
+    if (!allowed(scope, byName[name])) throw new ApiError(403, READ_ONLY);
+    return db.asUser(userId, async (q) => {
       const [p] = await q(
         `select coalesce(p.timezone, 'UTC') as tz, public.my_plan() as plan,
                 (now() at time zone coalesce(p.timezone, 'UTC'))::date::text as today
@@ -543,6 +548,7 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
         throw e;
       }
     });
+  };
 
   async function rest(method, path, query, headers, body) {
     if (method === 'GET' && (path === '/v1' || path === '/v1/'))
@@ -550,13 +556,13 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
         status: 200,
         body: { tools: TOOLS.map((t) => t.name), docs: 'https://github.com/ (docs/API.md)' },
       };
-    const userId = await authed(headers);
+    const auth = await authed(headers);
     // Every tool, as REST: POST /v1/tools/<name> with the arguments as the JSON body.
     const tool = path.match(/^\/v1\/tools\/([a-z_]+)$/);
     if (tool) {
       if (method !== 'POST') throw new ApiError(405, 'use POST');
       if (!byName[tool[1]]) throw new ApiError(404, `no such tool: ${tool[1]}`);
-      return { status: 200, body: await call(userId, tool[1], body ?? {}) };
+      return { status: 200, body: await call(auth, tool[1], body ?? {}) };
     }
     for (const [m, re, name, toArgs] of ROUTES) {
       const match = path.match(re);
@@ -567,13 +573,13 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
         ...(method === 'POST' ? (body ?? {}) : {}),
         ...(toArgs ? toArgs(match, query) : {}),
       };
-      return { status: method === 'POST' ? 201 : 200, body: await call(userId, name, args) };
+      return { status: method === 'POST' ? 201 : 200, body: await call(auth, name, args) };
     }
     throw new ApiError(404, 'no such endpoint');
   }
 
   /** One JSON-RPC message of the MCP protocol (stateless Streamable HTTP: one JSON reply). */
-  async function mcpMessage(msg, userId) {
+  async function mcpMessage(msg, auth) {
     const reply = (result) => ({ jsonrpc: '2.0', id: msg.id, result });
     const fail = (code, message) => ({
       jsonrpc: '2.0',
@@ -591,26 +597,32 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'fft', title: 'FFT', version: '1.0.0' },
           instructions:
-            "The user's FFT fitness data, with the same tools as the in-app coach. Start with get_profile; for anything else call list_data once, then query_data (small precise questions, group and aggregate instead of pulling many rows). Dates are the user's local dates (YYYY-MM-DD); units are metric. Never set a calorie target below 1500 kcal or more than 25% under maintenance (the server refuses). Changes appear on the user's phones at the next sync.",
+            "The user's FFT fitness data, with the same tools as the in-app coach. Start with get_profile; for anything else call list_data once, then query_data (small precise questions, group and aggregate instead of pulling many rows). Dates are the user's local dates (YYYY-MM-DD); units are metric. " +
+            (auth.scope === 'read'
+              ? 'This connection is read only (the user chose so): it can read the data but not change it.'
+              : "Never set a calorie target below 1500 kcal or more than 25% under maintenance (the server refuses). Changes appear on the user's phones at the next sync."),
         });
       }
       case 'ping':
         return reply({});
       case 'tools/list':
         return reply({
-          tools: TOOLS.map(({ name, description, inputSchema, write }) => ({
-            name,
-            description,
-            inputSchema,
-            // Clients (Claude…) ask the user before a tool that changes data.
-            annotations: { readOnlyHint: !write, destructiveHint: false, openWorldHint: false },
-          })),
+          // A read-only connection sees only the tools that do not change data.
+          tools: TOOLS.filter((t) => allowed(auth.scope, t)).map(
+            ({ name, description, inputSchema, write }) => ({
+              name,
+              description,
+              inputSchema,
+              // Clients (Claude…) ask the user before a tool that changes data.
+              annotations: { readOnlyHint: !write, destructiveHint: false, openWorldHint: false },
+            }),
+          ),
         });
       case 'tools/call': {
         const name = msg.params?.name;
         if (!byName[name]) return fail(-32602, `unknown tool: ${name}`);
         try {
-          const result = await call(userId, name, msg.params?.arguments);
+          const result = await call(auth, name, msg.params?.arguments);
           return reply({
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
             structuredContent: Array.isArray(result) ? { items: result } : result,
@@ -630,12 +642,12 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
   async function mcp(method, headers, body) {
     if (method !== 'POST')
       return { status: 405, body: { error: 'use POST' }, headers: { allow: 'POST' } };
-    const userId = await authed(headers);
+    const auth = await authed(headers);
     if (Array.isArray(body)) {
-      const out = (await Promise.all(body.map((m) => mcpMessage(m, userId)))).filter(Boolean);
+      const out = (await Promise.all(body.map((m) => mcpMessage(m, auth)))).filter(Boolean);
       return out.length ? { status: 200, body: out } : { status: 202, body: null };
     }
-    const out = await mcpMessage(body, userId);
+    const out = await mcpMessage(body, auth);
     return out ? { status: 200, body: out } : { status: 202, body: null };
   }
 
@@ -666,9 +678,9 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
 /** The real database: a pg pool; each call is one transaction as the user (RLS applies). */
 export function pgDatabase(pool) {
   return {
-    async userForToken(hash) {
-      const r = await pool.query('select public.api_token_user($1) as u', [hash]);
-      return r.rows[0]?.u ?? null;
+    async tokenFor(hash) {
+      const r = await pool.query('select user_id, scope from public.api_token_access($1)', [hash]);
+      return r.rows[0] ? { userId: r.rows[0].user_id, scope: r.rows[0].scope } : null;
     },
     async asUser(userId, fn) {
       const client = await pool.connect();

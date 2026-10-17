@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
+import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
@@ -18,6 +19,7 @@ import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { ConnectAiButtons } from './ConnectAiButtons';
 import {
+  type ApiTokenScope,
   claudeCodeCommand,
   MCP_URL,
   REST_URL,
@@ -46,6 +48,7 @@ export function ApiScreen() {
   const setRevoked = useSetApiTokenRevoked();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
+  const [scope, setScope] = useState<ApiTokenScope>('write');
   const [made, setMade] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,9 +61,10 @@ export function ApiScreen() {
   const submit = async () => {
     setError(null);
     try {
-      const token = await create.mutateAsync(name.trim());
+      const token = await create.mutateAsync({ name: name.trim(), scope });
       setNaming(false);
       setName('');
+      setScope('write');
       setMade(token);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -149,7 +153,9 @@ export function ApiScreen() {
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text variant="bodyS">{tok.name}</Text>
                       <Text variant="label" muted>
-                        {`${tok.prefix}… · ${
+                        {`${tok.prefix}… · ${t(
+                          tok.scope === 'read' ? 'api.scopeRead' : 'api.scopeWrite',
+                        )} · ${
                           tok.lastUsedAt
                             ? t('api.lastUsed', { date: date(tok.lastUsedAt) })
                             : t('api.neverUsed')
@@ -197,6 +203,23 @@ export function ApiScreen() {
           onChangeText={setName}
           maxLength={60}
         />
+        <View style={{ gap: 8 }}>
+          <Text variant="label" muted>
+            {t('api.scopeTitle')}
+          </Text>
+          <Segmented
+            accessibilityLabel={t('api.scopeTitle')}
+            options={[
+              { value: 'write', label: t('api.scopeWrite') },
+              { value: 'read', label: t('api.scopeRead') },
+            ]}
+            value={scope}
+            onChange={setScope}
+          />
+          <Text variant="bodyS" muted>
+            {t(scope === 'read' ? 'api.scopeReadHint' : 'api.scopeWriteHint')}
+          </Text>
+        </View>
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}
