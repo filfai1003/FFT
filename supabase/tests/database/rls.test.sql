@@ -33,6 +33,9 @@ insert into auth.users (id, instance_id, aud, role, email) values
 -- Premium: only premium accounts keep data on the server.
 insert into public.vip_users (user_id) values
   ('aaaaaaaa-0000-0000-0000-00000000000a'), ('bbbbbbbb-0000-0000-0000-00000000000b');
+-- They keep a copy on the server (DECISIONS 62).
+insert into public.account_sync (user_id, enabled) values
+  ('aaaaaaaa-0000-0000-0000-00000000000a', true), ('bbbbbbbb-0000-0000-0000-00000000000b', true);
 
 -- 1. Structure ------------------------------------------------------------------------------
 select is(

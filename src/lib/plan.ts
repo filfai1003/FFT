@@ -2,18 +2,27 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 /**
- * The account's plan and where its data lives (DECISIONS 42, 47).
- * - free: every feature, the data synced online (web app, every device), API and MCP
+ * The account's plan and where its data lives (DECISIONS 42, 47, 62).
+ * - free: every feature; with the copy on the server: sync (web app, every device), API and MCP
  * - premium: + the AI coach included in the app, paid from a monthly AI credit
- * Every account keeps its data online; only the account-less mode stays on the phone. The app
- * always works on the device; features/premium/sync.ts keeps the server up to date in the
- * background. Plans are set by the admin panel for now; the server decides (`my_plan()`).
+ * Every account keeps all its data on the device. The copy on the server is the user's choice
+ * (`sync`); with it features/premium/sync.ts keeps the server up to date in the background. The
+ * account-less mode stays on the phone. Plans are set by the admin panel for now; the server
+ * decides (`my_plan()`, `my_sync()`).
  */
 export type DataHome = 'device' | 'online';
 
 export type Plan = 'free' | 'premium';
 // 'supporter' (saved before DECISIONS 47) is no longer a plan: read as unknown, asked again.
 export const isPlan = (v: unknown): v is Plan => v === 'free' || v === 'premium';
+
+/**
+ * Keep a copy on the server (DECISIONS 62): 'on', 'off', or 'undecided' (a new account that has
+ * not chosen yet: the app asks). Nothing is sent to the server unless it is 'on'.
+ */
+export type SyncChoice = 'on' | 'off' | 'undecided';
+export const isSyncChoice = (v: unknown): v is SyncChoice =>
+  v === 'on' || v === 'off' || v === 'undecided';
 
 /** Monthly prices (shown on the plans page; payments come later). */
 export const PLAN_PRICES_EUR: Record<Exclude<Plan, 'free'>, number> = { premium: 20 };
@@ -23,15 +32,16 @@ type PlanState = {
   userId: string | null;
   /** Last answer of the server; null = never asked on this device. */
   plan: Plan | null;
-  /** The data is kept online (every account since DECISIONS 47); null = never asked. */
-  premium: boolean | null;
+  /** The copy on the server, as the server last said; null = never asked on this device. */
+  sync: SyncChoice | null;
+  /** Where this device last left the data: 'online' = the sync runs for it. */
   home: DataHome;
 };
 
 export const usePlanStore = create<PlanState>(() => ({
   userId: null,
   plan: null,
-  premium: null,
+  sync: null,
   home: 'device',
 }));
 
@@ -39,12 +49,13 @@ const key = (userId: string) => `fft.plan.${userId}`;
 
 /** Reads what this device knows about the account (instant, works offline). */
 export async function loadPlan(userId: string): Promise<PlanState> {
-  let saved: Partial<PlanState> = {};
+  let saved: Partial<PlanState> & { premium?: unknown } = {};
   try {
-    saved = JSON.parse((await AsyncStorage.getItem(key(userId))) ?? '{}') as Partial<PlanState>;
+    saved = JSON.parse((await AsyncStorage.getItem(key(userId))) ?? '{}') as typeof saved;
   } catch {
     saved = {};
   }
+  // Saved before DECISIONS 62: "premium" meant the data was kept online (every account synced).
   const premium = typeof saved.premium === 'boolean' ? saved.premium : null;
   const state: PlanState = {
     userId,
@@ -58,7 +69,7 @@ export async function loadPlan(userId: string): Promise<PlanState> {
           : premium === false
             ? 'free'
             : null,
-    premium,
+    sync: isSyncChoice(saved.sync) ? saved.sync : premium === true ? 'on' : null,
     home: saved.home === 'online' ? 'online' : 'device',
   };
   usePlanStore.setState(state);
@@ -71,7 +82,7 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
   try {
     await AsyncStorage.setItem(
       key(userId),
-      JSON.stringify({ plan: next.plan, premium: next.premium, home: next.home }),
+      JSON.stringify({ plan: next.plan, sync: next.sync, home: next.home }),
     );
   } catch {
     // Still applies for this run.
@@ -79,7 +90,8 @@ export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'u
 }
 
 export function resetPlan() {
-  usePlanStore.setState({ userId: null, plan: null, premium: null, home: 'device' });
+  usePlanStore.setState({ userId: null, plan: null, sync: null, home: 'device' });
 }
 
-export const isPremium = (): boolean => usePlanStore.getState().premium === true;
+/** The current account's copy on the server: 'on', 'off', 'undecided' or null (not known yet). */
+export const useSyncChoice = () => usePlanStore((s) => (s.userId == null ? null : s.sync));

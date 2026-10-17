@@ -1446,7 +1446,7 @@
     "perks": {
       "everything": "Every feature",
       "ownKey": "AI coach with your own key",
-      "sync": "Data synced on every device",
+      "sync": "Data synced on every device (optional copy on the server)",
       "web": "FFT in the browser",
       "safe": "Nothing lost if you change phone",
       "apiMcp": "API and MCP for your own tools",
@@ -1454,15 +1454,7 @@
       "aiCredit": "10 € of AI a month, unused carries over (max 15 €)",
       "freeAll": "Everything in Free"
     },
-    "howToGet": "By invitation for now.",
-    "moving": "Moving your data",
-    "upTitle": "Moving your data online",
-    "upBody": "Your workouts, food, weight and photos are being saved online, so every device and the web app see them. Keep the app open.",
-    "downTitle": "Bringing your data to this phone",
-    "downBody": "Your data is coming back to this phone and then removed from the server. Keep the app open.",
-    "moveFailedTitle": "Your data could not be moved",
-    "moveFailedBody": "Nothing was lost. Check your connection and try again.",
-    "later": "Keep using this phone for now"
+    "howToGet": "By invitation for now."
   },
   "sync": {
     "title": "Online sync",
@@ -1550,5 +1542,41 @@
     "supplementsCount": "Supplements {{done}}/{{total}}",
     "noSupplements": "Add them in the app",
     "openApp": "Open the app to start"
+  },
+  "serverCopy": {
+    "title": "Keep a copy on the server",
+    "onDetail": "On: your data is also kept on our server in the EU and synced.",
+    "offDetail": "Off: your data is only on this phone.",
+    "webNote": "To turn it off, use the FFT app on your phone: the copy on the server is then deleted.",
+    "chooseTitle": "Keep a copy of your data on our server?",
+    "chooseIntro": "Your data is always saved on this phone. You can also keep a copy on our server. Choose one; you can change it any time in Profile > Privacy & data.",
+    "givesTitle": "A copy on the server lets you",
+    "gives": {
+      "devices": "Use FFT in the web app and on another phone, kept in sync",
+      "ai": "Connect AI apps such as Claude or ChatGPT (MCP) and your own tools (API)",
+      "recover": "Get your data back if you lose or change your phone"
+    },
+    "meansTitle": "What it means",
+    "means": "A copy of your workouts, food, body measurements, photos and settings is stored on our server in the EU. When you turn it off, that copy is deleted.",
+    "optionOn": "Keep a copy on the server",
+    "optionOnDetail": "Synced with the web app and your other devices; AI apps can connect.",
+    "optionOff": "Only on this phone",
+    "optionOffDetail": "Nothing is sent to our server. No web app and no AI apps, and if you lose this phone your data is lost too (Export keeps a backup).",
+    "saveFailed": "Your choice could not be saved. Check your connection and try again.",
+    "working": "One moment…",
+    "turnOnTitle": "Keep a copy on the server?",
+    "turnOnBody": "Everything on this phone, photos included, is sent to our server in the EU and kept in sync from then on. You can turn it off at any time.",
+    "turnOnConfirm": "Keep a copy on the server",
+    "turnedOn": "A copy is now kept on the server. Your data is being sent.",
+    "turnOffTitle": "Delete the copy on the server?",
+    "turnOffBody": "Your data stays on this phone. The copy on our server (workouts, food, body measurements, photos and settings) is deleted now, and this cannot be undone. The web app, your other devices and connected AI apps lose access. Your account stays, so you can turn it on again later.",
+    "turnOffConfirm": "Turn off and delete the copy",
+    "keepOn": "Keep the copy",
+    "turnedOff": "The copy on the server was deleted. Your data is on this phone only.",
+    "failed": "That did not work, nothing was changed. Check your connection and try again.",
+    "neededTitle": "AI apps need the copy on the server",
+    "neededBody": "Claude, ChatGPT and your own tools read your data from our server, and right now it is only on this phone. Keep a copy on the server to connect them.",
+    "webTitle": "Your data is only on your phone",
+    "webBody": "This account keeps its data on the phone only, so there is nothing to show here. To use FFT in the browser, keep a copy on the server: here, or in the app on your phone under Profile > Privacy & data."
   }
 }

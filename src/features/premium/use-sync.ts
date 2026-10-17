@@ -11,18 +11,30 @@ const EVERY_MS = 30_000;
 const AFTER_WRITE_MS = 1_500;
 
 /**
- * Runs the premium sync in the background: right away, shortly after every change, every 30 s
- * and when the app comes back to the foreground. Failures (no network) are retried at the next
- * occasion; the app keeps working on the device meanwhile. Screens refresh when something new
- * arrives from another device.
+ * Runs the sync with the copy on the server in the background: right away, shortly after every
+ * change, every 30 s and when the app comes back to the foreground. Failures (no network) are
+ * retried at the next occasion; the app keeps working on the device meanwhile. Screens refresh
+ * when something new arrives from another device.
+ *
+ * `enabled`: the account keeps a copy on the server (DECISIONS 62). `paused` (the health data
+ * consent was withdrawn): nothing is sent or fetched, but changes are still noted, so that they
+ * go up once the consent is given again (the new consent itself included).
  */
-export function useSync(userId: string | null, enabled: boolean) {
+export function useSync(
+  userId: string | null,
+  enabled: boolean,
+  { paused = false }: { paused?: boolean } = {},
+) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!enabled || !userId) return;
+    getLocalDb(userId).tracking = true;
+  }, [userId, enabled]);
+
+  useEffect(() => {
+    if (!enabled || paused || !userId) return;
     const db = getLocalDb(userId);
-    db.tracking = true;
     let running = false;
     let again = false;
     let stopped = false;
@@ -66,5 +78,5 @@ export function useSync(userId: string | null, enabled: boolean) {
       app.remove();
       if (timer) clearTimeout(timer);
     };
-  }, [userId, enabled, queryClient]);
+  }, [userId, enabled, paused, queryClient]);
 }

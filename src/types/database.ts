@@ -23,6 +23,31 @@ export type Database = {
   };
   public: {
     Tables: {
+      account_sync: {
+        Row: {
+          created_at: string;
+          deleted_at: string | null;
+          enabled: boolean;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          deleted_at?: string | null;
+          enabled: boolean;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          deleted_at?: string | null;
+          enabled?: boolean;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       body_goals: {
         Row: {
           created_at: string;
@@ -1239,6 +1264,8 @@ export type Database = {
       clear_my_online_data: { Args: never; Returns: undefined };
       epley_1rm: { Args: { reps: number; weight_kg: number }; Returns: number };
       is_premium: { Args: never; Returns: boolean };
+      my_sync: { Args: never; Returns: boolean | null };
+      set_sync: { Args: { p_enabled: boolean }; Returns: undefined };
       last_sets: {
         Args: { p_exercise_ids: string[] };
         Returns: {

@@ -14,10 +14,11 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
-import { usePlanStore } from '@/lib/plan';
+import { usePlanStore, useSyncChoice } from '@/lib/plan';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { ConnectAiButtons } from './ConnectAiButtons';
+import { SyncNeededCard } from './ServerCopy';
 import {
   type ApiTokenScope,
   claudeCodeCommand,
@@ -43,6 +44,9 @@ export function ApiScreen() {
   const showToast = useToastStore((s) => s.show);
   // Every account (DECISIONS 47); the account-less mode has no server account to connect.
   const allowed = usePlanStore((s) => s.userId != null);
+  // Tokens and AI apps read and write the copy on the server: none without it (DECISIONS 62).
+  // Existing tokens stay listed so they can be revoked.
+  const synced = useSyncChoice() === 'on';
   const tokens = useApiTokens(allowed);
   const create = useCreateApiToken();
   const setRevoked = useSetApiTokenRevoked();
@@ -105,7 +109,7 @@ export function ApiScreen() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={allowed ? barHeight + 24 : 24} gap={14}>
+      <Screen scroll bottomBarHeight={allowed && synced ? barHeight + 24 : 24} gap={14}>
         <TopBar onBack={goBack} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('api.title')}</Text>
 
@@ -120,18 +124,24 @@ export function ApiScreen() {
           </Card>
         ) : (
           <>
-            <Card gap={10}>
-              <Text variant="label" muted>
-                {t('api.connectTitle')}
-              </Text>
-              <ConnectAiButtons />
-            </Card>
+            {/* The API and AI apps read the copy on the server (DECISIONS 62). */}
+            <SyncNeededCard />
+            {synced ? (
+              <>
+                <Card gap={10}>
+                  <Text variant="label" muted>
+                    {t('api.connectTitle')}
+                  </Text>
+                  <ConnectAiButtons />
+                </Card>
 
-            <Card size="small" gap={0}>
-              {address(t('api.mcpAddress'), MCP_URL)}
-              <View style={{ borderTopWidth: 1, borderColor: colors.borderDecorative }} />
-              {address(t('api.restAddress'), REST_URL)}
-            </Card>
+                <Card size="small" gap={0}>
+                  {address(t('api.mcpAddress'), MCP_URL)}
+                  <View style={{ borderTopWidth: 1, borderColor: colors.borderDecorative }} />
+                  {address(t('api.restAddress'), REST_URL)}
+                </Card>
+              </>
+            ) : null}
 
             {tokens.data?.length ? (
               <Card size="small" gap={0}>
@@ -176,7 +186,7 @@ export function ApiScreen() {
         )}
       </Screen>
 
-      {allowed ? (
+      {allowed && synced ? (
         <BottomActionBar>
           <Button size="large" label={t('api.create')} onPress={() => setNaming(true)} />
         </BottomActionBar>

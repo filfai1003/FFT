@@ -11,13 +11,15 @@ import {
   type Pending,
   type Row,
 } from '@/lib/local-db';
-import { isPlan, type Plan } from '@/lib/plan';
+import { isPlan, savePlan, usePlanStore, type Plan, type SyncChoice } from '@/lib/plan';
 import { reportError } from '@/lib/error-report';
 import { getAuthClient } from '@/lib/supabase';
 
 /**
- * Premium sync. The app always reads and writes the database on the device (instant, works
- * offline); this sends what changed to the server and brings back what other devices changed.
+ * Sync with the copy on the server. The app always reads and writes the database on the device
+ * (instant, works offline); this sends what changed to the server and brings back what other
+ * devices changed. Only for accounts that chose to keep a copy on the server (DECISIONS 62):
+ * otherwise nothing is sent or fetched.
  *
  * - Push: the outbox (one entry per changed row, latest state, with the time of the action).
  * - Pull: everything stored on the server since the last pull, plus deletions.
@@ -107,6 +109,16 @@ async function pushRows(table: string, rows: Row[], deletes: { id: string; at: s
   return error;
 }
 
+/**
+ * The account chose not to keep a copy on the server, or has not chosen yet (DECISIONS 62):
+ * nothing goes up or comes down. Only known for the account loaded in the plan store; another
+ * account (or none loaded, e.g. in tests) is not stopped here.
+ */
+function serverCopyOff(userId: string) {
+  const s = usePlanStore.getState();
+  return s.userId === userId && s.sync !== 'on';
+}
+
 /** Accounts being deleted: their sync is stopped for the rest of this run. */
 const halted = new Set<string>();
 
@@ -128,7 +140,7 @@ export function resumeSync(userId: string) {
 let refusedLastPush = 0;
 
 export async function push(userId: string): Promise<number> {
-  if (halted.has(userId)) return 0;
+  if (halted.has(userId) || serverCopyOff(userId)) return 0;
   const db = getLocalDb(userId);
   await db.ready;
   const pending = Object.values(db.outbox);
@@ -202,6 +214,7 @@ function isNetworkError(e: { message?: string; code?: string }) {
 
 /** Brings back what changed on the server since the last pull. Returns whether anything changed here. */
 export async function pull(userId: string, opts: { full?: boolean } = {}): Promise<boolean> {
+  if (serverCopyOff(userId)) return false;
   const db = getLocalDb(userId);
   await db.ready;
   // The device started with no readable database: everything comes back, not only what is new.
@@ -240,7 +253,7 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
 
 /** One round: send, then receive (a device that lost its database receives first). */
 export async function syncOnce(userId: string): Promise<boolean> {
-  if (halted.has(userId)) return false;
+  if (halted.has(userId) || serverCopyOff(userId)) return false;
   const db = getLocalDb(userId);
   await db.ready;
   const recovered = db.freshStart ? await pull(userId) : false;
@@ -306,7 +319,11 @@ export async function resendAll(userId: string): Promise<SyncCheck> {
   return checkSync(userId);
 }
 
-/** Premium starts on this device: everything here goes up, then the account's data comes down. */
+/**
+ * The sync starts on this device (the copy on the server was turned on, here or elsewhere):
+ * every row here is queued to go up (photos go with their row), then the account's data comes
+ * down from the start.
+ */
 export async function startSync(userId: string) {
   const db = getLocalDb(userId);
   await db.ready;
@@ -315,25 +332,111 @@ export async function startSync(userId: string) {
   await AsyncStorage.removeItem(cursorKey(userId));
 }
 
-/** Premium ended: the device keeps everything (one last full pull), the server keeps nothing. */
-export async function stopSync(userId: string) {
+/**
+ * The sync ends on this device (the copy on the server was turned off, here or elsewhere): the
+ * device keeps everything, nothing waits to be sent and nothing is noted any more.
+ */
+export async function detachSync(userId: string) {
   const db = getLocalDb(userId);
   await db.ready;
-  await pull(userId, { full: true });
-  const files = [
-    ...(db.tables.progress_photos ?? []).map((r) => fileOf('progress_photos', r)),
-    ...(db.tables.exercises ?? []).map((r) => fileOf('exercises', r)),
-  ].filter((f): f is { bucket: string; path: string } => f != null);
-  for (const bucket of [PHOTOS, EXERCISE_IMAGES]) {
-    const paths = files.filter((f) => f.bucket === bucket).map((f) => f.path);
-    for (const part of chunks(paths, 100)) await server().storage.from(bucket).remove(part);
-  }
-  const { error } = await server().rpc('clear_my_online_data');
-  if (error) throw new Error(error.message);
   db.tracking = false;
   db.outbox = {};
   db.scheduleSave();
   await AsyncStorage.removeItem(cursorKey(userId));
+}
+
+// --- Keep a copy on the server: on / off (DECISIONS 62) ---------------------------------------
+
+const cleanupKey = (userId: string) => `fft.sync.files-to-remove.${userId}`;
+
+/** What the server says about the copy on the server; null when it cannot be reached. */
+export async function fetchSyncChoice(): Promise<SyncChoice | null> {
+  try {
+    const res = await server().rpc('my_sync');
+    if (res.error) return null;
+    return res.data === true ? 'on' : res.data === false ? 'off' : 'undecided';
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Removes every file of the account from the two private buckets (listed on the server, so files
+ * this phone never downloaded go too). The rows are already gone (set_sync(false)).
+ */
+async function removeServerFiles(userId: string) {
+  for (const bucket of [PHOTOS, EXERCISE_IMAGES]) {
+    // Pages of 100 (at most 20 000 files); a page that removes nothing ends it (no endless loop).
+    for (let round = 0; round < 200; round++) {
+      const { data, error } = await server().storage.from(bucket).list(userId, { limit: 100 });
+      if (error) throw new Error(error.message);
+      const names = ((data ?? []) as { name: string }[]).map((f) => `${userId}/${f.name}`);
+      if (names.length === 0) break;
+      const removed = await server().storage.from(bucket).remove(names);
+      if (removed.error) throw new Error(removed.error.message);
+      if (Array.isArray(removed.data) && removed.data.length === 0) break;
+    }
+  }
+}
+
+/**
+ * Files left on the server by an earlier "turn off" that could not finish (no network): removed
+ * now. Returns true when nothing is left to remove.
+ */
+export async function finishServerCleanup(userId: string): Promise<boolean> {
+  if (!(await AsyncStorage.getItem(cleanupKey(userId)))) return true;
+  try {
+    await removeServerFiles(userId);
+    await AsyncStorage.removeItem(cleanupKey(userId));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Turns the copy on the server off (or answers "only on this phone" for a new account). Cannot be
+ * undone: the server deletes the account's data (every synced table, in one transaction), then
+ * this removes its files. In this order, so that nothing is lost:
+ * 1. what other devices sent is fetched first (best effort): this phone keeps it;
+ * 2. the sync stops: nothing in the outbox is sent any more;
+ * 3. the server deletes the data and notes the choice (if that fails, the sync goes on as before);
+ * 4. this device stops noting changes; the files are removed (retried at the next start if the
+ *    network drops meanwhile).
+ */
+export async function turnSyncOff(userId: string): Promise<void> {
+  const db = getLocalDb(userId);
+  await db.ready;
+  if (usePlanStore.getState().sync === 'on') await pull(userId, { full: true }).catch(() => false);
+  haltSync(userId);
+  try {
+    const { error } = await server().rpc('set_sync', { p_enabled: false });
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    resumeSync(userId);
+    throw e;
+  }
+  await AsyncStorage.setItem(cleanupKey(userId), new Date().toISOString());
+  await savePlan(userId, { sync: 'off', home: 'device' });
+  await detachSync(userId);
+  resumeSync(userId);
+  await finishServerCleanup(userId);
+}
+
+/**
+ * Turns the copy on the server on: the server notes it, then everything on this phone (every row
+ * and its photos) is queued and goes up with the next sync, which then brings back what other
+ * devices have.
+ */
+export async function turnSyncOn(userId: string): Promise<void> {
+  // Old files waiting to be removed go first: removing them later would remove the new uploads.
+  await finishServerCleanup(userId);
+  await AsyncStorage.removeItem(cleanupKey(userId));
+  const { error } = await server().rpc('set_sync', { p_enabled: true });
+  if (error) throw new Error(error.message);
+  resumeSync(userId);
+  await startSync(userId);
+  await savePlan(userId, { sync: 'on', home: 'online' });
 }
 
 /** What the server says about the account; null when it cannot be reached. */

@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import { ConnectAiButtons } from '@/features/premium/ConnectAiButtons';
+import { SyncNeededCard } from '@/features/premium/ServerCopy';
+import { useSyncChoice } from '@/lib/plan';
 import { useTranslation } from 'react-i18next';
 import { View, type TextInput } from 'react-native';
 import { Card } from '@/components/ui/Card';
@@ -297,12 +299,18 @@ export function MealsStep({ draft, patch, today }: StepProps & { today: Date }) 
 /** Optional: FFT in Claude or ChatGPT (MCP). Finishing works the same with or without it. */
 export function AiStep({ bottomOffset }: { bottomOffset: number }) {
   const { t } = useTranslation();
+  // AI apps read the copy on the server: without it, say so and offer it (DECISIONS 62).
+  const synced = useSyncChoice() === 'on';
   return (
     <View style={{ gap: 16 }}>
       <Text muted>{t('onboarding.ai.body')}</Text>
-      <Card gap={10}>
-        <ConnectAiButtons bottomOffset={bottomOffset} />
-      </Card>
+      {synced ? (
+        <Card gap={10}>
+          <ConnectAiButtons bottomOffset={bottomOffset} />
+        </Card>
+      ) : (
+        <SyncNeededCard />
+      )}
       <Text variant="bodyS" muted>
         {t('onboarding.ai.later')}
       </Text>

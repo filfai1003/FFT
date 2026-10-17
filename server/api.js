@@ -475,6 +475,9 @@ const byName = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
 /** What a token may call: a 'read' token only the tools that do not change data. */
 const allowed = (scope, tool) => scope === 'write' || !tool.write;
 const READ_ONLY = 'This token is read only: it can read your data but not change it.';
+/** The account turned its copy on the server off (DECISIONS 62): there is no data here. */
+export const SYNC_OFF =
+  'Keep a copy on the server is off for this FFT account, so its data is only on the phone. Turn it on in the FFT app (Profile > Privacy & data) to use the API and AI apps.';
 
 /** Dates come as YYYY-MM-DD strings (server/index.js sets the parser) or as UTC-midnight Dates. */
 const dayOf = (v) =>
@@ -498,7 +501,8 @@ const ROUTES = [
 
 /**
  * The API, independent of HTTP and of how the database is reached (tests use an embedded
- * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write' } or null;
+ * Postgres). `db.tokenFor(hash)` → { userId, scope: 'read' | 'write', sync: boolean } or null
+ * (sync: the account keeps a copy on the server, DECISIONS 62; without it every call is refused);
  * `db.asUser(userId, fn)` runs fn(q) in one transaction as that user (q(sql, params) → rows).
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
@@ -523,6 +527,8 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
     const found = await db.tokenFor(hashToken(token));
     if (!found?.userId)
       throw new ApiError(401, 'this token was revoked, or the plan no longer includes the API');
+    // The account keeps its data on the phone only: nothing to read or write here.
+    if (found.sync !== true) throw new ApiError(403, SYNC_OFF);
     if (limited(found.userId))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
     return { userId: found.userId, scope: found.scope === 'read' ? 'read' : 'write' };
@@ -679,8 +685,12 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
 export function pgDatabase(pool) {
   return {
     async tokenFor(hash) {
-      const r = await pool.query('select user_id, scope from public.api_token_access($1)', [hash]);
-      return r.rows[0] ? { userId: r.rows[0].user_id, scope: r.rows[0].scope } : null;
+      const r = await pool.query(
+        'select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync from public.api_token_access($1) a',
+        [hash],
+      );
+      const row = r.rows[0];
+      return row ? { userId: row.user_id, scope: row.scope, sync: row.sync === true } : null;
     },
     async asUser(userId, fn) {
       const client = await pool.connect();

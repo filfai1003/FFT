@@ -36,6 +36,18 @@ async function as(uid) {
 }
 
 const one = async (sql, params) => (await db.query(sql, params)).rows[0];
+
+/** The api service's token lookup (server/api.js pgDatabase), on this database. */
+async function tokenFor(hash) {
+  await admin();
+  const [r] = (
+    await db.query(
+      'select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync from public.api_token_access($1) a',
+      [hash],
+    )
+  ).rows;
+  return r ? { userId: r.user_id, scope: r.scope, sync: r.sync === true } : null;
+}
 const count = async (sql, params) => Number((await one(sql, params)).n);
 
 async function rejects(sql, code) {
@@ -64,6 +76,8 @@ before(async () => {
       ('${B}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'b@test.dev'),
       ('${C}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'c@test.dev');
     insert into public.vip_users (user_id, note) values ('${A}', 'friend'), ('${B}', 'friend');
+    -- They keep a copy on the server (DECISIONS 62; accounts made later choose: see that test).
+    insert into public.account_sync (user_id, enabled) values ('${A}', true), ('${B}', true), ('${C}', true);
   `);
 });
 
@@ -542,6 +556,7 @@ describe('plans and AI credit', () => {
     await db.exec(`
       insert into auth.users (id, instance_id, aud, role, email)
         values ('${S}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 's@test.dev');
+      insert into public.account_sync (user_id, enabled) values ('${S}', true);
     `);
   });
 
@@ -623,12 +638,7 @@ describe('server settings (admin panel)', () => {
 describe('personal API and MCP (server/api.js)', () => {
   // The api service, on this database: each call runs as the token's user (RLS applies).
   const testDb = {
-    async tokenFor(hash) {
-      await admin();
-      const [r] = (await db.query('select user_id, scope from public.api_token_access($1)', [hash]))
-        .rows;
-      return r ? { userId: r.user_id, scope: r.scope } : null;
-    },
+    tokenFor,
     async asUser(uid, fn) {
       await admin();
       await db.exec('begin');
@@ -983,13 +993,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
   });
   const api = createApi(
     {
-      async tokenFor(hash) {
-        await admin();
-        const [r] = (
-          await db.query('select user_id, scope from public.api_token_access($1)', [hash])
-        ).rows;
-        return r ? { userId: r.user_id, scope: r.scope } : null;
-      },
+      tokenFor,
       async asUser(uid, fn) {
         await as(uid);
         return fn(async (sql, params) => (await db.query(sql, params)).rows);
@@ -1355,5 +1359,168 @@ describe('drop sets (drop_index)', () => {
       last.rows.map((x) => Number(x.drop_index)),
       [0, 1],
     );
+  });
+});
+
+describe('keep a copy on the server is optional (DECISIONS 62)', () => {
+  // A new account (made after the migration): it has not chosen yet.
+  const D = 'eeeeeeee-0000-0000-0000-00000000000e';
+  const W = '88888888-0000-0000-0000-000000000001';
+  const api = createApi({
+    tokenFor,
+    async asUser(uid, fn) {
+      await as(uid);
+      return fn(async (sql, params) => (await db.query(sql, params)).rows);
+    },
+  });
+  const oauth = createOAuth({
+    sql: async (text, params) => {
+      await admin();
+      return (await db.query(text, params)).rows;
+    },
+    signIn: async (email, password) => (password === 'right' && email === 'd@test.dev' ? D : null),
+    base: 'https://api.test',
+  });
+  let token = '';
+  const me = (t = token) =>
+    api({ method: 'GET', path: '/v1/me', headers: { authorization: `Bearer ${t}` } });
+
+  before(async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${D}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'd@test.dev');
+    `);
+  });
+
+  it('a new account has not chosen: nothing of its data can be stored online', async () => {
+    await as(D);
+    assert.equal((await one('select public.my_sync() as s')).s, null);
+    assert.equal((await one('select public.is_premium() as p')).p, false);
+    await rejects(`insert into public.water_logs (day, ml) values ('2026-10-17', 250)`, '42501');
+    await rejects(
+      `select public.sync_push('water_logs', '[{"id": "${W}", "user_id": "${D}", "day": "2026-10-17", "ml": 250, "updated_at": "2026-10-17T10:00:00Z"}]'::jsonb, '[]'::jsonb)`,
+      '42501',
+    );
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('progress-photos', '${D}/a.jpg')`,
+      '42501',
+    );
+  });
+
+  it('the choice is changed only through set_sync, and only by a signed-in user', async () => {
+    await as(D);
+    await rejects(
+      `insert into public.account_sync (user_id, enabled) values ('${D}', true)`,
+      '42501',
+    );
+    await admin();
+    await db.exec('set role anon');
+    await rejects('select public.set_sync(true)', '42501');
+    await rejects(`select public.sync_enabled_of('${D}')`, '42501');
+  });
+
+  it('on: the data goes online, a token can be made and works', async () => {
+    await as(D);
+    await db.exec('select public.set_sync(true)');
+    assert.equal((await one('select public.my_sync() as s')).s, true);
+    await db.exec(`
+      insert into public.water_logs (id, day, ml) values ('${W}', '2026-10-17', 250);
+      insert into public.body_metrics (day, weight_kg) values ('2026-10-17', 70);
+      insert into storage.objects (bucket_id, name) values ('progress-photos', '${D}/a.jpg');
+      update public.profiles set name = 'Dee';
+    `);
+    token = (await one(`select public.create_api_token('Claude') as t`)).t;
+    assert.equal((await me()).status, 200);
+    // Another user cannot read the choice.
+    await as(A);
+    assert.equal(
+      await count(`select count(*) as n from public.account_sync where user_id = '${D}'`),
+      0,
+    );
+  });
+
+  it('off: the server copy is deleted, the account stays, nothing more can be stored', async () => {
+    await admin();
+    const others = await count(
+      `select count(*) as n from public.body_metrics where user_id <> '${D}'`,
+    );
+    await as(D);
+    await db.exec('select public.set_sync(false)');
+    assert.equal((await one('select public.my_sync() as s')).s, false);
+    assert.equal(await count('select count(*) as n from public.water_logs'), 0);
+    assert.equal(await count('select count(*) as n from public.body_metrics'), 0);
+    assert.equal(await count('select count(*) as n from public.sync_tombstones'), 0);
+    const p = await one('select name, extract(year from updated_at) as y from public.profiles');
+    assert.equal(p.name, null, 'the empty profile every account has stays');
+    // Older than any change of a device: turned on again, the device's rows win.
+    assert.equal(Number(p.y), 1970);
+    assert.equal(await count('select count(*) as n from public.user_settings'), 1);
+    await rejects(`insert into public.water_logs (day, ml) values ('2026-10-17', 300)`, '42501');
+    await rejects(
+      `insert into storage.objects (bucket_id, name) values ('progress-photos', '${D}/b.jpg')`,
+      '42501',
+    );
+    await admin();
+    assert.equal(
+      await count(`select count(*) as n from public.body_metrics where user_id <> '${D}'`),
+      others,
+    );
+    assert.equal(await count(`select count(*) as n from auth.users where id = '${D}'`), 1);
+  });
+
+  it('off: the API, MCP and making a token refuse, with a clear message', async () => {
+    const rest = await me();
+    assert.equal(rest.status, 403);
+    assert.match(rest.body.error, /Keep a copy on the server is off/);
+    const mcp = await api({
+      method: 'POST',
+      path: '/mcp',
+      headers: { authorization: `Bearer ${token}` },
+      body: { jsonrpc: '2.0', id: 1, method: 'tools/list' },
+    });
+    assert.equal(mcp.status, 403);
+    await as(D);
+    await rejects(`select public.create_api_token('again')`, '55000');
+  });
+
+  it('off: the sign-in for AI apps says why it cannot connect', async () => {
+    const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
+    const reg = await oauth({
+      method: 'POST',
+      path: '/oauth/register',
+      body: { redirect_uris: [REDIRECT], client_name: 'Claude' },
+      query: {},
+      headers: {},
+      ip: '5.6.7.8',
+    });
+    const res = await oauth({
+      method: 'POST',
+      path: '/oauth/authorize',
+      body: {
+        client_id: JSON.parse(reg.body).client_id,
+        redirect_uri: REDIRECT,
+        state: 's',
+        code_challenge: 'c'.repeat(43),
+        code_challenge_method: 'S256',
+        email: 'd@test.dev',
+        password: 'right',
+      },
+      query: {},
+      headers: {},
+      ip: '5.6.7.8',
+    });
+    assert.equal(res.status, 400, 'no code: the sign-in page again, with the reason');
+    assert.match(res.body, /kept only on your phone/);
+  });
+
+  it('on again: the phone sends its rows and they win over the empty ones', async () => {
+    await as(D);
+    await db.exec('select public.set_sync(true)');
+    await db.exec(
+      `select public.sync_push('profiles', '[{"id": "${D}", "name": "Dee", "updated_at": "2026-10-17T10:00:00Z"}]'::jsonb, '[]'::jsonb)`,
+    );
+    assert.equal((await one('select name from public.profiles')).name, 'Dee');
+    assert.equal((await me()).status, 200);
   });
 });

@@ -29,8 +29,9 @@
         <ul>
           <li>
             FFT keeps your workouts, food, body data and photos <strong>on your device</strong>.
-            With an account, a copy is also kept <strong>on our server</strong> so you can use other
-            devices and the web app.
+            With an account you can choose to also keep a copy <strong>on our server</strong> (in the
+            EU), so you can use other devices, the web app and AI apps. It is optional: you choose
+            when you create the account, and turning it off deletes the copy on the server.
           </li>
           <li>
             Weight, food, workouts and photos are <strong>health data</strong>. We use them only to
@@ -65,8 +66,26 @@
       <ul>
         <li>
           <strong>With an account</strong> (email and password). Your data is saved on each device
-          you use and synced in the background with our server, so it is the same everywhere. The
-          app works offline and sends changes when it can.
+          you use. When you create the account the app asks whether to <strong>keep a copy on our
+          server</strong>; nothing is preselected and nothing is sent before you choose.
+          <ul>
+            <li>
+              <strong>Copy on the server on</strong>: your data is synced in the background with our
+              server, so it is the same on every device and in the web app, AI apps you connect
+              (Claude, ChatGPT, your own tools) can use it, and you get it back if you lose your
+              phone. The app works offline and sends changes when it can.
+            </li>
+            <li>
+              <strong>Copy on the server off</strong>: your data stays on the phone. The server only
+              keeps your account (email, password and an empty profile and settings record). The
+              web app, other devices and AI apps cannot see your data.
+            </li>
+          </ul>
+          You can change this at any time in Privacy &amp; data &gt; Keep a copy on the server.
+          Turning it off deletes the copy of your data and photos on our server right away (it
+          cannot be undone; the phone keeps everything). Turning it on again sends everything on
+          the phone. Accounts created before this choice existed keep their copy until they turn it
+          off.
         </li>
         <li>
           <strong>Without an account</strong> ("Use without an account"). Everything stays on that
@@ -245,8 +264,8 @@
           also blur progress photos and lock them behind Face ID, fingerprint or passcode.
         </li>
         <li>
-          <strong>On our server</strong>, for accounts: hosted by Railway, in the European Union
-          (Amsterdam, Netherlands).
+          <strong>On our server</strong>, for accounts that keep a copy there (optional, section 2):
+          hosted by Railway, in the European Union (Amsterdam, Netherlands).
 
           Only Railway's private network reaches the database; every table has rules so that each
           account can only read and change its own rows. Progress photos are in a private storage
@@ -318,7 +337,9 @@
       <h2 id="retention">7. How long we keep it</h2>
       <ul>
         <li>
-          <strong>Your account and app data</strong>: until you delete your account. Most things you
+          <strong>Your account and app data</strong>: the copy on the server is kept until you turn
+          it off or delete your account (then it is deleted at once; it may remain in the backups
+          until they expire). Most things you
           delete in the app are deleted from the server too, leaving only a marker (table and row
           id) so your other devices delete them as well; a few (for example replaced meals or plan
           items) are kept marked as deleted so your history stays correct. All of it goes when you

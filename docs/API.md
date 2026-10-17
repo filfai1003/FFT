@@ -1,6 +1,6 @@
 # FFT API and MCP server
 
-For every account (all accounts keep their data online, DECISIONS 47). Code: `server/api.js` (api service),
+For every account that keeps a copy of its data on the server (DECISIONS 47, 62). Code: `server/api.js` (api service),
 tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & MCP.
 
 - Base: `https://fft-api.up.railway.app`
@@ -13,6 +13,10 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
   `{ "error": "This token is read only: …" }`. Over MCP a read-only connection lists only the read
   tools, and a write tool in `tools/call` comes back with `isError: true`. Server side:
   `api_tokens.scope` (`read` / `write`), resolved by `api_token_access(hash)`.
+- Copy on the server (DECISIONS 62): an account that keeps its data on the phone only has nothing
+  here. Its tokens answer `403` with `{ "error": "Keep a copy on the server is off …" }` (REST
+  and MCP), `create_api_token` refuses (SQLSTATE 55000) and the sign-in for AI apps shows why
+  instead of giving a code. Tokens stay listed in the app and work again once the copy is on.
 - Limit: 120 requests a minute per account. Bodies are JSON (at most 64 KB).
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units
   are metric. Writes reach the user's phones with the next sync.
@@ -84,4 +88,5 @@ that changes data (the app asks for each change and offers Undo).
 
 Ranges default to the last 7 days, at most a year. Errors: `{ "error": "…" }` with 400 (bad
 input or a database rule, e.g. a weight out of range), 401 (no token, revoked, or the plan no
-longer includes the API), 403 (a read-only token asked to change data), 404, 429. In MCP a tool error is a result with `isError: true`.
+longer includes the API), 403 (a read-only token asked to change data, or the account turned its
+copy on the server off), 404, 429. In MCP a tool error is a result with `isError: true`.

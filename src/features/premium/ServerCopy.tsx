@@ -1,0 +1,354 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Platform, View } from 'react-native';
+import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FormHeader } from '@/components/ui/FormHeader';
+import { Icon } from '@/components/ui/Icon';
+import { OptionCard } from '@/components/ui/OptionCard';
+import { Screen } from '@/components/ui/Screen';
+import { Sheet } from '@/components/ui/Sheet';
+import { Text } from '@/components/ui/Text';
+import { Toggle } from '@/components/ui/Toggle';
+import { useTheme } from '@/design/use-theme';
+import { signOut } from '@/features/auth/api';
+import { useSessionStore } from '@/features/auth/session-store';
+import { LegalLinks } from '@/features/legal/LegalLinks';
+import { useSyncChoice } from '@/lib/plan';
+import { useToastStore } from '@/lib/toast-store';
+import { turnSyncOff, turnSyncOn } from './sync';
+
+/**
+ * Keep a copy on the server (DECISIONS 62): what it gives and what it means, the choice a new
+ * account makes, the switch in Privacy & data, and the notes where a feature needs it.
+ */
+
+/** What the copy on the server gives, and that it lives on our server in the EU. */
+export function ServerCopyFacts() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: 10 }}>
+      <Text variant="bodyS">{t('serverCopy.givesTitle')}</Text>
+      {(['devices', 'ai', 'recover'] as const).map((k) => (
+        <View key={k} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+          <Icon name="check" size={18} color={colors.text} />
+          <Text variant="bodyS" style={{ flex: 1 }}>
+            {t(`serverCopy.gives.${k}`)}
+          </Text>
+        </View>
+      ))}
+      <Text variant="bodyS" style={{ paddingTop: 4 }}>
+        {t('serverCopy.meansTitle')}
+      </Text>
+      <Text variant="bodyS" muted>
+        {t('serverCopy.means')}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * A new account chooses before anything is stored on the server: two options, none preselected.
+ * Shown once, right after sign-up (and on any device until the choice is made).
+ */
+export function SyncChoiceScreen({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
+  const barHeight = useActionBarHeight();
+  const userId = useSessionStore((s) => s.userId);
+  const [choice, setChoice] = useState<'on' | 'off' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const save = async () => {
+    if (!userId || choice == null) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      if (choice === 'on') await turnSyncOn(userId);
+      else await turnSyncOff(userId);
+      onDone();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Screen scroll bottomBarHeight={barHeight + 24} gap={20}>
+        <FormHeader left={{ label: t('onboarding.signOut'), onPress: () => void signOut() }} />
+        <View style={{ gap: 8 }}>
+          <Text variant="displayM" accessibilityRole="header">
+            {t('serverCopy.chooseTitle')}
+          </Text>
+          <Text muted>{t('serverCopy.chooseIntro')}</Text>
+        </View>
+        <Card gap={10}>
+          <ServerCopyFacts />
+          <LegalLinks pages={['privacy']} />
+        </Card>
+        <View style={{ gap: 12 }} accessibilityRole="radiogroup">
+          <OptionCard
+            title={t('serverCopy.optionOn')}
+            description={t('serverCopy.optionOnDetail')}
+            selected={choice === 'on'}
+            onPress={() => setChoice('on')}
+          />
+          <OptionCard
+            title={t('serverCopy.optionOff')}
+            description={t('serverCopy.optionOffDetail')}
+            selected={choice === 'off'}
+            onPress={() => setChoice('off')}
+          />
+        </View>
+        {failed ? (
+          <Text variant="bodyS" danger accessibilityRole="alert">
+            {t('serverCopy.saveFailed')}
+          </Text>
+        ) : null}
+      </Screen>
+      <BottomActionBar>
+        <Button
+          size="large"
+          label={busy ? t('serverCopy.working') : t('common.continue')}
+          disabled={busy || choice == null}
+          onPress={() => void save()}
+        />
+      </BottomActionBar>
+    </>
+  );
+}
+
+/**
+ * Turning the copy on: explained first (the data goes to our server in the EU), on only after
+ * the button. `onDone` runs once it is on.
+ */
+export function TurnSyncOnSheet({
+  visible,
+  onClose,
+  onDone,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onDone?: () => void;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const userId = useSessionStore((s) => s.userId);
+  const showToast = useToastStore((s) => s.show);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const confirm = async () => {
+    if (!userId) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      await turnSyncOn(userId);
+      await queryClient.invalidateQueries();
+      onClose();
+      showToast({ message: t('serverCopy.turnedOn') });
+      onDone?.();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={t('serverCopy.turnOnTitle')}
+      closeLabel={t('common.close')}
+      footer={
+        <View style={{ gap: 8 }}>
+          <Button
+            size="large"
+            label={busy ? t('serverCopy.working') : t('serverCopy.turnOnConfirm')}
+            disabled={busy}
+            onPress={() => void confirm()}
+          />
+          <Button variant="secondary" label={t('common.cancel')} onPress={onClose} />
+        </View>
+      }
+    >
+      <Text muted>{t('serverCopy.turnOnBody')}</Text>
+      <ServerCopyFacts />
+      {failed ? (
+        <Text variant="bodyS" danger accessibilityRole="alert">
+          {t('serverCopy.failed')}
+        </Text>
+      ) : null}
+    </Sheet>
+  );
+}
+
+/**
+ * Turning the copy off deletes it on the server: it cannot be undone, so it is confirmed here
+ * instead of offering UNDO (like Delete account).
+ */
+function TurnSyncOffSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const userId = useSessionStore((s) => s.userId);
+  const showToast = useToastStore((s) => s.show);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const confirm = async () => {
+    if (!userId) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      await turnSyncOff(userId);
+      await queryClient.invalidateQueries();
+      onClose();
+      showToast({ message: t('serverCopy.turnedOff') });
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title={t('serverCopy.turnOffTitle')}
+      closeLabel={t('common.close')}
+      footer={
+        <View style={{ gap: 8 }}>
+          <Button
+            size="large"
+            variant="danger"
+            label={busy ? t('serverCopy.working') : t('serverCopy.turnOffConfirm')}
+            disabled={busy}
+            onPress={() => void confirm()}
+          />
+          <Button variant="secondary" label={t('serverCopy.keepOn')} onPress={onClose} />
+        </View>
+      }
+    >
+      <Text muted>{t('serverCopy.turnOffBody')}</Text>
+      {failed ? (
+        <Text variant="bodyS" danger accessibilityRole="alert">
+          {t('serverCopy.failed')}
+        </Text>
+      ) : null}
+    </Sheet>
+  );
+}
+
+/** Privacy & data: the switch. Off asks first and deletes the copy; on explains first. */
+export function ServerCopyCard() {
+  const { t } = useTranslation();
+  const choice = useSyncChoice();
+  const [sheet, setSheet] = useState<'on' | 'off' | null>(null);
+  const on = choice === 'on';
+  // The web app lives on the copy: turning it off happens in the phone app.
+  const web = Platform.OS === 'web';
+
+  return (
+    <>
+      <Card size="small" gap={6}>
+        <View
+          style={{
+            minHeight: 60,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="bodyS">{t('serverCopy.title')}</Text>
+            <Text variant="label" muted>
+              {on ? t('serverCopy.onDetail') : t('serverCopy.offDetail')}
+            </Text>
+          </View>
+          {web ? null : (
+            <Toggle
+              value={on}
+              onValueChange={(v) => setSheet(v ? 'on' : 'off')}
+              accessibilityLabel={t('serverCopy.title')}
+            />
+          )}
+        </View>
+        {web ? (
+          <Text variant="label" muted>
+            {t('serverCopy.webNote')}
+          </Text>
+        ) : null}
+      </Card>
+      <TurnSyncOnSheet visible={sheet === 'on'} onClose={() => setSheet(null)} />
+      <TurnSyncOffSheet visible={sheet === 'off'} onClose={() => setSheet(null)} />
+    </>
+  );
+}
+
+/**
+ * Where a feature reads the copy on the server (API, MCP, AI apps) and it is off: says so and
+ * offers to turn it on. Renders nothing when the copy is on.
+ */
+export function SyncNeededCard() {
+  const { t } = useTranslation();
+  const choice = useSyncChoice();
+  const [asking, setAsking] = useState(false);
+  if (choice === 'on') return null;
+  return (
+    <>
+      <Card gap={10}>
+        <Text variant="bodyS">{t('serverCopy.neededTitle')}</Text>
+        <Text variant="bodyS" muted>
+          {t('serverCopy.neededBody')}
+        </Text>
+        <Button
+          variant="secondary"
+          label={t('serverCopy.turnOnConfirm')}
+          onPress={() => setAsking(true)}
+        />
+      </Card>
+      <TurnSyncOnSheet visible={asking} onClose={() => setAsking(false)} />
+    </>
+  );
+}
+
+/**
+ * The web app for an account without a copy on the server: its data is on the phone only, so
+ * there is nothing to show here. It can be turned on (here or in the phone app) or the user signs
+ * out.
+ */
+export function WebSyncOffScreen({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  return (
+    <>
+      <Screen scroll bottomBarHeight={24} gap={16}>
+        <View style={{ gap: 8, paddingTop: 24 }}>
+          <Text variant="screenTitle" accessibilityRole="header">
+            {t('serverCopy.webTitle')}
+          </Text>
+          <Text muted>{t('serverCopy.webBody')}</Text>
+        </View>
+        <Card gap={10}>
+          <ServerCopyFacts />
+        </Card>
+        <Button
+          size="large"
+          label={t('serverCopy.turnOnConfirm')}
+          onPress={() => setAsking(true)}
+        />
+        <Button variant="secondary" label={t('common.retry')} onPress={onRetry} />
+        <Button variant="ghost" label={t('profile.logOut')} onPress={() => void signOut()} />
+      </Screen>
+      <TurnSyncOnSheet visible={asking} onClose={() => setAsking(false)} onDone={onRetry} />
+    </>
+  );
+}
