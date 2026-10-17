@@ -8,7 +8,7 @@ Premium accounts (VIP from the admin panel, for now) keep their data here too: t
 private photo buckets; the database refuses data writes from other accounts (DECISIONS 38).
 
 ## Server (Railway project `fft`, environment `production`)
-Services, all on Railway's private network, one public URL (Kong):
+Services, all in Railway's EU region (`europe-west4-drams3a`, Amsterdam; moved from `sfo` on 2026-10-17, volumes included) and on its private network, one public URL (Kong):
 
 | Service    | Image / source                     | Notes                                           |
 |------------|------------------------------------|-------------------------------------------------|
