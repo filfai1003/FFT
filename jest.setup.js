@@ -14,3 +14,8 @@ jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
   getRandomBytes: (n) => new Uint8Array(require('crypto').randomBytes(n)),
 }));
+
+// Animations and gestures (tab pager, exercise swipe, Today edit mode): the libraries' own mocks.
+jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
+jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+require('react-native-gesture-handler/jestSetup');

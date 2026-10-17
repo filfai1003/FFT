@@ -2,6 +2,7 @@ import { createContext, createElement, useContext, useMemo, type ReactNode } fro
 import { useColorScheme } from 'react-native';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useAppearanceStore } from './appearance-store';
+import { useOsReduceMotion, watchOsReduceMotion } from './os-motion';
 import { buildTheme, resolveMode, textScaleFor } from './theme';
 
 /** Which theme setting a part of the app follows: the app's, or the workout's. */
@@ -28,7 +29,11 @@ export function useTheme() {
   const textScaleStep = useAppearanceStore((s) => s.textScaleStep);
   const boldText = useAppearanceStore((s) => s.boldText);
   const dotNumbers = useAppearanceStore((s) => s.dotNumbers);
-  const reduceMotion = useAppearanceStore((s) => s.reduceMotion);
+  watchOsReduceMotion();
+  // The app's setting or the phone's: either one turns movement off.
+  const reduceMotionSetting = useAppearanceStore((s) => s.reduceMotion);
+  const osReduceMotion = useOsReduceMotion((s) => s.value);
+  const reduceMotion = reduceMotionSetting || osReduceMotion;
   const oneHandMode = useAppearanceStore((s) => s.oneHandMode);
 
   return useMemo(

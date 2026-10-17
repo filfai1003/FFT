@@ -1,12 +1,9 @@
-import { Tabs } from 'expo-router';
-import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabBar, type TabBarItem } from '@/components/ui/TabBar';
 import { useTheme } from '@/design/use-theme';
+import { SwipeTabs, type SwipeTabBarProps } from '@/features/navigation/SwipeTabs';
 import { AddSheet, useAddSheet } from '@/features/today/AddSheet';
 import type { IconName } from '@/components/ui/Icon';
-
-type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
 const tabs = [
   { name: 'index', icon: 'home', label: 'nav.today' },
@@ -15,7 +12,10 @@ const tabs = [
   { name: 'progress', icon: 'chart', label: 'nav.progress' },
 ] as const satisfies readonly { name: string; icon: IconName; label: string }[];
 
-function AppTabBar({ state, navigation }: TabBarProps) {
+/** The swipeable pages, in order (the "+" in the middle of the bar is not a page). */
+const pages = tabs.map((tab) => tab.name);
+
+function AppTabBar({ state, navigation, position }: SwipeTabBarProps) {
   const { t } = useTranslation();
   const openAdd = useAddSheet((st) => st.set);
   const items: TabBarItem[] = state.routes.flatMap((route, index) => {
@@ -47,29 +47,28 @@ function AppTabBar({ state, navigation }: TabBarProps) {
   return (
     <TabBar
       items={items}
+      position={position}
       action={{ label: t('add.title'), icon: 'plus', onPress: () => openAdd(true) }}
     />
   );
 }
 
+/** Today, Diet, Train and Progress side by side: tap a tab or swipe between them (DECISIONS 70). */
 export default function TabsLayout() {
   const { colors } = useTheme();
   return (
     <>
-      <Tabs
+      <SwipeTabs
+        pages={pages}
         tabBar={(props) => <AppTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-          animation: 'fade',
-          sceneStyle: { backgroundColor: colors.bg },
-        }}
+        screenOptions={{ sceneStyle: { backgroundColor: colors.bg } }}
       >
         {tabs.map((tab) => (
           // Leaving a tab resets its stack: coming back shows the tab's first page, never a detail page
           // that was opened from elsewhere (e.g. the calendar opened from Today).
-          <Tabs.Screen key={tab.name} name={tab.name} options={{ popToTopOnBlur: true }} />
+          <SwipeTabs.Screen key={tab.name} name={tab.name} options={{ popToTopOnBlur: true }} />
         ))}
-      </Tabs>
+      </SwipeTabs>
       <AddSheet />
     </>
   );
