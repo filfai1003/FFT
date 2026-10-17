@@ -7,6 +7,12 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
 - Auth: `Authorization: Bearer fft_…` (a personal token made in the app; shown once, only its
   SHA-256 is stored; revoke it in the app). Every request runs as the token's user with row level
   security, like the app.
+- Permission (DECISIONS 59): each token and each connected AI app is **read and write** or
+  **read only**, chosen when the token is made (or on the sign-in page). A read-only token can call
+  only the tools that do not change data; any other call answers `403` with
+  `{ "error": "This token is read only: …" }`. Over MCP a read-only connection lists only the read
+  tools, and a write tool in `tools/call` comes back with `isError: true`. Server side:
+  `api_tokens.scope` (`read` / `write`), resolved by `api_token_access(hash)`.
 - Limit: 120 requests a minute per account. Bodies are JSON (at most 64 KB).
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units
   are metric. Writes reach the user's phones with the next sync.
@@ -19,7 +25,10 @@ Without a token `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metad
 reads `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
 registers at `/oauth/register`, opens `/oauth/authorize` (FFT email and password, checked by the
 auth service; any account) and gets tokens at `/oauth/token` (access 7 days, then
-renewed with the refresh token). Each connection is a token row named after the app, listed and
+renewed with the refresh token). The sign-in page asks **Read and write** (preselected) or **Read
+only**; an app can ask for read only with the standard `scope=read` (supported scopes: `read`,
+`write`; the older `fft` means write), but the user's choice on the page wins. The token response's
+`scope` says what was granted, and a refresh keeps it. Each connection is a token row named after the app, listed and
 revocable in the app. In the app, Settings → API & MCP → Add to Claude / Add to ChatGPT copies the
 address and opens that app's connectors page.
 
@@ -75,4 +84,4 @@ that changes data (the app asks for each change and offers Undo).
 
 Ranges default to the last 7 days, at most a year. Errors: `{ "error": "…" }` with 400 (bad
 input or a database rule, e.g. a weight out of range), 401 (no token, revoked, or the plan no
-longer includes the API), 404, 429. In MCP a tool error is a result with `isError: true`.
+longer includes the API), 403 (a read-only token asked to change data), 404, 429. In MCP a tool error is a result with `isError: true`.

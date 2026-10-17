@@ -16,6 +16,18 @@ const b64url = (buf) =>
 const secret = (prefix) => `${prefix}${randomBytes(32).toString('hex')}`;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/**
+ * The permission an app asks for with the standard `scope` parameter: "read" alone = read only;
+ * "write" (or the older "fft", or nothing) = read and write. The user's choice on the page wins.
+ */
+const requestedScope = (scope) => {
+  const asked = String(scope ?? '').split(/\s+/);
+  return asked.includes('read') && !asked.includes('write') && !asked.includes('fft')
+    ? 'read'
+    : 'write';
+};
+const SCOPES = ['read', 'write'];
+
 /** https anywhere, or http only on this computer (desktop apps listening locally). */
 const allowedRedirect = (u) => {
   try {
@@ -63,12 +75,12 @@ export function createOAuth({ sql, signIn, base }) {
     grant_types_supported: ['authorization_code', 'refresh_token'],
     code_challenge_methods_supported: ['S256'],
     token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
-    scopes_supported: ['fft'],
+    scopes_supported: SCOPES,
   };
   const resource = {
     resource: `${base}/mcp`,
     authorization_servers: [base],
-    scopes_supported: ['fft'],
+    scopes_supported: SCOPES,
     bearer_methods_supported: ['header'],
     resource_name: 'FFT',
   };
@@ -127,6 +139,10 @@ export function createOAuth({ sql, signIn, base }) {
     ]
       .map((k) => `<input type="hidden" name="${k}" value="${esc(p[k])}">`)
       .join('');
+    // Preselected: what the user picked before a wrong password, else what the app asked for.
+    const access = SCOPES.includes(p.access) ? p.access : requestedScope(p.scope);
+    const choice = (value, title, detail) =>
+      `<label class="opt"><input type="radio" name="access" value="${value}"${access === value ? ' checked' : ''}><span><b>${title}</b><br><span class="muted">${detail}</span></span></label>`;
     const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sign in to FFT</title>
@@ -140,10 +156,19 @@ label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
 input[type=email],input[type=password]{width:100%;font-size:16px;padding:14px;border:1px solid var(--control);border-radius:14px;background:var(--surface);color:var(--text)}
 button{width:100%;margin-top:22px;padding:15px;font-size:16px;font-weight:600;border:0;border-radius:16px;background:var(--accent);color:#fff;cursor:pointer}
 .err{color:var(--danger);margin:14px 0 0}
+fieldset{border:0;margin:18px 0 0;padding:0}legend{font-size:13px;color:var(--muted);padding:0;margin:0 0 6px}
+.opt{display:flex;gap:12px;align-items:flex-start;margin:0 0 8px;padding:12px 14px;min-height:52px;border:1px solid var(--control);border-radius:14px;color:var(--text);font-size:15px;cursor:pointer}
+.opt:has(input:checked){border:2px solid var(--text);padding:11px 13px}
+.opt input{margin:3px 0 0;width:20px;height:20px;accent-color:var(--text);flex:none}
+.muted{color:var(--muted);font-size:14px}
 </style></head><body><main>
 <h1>FFT</h1>
-<p><b>${esc(client.name)}</b> wants to read and change your FFT data: training, diet, body and supplements.</p>
+<p><b>${esc(client.name)}</b> wants to use your FFT data: training, diet, body and supplements.</p>
 <form method="post" action="/oauth/authorize">${hidden}
+<fieldset><legend>What ${esc(client.name)} can do</legend>
+${choice('write', 'Read and write', 'Read your data and add or change entries, goals and plans.')}
+${choice('read', 'Read only', 'Read your data. It cannot change anything.')}
+</fieldset>
 <label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required autofocus value="${esc(p.email)}">
 <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required>
 ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
@@ -188,10 +213,12 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     const userId = await signIn(String(p.email ?? '').trim(), String(p.password ?? ''));
     if (!userId) return page(p, client, 'Wrong email or password.');
     const code = secret('fftac_');
+    // The user's choice on the page wins over the app's `scope`.
+    const scope = SCOPES.includes(p.access) ? p.access : requestedScope(p.scope);
     await sql(
-      `insert into public.oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
-       values ($1, $2, $3, $4, $5, now() + make_interval(mins => $6))`,
-      [sha256(code), client.id, userId, p.redirect_uri, p.code_challenge, CODE_MINUTES],
+      `insert into public.oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at, scope)
+       values ($1, $2, $3, $4, $5, now() + make_interval(mins => $6), $7)`,
+      [sha256(code), client.id, userId, p.redirect_uri, p.code_challenge, CODE_MINUTES, scope],
     );
     const back = new URL(p.redirect_uri);
     back.searchParams.set('code', code);
@@ -237,7 +264,7 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
       token_type: 'Bearer',
       expires_in: ACCESS_DAYS * 86400,
       refresh_token: refresh,
-      scope: 'fft',
+      scope: row.scope,
     });
   }
 
@@ -248,7 +275,7 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
       const [code] = await sql(
         `update public.oauth_codes set deleted_at = now()
          where code_hash = $1 and deleted_at is null and expires_at > now()
-         returning client_id, user_id, redirect_uri, code_challenge`,
+         returning client_id, user_id, redirect_uri, code_challenge, scope`,
         [sha256(String(p.code ?? ''))],
       );
       if (!code || code.client_id !== client.id || code.redirect_uri !== p.redirect_uri)
@@ -263,15 +290,16 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
         [client.id, code.user_id],
       );
       const [row] = await sql(
-        `insert into public.api_tokens (user_id, name, prefix, token_hash, client_id)
-         values ($1, $2, 'fft_', $3, $4) returning id`,
-        [code.user_id, client.name, sha256(secret('pending_')), client.id],
+        `insert into public.api_tokens (user_id, name, prefix, token_hash, client_id, scope)
+         values ($1, $2, 'fft_', $3, $4, $5) returning id, scope`,
+        [code.user_id, client.name, sha256(secret('pending_')), client.id, code.scope],
       );
       return issue(row);
     }
     if (p.grant_type === 'refresh_token') {
       const [row] = await sql(
-        `select id, user_id from public.api_tokens
+        // The connection keeps the permission chosen at sign-in.
+        `select id, user_id, scope from public.api_tokens
          where refresh_hash = $1 and client_id = $2 and deleted_at is null`,
         [sha256(String(p.refresh_token ?? '')), client.id],
       );
