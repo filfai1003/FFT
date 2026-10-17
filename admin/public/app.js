@@ -1207,6 +1207,11 @@ const TABLE_INFO = {
   ],
   admin_audit: ['App', 'Change log', 'Every change made with editing unlocked.'],
   sync_tombstones: ['App', 'Sync deletions', 'Deletions waiting to reach other devices.'],
+  account_sync: [
+    'App',
+    'Copy on the server',
+    'Whether each account keeps a copy of its data on the server (no row: not chosen yet).',
+  ],
 };
 const GROUP_ORDER = ['People', 'Training', 'Diet', 'Body', 'Supplements', 'AI', 'App'];
 

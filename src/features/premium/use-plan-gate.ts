@@ -1,28 +1,28 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSessionStore } from '@/features/auth/session-store';
 import { getMode } from '@/lib/mode';
-import { loadPlan, resetPlan, savePlan } from '@/lib/plan';
-import { fetchPlan, startSync, stopSync } from './sync';
+import { loadPlan, resetPlan, savePlan, type SyncChoice } from '@/lib/plan';
+import { detachSync, fetchPlan, fetchSyncChoice, finishServerCleanup, startSync } from './sync';
 
 export type PlanPhase =
   | { kind: 'checking' }
   | { kind: 'ready' }
-  | { kind: 'moving'; direction: 'up' | 'down' }
-  | { kind: 'paywall' }
-  | { kind: 'error'; direction: 'up' | 'down' };
+  /** A new account that has not said yet whether to keep a copy on the server. */
+  | { kind: 'choose' }
+  /** The web app without a copy on the server: it has no data to show. */
+  | { kind: 'webOff' };
 
 const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T) =>
   Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
 
 /**
- * Before the app shows any data: asks the server whether the account is premium and, when the
- * answer changed, moves the data (phone -> server when premium starts, server -> phone when it
- * ends). On the web, accounts that are not premium only get the premium page.
+ * Before the app shows any data: asks the server for the account's plan and whether it keeps a
+ * copy on the server (DECISIONS 62), and starts or ends the sync on this device when that
+ * changed (turned on or off here, on another phone or on the web). A new account first chooses;
+ * the web app, which has no data of its own, needs the copy on the server.
  */
 export function usePlanGate() {
-  const queryClient = useQueryClient();
   const status = useSessionStore((s) => s.status);
   const userId = useSessionStore((s) => s.userId);
   const cloud = status === 'signedIn' && getMode() === 'cloud' && userId != null;
@@ -41,64 +41,61 @@ export function usePlanGate() {
       set({ kind: 'checking' });
       // Known on this device: start at once (offline too) and ask the server in the background;
       // a different answer runs this again. Never asked yet: wait for the server (8 s at most).
-      // "premium" here = the data is kept online: every account (DECISIONS 47).
-      const asking = fetchPlan().then((plan) => (plan == null ? null : { plan, online: true }));
-      let fetched: boolean | null = null;
-      if (saved.premium == null || saved.plan == null) {
+      const asking = Promise.all([fetchPlan(), fetchSyncChoice()]).then(([plan, sync]) =>
+        sync == null ? null : { plan, sync },
+      );
+      const keep = (answer: { plan: Awaited<ReturnType<typeof fetchPlan>>; sync: SyncChoice }) =>
+        savePlan(userId, { ...(answer.plan ? { plan: answer.plan } : {}), sync: answer.sync });
+      let fetched: SyncChoice | null = null;
+      if (saved.sync == null || saved.plan == null) {
         const answer = await withTimeout(asking, 8000, null);
         if (answer) {
-          fetched = answer.online;
-          await savePlan(userId, { plan: answer.plan, premium: answer.online });
+          fetched = answer.sync;
+          await keep(answer);
         }
       } else {
         void asking.then(async (answer) => {
           if (answer == null || !live) return;
-          await savePlan(userId, { plan: answer.plan, premium: answer.online });
-          if (answer.online !== saved.premium) setAttempt((n) => n + 1);
+          await keep(answer);
+          if (answer.sync !== saved.sync) setAttempt((n) => n + 1);
         });
       }
-      const premium = fetched ?? saved.premium ?? false;
-      // Only a "no" from the server ends premium (now or on an earlier start), never a timeout.
-      const confirmedFree = fetched === false || (fetched == null && saved.premium === false);
+      // null: never known here and the server could not be reached: nothing is synced meanwhile.
+      const sync = fetched ?? saved.sync;
 
-      if (premium) {
-        // Premium: the device keeps working on its own database; the sync runs in the
-        // background (use-sync.ts). The first time, everything on the device is queued to go up.
+      if (sync === 'on') {
+        // The device keeps working on its own database; the sync runs in the background
+        // (use-sync.ts). The first time, everything on the device is queued to go up.
         if (saved.home === 'device') {
           await startSync(userId);
           await savePlan(userId, { home: 'online' });
         }
         return set({ kind: 'ready' });
       }
-      // On the web the app is for premium accounts only.
-      if (Platform.OS === 'web') return set({ kind: 'paywall' });
-      // Premium ended (the server said so): keep everything here, clear the server.
-      if (confirmedFree && saved.home === 'online') {
-        set({ kind: 'moving', direction: 'down' });
-        try {
-          await stopSync(userId);
+      if (sync === 'off') {
+        // Turned off elsewhere: the server copy is already gone; this device keeps everything.
+        if (saved.home === 'online') {
+          await detachSync(userId);
           await savePlan(userId, { home: 'device' });
-          queryClient.clear();
-          set({ kind: 'ready' });
-        } catch {
-          set({ kind: 'error', direction: 'down' });
         }
-        return;
+        // Files an earlier "turn off" on this device could not remove yet.
+        void finishServerCleanup(userId);
       }
+      if (sync === 'undecided') return set({ kind: 'choose' });
+      if (Platform.OS === 'web') return set({ kind: 'webOff' });
       set({ kind: 'ready' });
     })();
     return () => {
       live = false;
     };
-  }, [cloud, userId, attempt, queryClient]);
+  }, [cloud, userId, attempt]);
 
+  /** Runs the checks again (after a choice was saved, or to retry). */
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  /** Premium started but the upload failed: keep working on the phone, try again next time. */
-  const later = useCallback(() => setPhase({ kind: 'ready', for: userId }), [userId]);
 
   // Not signed in to an account (sign-in screens, account-less mode): nothing to decide.
-  if (!cloud) return { phase: { kind: 'ready' } as PlanPhase, retry, later };
+  if (!cloud) return { phase: { kind: 'ready' } as PlanPhase, retry };
   // A phase computed for another account is stale until the effect runs again.
-  if (phase.for !== userId) return { phase: { kind: 'checking' } as PlanPhase, retry, later };
-  return { phase: phase as PlanPhase, retry, later };
+  if (phase.for !== userId) return { phase: { kind: 'checking' } as PlanPhase, retry };
+  return { phase: phase as PlanPhase, retry };
 }

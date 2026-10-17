@@ -14,14 +14,14 @@ import { checkSync, resendAll, useSyncStatus, type SyncCheck } from './sync';
 const sinceLabel = (iso: string, now: number) => Math.round((now - Date.parse(iso)) / 60000);
 
 /**
- * Supporter and Premium: when this phone last synced, and a check that syncs now and compares
+ * With a copy on the server (DECISIONS 62): when this phone last synced, and a check that syncs now and compares
  * the items here and online, table by table, with a way to send everything again.
  */
 export function SyncCard({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const queryClient = useQueryClient();
-  const online = usePlanStore((s) => s.premium === true && s.home === 'online');
+  const online = usePlanStore((s) => s.sync === 'on' && s.home === 'online');
   const lastAt = useSyncStatus((s) => s.lastAt);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SyncCheck | null>(null);

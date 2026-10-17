@@ -78,7 +78,7 @@ async function signedIn(userId: string) {
   await setMode('cloud');
   setCurrentUserId(userId);
   useAuth.setState({ status: 'signedIn', session: null, userId });
-  usePlanStore.setState({ userId, plan: 'premium', premium: true, home: 'online' });
+  usePlanStore.setState({ userId, plan: 'premium', sync: 'on', home: 'online' });
   mockSteps.length = 0;
   mockServer.deleteError = null;
   mockServer.localAtDelete = null;
@@ -140,7 +140,7 @@ describe('delete the account, keep the data on this phone', () => {
     expect(useConversations.getState().conversations[chat].userId).toBe(LOCAL_USER_ID);
     expect(getMode()).toBe('offline');
     expect(useAuth.getState()).toMatchObject({ status: 'signedIn', userId: LOCAL_USER_ID });
-    expect(usePlanStore.getState()).toMatchObject({ userId: null, plan: null, premium: null });
+    expect(usePlanStore.getState()).toMatchObject({ userId: null, plan: null, sync: null });
     expect(queryClient.clear).toHaveBeenCalled();
   });
 

@@ -29,6 +29,7 @@ import {
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
 import { importExport, pickExportFile } from './import';
 import { useSessionStore } from '@/features/auth/session-store';
+import { ServerCopyCard } from '@/features/premium/ServerCopy';
 import { SyncCard } from '@/features/premium/SyncCard';
 import { usePrivacyStore } from './privacy-store';
 
@@ -237,6 +238,8 @@ export function PrivacyScreen() {
           ) : null}
         </Card>
 
+        {/* Keep a copy on the server (DECISIONS 62): accounts only. */}
+        {userId && getMode() === 'cloud' ? <ServerCopyCard /> : null}
         {userId ? <SyncCard userId={userId} /> : null}
 
         <Card size="small" gap={0}>

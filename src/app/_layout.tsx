@@ -12,8 +12,7 @@ import { Text } from '@/components/ui/Text';
 import { startAuthListener, useSessionStore } from '@/features/auth/session-store';
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
-import { PlanMoveScreen } from '@/features/premium/PlanMoveScreen';
-import { PremiumScreen } from '@/features/premium/PremiumScreen';
+import { SyncChoiceScreen, WebSyncOffScreen } from '@/features/premium/ServerCopy';
 import { usePlanGate } from '@/features/premium/use-plan-gate';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
@@ -79,16 +78,14 @@ export default function RootLayout() {
 }
 
 /**
- * First where the account's data lives (premium = online, moved when the plan changed; on the web
- * only premium accounts get in), then the routes.
+ * First whether the account keeps a copy on the server (DECISIONS 62: a new account chooses; the
+ * web app needs the copy), then the routes.
  */
 function AppNavigator() {
-  const { phase, retry, later } = usePlanGate();
+  const { phase, retry } = usePlanGate();
   if (phase.kind === 'checking') return <Screen>{null}</Screen>;
-  if (phase.kind === 'paywall') return <PremiumScreen gate />;
-  if (phase.kind === 'moving') return <PlanMoveScreen direction={phase.direction} />;
-  if (phase.kind === 'error')
-    return <PlanMoveScreen direction={phase.direction} failed onRetry={retry} onLater={later} />;
+  if (phase.kind === 'choose') return <SyncChoiceScreen onDone={retry} />;
+  if (phase.kind === 'webOff') return <WebSyncOffScreen onRetry={retry} />;
   return <AppRoutes />;
 }
 
@@ -102,13 +99,18 @@ function AppRoutes() {
   useNotificationGuard(status === 'signedIn');
   const consents = useConsents();
   usePendingSync(status === 'signedIn');
-  // Premium: the device's changes go to the server in the background, other devices' come back.
-  const userId = useSessionStore((st) => st.userId);
-  const syncing = usePlanStore((p) => p.home === 'online' && p.userId === userId);
-  useSync(userId, status === 'signedIn' && getMode() === 'cloud' && syncing);
-
   const signedIn = status === 'signedIn';
   const onboarded = isOnboarded(profile.data);
+  // Health data consent withdrawn: the app cannot run, but the user can still export or delete.
+  const consentWithdrawn =
+    signedIn && onboarded && consents.isSuccess && !activeConsent(consents.data, 'health_data');
+  // A copy on the server (DECISIONS 62): the device's changes go to the server in the background,
+  // other devices' come back. Paused while the consent is withdrawn: nothing is sent then.
+  const userId = useSessionStore((st) => st.userId);
+  const syncing = usePlanStore(
+    (p) => p.home === 'online' && p.sync === 'on' && p.userId === userId,
+  );
+  useSync(userId, signedIn && getMode() === 'cloud' && syncing, { paused: consentWithdrawn });
 
   if (status === 'loading' || (signedIn && profile.isPending)) return <Screen>{null}</Screen>;
 
@@ -122,10 +124,7 @@ function AppRoutes() {
     );
   }
 
-  // Health data consent withdrawn: the app cannot run, but the user can still export or delete.
-  if (signedIn && onboarded && consents.isSuccess && !activeConsent(consents.data, 'health_data')) {
-    return <ConsentGate />;
-  }
+  if (consentWithdrawn) return <ConsentGate />;
 
   return (
     <>
