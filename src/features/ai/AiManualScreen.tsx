@@ -17,6 +17,7 @@ import { buildManualPrompt, parseActions } from './agent/manual';
 import { buildSnapshot } from './agent/reads';
 import { useAgentTools, useReadContext } from './agent/use-tools';
 import { useApplyImport, type ApplyResult } from './apply';
+import { FULL_ACCESS } from './access';
 import { useAiContext } from './context';
 import { ImportPreview } from './ImportPreview';
 import { ResultNote } from './ResultNote';
@@ -28,7 +29,8 @@ export function AiManualScreen() {
   const barHeight = useTabBarHeight();
   const ctx = useAiContext();
   const read = useReadContext();
-  const tools = useAgentTools();
+  // Manual mode sends nothing: the user copies the text into an AI of their choice themselves.
+  const tools = useAgentTools(FULL_ACCESS);
   const apply = useApplyImport();
   const showToast = useToastStore((s) => s.show);
   const [request, setRequest] = useState('');

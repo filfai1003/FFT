@@ -155,6 +155,7 @@ describe('the agent loop', () => {
       .mockImplementation(async () => replies.shift()!);
     const seen: AgentMessage[] = [];
     await runAgent({
+      consented: true,
       settings,
       system: 's',
       messages: [{ id: 'u', role: 'user', text: 'hi' }],

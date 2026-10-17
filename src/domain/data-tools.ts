@@ -25,6 +25,10 @@ export type DataSource = {
   load: (table: string) => Promise<Row[]>;
   /** The table's columns (views: VIEW_COLUMNS is used instead). */
   columns: (table: string) => readonly string[];
+  /** Tables this source lets the model read (default: all of READABLE). */
+  readable?: readonly string[];
+  /** What a table holds, when this source describes it differently (e.g. columns left out). */
+  about?: Partial<Record<string, string>>;
 };
 
 /** What each table holds, for the model. Tables not listed here are not readable. */
@@ -115,13 +119,15 @@ async function exerciseNames(src: DataSource): Promise<Map<string, string>> {
   return new Map(rows.map((r) => [String(r.id), String(r.name)]));
 }
 
+const readableOf = (src: DataSource) => src.readable ?? READABLE;
+
 export async function listData(src: DataSource): Promise<unknown> {
   const tables = await Promise.all(
-    READABLE.map(async (t) => {
+    readableOf(src).map(async (t) => {
       const rows = t === 'foods' || t === 'exercises' ? null : (await src.load(t)).length;
       return {
         table: t,
-        about: ABOUT[t],
+        about: src.about?.[t] ?? ABOUT[t],
         columns: columnsOf(src, t),
         ...(rows != null ? { rows } : {}),
       };
@@ -181,8 +187,8 @@ function aggregate(rows: Row[], fn: Fn, column: string | undefined): number | nu
 
 export async function queryData(src: DataSource, input: Record<string, unknown>): Promise<unknown> {
   const table = typeof input.table === 'string' ? input.table.trim() : '';
-  if (!table || !READABLE.includes(table))
-    throw new Error(`"table" must be one of: ${READABLE.join(', ')} (see list_data)`);
+  if (!table || !readableOf(src).includes(table))
+    throw new Error(`"table" must be one of: ${readableOf(src).join(', ')} (see list_data)`);
   const cols = columnsOf(src, table);
   const known = new Set([...cols, ...(cols.includes('exercise_id') ? ['exercise_name'] : [])]);
   const col = (c: unknown, what: string): string => {

@@ -17,6 +17,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { usePlanStore } from '@/lib/plan';
 import { aiReady, effectiveAiSettings } from '@/features/ai/included';
 import { useAiSettings } from '@/features/ai/settings-store';
+import { useAiConsent } from '@/features/ai/AiConsent';
 import { CameraModal, type CapturedPhoto } from './CameraModal';
 import { readLabel } from './label-photo';
 
@@ -57,8 +58,19 @@ export function useLabelReader() {
   const router = useRouter();
   const showToast = useToastStore((s) => s.show);
   const plan = usePlanStore((s) => s.plan);
+  const { consent } = useAiConsent();
   return async (bottomOffset = 0) => {
     const settings = await loadedAiSettings();
+    // The photo goes to the AI coach's model: only after the user agreed to it (DECISIONS 66).
+    if (aiReady(settings, plan) && !consent) {
+      showToast({
+        message: t('createFood.labelNeedsConsent'),
+        actionLabel: t('createFood.labelAiSettings'),
+        onAction: () => router.push('/profile/ai'),
+        bottomOffset,
+      });
+      return null;
+    }
     if (aiReady(settings, plan)) return effectiveAiSettings(settings, plan);
     showToast({
       message: t('createFood.labelNeedsAi'),

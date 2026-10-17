@@ -63,6 +63,7 @@ export function resultSummary(result: ToolResult): string {
     const r = JSON.parse(result.content) as Record<string, unknown> | unknown[];
     if (Array.isArray(r)) return `${r.length} items`;
     if (typeof r.error === 'string') return short(r.error, 60);
+    if (typeof r.not_shared === 'string') return 'not shared';
     if (typeof r.groups === 'number') return `${r.groups} groups`;
     if (typeof r.matching_rows === 'number') return `${r.matching_rows} rows`;
     if (Array.isArray(r.tables)) return `${r.tables.length} tables`;

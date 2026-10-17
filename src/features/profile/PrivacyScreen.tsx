@@ -55,11 +55,12 @@ export function PrivacyScreen() {
   const canKeep = getMode() === 'cloud' && Platform.OS !== 'web';
 
   const health = activeConsent(consents.data, 'health_data');
-  const grantedOn = health
-    ? new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
-        new Date(health.grantedAt),
-      )
-    : '';
+  const aiConsent = activeConsent(consents.data, 'ai_coach');
+  const dateOf = (iso: string) =>
+    new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
+      new Date(iso),
+    );
+  const grantedOn = health ? dateOf(health.grantedAt) : '';
 
   const runExport = async (kind: 'full' | 'workouts') => {
     setBusy(kind);
@@ -284,6 +285,41 @@ export function PrivacyScreen() {
               variant="secondary"
               disabled={!health}
               onPress={() => setWithdraw(true)}
+            />
+          </View>
+          {/* AI coach consent (DECISIONS 66): withdrawn, the coach asks again on next use. */}
+          <View
+            style={{
+              minHeight: 60,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              borderTopWidth: 1,
+              borderColor: colors.borderDecorative,
+            }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="bodyS">{t('privacy.aiConsent')}</Text>
+              <Text variant="label" muted>
+                {aiConsent
+                  ? t('privacy.givenOn', { date: dateOf(aiConsent.grantedAt) })
+                  : t('privacy.notGiven')}
+              </Text>
+            </View>
+            <Button
+              label={t('privacy.withdraw')}
+              block={false}
+              variant="secondary"
+              disabled={!aiConsent || setConsent.isPending}
+              onPress={async () => {
+                await setConsent.mutateAsync({ type: 'ai_coach', granted: false });
+                showToast({
+                  message: t('privacy.aiWithdrawn'),
+                  actionLabel: t('common.undo'),
+                  onAction: () => setConsent.mutate({ type: 'ai_coach', granted: true }),
+                });
+              }}
             />
           </View>
         </Card>

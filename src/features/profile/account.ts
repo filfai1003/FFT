@@ -14,7 +14,8 @@ import { getAuthClient, getSupabase } from '@/lib/supabase';
 import { newId } from '@/lib/uuid';
 import { POLICY_VERSION } from '@/features/onboarding/logic';
 
-export type ConsentType = 'health_data' | 'analytics';
+/** `ai_coach`: sending messages and the data the user allows to the AI coach (DECISIONS 66). */
+export type ConsentType = 'health_data' | 'analytics' | 'ai_coach';
 export type Consent = {
   id: string;
   type: ConsentType;

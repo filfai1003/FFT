@@ -1,6 +1,7 @@
 import { createLocalClient } from '@/lib/local-db/client';
 import { LocalDb, type Kv } from '@/lib/local-db/engine';
 import { LOCAL_USER_ID } from '@/lib/local-db/schema';
+import { FULL_ACCESS } from '../access';
 import { listData, queryData, strengthReport } from './explore';
 
 function memoryKv(): Kv {
@@ -79,7 +80,7 @@ beforeAll(async () => {
 
 describe('the assistant can explore all the data', () => {
   it('list_data: every table with what it holds, its columns and its size', async () => {
-    const map = (await listData()) as {
+    const map = (await listData(FULL_ACCESS)) as {
       tables: { table: string; columns: string[]; rows?: number }[];
     };
     const body = map.tables.find((t) => t.table === 'body_metrics')!;
@@ -92,13 +93,16 @@ describe('the assistant can explore all the data', () => {
   });
 
   it('query_data: filters, columns, order and limit', async () => {
-    const r = (await queryData({
-      table: 'body_metrics',
-      columns: ['day', 'weight_kg'],
-      where: [{ column: 'day', op: '>=', value: '2026-10-02' }],
-      order_by: [{ column: 'day', desc: true }],
-      limit: 2,
-    })) as Out;
+    const r = (await queryData(
+      {
+        table: 'body_metrics',
+        columns: ['day', 'weight_kg'],
+        where: [{ column: 'day', op: '>=', value: '2026-10-02' }],
+        order_by: [{ column: 'day', desc: true }],
+        limit: 2,
+      },
+      FULL_ACCESS,
+    )) as Out;
     expect(r.matching_rows).toBe(3);
     expect(r.rows).toEqual([
       { day: '2026-10-04', weight_kg: 78.2 },
@@ -108,12 +112,15 @@ describe('the assistant can explore all the data', () => {
   });
 
   it('query_data: grouping with aggregates returns only the answer', async () => {
-    const r = (await queryData({
-      table: 'food_logs',
-      group_by: ['meal'],
-      aggregates: [{ fn: 'count' }, { fn: 'avg', column: 'protein_g' }],
-      order_by: [{ column: 'meal' }],
-    })) as Out;
+    const r = (await queryData(
+      {
+        table: 'food_logs',
+        group_by: ['meal'],
+        aggregates: [{ fn: 'count' }, { fn: 'avg', column: 'protein_g' }],
+        order_by: [{ column: 'meal' }],
+      },
+      FULL_ACCESS,
+    )) as Out;
     expect(r.rows).toEqual([
       { meal: 'breakfast', count: 1, avg_protein_g: 10 },
       { meal: 'lunch', count: 2, avg_protein_g: 25 },
@@ -121,26 +128,32 @@ describe('the assistant can explore all the data', () => {
   });
 
   it('query_data: sets carry the exercise name, which can be searched', async () => {
-    const r = (await queryData({
-      table: 'session_sets',
-      where: [{ column: 'exercise_name', op: 'contains', value: 'bench' }],
-      aggregates: [{ fn: 'max', column: 'weight_kg' }],
-    })) as Out;
+    const r = (await queryData(
+      {
+        table: 'session_sets',
+        where: [{ column: 'exercise_name', op: 'contains', value: 'bench' }],
+        aggregates: [{ fn: 'max', column: 'weight_kg' }],
+      },
+      FULL_ACCESS,
+    )) as Out;
     expect(r.rows).toEqual([{ max_weight_kg: 110 }]);
-    expect(((await queryData({ table: 'body_goals' })) as Out).rows[0]).toMatchObject({
+    expect(((await queryData({ table: 'body_goals' }, FULL_ACCESS)) as Out).rows[0]).toMatchObject({
       target_weight_kg: 75,
     });
   });
 
   it('query_data: clear errors the model can fix', async () => {
-    await expect(queryData({ table: 'secrets' })).rejects.toThrow(/must be one of/);
+    await expect(queryData({ table: 'secrets' }, FULL_ACCESS)).rejects.toThrow(/must be one of/);
     await expect(
-      queryData({ table: 'body_metrics', where: [{ column: 'weigth', op: '=', value: 1 }] }),
+      queryData(
+        { table: 'body_metrics', where: [{ column: 'weigth', op: '=', value: 1 }] },
+        FULL_ACCESS,
+      ),
     ).rejects.toThrow(/unknown column "weigth".*weight_kg/);
   });
 
   it('get_strength: score and exercise change like the Progress screen', async () => {
-    const s = (await strengthReport({ period: '4w' }, '2026-10-10')) as {
+    const s = (await strengthReport({ period: '4w' }, '2026-10-10', FULL_ACCESS)) as {
       strength_score_pct: number;
       exercises: { exercise: string; change_pct: number; heaviest_ever_kg: number }[];
     };
@@ -150,5 +163,32 @@ describe('the assistant can explore all the data', () => {
       change_pct: 10,
       heaviest_ever_kg: 110,
     });
+  });
+});
+
+describe('the coach never sees who the user is (DECISIONS 66)', () => {
+  it('profile: the age instead of the birth date, no name, no account id; own rows say "user"', async () => {
+    await mockClient
+      .from('profiles')
+      .update({ name: 'Mario Rossi', birth_date: '1990-05-01', sex: 'male', height_cm: 180 })
+      .eq('id', LOCAL_USER_ID);
+    const profile = (await queryData({ table: 'profiles' }, FULL_ACCESS)) as Out;
+    expect(profile.rows[0]).toMatchObject({ sex: 'male', height_cm: 180 });
+    expect(typeof profile.rows[0].age).toBe('number');
+    const own = (await queryData(
+      { table: 'exercises', where: [{ column: 'name', op: '=', value: 'Bench press test' }] },
+      FULL_ACCESS,
+    )) as Out;
+    expect(own.rows[0].owner_id).toBe('user');
+    const everything = JSON.stringify([profile, own, await listData(FULL_ACCESS)]);
+    expect(everything).not.toContain('Mario');
+    expect(everything).not.toContain('1990-05-01');
+    expect(everything).not.toContain(LOCAL_USER_ID);
+    await expect(queryData({ table: 'profiles', columns: ['name'] }, FULL_ACCESS)).rejects.toThrow(
+      /unknown column "name"/,
+    );
+    await expect(
+      queryData({ table: 'profiles', where: [{ column: 'id', op: '=', value: 'x' }] }, FULL_ACCESS),
+    ).rejects.toThrow(/unknown column "id"/);
   });
 });
