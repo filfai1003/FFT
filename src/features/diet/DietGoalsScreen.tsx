@@ -19,7 +19,7 @@ import {
   macroPercents,
   macrosFromPercents,
   rebalanceMeals,
-  maintenanceKcal,
+  maintenanceFromDetails,
   minimumAllowedKcal,
   suggestedKcal,
   targetProblem,
@@ -109,18 +109,24 @@ export function DietGoalsScreen() {
     setKcal(next);
   };
 
+  const p = profile.data;
+  // Every detail is optional (DECISIONS 103): no suggestion without sex, age, height and weight
+  // (the screen then says to add them); a skipped activity or goal uses the cautious default.
+  const profileMaintenance = maintenanceFromDetails({
+    sex: p.sex as 'male' | 'female' | null,
+    weightKg: weight.data?.weightKg,
+    heightCm: p.height_cm != null ? Number(p.height_cm) : null,
+    ageYears: p.birth_date ? ageInYears(new Date(p.birth_date), new Date()) : null,
+    activity: p.activity_level as 'sedentary' | 'light' | 'active' | 'physical' | null,
+  });
+
   const recalculate = () => {
-    const p = profile.data;
-    if (!p.birth_date || !p.sex || !p.height_cm || !p.activity_level || !p.goal || !weight.data)
-      return;
-    const m = maintenanceKcal({
-      sex: p.sex as 'male' | 'female',
-      weightKg: weight.data.weightKg,
-      heightCm: Number(p.height_cm),
-      ageYears: ageInYears(new Date(p.birth_date), new Date()),
-      activity: p.activity_level as 'sedentary' | 'light' | 'active' | 'physical',
-    });
-    const next = suggestedKcal(m, p.goal as 'lose_fat' | 'maintain' | 'build_muscle');
+    const m = profileMaintenance;
+    if (m == null || !weight.data) return;
+    const next = suggestedKcal(
+      m,
+      (p.goal ?? 'maintain') as 'lose_fat' | 'maintain' | 'build_muscle',
+    );
     setMaintenance(m);
     setKcal(next);
     setPercents(macroPercents(defaultMacros(next, weight.data.weightKg)));
@@ -243,6 +249,7 @@ export function DietGoalsScreen() {
               label={t('goals.recalculate')}
               variant="secondary"
               block={false}
+              disabled={profileMaintenance == null}
               onPress={recalculate}
             />
           </View>

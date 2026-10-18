@@ -42,6 +42,49 @@ export function maintenanceKcal(p: {
   return Math.round((bmr(p) * activityFactor[p.activity]) / 10) * 10;
 }
 
+/** The details the formula needs; any of them may be missing (all optional, DECISIONS 103). */
+export type BodyDetails = {
+  sex?: Sex | null;
+  weightKg?: number | null;
+  heightCm?: number | null;
+  ageYears?: number | null;
+  activity?: ActivityLevel | null;
+};
+
+/**
+ * Maintenance calories from the details the user gave, or null when sex, weight, height or age is
+ * missing (no suggestion then: the user sets the target). A missing activity counts as "Mostly
+ * sitting", the lowest and most cautious factor.
+ */
+export function maintenanceFromDetails(d: BodyDetails): number | null {
+  const { sex, weightKg, heightCm, ageYears } = d;
+  if (!sex || !(weightKg && weightKg > 0) || !(heightCm && heightCm > 0) || ageYears == null)
+    return null;
+  return maintenanceKcal({
+    sex,
+    weightKg,
+    heightCm,
+    ageYears,
+    activity: d.activity ?? 'sedentary',
+  });
+}
+
+/**
+ * Daily target used when no suggestion can be computed (details missing): the usual reference
+ * intake, above the safety floor. The user can change it at once or later in Goals.
+ */
+export const DEFAULT_DAILY_KCAL = 2000;
+
+/** Macro split (% of calories) when the body weight is unknown. */
+export const DEFAULT_MACRO_PERCENTS = { protein: 25, carbs: 47, fat: 28 } as const;
+
+/** Starting macros: per kg of body weight when known, otherwise the default percentages. */
+export function startingMacros(kcal: number, weightKg?: number | null) {
+  return weightKg && weightKg > 0
+    ? defaultMacros(kcal, weightKg)
+    : macrosFromPercents(kcal, DEFAULT_MACRO_PERCENTS);
+}
+
 const goalAdjustment: Record<Goal, number> = { lose_fat: -0.1, maintain: 0, build_muscle: 0.1 };
 
 /** Suggested daily target for a goal (maintenance −10% / 0 / +10%), rounded to 50 kcal. */
@@ -52,19 +95,23 @@ export function suggestedKcal(maintenance: number, goal: Goal): number {
 
 export type TargetProblem = 'below_minimum' | 'deficit_too_large';
 
-/** Which safety rule a target breaks, or null when it is allowed. */
-export function targetProblem(kcal: number, maintenance: number): TargetProblem | null {
+/**
+ * Which safety rule a target breaks, or null when it is allowed. Without a known maintenance (the
+ * profile lacks sex, age, height or weight) only the 1500 kcal floor applies.
+ */
+export function targetProblem(kcal: number, maintenance?: number | null): TargetProblem | null {
   if (kcal < MIN_DAILY_KCAL) return 'below_minimum';
-  if (kcal < maintenance * (1 - MAX_DEFICIT)) return 'deficit_too_large';
+  if (maintenance && kcal < maintenance * (1 - MAX_DEFICIT)) return 'deficit_too_large';
   return null;
 }
 
-/** Lowest allowed target for this maintenance (the −/+ stepper stops here). */
-export function minimumAllowedKcal(maintenance: number): number {
+/** Lowest allowed target for this maintenance (the −/+ stepper stops here); 1500 when unknown. */
+export function minimumAllowedKcal(maintenance?: number | null): number {
+  if (!maintenance) return MIN_DAILY_KCAL;
   return Math.max(MIN_DAILY_KCAL, Math.ceil((maintenance * (1 - MAX_DEFICIT)) / 50) * 50);
 }
 
-export function clampTarget(kcal: number, maintenance: number): number {
+export function clampTarget(kcal: number, maintenance?: number | null): number {
   return Math.max(kcal, minimumAllowedKcal(maintenance));
 }
 

@@ -14,7 +14,7 @@ import { parseDecimal } from '@/domain/numbers';
 import {
   ageInYears,
   defaultMacros,
-  maintenanceKcal,
+  maintenanceFromDetails,
   suggestedKcal,
   type ActivityLevel,
   type Goal,
@@ -22,6 +22,8 @@ import {
 } from '@/domain/nutrition';
 import { useGoalForDay, useSaveGoal } from '@/features/diet/log';
 import { parseBirthDate, toIsoDate } from '@/features/onboarding/logic';
+import { ConsentRow, SexChips } from '@/features/onboarding/fields';
+import { Card } from '@/components/ui/Card';
 import { useToday } from '@/features/profile/use-today';
 import { goBack } from '@/lib/navigation';
 import { useLatestWeight, useProfile, useUpdateProfile } from './api';
@@ -52,7 +54,9 @@ export function PersonalInfoScreen() {
   const [month, setMonth] = useState<string | null>(null);
   const [year, setYear] = useState<string | null>(null);
   const [height, setHeight] = useState<string | null>(null);
-  const [sex, setSex] = useState<Sex | null>(null);
+  // undefined = untouched (the stored value), null = cleared ("Not set").
+  const [sex, setSex] = useState<Sex | null | undefined>(undefined);
+  const [adult, setAdult] = useState<boolean | null>(null);
   const [activity, setActivity] = useState<ActivityLevel | null>(null);
   const [experience, setExperience] = useState<string | null>(null);
   const [location, setLocation] = useState<string | null>(null);
@@ -67,36 +71,39 @@ export function PersonalInfoScreen() {
     month: month ?? (birth ? String(birth.getMonth() + 1) : ''),
     year: year ?? (birth ? String(birth.getFullYear()) : ''),
     height: height ?? (p.height_cm != null ? String(Math.round(Number(p.height_cm))) : ''),
-    sex: (sex ?? p.sex) as Sex | null,
+    sex: (sex === undefined ? p.sex : sex) as Sex | null,
     activity: (activity ?? p.activity_level) as ActivityLevel | null,
     experience: experience ?? p.experience,
     location: location ?? p.training_location,
   };
 
-  const birthDate = parseBirthDate(v.day, v.month, v.year);
+  // Only the name is required; birth date, height and sex are optional and checked only when
+  // filled in (a birth date must still be 18+). Without a birth date the profile needs the
+  // "I am 18 or older" confirmation, asked here when it was never given (DECISIONS 103).
+  const birthEmpty = v.day === '' && v.month === '' && v.year === '';
+  const birthDate = birthEmpty ? null : parseBirthDate(v.day, v.month, v.year);
   const age = birthDate ? ageInYears(birthDate, new Date(today)) : null;
-  const heightCm = parseDecimal(v.height);
-  const valid =
-    v.name.trim() !== '' &&
-    birthDate != null &&
-    (age ?? 0) >= 18 &&
-    heightCm != null &&
-    heightCm >= 100 &&
-    heightCm <= 250 &&
-    v.sex != null;
+  const heightEmpty = v.height.trim() === '';
+  const heightCm = heightEmpty ? null : parseDecimal(v.height);
+  const birthOk = birthEmpty || (birthDate != null && age != null && age >= 18);
+  const heightOk = heightEmpty || (heightCm != null && heightCm >= 100 && heightCm <= 250);
+  const needsAdult = birthEmpty && p.adult_confirmed_at == null;
+  const adultOk = !needsAdult || (adult ?? false);
+  const valid = v.name.trim() !== '' && birthOk && heightOk && adultOk;
 
   const submit = async () => {
-    if (!valid || !birthDate) return;
+    if (!valid) return;
     setError(null);
     try {
       await update.mutateAsync({
         name: v.name.trim(),
-        birth_date: toIsoDate(birthDate),
+        birth_date: birthDate ? toIsoDate(birthDate) : null,
         height_cm: heightCm,
         sex: v.sex,
         activity_level: v.activity,
         experience: v.experience as 'beginner' | 'intermediate' | 'advanced' | null,
         training_location: v.location as 'gym' | 'home' | 'bodyweight' | null,
+        ...(needsAdult ? { adult_confirmed_at: new Date().toISOString() } : {}),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -104,15 +111,16 @@ export function PersonalInfoScreen() {
     }
 
     // Do the new details change the calorie target? Then propose it (nothing changes yet).
-    if (goal && weight.data && v.activity && p.goal) {
-      const maintenance = maintenanceKcal({
-        sex: v.sex!,
-        weightKg: weight.data.weightKg,
-        heightCm: heightCm!,
-        ageYears: age!,
-        activity: v.activity,
-      });
-      const suggested = suggestedKcal(maintenance, p.goal as Goal);
+    // Only when the formula has everything it needs (sex, age, height, weight).
+    const maintenance = maintenanceFromDetails({
+      sex: v.sex,
+      weightKg: weight.data?.weightKg,
+      heightCm,
+      ageYears: age,
+      activity: v.activity,
+    });
+    if (goal && weight.data && maintenance != null) {
+      const suggested = suggestedKcal(maintenance, (p.goal ?? 'maintain') as Goal);
       if (goal.maintenanceKcal !== maintenance && Math.abs(suggested - goal.kcal) >= 50) {
         setSuggestion({
           current: goal.kcal,
@@ -144,7 +152,7 @@ export function PersonalInfoScreen() {
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1.6, gap: 6 }}>
             <Text variant="bodyS" muted>
-              {t('onboarding.body.birthDate')}
+              {t('onboarding.body.birthDateOptional')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6 }}>
               <View style={{ flex: 1 }}>
@@ -183,6 +191,7 @@ export function PersonalInfoScreen() {
             <Input
               label={t('profile.height')}
               variant="compact"
+              placeholder={t('profile.notSet')}
               value={v.height}
               onChangeText={setHeight}
               keyboardType="decimal-pad"
@@ -194,16 +203,35 @@ export function PersonalInfoScreen() {
             {t('onboarding.body.underage')}
           </Text>
         ) : null}
+        {!birthEmpty && v.year.length === 4 && birthDate == null ? (
+          <Text variant="bodyS" danger accessibilityRole="alert">
+            {t('onboarding.body.errorBirth')}
+          </Text>
+        ) : null}
+        {!heightOk ? (
+          <Text variant="bodyS" danger accessibilityRole="alert">
+            {t('onboarding.body.errorHeight')}
+          </Text>
+        ) : null}
+        {needsAdult ? (
+          <View style={{ gap: 6 }}>
+            <Card gap={0}>
+              <ConsentRow
+                title={t('onboarding.body.adult')}
+                detail={t('onboarding.body.adultDetail')}
+                value={adult ?? false}
+                onValueChange={setAdult}
+              />
+            </Card>
+            {!adultOk ? (
+              <Text variant="bodyS" muted>
+                {t('profile.adultRequired')}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
-        <ChipGroup
-          legend={t('onboarding.body.sex')}
-          value={v.sex}
-          onChange={setSex}
-          options={[
-            { value: 'male', label: t('onboarding.body.male') },
-            { value: 'female', label: t('onboarding.body.female') },
-          ]}
-        />
+        <SexChips value={v.sex} onChange={setSex} />
         <ChipGroup
           legend={t('onboarding.lifestyle.activity')}
           value={v.activity}

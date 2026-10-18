@@ -138,6 +138,16 @@ describe('category gating of the context', () => {
     expect(line).not.toContain('kcal');
     expect(profileLine(facts, { profile: false, diet: true })).toBe('current target 1900 kcal');
   });
+
+  it('facts the user did not give are left out, not guessed (DECISIONS 103)', () => {
+    const line = profileLine(
+      { goal: null, sex: null, birthDate: null, heightCm: null, weightKg: null, targetKcal: 2000 },
+      FULL_ACCESS,
+      new Date('2026-10-17'),
+    );
+    expect(line).toBe('current target 2000 kcal');
+    expect(profileLine({}, FULL_ACCESS)).toBe('not given');
+  });
 });
 
 describe('consent and blocked tools', () => {

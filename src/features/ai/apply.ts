@@ -108,7 +108,7 @@ export function useApplyImport() {
 
   async function applyDiet(diet: ImportedDiet, result: ApplyResult) {
     const maintenance = goal?.maintenanceKcal ?? null;
-    const problem = maintenance ? targetProblem(diet.kcal, maintenance) : null;
+    const problem = targetProblem(diet.kcal, maintenance);
     if (problem === 'below_minimum')
       throw new Error('The calorie target is below the 1500 kcal minimum.');
     if (problem === 'deficit_too_large')

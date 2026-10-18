@@ -2,15 +2,18 @@ import {
   ageInYears,
   bmr,
   clampTarget,
+  DEFAULT_DAILY_KCAL,
   defaultMacros,
   macroKcal,
   macroPercents,
   macrosFromPercents,
+  maintenanceFromDetails,
   maintenanceKcal,
   minimumAllowedKcal,
   portion,
   rebalanceMeals,
   splitDay,
+  startingMacros,
   suggestedKcal,
   targetProblem,
 } from './nutrition';
@@ -123,6 +126,32 @@ describe('calories and macros', () => {
     expect(targetProblem(2350, 2600)).toBeNull();
     expect(minimumAllowedKcal(2600)).toBe(1950);
     expect(minimumAllowedKcal(1800)).toBe(1500);
+  });
+
+  it('without a known maintenance only the 1500 kcal floor applies (DECISIONS 103)', () => {
+    expect(targetProblem(1400, null)).toBe('below_minimum');
+    expect(targetProblem(1500, null)).toBeNull();
+    expect(targetProblem(1400)).toBe('below_minimum');
+    expect(minimumAllowedKcal(null)).toBe(1500);
+    expect(clampTarget(1000, null)).toBe(1500);
+  });
+
+  it('maintenance only with sex, weight, height and age; activity defaults to sitting', () => {
+    const full = { sex: 'male', weightKg: 78.4, heightCm: 180, ageYears: 31 } as const;
+    expect(maintenanceFromDetails({ ...full, activity: 'light' })).toBe(
+      maintenanceKcal({ ...full, activity: 'light' }),
+    );
+    expect(maintenanceFromDetails(full)).toBe(maintenanceKcal({ ...full, activity: 'sedentary' }));
+    expect(maintenanceFromDetails({ ...full, sex: null })).toBeNull();
+    expect(maintenanceFromDetails({ ...full, weightKg: null })).toBeNull();
+    expect(maintenanceFromDetails({ ...full, heightCm: undefined })).toBeNull();
+    expect(maintenanceFromDetails({ ...full, ageYears: null })).toBeNull();
+    expect(DEFAULT_DAILY_KCAL).toBeGreaterThanOrEqual(1500);
+  });
+
+  it('starting macros: per kg when the weight is known, default percentages otherwise', () => {
+    expect(startingMacros(2200, 78.4)).toEqual(defaultMacros(2200, 78.4));
+    expect(macroPercents(startingMacros(2000, null))).toEqual({ protein: 25, carbs: 47, fat: 28 });
   });
 
   it('a suggestion is never below the safety floor', () => {

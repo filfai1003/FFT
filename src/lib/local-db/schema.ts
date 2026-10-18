@@ -20,6 +20,7 @@ export const columns: Record<string, string[]> = {
     'timezone',
     'diet_mode',
     'onboarding_completed_at',
+    'adult_confirmed_at',
     'created_at',
     'updated_at',
     'deleted_at',
