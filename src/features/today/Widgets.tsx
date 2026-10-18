@@ -11,7 +11,8 @@ import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, deviceTimeZone, localDay } from '@/domain/day';
+import { addDays, deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
@@ -45,18 +46,25 @@ function Frame({
   onPress?: () => void;
   children: ReactNode;
 }) {
+  // Canvas Home: a full card is titled in 15 semibold ("Calories"), a tile in 13 muted ("Water").
   const head = (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Text variant="label" muted>
-        {label}
-      </Text>
+      {size === 'large' ? (
+        <Text semibold accessibilityRole="header">
+          {label}
+        </Text>
+      ) : (
+        <Text variant="bodyS" muted>
+          {label}
+        </Text>
+      )}
       {right}
     </View>
   );
   if (size === 'large') {
     return (
       <Card
-        gap={14}
+        gap={12}
         style={{ flexGrow: 1, padding: 16 }}
         onPress={onPress}
         accessibilityLabel={onPress ? label : undefined}
@@ -141,9 +149,9 @@ export function NutritionWidget({ size }: Props) {
       <Frame size="small" label={t('today.caloriesLeft')}>
         <Gauge value={share} size={110} stroke={10} sweep={0.75} accessibilityLabel={gaugeLabel}>
           <Text variant="displayS" numeric>
-            {left}
+            {formatInt(left)}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('today.kcalLeftShort')}
           </Text>
         </Gauge>
@@ -176,7 +184,7 @@ export function NutritionWidget({ size }: Props) {
           accessibilityLabel={gaugeLabel}
         >
           <Text variant="displayM" numeric>
-            {left}
+            {formatInt(left)}
           </Text>
           <Text variant="bodyS" muted>
             {t('today.kcalLeftShort')}
@@ -188,7 +196,7 @@ export function NutritionWidget({ size }: Props) {
               {t('today.eaten')}
             </Text>
             <Text variant="displayS" numeric>
-              {Math.round(eaten.kcal)}
+              {formatInt(eaten.kcal)}
             </Text>
           </View>
           <View>
@@ -196,7 +204,7 @@ export function NutritionWidget({ size }: Props) {
               {t('today.target')}
             </Text>
             <Text variant="displayS" numeric>
-              {Math.round(target?.kcal ?? 0)}
+              {formatInt(target?.kcal ?? 0)}
             </Text>
           </View>
         </View>
@@ -222,7 +230,7 @@ export function NutritionWidget({ size }: Props) {
               track={colors.macroSoft[key]}
               accessibilityLabel={t(`diet.macro.${key}`)}
             />
-            <Text variant="label" muted numeric>
+            <Text variant="bodyS" muted numeric>
               {`${Math.round(value)} / ${Math.round(goal)} g`}
             </Text>
           </View>
@@ -239,12 +247,12 @@ export function NutritionWidget({ size }: Props) {
         {fixed ? (
           nextMeal ? (
             <>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('today.nextMeal')}
               </Text>
               <Text variant="displayM">{nextMeal.name}</Text>
               {nextMeal.description ? <Text>{nextMeal.description}</Text> : null}
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('diet.mealLine', {
                   kcal: nextMeal.kcal,
                   p: Math.round(nextMeal.proteinG),
@@ -291,7 +299,7 @@ export function WorkoutWidget({ size }: Props) {
 
   const cycle =
     plan && rotation && !small ? (
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('today.cycleProgress', {
           n: rotation.state.cycle,
           done: rotation.state.doneCount,
@@ -496,7 +504,7 @@ export function WeightWidget({ size }: Props) {
             </Text>
           ) : (
             <Text variant="bodyS" muted>
-              {t('today.weightOn', { day: latest.day })}
+              {t('today.weightOn', { day: shortDateLabel(latest.day) })}
             </Text>
           )}
         </>
@@ -549,7 +557,7 @@ export function SupplementsWidget({ size }: Props) {
                   {s.name}
                 </Text>
                 {s.dose ? (
-                  <Text variant="label" muted numberOfLines={1}>
+                  <Text variant="bodyS" muted numberOfLines={1}>
                     {s.dose}
                   </Text>
                 ) : null}
