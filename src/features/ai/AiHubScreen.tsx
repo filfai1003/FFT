@@ -9,6 +9,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
+import { shortDateLabel } from '@/domain/day';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { creditPercent, effectiveAiSettings, fetchAiCredit, useAiCredit } from './included';
@@ -206,7 +207,7 @@ function IncludedCard() {
         <Text variant="bodyS" muted>
           {t('ai.creditRule', {
             cap: creditPercent(credit.capMicros, credit.monthlyMicros),
-            date: credit.nextGrant ?? '',
+            date: credit.nextGrant ? shortDateLabel(credit.nextGrant) : '',
           })}
         </Text>
       ) : null}
