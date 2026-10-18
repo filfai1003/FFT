@@ -1,4 +1,11 @@
-import { upstreamBody } from '../../../supabase/functions/ai/upstream';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+import {
+  DEFAULT_PROVIDERS,
+  parseProviders,
+  upstreamBody,
+} from '../../../supabase/functions/ai/upstream';
 import { FULL_ACCESS, NO_ACCESS, notSharedCategory } from './access';
 import { profileLine } from './context';
 import { buildAgentPrompt } from './agent/prompt';
@@ -43,7 +50,13 @@ describe('anonymisation', () => {
       { role: 'user', content: 'hi' },
       { role: 'tool', tool_call_id: 'c1', content: '{}' },
     ]);
-    expect(body.provider).toEqual({ data_collection: 'deny', zdr: true });
+    expect(body.provider).toEqual({
+      only: ['nebius', 'deepinfra', 'together', 'fireworks'],
+      order: ['nebius', 'deepinfra', 'together', 'fireworks'],
+      allow_fallbacks: false,
+      data_collection: 'deny',
+      zdr: true,
+    });
     expect(JSON.stringify(body)).not.toMatch(/Mario|u-1|a-1/);
   });
 
@@ -57,6 +70,55 @@ describe('anonymisation', () => {
       toOpenAiMessages(system, [{ id: 'u', role: 'user', text: 'How am I doing?' }]),
     );
     expect(text).not.toMatch(/1990-05-01|@|user_id|account/);
+  });
+});
+
+describe('OpenRouter providers (DECISIONS 88)', () => {
+  const msgs = [{ role: 'user', content: 'hi' }];
+
+  it('by default only the listed providers, EU first, no fallback to any other', () => {
+    expect(DEFAULT_PROVIDERS[0]).toBe('nebius');
+    const { provider } = upstreamBody('deepseek/deepseek-v4.1-flash', msgs);
+    expect(provider.only).toEqual([...DEFAULT_PROVIDERS]);
+    expect(provider.order).toEqual([...DEFAULT_PROVIDERS]);
+    expect(provider.allow_fallbacks).toBe(false);
+    expect(provider.zdr).toBe(true);
+    expect(provider.data_collection).toBe('deny');
+  });
+
+  it('a configured list replaces the default, still with zero data retention', () => {
+    const { provider } = upstreamBody('m', msgs, undefined, ['deepinfra', 'baseten/us']);
+    expect(provider).toEqual({
+      only: ['deepinfra', 'baseten/us'],
+      order: ['deepinfra', 'baseten/us'],
+      allow_fallbacks: false,
+      data_collection: 'deny',
+      zdr: true,
+    });
+  });
+
+  it('an empty list never means "any provider"', () => {
+    const { provider } = upstreamBody('m', msgs, undefined, []);
+    expect(provider.only).toEqual([...DEFAULT_PROVIDERS]);
+  });
+
+  it('parses the setting / AI_PROVIDERS: slugs, lower case, no duplicates; junk gives null', () => {
+    expect(parseProviders('Nebius, deepinfra  together,nebius')).toEqual([
+      'nebius',
+      'deepinfra',
+      'together',
+    ]);
+    expect(parseProviders('fireworks/us')).toEqual(['fireworks/us']);
+    expect(parseProviders('')).toBeNull();
+    expect(parseProviders(' , ')).toBeNull();
+    expect(parseProviders(undefined)).toBeNull();
+    expect(parseProviders('nebius, "*"')).toBeNull();
+    expect(parseProviders('nebius, deep infra!')).toBeNull();
+  });
+
+  it('the admin panel shows the same default list', () => {
+    const server = readFileSync(join(__dirname, '../../../admin/server.js'), 'utf8');
+    expect(server).toContain(`const AI_DEFAULT_PROVIDERS = '${DEFAULT_PROVIDERS.join(', ')}';`);
   });
 });
 
