@@ -128,16 +128,15 @@ export function FixedMealsLog() {
 
         <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
 
-        {target ? (
-          <DaySummaryCard
-            eaten={eaten}
-            target={target}
-            caption={t('diet.mealsCount', {
-              done: mealsDone(stored as FixedCheck[]),
-              total: meals.length,
-            })}
-          />
-        ) : null}
+        <DaySummaryCard
+          eaten={eaten}
+          target={target}
+          caption={t('diet.mealsCount', {
+            done: mealsDone(stored as FixedCheck[]),
+            total: meals.length,
+          })}
+          onSetTarget={() => router.push('/diet-goals')}
+        />
 
         <View style={{ gap: 8 }}>
           {meals.map((m) => {

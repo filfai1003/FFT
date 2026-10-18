@@ -65,9 +65,9 @@ export function useCalendarData(yms: readonly [string, string]): CalendarData {
   }
 
   const statusOf = (day: string): DietDayStatus => {
-    const goal = goalForDay(goals.data ?? [], day);
-    if (!goal) return 'none';
-    const target = targetForDay(goal, sessionsByDay.has(day));
+    // No target that day (DECISIONS 104): nothing to be on or off.
+    const target = targetForDay(goalForDay(goals.data ?? [], day), sessionsByDay.has(day));
+    if (!target) return 'none';
     const kcal = (day.slice(0, 7) === yms[0] ? kcalA : kcalB).data?.get(day) ?? 0;
     return dietDayStatus(kcal, target.kcal);
   };

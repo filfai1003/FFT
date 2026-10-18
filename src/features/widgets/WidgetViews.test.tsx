@@ -57,6 +57,28 @@ describe('home screen widgets', () => {
     expect(uris(t)).toContain('fft://food-search?meal=lunch');
   });
 
+  it('no target (DECISIONS 104): kcal eaten instead of left, no arc', () => {
+    const base = widgetSnapshot();
+    const s = widgetSnapshot({
+      calories: {
+        ...base.calories,
+        eaten: 850,
+        target: null,
+        macros: base.calories.macros.map((m) => ({ ...m, target: null })),
+      },
+    });
+    const t = tree('Calories', s);
+    expect(texts(t)).toContain('850 kcal eaten');
+    expect(texts(t).some((x) => x.includes('left'))).toBe(false);
+    expect(JSON.stringify(t)).not.toContain('SvgWidget');
+    const fixed = tree('Calories', {
+      ...s,
+      diet: { ...s.diet, mode: 'fixed_meals', nextMeal: null, mealsTotal: 3, mealsDone: 3 },
+    });
+    expect(texts(fixed)).toContain('850 kcal eaten');
+    expect(texts(fixed).some((x) => x.includes(' of '))).toBe(false);
+  });
+
   it('fixed meals: the next meal with Followed / Skipped (background) and Different (app)', () => {
     const s = widgetSnapshot({
       diet: {

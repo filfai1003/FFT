@@ -143,20 +143,31 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
               {t('ai.currentDiet')}
             </Text>
             <Text variant="bodyS">
-              {goal
-                ? t('ai.currentLine', {
+              {goal && goal.kcal == null
+                ? t('ai.currentNoTarget', {
                     mode:
                       profile.data?.diet_mode === 'tracking'
                         ? t('ai.modeTrackingShort')
                         : t('ai.modeFixedShort'),
-                    kcal: goal.kcal,
-                    p: goal.proteinG,
-                    c: goal.carbsG,
-                    f: goal.fatG,
                     meals:
                       profile.data?.diet_mode === 'tracking' ? 0 : (fixed.data?.meals.length ?? 0),
                   })
-                : t('ai.noCurrentDiet')}
+                : goal
+                  ? t('ai.currentLine', {
+                      mode:
+                        profile.data?.diet_mode === 'tracking'
+                          ? t('ai.modeTrackingShort')
+                          : t('ai.modeFixedShort'),
+                      kcal: goal.kcal,
+                      p: goal.proteinG,
+                      c: goal.carbsG,
+                      f: goal.fatG,
+                      meals:
+                        profile.data?.diet_mode === 'tracking'
+                          ? 0
+                          : (fixed.data?.meals.length ?? 0),
+                    })
+                  : t('ai.noCurrentDiet')}
             </Text>
           </View>
           <View style={{ gap: 4 }}>

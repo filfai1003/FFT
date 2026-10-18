@@ -119,7 +119,8 @@ export function PersonalInfoScreen() {
       ageYears: age,
       activity: v.activity,
     });
-    if (goal && weight.data && maintenance != null) {
+    // No target (DECISIONS 104): nothing to propose.
+    if (goal?.kcal != null && weight.data && maintenance != null) {
       const suggested = suggestedKcal(maintenance, (p.goal ?? 'maintain') as Goal);
       if (goal.maintenanceKcal !== maintenance && Math.abs(suggested - goal.kcal) >= 50) {
         setSuggestion({

@@ -362,6 +362,29 @@ describe('domain rules', () => {
     );
   });
 
+  it('no target: a goal row with no calories and macros, all or none (DECISIONS 104)', async () => {
+    await as(A);
+    await db.exec(
+      `insert into public.nutrition_goals (valid_from, kcal, protein_g, carbs_g, fat_g, water_ml)
+       values ('2026-10-09', null, null, null, null, 2500)`,
+    );
+    await rejects(
+      `insert into public.nutrition_goals (valid_from, kcal, protein_g, carbs_g, fat_g)
+       values ('2026-10-10', null, 120, null, null)`,
+      '23514',
+    );
+    await rejects(
+      `insert into public.nutrition_goals (valid_from, kcal, protein_g, carbs_g, fat_g, maintenance_kcal)
+       values ('2026-10-10', null, null, null, null, 2600)`,
+      '23514',
+    );
+    await rejects(
+      `insert into public.nutrition_goals (valid_from, kcal, protein_g, carbs_g, fat_g, training_day_bonus_kcal)
+       values ('2026-10-10', null, null, null, null, 200)`,
+      '23514',
+    );
+  });
+
   it('progress photos must live in the owner folder', async () => {
     await as(A);
     await rejects(
@@ -980,6 +1003,28 @@ describe('personal API and MCP (server/api.js)', () => {
     });
     assert.equal(ok.saved, true);
     assert.equal((await tool('get_diet', {})).diet_plan.daily.kcal, 2200);
+  });
+
+  it('no calorie target: get_goals and get_diet say so (DECISIONS 104)', async () => {
+    await as(A);
+    await db.exec(
+      `insert into public.nutrition_goals (id, valid_from, kcal, protein_g, carbs_g, fat_g, water_ml)
+       values ('44444444-0000-0000-0000-000000000104', current_date, null, null, null, null, 2600)`,
+    );
+    try {
+      const goals = await tool('get_goals', {});
+      assert.equal(goals.nutrition.target, 'no target set');
+      assert.equal(goals.nutrition.water_ml, 2600);
+      assert.equal(goals.nutrition.kcal, undefined);
+      const diet = await tool('get_diet', {});
+      assert.equal(diet.calorie_target, 'no target set');
+      assert.equal(diet.diet_plan.daily, null);
+    } finally {
+      await as(A);
+      await db.exec(
+        `delete from public.nutrition_goals where id = '44444444-0000-0000-0000-000000000104'`,
+      );
+    }
   });
 
   it('supplements: add one, tick it, untick it', async () => {

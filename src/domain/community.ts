@@ -50,6 +50,8 @@ export type ScoreInput = {
   today: string;
   workouts: readonly { day: string; planId: string | null }[];
   dietOnTargetDays: ReadonlySet<string>;
+  /** Whether a calorie target was in force on a day (default: always). No target = not counted. */
+  dietTarget?: (day: string) => boolean;
   daily: readonly DailyE1rm[];
   /** Days in the active plan (0 = no plan: no training score). */
   planDays: number;
@@ -80,10 +82,14 @@ export function communityScores(input: ScoreInput): CommunityScore[] {
       [...perDay.values()].reduce((a, n) => a + n, 0),
     );
 
-    // Days passed before today, plus today once it is on target (today is not over yet).
+    // Days passed before today, plus today once it is on target (today is not over yet). Only
+    // days with a calorie target count (DECISIONS 104): with none in the period, no diet score.
+    const hasTarget = input.dietTarget ?? (() => true);
     const onTarget = [...input.dietOnTargetDays].filter(inPeriod);
-    const days = elapsed - 1 + (input.dietOnTargetDays.has(input.today) ? 1 : 0);
-    push('diet', days > 0 ? round1((100 * onTarget.length) / days) : 0);
+    let days = input.dietOnTargetDays.has(input.today) ? 1 : 0;
+    for (let i = 0; i < elapsed - 1; i++) if (hasTarget(addDays(start, i))) days++;
+    if (days > 0 || hasTarget(input.today))
+      push('diet', days > 0 ? round1((100 * onTarget.length) / days) : 0);
 
     if (input.planDays > 0) {
       // A plan of N days is planned once a week: N per 7 days passed (at least one).

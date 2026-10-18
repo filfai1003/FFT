@@ -105,7 +105,7 @@ export function ProfileScreen() {
       ? `${displayWeight(weight.data.weightKg, prefs.weightUnit)} ${prefs.weightUnit}`
       : null,
     height,
-    goal ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) }) : null,
+    goal?.kcal != null ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) }) : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -448,7 +448,11 @@ export function ProfileScreen() {
           {
             icon: 'flame',
             label: t('profile.links.goals'),
-            value: goal ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) }) : undefined,
+            value: goal
+              ? goal.kcal != null
+                ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) })
+                : t('profile.noTarget')
+              : undefined,
             onPress: () => router.push('/diet-goals'),
           },
         ]}

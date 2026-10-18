@@ -35,8 +35,8 @@ export type MealDraft = {
 type Props = {
   meals: MealDraft[];
   onMealsChange: (next: MealDraft[]) => void;
-  /** The daily target the meals must add up to. */
-  goal: Totals;
+  /** The daily target the meals must add up to; null = no target (DECISIONS 104): meals as typed. */
+  goal: Totals | null;
   workoutAfter: string | null;
   onWorkoutAfterChange: (id: string | null) => void;
 };
@@ -52,6 +52,7 @@ const macroOf = (m: MealDraft): Totals => ({
  * Meals of the fixed-meals plan: where the workout sits, main meals, kcal/macros and what to eat.
  * The day always stays on target: editing a meal re-shares the rest between the other meals, and
  * Auto-split spreads the target (more to main meals, carbs before / protein after the workout).
+ * Without a target the meals stay as typed (no re-share, no auto-split), only the day total shows.
  * Used by the plan editor and by the onboarding.
  */
 export function MealPlanEditor({
@@ -69,8 +70,8 @@ export function MealPlanEditor({
     (a, m) => ({ kcal: a.kcal + m.kcal, p: a.p + m.proteinG, c: a.c + m.carbsG, f: a.f + m.fatG }),
     { kcal: 0, p: 0, c: 0, f: 0 },
   );
-  const diff = Math.round(sum.kcal - goal.kcal);
-  const matches = Math.abs(diff) <= Math.max(25, goal.kcal * 0.01);
+  const diff = goal ? Math.round(sum.kcal - goal.kcal) : 0;
+  const matches = goal ? Math.abs(diff) <= Math.max(25, goal.kcal * 0.01) : true;
 
   const withParts = (parts: Totals[]) => meals.map((m, i) => ({ ...m, ...parts[i] }));
   const update = (id: string, patch: Partial<MealDraft>) =>
@@ -81,7 +82,8 @@ export function MealPlanEditor({
   const roleOf = (i: number): MealRole['workout'] =>
     workoutIndex < 0 ? null : i === workoutIndex ? 'pre' : i === workoutIndex + 1 ? 'post' : null;
 
-  const doAutoSplit = () =>
+  const doAutoSplit = () => {
+    if (!goal) return;
     onMealsChange(
       withParts(
         splitDay(
@@ -90,6 +92,7 @@ export function MealPlanEditor({
         ),
       ),
     );
+  };
 
   // Calories always agree with the macros (4/4/9 per gram) and the day never leaves the target:
   // the other meals absorb the change. Editing the kcal scales the macros of that meal.
@@ -108,12 +111,12 @@ export function MealPlanEditor({
     }
     const all = meals.map(macroOf);
     all[index] = next;
-    onMealsChange(withParts(rebalanceMeals(goal, all, index)));
+    onMealsChange(withParts(goal ? rebalanceMeals(goal, all, index) : all));
   };
 
   const remove = (id: string) => {
     const rest = meals.filter((x) => x.id !== id);
-    const parts = rebalanceMeals(goal, rest.map(macroOf), -1);
+    const parts = goal ? rebalanceMeals(goal, rest.map(macroOf), -1) : rest.map(macroOf);
     onMealsChange(rest.map((m, i) => ({ ...m, ...parts[i] })));
     if (workoutAfter === id) onWorkoutAfterChange(null);
     setOpen(null);
@@ -277,9 +280,11 @@ export function MealPlanEditor({
         >
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="bodyS" muted>
-              {matches
-                ? t('fixed.matches')
-                : t('fixed.differs', { kcal: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` })}
+              {!goal
+                ? t('fixed.dayTotal')
+                : matches
+                  ? t('fixed.matches')
+                  : t('fixed.differs', { kcal: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` })}
             </Text>
             <Text variant="label">
               {t('fixed.sumLine', {
@@ -290,12 +295,14 @@ export function MealPlanEditor({
               })}
             </Text>
           </View>
-          <Button
-            label={t('fixed.autoSplit')}
-            variant="secondary"
-            block={false}
-            onPress={doAutoSplit}
-          />
+          {goal ? (
+            <Button
+              label={t('fixed.autoSplit')}
+              variant="secondary"
+              block={false}
+              onPress={doAutoSplit}
+            />
+          ) : null}
         </View>
       </Card>
 

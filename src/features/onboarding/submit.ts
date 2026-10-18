@@ -55,22 +55,26 @@ export async function completeOnboarding(
       }),
     );
   }
+  // "No target" (DECISIONS 104) is a row too: no calories or macros from that day on, the water
+  // goal kept. So a target set later never applies to the days before it.
+  const withTarget = draft.target === 'set';
   steps.push(() =>
     supabase.from('nutrition_goals').upsert({
       id: ids.goal,
       user_id: userId,
       valid_from: day,
-      kcal: t.kcal,
-      protein_g: t.macros.proteinG,
-      carbs_g: t.macros.carbsG,
-      fat_g: t.macros.fatG,
-      maintenance_kcal: t.maintenance,
+      kcal: withTarget ? t.kcal : null,
+      protein_g: withTarget ? t.macros.proteinG : null,
+      carbs_g: withTarget ? t.macros.carbsG : null,
+      fat_g: withTarget ? t.macros.fatG : null,
+      maintenance_kcal: withTarget ? t.maintenance : null,
       water_ml: DEFAULT_WATER_ML,
     }),
   );
 
   if (draft.dietMode === 'fixed_meals') {
     const planId = ids.plan;
+    // Without a target the suggested meals still start from the default day (the user edits them).
     const meals = draft.meals ?? starterMeals(goal);
     // Suggested meals have placeholder ids: give them stable UUIDs so a retry never duplicates.
     const mealId = (m: { id: string }) =>

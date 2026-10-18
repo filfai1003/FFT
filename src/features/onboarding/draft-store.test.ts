@@ -68,4 +68,16 @@ describe('skipping (DECISIONS 103)', () => {
     expect(now.skipped).toBe(false);
     expect(now.step).toBe(0);
   });
+
+  it('no target (DECISIONS 104): Skip on the target step and "Skip setup" both mean none', () => {
+    expect(emptyDraft.target).toBe('set');
+    const s = useOnboardingStore.getState();
+    s.patch({ name: 'Alex', adultConfirmed: true, targetKcal: 2400 });
+    s.skipStep('target');
+    expect(useOnboardingStore.getState().draft).toMatchObject({ target: 'none', targetKcal: null });
+    useOnboardingStore.getState().reset();
+    useOnboardingStore.getState().patch({ name: 'Alex', adultConfirmed: true });
+    useOnboardingStore.getState().skipSetup();
+    expect(useOnboardingStore.getState().draft.target).toBe('none');
+  });
 });

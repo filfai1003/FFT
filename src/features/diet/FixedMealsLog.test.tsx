@@ -26,4 +26,11 @@ describe('Diet tab · fixed meals', () => {
     expect(screen.getByRole('header', { name: 'Diet' })).toBeTruthy();
     expect(screen.queryByText('Food log')).toBeNull();
   });
+
+  it('without a target shows what was eaten and offers to set one (DECISIONS 104)', async () => {
+    await renderUI(<FixedMealsLog />);
+    expect(screen.getByText('Eaten')).toBeTruthy();
+    expect(screen.getByText('Set a target')).toBeTruthy();
+    expect(screen.queryByText('Left today')).toBeNull();
+  });
 });

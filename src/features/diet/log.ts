@@ -95,25 +95,29 @@ export function useDayTotals(day: string) {
 }
 
 type GoalRow = {
+  id: string;
   valid_from: string;
-  kcal: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
   training_day_bonus_kcal: number;
   water_ml: number;
   maintenance_kcal: number | null;
 };
 
-export type GoalWithMaintenance = Goal & { maintenanceKcal: number | null };
+export type GoalWithMaintenance = Goal & { id: string; maintenanceKcal: number | null };
+
+const numOrNull = (v: number | string | null) => (v == null ? null : Number(v));
 
 function toGoal(r: GoalRow): GoalWithMaintenance {
   return {
+    id: r.id,
     validFrom: r.valid_from,
-    kcal: r.kcal,
-    proteinG: r.protein_g,
-    carbsG: r.carbs_g,
-    fatG: r.fat_g,
+    kcal: numOrNull(r.kcal),
+    proteinG: numOrNull(r.protein_g),
+    carbsG: numOrNull(r.carbs_g),
+    fatG: numOrNull(r.fat_g),
     trainingDayBonusKcal: r.training_day_bonus_kcal,
     waterMl: r.water_ml,
     maintenanceKcal: r.maintenance_kcal,
@@ -320,36 +324,95 @@ export function useRemoveWater() {
   return useMutation({ mutationFn: removeWater, onSuccess: invalidate });
 }
 
-/** New calorie/macro goal from today on (history is kept: one row per start date). */
+/** What a goal row holds. kcal and macros null = "no target" from `validFrom` on (DECISIONS 104). */
+export type GoalInput = {
+  validFrom: string;
+  kcal: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  trainingDayBonusKcal: number;
+  maintenanceKcal: number | null;
+  waterMl: number;
+};
+
+/** Writes the goal row of a start day (history is kept: one row per start date). */
+export async function saveGoalRow(userId: string, g: GoalInput) {
+  const target = g.kcal != null;
+  const id = await stableId(userId, `goal-${g.validFrom}`);
+  const { error } = await getSupabase()
+    .from('nutrition_goals')
+    .upsert({
+      id,
+      user_id: userId,
+      valid_from: g.validFrom,
+      kcal: g.kcal,
+      protein_g: target ? g.proteinG : null,
+      carbs_g: target ? g.carbsG : null,
+      fat_g: target ? g.fatG : null,
+      // No target: nothing derived from one either (the database refuses it).
+      training_day_bonus_kcal: target ? g.trainingDayBonusKcal : 0,
+      maintenance_kcal: target ? g.maintenanceKcal : null,
+      water_ml: g.waterMl,
+      deleted_at: null,
+    });
+  if (error) throw error;
+}
+
+/** New calorie/macro goal (or "no target") from a day on. */
 export function useSaveGoal() {
   const userId = useUserId();
   const invalidate = useInvalidateDiet();
   return useMutation({
-    mutationFn: async (g: {
-      validFrom: string;
-      kcal: number;
-      proteinG: number;
-      carbsG: number;
-      fatG: number;
-      trainingDayBonusKcal: number;
-      maintenanceKcal: number | null;
-      waterMl: number;
-    }) => {
-      const id = await stableId(userId!, `goal-${g.validFrom}`);
-      const { error } = await getSupabase().from('nutrition_goals').upsert({
-        id,
-        user_id: userId!,
-        valid_from: g.validFrom,
-        kcal: g.kcal,
-        protein_g: g.proteinG,
-        carbs_g: g.carbsG,
-        fat_g: g.fatG,
-        training_day_bonus_kcal: g.trainingDayBonusKcal,
-        maintenance_kcal: g.maintenanceKcal,
-        water_ml: g.waterMl,
-        deleted_at: null,
-      });
-      if (error) throw error;
+    mutationFn: (g: GoalInput) => saveGoalRow(userId!, g),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * "No target" from `day` on (the water goal is kept). Returns the UNDO: it puts back the row of
+ * that day as it was, or removes the new one. Null when there was no target already.
+ */
+export async function removeTarget(
+  userId: string,
+  day: string,
+  current: GoalWithMaintenance | null,
+): Promise<(() => Promise<void>) | null> {
+  if (current && current.kcal == null) return null;
+  await saveGoalRow(userId, {
+    validFrom: day,
+    kcal: null,
+    proteinG: null,
+    carbsG: null,
+    fatG: null,
+    trainingDayBonusKcal: 0,
+    maintenanceKcal: null,
+    waterMl: current?.waterMl ?? 2000,
+  });
+  if (current && current.validFrom === day) return () => saveGoalRow(userId, current);
+  const id = await stableId(userId, `goal-${day}`);
+  return async () => {
+    const { error } = await getSupabase()
+      .from('nutrition_goals')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+  };
+}
+
+/** "No target" from a day on; resolves to the UNDO (which refreshes the diet data too), or null. */
+export function useRemoveTarget() {
+  const userId = useUserId();
+  const invalidate = useInvalidateDiet();
+  return useMutation({
+    mutationFn: async ({ day, current }: { day: string; current: GoalWithMaintenance | null }) => {
+      const undo = await removeTarget(userId!, day, current);
+      return undo
+        ? async () => {
+            await undo();
+            await invalidate();
+          }
+        : null;
     },
     onSuccess: invalidate,
   });

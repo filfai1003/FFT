@@ -137,6 +137,36 @@ describe('offline database', () => {
     expect(fine.error).toBeNull();
   });
 
+  it('a goal row without a target has no calories, macros, maintenance or bonus', async () => {
+    const { c } = setup();
+    const none = await c.from('nutrition_goals').insert({
+      valid_from: '2026-10-10',
+      kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      water_ml: 2500,
+    });
+    expect(none.error).toBeNull();
+    const half = await c.from('nutrition_goals').insert({
+      valid_from: '2026-10-11',
+      kcal: null,
+      protein_g: 100,
+      carbs_g: null,
+      fat_g: null,
+    });
+    expect(half.error?.message).toContain('nutrition_goals_target_all_or_none');
+    const withMaintenance = await c.from('nutrition_goals').insert({
+      valid_from: '2026-10-12',
+      kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      maintenance_kcal: 2500,
+    });
+    expect(withMaintenance.error?.code).toBe('23514');
+  });
+
   it('daily totals count food logs and ticked fixed meals only', async () => {
     const { c } = setup();
     await c.from('food_logs').insert({

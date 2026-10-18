@@ -7,7 +7,9 @@ import {
   type CommunityMetric,
   type CommunityPeriod,
 } from '@/domain/community';
+import { goalForDay, hasTarget } from '@/domain/diet';
 import { useSessionStore } from '@/features/auth/session-store';
+import { useGoals } from '@/features/diet/log';
 import { useGamification } from '@/features/gamification/data';
 import { useToday } from '@/features/profile/use-today';
 import { useExercises } from '@/features/train/exercises';
@@ -227,9 +229,11 @@ export function useCommunitySubmit() {
   const today = useToday();
   const exercises = useExercises();
   const plan = useActivePlan();
+  const goals = useGoals();
   const queryClient = useQueryClient();
   const member = me.data != null;
-  const ready = member && game != null && exercises.data != null && !plan.isPending;
+  const ready =
+    member && game != null && exercises.data != null && !plan.isPending && goals.data != null;
 
   const submit = async (force = false) => {
     if (!userId || !game || !exercises.data) return;
@@ -241,6 +245,8 @@ export function useCommunitySubmit() {
       today,
       workouts: game.activity.workouts,
       dietOnTargetDays: game.activity.dietOnTargetDays,
+      // No calorie target (DECISIONS 104): those days are not counted, no diet score without any.
+      dietTarget: (day) => hasTarget(goalForDay(goals.data ?? [], day)),
       daily: game.activity.daily,
       planDays: plan.plan?.days.length ?? 0,
       muscleOf: (id) => muscles.get(id),

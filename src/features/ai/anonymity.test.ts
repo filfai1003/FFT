@@ -148,6 +148,11 @@ describe('category gating of the context', () => {
     expect(line).toBe('current target 2000 kcal');
     expect(profileLine({}, FULL_ACCESS)).toBe('not given');
   });
+
+  it('no calorie target is said in words, only with diet shared (DECISIONS 104)', () => {
+    expect(profileLine({ noTarget: true }, FULL_ACCESS)).toBe('no calorie target set');
+    expect(profileLine({ noTarget: true }, { profile: true, diet: false })).toBe('not given');
+  });
 });
 
 describe('consent and blocked tools', () => {

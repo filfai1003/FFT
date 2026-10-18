@@ -121,12 +121,23 @@ async function daySummary(q, d, tz) {
       carbs_g: Number(t.carbs_g),
       fat_g: Number(t.fat_g),
     },
-    goal: goal[0] ? numbers(goal[0]) : null,
+    goal: goal[0] ? nutritionGoal(numbers(goal[0])) : null,
     water_ml: water[0].ml,
     food_logs: logs.map(numbers),
     body: body[0] ? numbers(body[0]) : null,
     workouts,
   };
+}
+
+/**
+ * A nutrition goal row for an AI app: kcal null means the user chose to have no calorie target
+ * (DECISIONS 104), said in words instead of empty numbers.
+ */
+function nutritionGoal(g) {
+  if (g.kcal != null) return g;
+  const out = { target: 'no target set' };
+  for (const k of ['valid_from', 'water_ml']) if (g[k] != null) out[k] = g[k];
+  return out;
 }
 
 /** Postgres numerics arrive as strings: back to numbers. */
@@ -459,7 +470,7 @@ export const TOOLS = [
   {
     name: 'get_goals',
     description:
-      'The current nutrition goal (calories, macros, water) and body goal (target weight or body fat).',
+      'The current nutrition goal (calories, macros, water; "no target set" when the user chose to have no calorie target) and body goal (target weight or body fat).',
     inputSchema: { type: 'object', properties: {} },
     run: async (q, _args, ctx) => {
       const [nutrition] = await q(
@@ -480,7 +491,7 @@ export const TOOLS = [
               ),
             )
           : null;
-      return { nutrition: clean(nutrition), body: clean(body) };
+      return { nutrition: nutritionGoal(clean(nutrition) ?? {}), body: clean(body) };
     },
   },
   // The rest of the in-app coach's tools (same names, descriptions and rules): server/coach.js.

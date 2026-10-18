@@ -144,6 +144,36 @@ export function NutritionWidget({ size }: Props) {
     target: Math.round(target?.kcal ?? 0),
   });
   const over = target ? eaten.kcal > target.kcal * 1.1 : false;
+  const setTarget = () => router.push('/diet-goals');
+
+  // No target (DECISIONS 104): what was eaten, no "left" and no arcs, and a quiet way to set one.
+  if (!target && size === 'small') {
+    return (
+      <Frame size="small" label={t('today.calories')}>
+        <View>
+          <Text variant="displayS" numeric>
+            {formatInt(eaten.kcal)}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('today.kcalEatenShort')}
+          </Text>
+        </View>
+        {fixed && nextMeal ? (
+          <Text variant="bodyS" numberOfLines={1}>
+            {nextMeal.name}
+          </Text>
+        ) : null}
+        <IconButton
+          icon={fixed ? 'check' : 'plus'}
+          accessibilityLabel={
+            fixed && nextMeal ? t('today.markEaten', { name: nextMeal.name }) : t('today.logMeal')
+          }
+          disabled={fixed && !nextMeal}
+          onPress={onMeal}
+        />
+      </Frame>
+    );
+  }
 
   if (size === 'small') {
     return (
@@ -175,68 +205,118 @@ export function NutritionWidget({ size }: Props) {
 
   return (
     <Frame size="large" label={t('today.calories')}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <Gauge
-          value={share}
-          size={150}
-          stroke={12}
-          sweep={0.75}
-          color={over ? colors.warning : colors.dotOn}
-          accessibilityLabel={gaugeLabel}
-        >
-          <Text variant="displayM" numeric>
-            {formatInt(left)}
-          </Text>
-          <Text variant="bodyS" muted>
-            {t('today.kcalLeftShort')}
-          </Text>
-        </Gauge>
-        <View style={{ flex: 1, gap: 10 }}>
-          <View>
-            <Text variant="bodyS" muted>
-              {t('today.eaten')}
-            </Text>
-            <Text variant="displayS" numeric>
-              {formatInt(eaten.kcal)}
-            </Text>
-          </View>
-          <View>
-            <Text variant="bodyS" muted>
-              {t('today.target')}
-            </Text>
-            <Text variant="displayS" numeric>
-              {formatInt(target?.kcal ?? 0)}
-            </Text>
-          </View>
-        </View>
-      </View>
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: 12,
-          borderTopWidth: 1,
-          borderColor: colors.borderDecorative,
-          paddingTop: 12,
-        }}
-      >
-        {macroRows.map(([key, value, goal]) => (
-          <View key={key} style={{ flex: 1, gap: 6 }}>
-            <Text variant="bodyS" medium>
-              {t(`diet.macro.${key}`)}
-            </Text>
-            <DotBar
-              total={Math.max(1, goal)}
-              on={value}
-              color={colors.macroSplit[key]}
-              track={colors.macroSoft[key]}
-              accessibilityLabel={t(`diet.macro.${key}`)}
+      {target ? null : (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text variant="bodyS" muted>
+                {t('today.eaten')}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                <Text variant="displayM" numeric>
+                  {formatInt(eaten.kcal)}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {t('common.kcal')}
+                </Text>
+              </View>
+            </View>
+            <Button
+              label={t('today.setTarget')}
+              variant="ghost"
+              size="small"
+              block={false}
+              onPress={setTarget}
             />
-            <Text variant="bodyS" muted numeric>
-              {`${Math.round(value)} / ${Math.round(goal)} g`}
-            </Text>
           </View>
-        ))}
-      </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 12,
+              borderTopWidth: 1,
+              borderColor: colors.borderDecorative,
+              paddingTop: 12,
+            }}
+          >
+            {(['protein', 'carbs', 'fat'] as const).map((key) => (
+              <View key={key} style={{ flex: 1, gap: 2 }}>
+                <Text variant="bodyS" medium>
+                  {t(`diet.macro.${key}`)}
+                </Text>
+                <Text variant="bodyS" muted numeric>
+                  {`${Math.round(eaten[key])} g`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+      {target ? (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Gauge
+              value={share}
+              size={150}
+              stroke={12}
+              sweep={0.75}
+              color={over ? colors.warning : colors.dotOn}
+              accessibilityLabel={gaugeLabel}
+            >
+              <Text variant="displayM" numeric>
+                {formatInt(left)}
+              </Text>
+              <Text variant="bodyS" muted>
+                {t('today.kcalLeftShort')}
+              </Text>
+            </Gauge>
+            <View style={{ flex: 1, gap: 10 }}>
+              <View>
+                <Text variant="bodyS" muted>
+                  {t('today.eaten')}
+                </Text>
+                <Text variant="displayS" numeric>
+                  {formatInt(eaten.kcal)}
+                </Text>
+              </View>
+              <View>
+                <Text variant="bodyS" muted>
+                  {t('today.target')}
+                </Text>
+                <Text variant="displayS" numeric>
+                  {formatInt(target?.kcal ?? 0)}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 12,
+              borderTopWidth: 1,
+              borderColor: colors.borderDecorative,
+              paddingTop: 12,
+            }}
+          >
+            {macroRows.map(([key, value, goal]) => (
+              <View key={key} style={{ flex: 1, gap: 6 }}>
+                <Text variant="bodyS" medium>
+                  {t(`diet.macro.${key}`)}
+                </Text>
+                <DotBar
+                  total={Math.max(1, goal)}
+                  on={value}
+                  color={colors.macroSplit[key]}
+                  track={colors.macroSoft[key]}
+                  accessibilityLabel={t(`diet.macro.${key}`)}
+                />
+                <Text variant="bodyS" muted numeric>
+                  {`${Math.round(value)} / ${Math.round(goal)} g`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
       <View
         style={{
           gap: 8,

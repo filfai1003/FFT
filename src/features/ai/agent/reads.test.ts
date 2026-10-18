@@ -84,7 +84,7 @@ beforeAll(async () => {
 describe('what the AI can look at', () => {
   it('a day: target, what was eaten, whether it was on target, water', async () => {
     const d = await readDay(ctx, '2026-10-13');
-    expect(d.target?.kcal).toBe(2400);
+    expect(d.target).toMatchObject({ kcal: 2400 });
     expect(d.eaten.kcal).toBe(260);
     expect(d.diet_status).toBe('off');
     expect(d.food_log).toMatchObject([{ name: 'Rice', meal: 'lunch', kcal: 260 }]);
@@ -92,7 +92,7 @@ describe('what the AI can look at', () => {
     const yesterday = await readDay(ctx, '2026-10-12');
     expect(yesterday.diet_status).toBe('onTarget');
     expect(yesterday.workouts).toEqual([{ name: 'Push A', minutes: 60 }]);
-    expect(yesterday.target?.kcal).toBe(2600); // training day bonus
+    expect(yesterday.target).toMatchObject({ kcal: 2600 }); // training day bonus
   });
 
   it('history: per-day status and a summary', async () => {
@@ -114,5 +114,35 @@ describe('what the AI can look at', () => {
     const foods = await readFoods('bar', LOCAL_USER_ID);
     expect(foods.foods[0]).toMatchObject({ name: 'Protein bar', per_100g: { kcal: 380 } });
     expect((await readDiet(ctx)).maintenance_kcal).toBe(2700);
+  });
+});
+
+describe('without a target (DECISIONS 104)', () => {
+  beforeAll(async () => {
+    await mockClient.from('nutrition_goals').insert({
+      id: id(8),
+      valid_from: '2026-10-13',
+      kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      water_ml: 2500,
+    });
+  });
+
+  it('says no target is set, and days before keep their target', async () => {
+    const d = await readDay(ctx, '2026-10-13');
+    expect(d.target).toBe('no target set');
+    expect(d.diet_status).toBe('none');
+    expect((await readDay(ctx, '2026-10-12')).target).toMatchObject({ kcal: 2600 });
+    const h = await readHistory(ctx, 7);
+    expect(h.days.find((x) => x.day === '2026-10-13')).toMatchObject({
+      target_kcal: null,
+      diet: 'no_target',
+    });
+    expect(h.summary.days_with_food_logged).toBe(2);
+    const diet = await readDiet(ctx);
+    expect(diet.calorie_target).toBe('no target set');
+    expect(diet.diet_plan?.daily).toBeNull();
   });
 });

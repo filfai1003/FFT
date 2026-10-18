@@ -490,10 +490,18 @@ export function checkRow(table: string, row: Row): DbError | null {
   const fail = (message: string): DbError => ({ message, code: '23514' });
   if (table === 'nutrition_goals') {
     const kcal = num(row.kcal);
-    if (kcal == null || kcal < 1500 || kcal > 10000)
+    // kcal null = "no target" from valid_from on (DECISIONS 104): all four null, nothing derived.
+    const macros = [row.protein_g, row.carbs_g, row.fat_g].map(num);
+    if (
+      macros.some((m) => (m == null) !== (kcal == null)) ||
+      (kcal == null &&
+        (num(row.maintenance_kcal) != null || (num(row.training_day_bonus_kcal) ?? 0) !== 0))
+    )
+      return fail('new row violates check constraint "nutrition_goals_target_all_or_none"');
+    if (kcal != null && (kcal < 1500 || kcal > 10000))
       return fail('new row violates check constraint "nutrition_goals_kcal_check"');
     const maintenance = num(row.maintenance_kcal);
-    if (maintenance != null && kcal < maintenance * 0.75)
+    if (maintenance != null && kcal != null && kcal < maintenance * 0.75)
       return fail('new row violates check constraint "nutrition_goals_max_deficit"');
   }
   for (const key of ['name']) {

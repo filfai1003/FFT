@@ -9,18 +9,23 @@ import { FormHeader } from '@/components/ui/FormHeader';
 import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
+import { Segmented } from '@/components/ui/Segmented';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
+import { goalForDay, hasTarget } from '@/domain/diet';
 import {
   ageInYears,
+  clampTarget,
+  DEFAULT_DAILY_KCAL,
   defaultMacros,
   macroPercents,
   macrosFromPercents,
   rebalanceMeals,
   maintenanceFromDetails,
   minimumAllowedKcal,
+  startingMacros,
   suggestedKcal,
   targetProblem,
   TRAINING_DAY_BONUS_KCAL,
@@ -31,11 +36,16 @@ import { starterMeals } from '@/features/onboarding/logic';
 import { useFixedPlan, useSaveFixedPlan } from './fixed';
 import { MacroSplitCard } from './MacroSplitCard';
 import { MealPlanEditor, type MealDraft } from './MealPlanEditor';
-import { useGoalForDay, useSaveGoal } from './log';
+import { useGoals, useRemoveTarget, useSaveGoal } from './log';
+import { DEFAULT_WATER_ML } from '@/features/onboarding/submit';
+import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { goBack } from '@/lib/navigation';
 
-/** Diet goals & tracking mode: how you track, daily calories, macro split, training-day bonus. */
+/**
+ * Diet goals & tracking mode: how you track, a calorie target or none (DECISIONS 104), daily
+ * calories, macro split, training-day bonus.
+ */
 export function DietGoalsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -44,13 +54,17 @@ export function DietGoalsScreen() {
   const today = useToday();
   const profile = useProfile();
   const weight = useLatestWeight();
-  const goal = useGoalForDay(today);
+  const goals = useGoals();
+  const goal = goalForDay(goals.data ?? [], today);
   const plan = useFixedPlan();
   const saveGoal = useSaveGoal();
+  const removeTarget = useRemoveTarget();
+  const showToast = useToastStore((s) => s.show);
   const saveProfile = useUpdateProfile();
   const savePlan = useSaveFixedPlan();
 
   const [mode, setMode] = useState<'tracking' | 'fixed_meals' | null>(null);
+  const [targetDraft, setTargetDraft] = useState<'set' | 'none' | null>(null);
   const [kcalDraft, setKcal] = useState<number | null>(null);
   const [percentDraft, setPercents] = useState<{
     protein: number;
@@ -66,48 +80,7 @@ export function DietGoalsScreen() {
   const [planName, setPlanName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!goal || !profile.data) return <Screen>{null}</Screen>;
-
-  const chosenMode = mode ?? (profile.data.diet_mode as 'tracking' | 'fixed_meals');
-  const maintenance = maintenanceDraft ?? goal.maintenanceKcal;
-  const kcal = kcalDraft ?? goal.kcal;
-  // The split is edited as percentages of the calorie target; grams are derived from it.
-  const percents =
-    percentDraft ??
-    macroPercents({ proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG });
-  const macros = percentDraft
-    ? macrosFromPercents(kcal, percentDraft)
-    : { proteinG: goal.proteinG, carbsG: goal.carbsG, fatG: goal.fatG };
-  const bonusOn = bonusDraft ?? goal.trainingDayBonusKcal > 0;
-  const minimum = maintenance ? minimumAllowedKcal(maintenance) : 1500;
-  const problem = maintenance
-    ? targetProblem(kcal, maintenance)
-    : kcal < 1500
-      ? 'below_minimum'
-      : null;
-  // Meals of the plan (fixed meals mode), always kept on the target set above.
-  const target = { kcal, ...macros };
-  const baseMeals: MealDraft[] =
-    mealsDraft ??
-    (plan.data
-      ? plan.data.meals.map(({ position: _p, ...m }) => m)
-      : starterMeals(target).map((m, i) => ({ ...m, id: starterIds[i] })));
-  const balanced = rebalanceMeals(
-    target,
-    baseMeals.map((m) => ({ kcal: m.kcal, proteinG: m.proteinG, carbsG: m.carbsG, fatG: m.fatG })),
-    -1,
-  );
-  const meals: MealDraft[] = baseMeals.map((m, i) => ({ ...m, ...balanced[i] }));
-  const requestedWorkout =
-    workoutDraft === undefined ? (plan.data?.workoutAfterMealId ?? null) : workoutDraft;
-  const workoutAfter = meals.some((m) => m.id === requestedWorkout) ? requestedWorkout : null;
-  const mealsValid = chosenMode !== 'fixed_meals' || meals.every((m) => m.name.trim() !== '');
-
-  const changeKcal = (next: number) => {
-    // Keep the percentages (grams follow the new target).
-    setPercents(percents);
-    setKcal(next);
-  };
+  if (goals.isPending || !profile.data) return <Screen>{null}</Screen>;
 
   const p = profile.data;
   // Every detail is optional (DECISIONS 103): no suggestion without sex, age, height and weight
@@ -119,6 +92,73 @@ export function DietGoalsScreen() {
     ageYears: p.birth_date ? ageInYears(new Date(p.birth_date), new Date()) : null,
     activity: p.activity_level as 'sedentary' | 'light' | 'active' | 'physical' | null,
   });
+
+  const chosenMode = mode ?? (p.diet_mode as 'tracking' | 'fixed_meals');
+  // "No target" (DECISIONS 104): calories are tracked without any target. Turning a target on
+  // starts from the suggestion (or the default), never under the safety floor.
+  const current = hasTarget(goal) ? goal : null;
+  const withTarget = (targetDraft ?? (current ? 'set' : 'none')) === 'set';
+  const startKcal = clampTarget(
+    profileMaintenance != null
+      ? suggestedKcalFromProfile(p, profileMaintenance)
+      : DEFAULT_DAILY_KCAL,
+    profileMaintenance,
+  );
+  const startMacros = current ?? startingMacros(startKcal, weight.data?.weightKg);
+  const maintenance = maintenanceDraft ?? (current ? current.maintenanceKcal : profileMaintenance);
+  const kcal = kcalDraft ?? current?.kcal ?? startKcal;
+  // The split is edited as percentages of the calorie target; grams are derived from it.
+  const percents =
+    percentDraft ??
+    macroPercents({
+      proteinG: startMacros.proteinG,
+      carbsG: startMacros.carbsG,
+      fatG: startMacros.fatG,
+    });
+  const macros = percentDraft
+    ? macrosFromPercents(kcal, percentDraft)
+    : { proteinG: startMacros.proteinG, carbsG: startMacros.carbsG, fatG: startMacros.fatG };
+  const bonusOn = bonusDraft ?? (current?.trainingDayBonusKcal ?? 0) > 0;
+  const minimum = maintenance ? minimumAllowedKcal(maintenance) : 1500;
+  // The safety limits apply whenever a target is set (1500 kcal floor, deficit at most 25%).
+  const problem = !withTarget
+    ? null
+    : maintenance
+      ? targetProblem(kcal, maintenance)
+      : kcal < 1500
+        ? 'below_minimum'
+        : null;
+  // Meals of the plan (fixed meals mode), kept on the target set above; without a target they
+  // stay as the user sets them (the suggested ones start from the default day).
+  const target = { kcal, ...macros };
+  const baseMeals: MealDraft[] =
+    mealsDraft ??
+    (plan.data
+      ? plan.data.meals.map(({ position: _p, ...m }) => m)
+      : starterMeals(target).map((m, i) => ({ ...m, id: starterIds[i] })));
+  const balanced = withTarget
+    ? rebalanceMeals(
+        target,
+        baseMeals.map((m) => ({
+          kcal: m.kcal,
+          proteinG: m.proteinG,
+          carbsG: m.carbsG,
+          fatG: m.fatG,
+        })),
+        -1,
+      )
+    : null;
+  const meals: MealDraft[] = baseMeals.map((m, i) => ({ ...m, ...balanced?.[i] }));
+  const requestedWorkout =
+    workoutDraft === undefined ? (plan.data?.workoutAfterMealId ?? null) : workoutDraft;
+  const workoutAfter = meals.some((m) => m.id === requestedWorkout) ? requestedWorkout : null;
+  const mealsValid = chosenMode !== 'fixed_meals' || meals.every((m) => m.name.trim() !== '');
+
+  const changeKcal = (next: number) => {
+    // Keep the percentages (grams follow the new target).
+    setPercents(percents);
+    setKcal(next);
+  };
 
   const recalculate = () => {
     const m = profileMaintenance;
@@ -136,7 +176,7 @@ export function DietGoalsScreen() {
     if (!maintenance) return t('goals.noSuggestion');
     const pct = Math.round(((kcal - maintenance) / maintenance) * 100);
     return t('goals.suggested', {
-      kcal: suggestedKcalFromProfile(profile.data, maintenance),
+      kcal: suggestedKcalFromProfile(p, maintenance),
       maintenance,
       pct: pct === 0 ? '±0%' : `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%`,
     });
@@ -146,16 +186,19 @@ export function DietGoalsScreen() {
     if (problem) return;
     setError(null);
     try {
-      await saveGoal.mutateAsync({
-        validFrom: today,
-        kcal,
-        proteinG: macros.proteinG,
-        carbsG: macros.carbsG,
-        fatG: macros.fatG,
-        trainingDayBonusKcal: bonusOn ? TRAINING_DAY_BONUS_KCAL : 0,
-        maintenanceKcal: maintenance,
-        waterMl: goal.waterMl,
-      });
+      let undo: (() => Promise<void>) | null = null;
+      if (withTarget)
+        await saveGoal.mutateAsync({
+          validFrom: today,
+          kcal,
+          proteinG: macros.proteinG,
+          carbsG: macros.carbsG,
+          fatG: macros.fatG,
+          trainingDayBonusKcal: bonusOn ? TRAINING_DAY_BONUS_KCAL : 0,
+          maintenanceKcal: maintenance,
+          waterMl: goal?.waterMl ?? DEFAULT_WATER_ML,
+        });
+      else if (current) undo = await removeTarget.mutateAsync({ day: today, current: goal });
       if (chosenMode === 'fixed_meals') {
         await savePlan.mutateAsync({
           planId: plan.data?.id ?? null,
@@ -169,9 +212,16 @@ export function DietGoalsScreen() {
             .filter((id) => !meals.some((m) => m.id === id)),
         });
       }
-      if (chosenMode !== profile.data.diet_mode)
-        await saveProfile.mutateAsync({ diet_mode: chosenMode });
+      if (chosenMode !== p.diet_mode) await saveProfile.mutateAsync({ diet_mode: chosenMode });
       goBack(router);
+      if (undo) {
+        const restore = undo;
+        showToast({
+          message: t('goals.targetRemoved'),
+          actionLabel: t('common.undo'),
+          onAction: () => void restore(),
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -209,86 +259,110 @@ export function DietGoalsScreen() {
           </View>
         </View>
 
-        <Card gap={12}>
+        <View style={{ gap: 8 }}>
           <Text variant="bodyS" muted>
-            {t('goals.dailyCalories')}
+            {t('goals.target')}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-            <Text variant="displayXL" numeric style={{ fontSize: 52, lineHeight: 52 }}>
-              {kcal}
-            </Text>
-            <Text variant="bodyS" muted>
-              {t('common.kcal')}
-            </Text>
-          </View>
-          <Stepper
-            value={kcal}
-            min={minimum}
-            max={6000}
-            step={50}
-            onChange={changeKcal}
-            format={(v) => `${v} ${t('common.kcal')}`}
-            decreaseLabel={t('goals.lower')}
-            increaseLabel={t('goals.raise')}
+          <Segmented
+            accessibilityLabel={t('goals.target')}
+            value={withTarget ? 'set' : 'none'}
+            onChange={setTargetDraft}
+            options={[
+              { value: 'set', label: t('goals.setTarget') },
+              { value: 'none', label: t('goals.noTarget') },
+            ]}
           />
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
-              paddingTop: 10,
-            }}
-          >
-            <Text variant="bodyS" muted style={{ flex: 1, lineHeight: 16 }}>
-              {suggestion}
-            </Text>
-            <Button
-              label={t('goals.recalculate')}
-              variant="secondary"
-              block={false}
-              disabled={profileMaintenance == null}
-              onPress={recalculate}
-            />
-          </View>
-          {problem ? (
-            <Text variant="bodyS" danger accessibilityRole="alert">
-              {t(`goals.problem.${problem}`)}
-            </Text>
-          ) : null}
-        </Card>
-
-        <MacroSplitCard kcal={kcal} percents={percents} onChange={setPercents} />
-
-        <View
-          style={{
-            minHeight: 52,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            paddingLeft: 16,
-            paddingRight: 8,
-            borderRadius: 18,
-            borderWidth: 1,
-            borderColor: colors.borderDecorative,
-            backgroundColor: colors.surfaceAlt,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text>{t('goals.trainingBonus')}</Text>
+          {withTarget ? null : (
             <Text variant="bodyS" muted>
-              {t('goals.trainingBonusDetail')}
+              {t('goals.noTargetDetail')}
             </Text>
-          </View>
-          <Toggle
-            value={bonusOn}
-            onValueChange={setBonus}
-            accessibilityLabel={t('goals.trainingBonus')}
-          />
+          )}
         </View>
+
+        {withTarget ? (
+          <>
+            <Card gap={12}>
+              <Text variant="bodyS" muted>
+                {t('goals.dailyCalories')}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                <Text variant="displayXL" numeric style={{ fontSize: 52, lineHeight: 52 }}>
+                  {kcal}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {t('common.kcal')}
+                </Text>
+              </View>
+              <Stepper
+                value={kcal}
+                min={minimum}
+                max={6000}
+                step={50}
+                onChange={changeKcal}
+                format={(v) => `${v} ${t('common.kcal')}`}
+                decreaseLabel={t('goals.lower')}
+                increaseLabel={t('goals.raise')}
+              />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  borderTopWidth: 1,
+                  borderColor: colors.borderDecorative,
+                  paddingTop: 10,
+                }}
+              >
+                <Text variant="bodyS" muted style={{ flex: 1, lineHeight: 16 }}>
+                  {suggestion}
+                </Text>
+                <Button
+                  label={t('goals.recalculate')}
+                  variant="secondary"
+                  block={false}
+                  disabled={profileMaintenance == null}
+                  onPress={recalculate}
+                />
+              </View>
+              {problem ? (
+                <Text variant="bodyS" danger accessibilityRole="alert">
+                  {t(`goals.problem.${problem}`)}
+                </Text>
+              ) : null}
+            </Card>
+
+            <MacroSplitCard kcal={kcal} percents={percents} onChange={setPercents} />
+
+            <View
+              style={{
+                minHeight: 52,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                paddingLeft: 16,
+                paddingRight: 8,
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: colors.borderDecorative,
+                backgroundColor: colors.surfaceAlt,
+              }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text>{t('goals.trainingBonus')}</Text>
+                <Text variant="bodyS" muted>
+                  {t('goals.trainingBonusDetail')}
+                </Text>
+              </View>
+              <Toggle
+                value={bonusOn}
+                onValueChange={setBonus}
+                accessibilityLabel={t('goals.trainingBonus')}
+              />
+            </View>
+          </>
+        ) : null}
 
         {chosenMode === 'fixed_meals' ? (
           <View style={{ gap: 12 }}>
@@ -303,16 +377,18 @@ export function DietGoalsScreen() {
             <MealPlanEditor
               meals={meals}
               onMealsChange={setMealsDraft}
-              goal={target}
+              goal={withTarget ? target : null}
               workoutAfter={workoutAfter}
               onWorkoutAfterChange={setWorkoutDraft}
             />
           </View>
         ) : null}
 
-        <Text variant="bodyS" muted>
-          {t('onboarding.target.safety')}
-        </Text>
+        {withTarget ? (
+          <Text variant="bodyS" muted>
+            {t('onboarding.target.safety')}
+          </Text>
+        ) : null}
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">
             {error}
