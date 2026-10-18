@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import { Icon } from '@/components/ui/Icon';
+import { CheckFill } from '@/components/ui/CheckFill';
 import { Screen } from '@/components/ui/Screen';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
@@ -229,18 +229,21 @@ export function FixedMealsLog() {
                     width: touch.checkButton,
                     height: touch.checkButton,
                     borderRadius: touch.checkButton / 2,
-                    borderWidth: 1,
-                    borderStyle: done ? 'solid' : 'dashed',
-                    borderColor: done ? colors.borderSelected : colors.borderControl,
-                    backgroundColor: done ? colors.surfaceSelected : 'transparent',
+                    borderWidth: done ? 0 : 1,
+                    borderStyle: 'dashed',
+                    borderColor: colors.borderControl,
+                    overflow: 'hidden',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon
-                    name="check"
-                    size={22}
-                    color={done ? colors.text : colors.textPlaceholderIcon}
+                  {/* Eaten = filled in the nutrition colour, with a short animation. */}
+                  <CheckFill
+                    done={done}
+                    size={touch.checkButton}
+                    fill={colors.nutrition}
+                    iconOn={colors.bg}
+                    iconOff={colors.textPlaceholderIcon}
                   />
                 </Pressable>
               </View>

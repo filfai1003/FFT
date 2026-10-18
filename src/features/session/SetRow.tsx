@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import { Icon } from '@/components/ui/Icon';
+import { CheckFill } from '@/components/ui/CheckFill';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
@@ -119,10 +119,17 @@ export const SetRow = memo(function SetRow({
           justifyContent: 'center',
           borderWidth: set.done ? 0 : 1,
           borderColor: colors.borderControl,
-          backgroundColor: set.done ? colors.text : 'transparent',
+          overflow: 'hidden',
         }}
       >
-        <Icon name="check" size={22} color={set.done ? colors.bg : colors.textMuted} />
+        {/* Done = filled green with the check (canvas), filled with a short animation. */}
+        <CheckFill
+          done={set.done}
+          size={check}
+          fill={colors.success}
+          iconOn={colors.bg}
+          iconOff={colors.textMuted}
+        />
       </Pressable>
     </View>
   );
