@@ -41,10 +41,10 @@ describe('Settings (the gear on your profile)', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/profile/privacy');
   });
 
-  it('Premium is the only plan listed (Supporter is separate and not built)', async () => {
+  it('one Plans row (Free, Supporter and Premium) opens the plans page', async () => {
     await renderUI(<SettingsHubScreen />);
-    await fireEvent.press(screen.getByLabelText(/^Premium/));
+    await fireEvent.press(screen.getByLabelText(/^Plans/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/premium');
-    expect(screen.queryByText(/Supporter/)).toBeNull();
+    expect(screen.getByText('Free, Supporter and Premium')).toBeTruthy();
   });
 });

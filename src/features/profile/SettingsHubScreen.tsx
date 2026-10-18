@@ -81,7 +81,7 @@ export function SettingsHubScreen() {
         : [
             {
               icon: 'trophy',
-              label: t('premium.plan.premium'),
+              label: t('premium.plansTitle'),
               help: t('settings.premiumHelp'),
               value: t(`profile.${plan}`),
               onPress: () => router.push('/profile/premium'),

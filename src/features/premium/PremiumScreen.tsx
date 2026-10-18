@@ -12,11 +12,19 @@ import { logOut } from '@/features/profile/account';
 import { goBack } from '@/lib/navigation';
 import { usePlanStore, type Plan } from '@/lib/plan';
 
-/** What each plan adds to the one before (keys under premium.perks). */
+/**
+ * The three tiers, each adding to the one before (keys under premium.perks): Supporter adds the
+ * community extras, Premium adds the AI coach on top of everything in Supporter. Only Free exists
+ * today; the others say "Coming soon" (an account's plan is still free or premium, DECISIONS 100).
+ */
 const PLANS = [
-  { plan: 'free', perks: ['everything', 'sync', 'web', 'safe', 'apiMcp', 'ownKey'] },
-  { plan: 'premium', perks: ['freeAll', 'aiIncluded', 'aiCredit'] },
-] as const satisfies readonly { plan: Plan; perks: readonly string[] }[];
+  {
+    tier: 'free',
+    perks: ['everything', 'community', 'sync', 'web', 'safe', 'apiMcp', 'ownKey'],
+  },
+  { tier: 'supporter', perks: ['freeAll', 'filters', 'history', 'badge', 'cosmetics'] },
+  { tier: 'premium', perks: ['supporterAll', 'aiIncluded', 'aiCredit'] },
+] as const satisfies readonly { tier: Plan | 'supporter'; perks: readonly string[] }[];
 
 /**
  * The plans and the one this account has. `gate`: the web app for an account without online data
@@ -39,7 +47,7 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
         {gate ? <Text muted>{t('premium.gateIntro')}</Text> : null}
       </View>
 
-      {PLANS.map(({ plan, perks }) => {
+      {PLANS.map(({ tier: plan, perks }) => {
         const mine = plan === current;
         return (
           <View

@@ -802,7 +802,7 @@ function FiltersSheet({
   const { period, set } = useBoardChoice();
   const toSupporter = () => {
     onClose();
-    router.push('/progress/supporter');
+    router.push('/profile/premium');
   };
   const groups = [
     {

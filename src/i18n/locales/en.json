@@ -1021,7 +1021,7 @@
       "app": "App",
       "data": "Data"
     },
-    "premiumHelp": "The AI coach, without your own key",
+    "premiumHelp": "Free, Supporter and Premium",
     "apiHelp": "Connect AI apps and your own tools",
     "units": "Units",
     "weight": "Weight",
@@ -1576,6 +1576,7 @@
     "gateIntro": "Sign in again to open FFT in the browser.",
     "plan": {
       "free": "Free",
+      "supporter": "Supporter",
       "premium": "Premium"
     },
     "priceFree": "0 €",
@@ -1590,9 +1591,15 @@
       "apiMcp": "API and MCP for your own tools",
       "aiIncluded": "AI coach included, no key",
       "aiCredit": "A monthly AI allowance, unused carries over (up to 150%)",
-      "freeAll": "Everything in Free"
+      "freeAll": "Everything in Free",
+      "community": "Every badge, streak, level and leaderboard",
+      "filters": "Compare with friends, country, age and weight class",
+      "history": "Deeper stats history",
+      "badge": "Supporter badge on your profile and on leaderboards",
+      "cosmetics": "Profile colours and frames",
+      "supporterAll": "Everything in Supporter"
     },
-    "howToGet": "Premium is not available yet. Coming soon."
+    "howToGet": "Supporter and Premium are not available yet. Coming soon."
   },
   "sync": {
     "title": "Online sync",

@@ -139,7 +139,7 @@ describe('Community: leaderboard', () => {
     expect(screen.getByText('Compare with')).toBeTruthy();
     expect(screen.getAllByText('Supporter').length).toBe(3);
     await fireEvent.press(screen.getByLabelText('Friends. Supporter, coming soon'));
-    expect(mockPush).toHaveBeenCalledWith('/progress/supporter');
+    expect(mockPush).toHaveBeenCalledWith('/profile/premium');
   });
 
   it('scores read as counts and signed percentages', () => {
