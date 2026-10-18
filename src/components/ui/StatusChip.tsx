@@ -23,8 +23,11 @@ export function StatusChip({
     <View
       style={{
         alignSelf: 'flex-start',
+        // In a narrow card the label wraps inside the pill instead of running out of it.
+        maxWidth: '100%',
         minHeight: 26,
         paddingHorizontal: 9,
+        paddingVertical: 3,
         borderRadius: 13,
         backgroundColor: bg,
         flexDirection: 'row',
@@ -33,7 +36,7 @@ export function StatusChip({
       }}
     >
       {icon ? <Icon name={icon} size={13} color={ink} /> : null}
-      <Text variant="label" semibold numeric style={{ color: ink }}>
+      <Text variant="label" semibold numeric style={{ color: ink, flexShrink: 1 }}>
         {label}
       </Text>
     </View>

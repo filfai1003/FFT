@@ -14,7 +14,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { addDays, compactDateLabel, deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
@@ -571,15 +571,18 @@ export function WaterWidget({ size }: Props) {
 
   return (
     <Frame size={size} label={t('today.waterLabel')}>
-      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
+      <View
+        style={{ flexDirection: 'row', gap: size === 'small' ? 10 : 12, alignItems: 'flex-end' }}
+      >
         {/* A glass that fills (water is part of nutrition: teal). */}
         <View
           accessible
           accessibilityRole="progressbar"
           accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
           style={{
-            width: 40,
-            height: 68,
+            // Half width: a slimmer glass leaves the litres room to breathe.
+            width: size === 'small' ? 32 : 40,
+            height: size === 'small' ? 56 : 68,
             borderTopLeftRadius: 9,
             borderTopRightRadius: 9,
             borderBottomLeftRadius: 14,
@@ -684,6 +687,7 @@ export function WeightWidget({ size }: Props) {
     .filter((e) => e.day > addDays(today, -15))
     .map((e) => e.weightKg as number)
     .reverse();
+  const small = size === 'small';
 
   return (
     <Frame size={size} label={t('today.weight')} onPress={() => router.push('/progress/body')}>
@@ -695,7 +699,7 @@ export function WeightWidget({ size }: Props) {
           {line.length > 1 ? (
             <Sparkline
               values={line}
-              height={44}
+              height={small ? 32 : 44}
               color={colors.text}
               accessibilityLabel={t('today.weightLineA11y')}
             />
@@ -704,11 +708,16 @@ export function WeightWidget({ size }: Props) {
             <StatusChip
               area={better == null ? 'neutral' : better ? 'better' : 'worse'}
               icon={change < 0 ? 'arrowDown' : change > 0 ? 'arrowUp' : undefined}
-              label={t('today.weightChange', { kg: (change > 0 ? '+' : '') + change.toFixed(1) })}
+              label={t(small ? 'today.weightChangeShort' : 'today.weightChange', {
+                kg: (change > 0 ? '+' : '') + change.toFixed(1),
+              })}
             />
           ) : (
-            <Text variant="bodyS" muted>
-              {t('today.weightOn', { day: shortDateLabel(latest.day) })}
+            // Half width: "Logged Sun 18", wrapping rather than cut.
+            <Text variant={small ? 'label' : 'bodyS'} muted>
+              {t('today.weightOn', {
+                day: small ? compactDateLabel(latest.day) : shortDateLabel(latest.day),
+              })}
             </Text>
           )}
         </>
@@ -796,10 +805,11 @@ export function SupplementsWidget({ size }: Props) {
                   {on ? <Icon name="check" size={14} color={colors.surface} /> : null}
                 </View>
                 <View style={{ flex: 1 }}>
+                  {/* Half width: long names wrap to a second line instead of being cut. */}
                   <Text
                     variant="bodyS"
                     semibold
-                    numberOfLines={1}
+                    numberOfLines={size === 'small' ? 2 : 1}
                     style={on ? { color: colors.nutritionInk } : undefined}
                   >
                     {s.name}
@@ -807,7 +817,7 @@ export function SupplementsWidget({ size }: Props) {
                   {s.dose ? (
                     <Text
                       variant="label"
-                      numberOfLines={1}
+                      numberOfLines={size === 'small' ? 2 : 1}
                       muted={!on}
                       style={on ? { color: colors.nutritionInk } : undefined}
                     >

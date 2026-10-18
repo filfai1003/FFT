@@ -75,6 +75,12 @@ export function shortDateLabel(day: string): string {
   return `${WEEKDAYS[dow]} ${d} ${MONTHS[m - 1]}`;
 }
 
+/** "Sun 18": the short form for narrow places (half-width Home cards). */
+export function compactDateLabel(day: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d}`;
+}
+
 export function weekdayLetter(day: string): string {
   const [y, m, d] = day.split('-').map(Number);
   return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()][0];
