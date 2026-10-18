@@ -27,7 +27,7 @@ function SettingsPage({ title, children }: { title: string; children: React.Reac
   const router = useRouter();
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+      <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
       <Text variant="screenTitle">{title}</Text>
       {children}
     </Screen>

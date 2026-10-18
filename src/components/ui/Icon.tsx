@@ -2,36 +2,47 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 type Shape = string | readonly [cx: number, cy: number, r: number];
 
-/** Stroke icons on a 24px grid, 1.5 stroke, like the mockups. Add shapes as screens need them. */
+/**
+ * Stroke icons on a 24px grid, 1.8 stroke: the same shapes as the canvas Icon component
+ * ("FFT redesign"). Add shapes as screens need them, copied from there.
+ */
 const shapes = {
   plus: ['M12 5v14M5 12h14'],
   minus: ['M5 12h14'],
   check: ['M5 12.5l4.5 4.5L19 7.5'],
-  chevronLeft: ['M15 5l-7 7 7 7'],
-  chevronRight: ['M9 5l7 7-7 7'],
-  chevronDown: ['M5 9l7 7 7-7'],
-  close: ['M6 6l12 12M18 6L6 18'],
-  play: ['M8 5.5l11 6.5-11 6.5z'],
-  bell: ['M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7', 'M10 20a2 2 0 0 0 4 0'],
-  search: ['M20 20l-4-4', [11, 11, 6.5]],
-  image: ['M4 5h16v14H4z', 'M4 16l5-5 4 4 3-3 4 4'],
-  more: ['M5 12h.01M12 12h.01M19 12h.01'],
+  chevronLeft: ['M14.5 6l-6 6 6 6'],
+  chevronRight: ['M9.5 6l6 6-6 6'],
+  chevronDown: ['M6 9.5l6 6 6-6'],
+  close: ['M6.5 6.5l11 11M17.5 6.5l-11 11'],
+  play: ['M8 5.5v13l10.5-6.5z'],
+  bell: ['M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z', 'M10 20.5a2 2 0 0 0 4 0'],
+  search: ['M20 20l-4.3-4.3', [11, 11, 6.5]],
+  image: ['M4 5h16v14H4z', 'M4 16l5-5 4 4 2.5-2.5L20 17', 'M15.5 9h.01'],
+  more: ['M5.5 12h.01M12 12h.01M18.5 12h.01'],
   edit: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
-  trash: ['M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13'],
+  trash: ['M4.5 7h15', 'M9.5 7V4.5h5V7', 'M6.5 7l1 13h9l1-13'],
   arrowUp: ['M12 19V5M6 11l6-6 6 6'],
   arrowDown: ['M12 5v14M6 13l6 6 6-6'],
-  info: [[12, 12, 9], 'M12 11v5M12 8h.01'],
-  calendar: ['M4 6h16v14H4zM4 10h16M8 3v4M16 3v4'],
+  info: [[12, 12, 8.5], 'M12 11v5M12 8h.01'],
+  calendar: ['M4.5 5.5h15v14h-15z', 'M4.5 10h15', 'M8.5 3.5v4', 'M15.5 3.5v4'],
   chat: ['M4 5h16v11H10l-4 4v-4H4z'],
   grip: ['M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01'],
-  sliders: ['M4 7h9M19 7h1M4 17h1M11 17h9', [16, 7, 2.5], [8, 17, 2.5]],
-  camera: ['M4 8h4l2-3h4l2 3h4v11H4z', [12, 13, 3.5]],
+  sliders: ['M4 7h9', 'M17 7h3', [15, 7, 2], 'M4 17h3', 'M11 17h9', [9, 17, 2]],
+  camera: ['M4 8h3.2l1.8-2.5h6l1.8 2.5H20v11H4z', [12, 13, 3.3]],
   scan: ['M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M8 8v8M12 8v8M16 8v8'],
-  copy: ['M9 9h11v11H9z', 'M15 9V4H4v11h5'],
+  copy: ['M8.5 8.5h11v11h-11z', 'M4.5 15.5v-11h11'],
   code: ['M8.5 7l-5 5 5 5', 'M15.5 7l5 5-5 5', 'M13.5 4.5l-3 15'],
   archive: ['M3 5h18v4H3zM5 9v11h14V9M10 13h4'],
-  lock: ['M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3'],
-  swap: ['M7 4l-4 4 4 4M3 8h14M17 20l4-4-4-4M21 16H7'],
+  lock: ['M6 11h12v9H6z', 'M8.5 11V8a3.5 3.5 0 0 1 7 0v3'],
+  swap: ['M7.5 4l-3 3 3 3', 'M4.5 7h13', 'M16.5 20l3-3-3-3', 'M19.5 17h-13'],
+  /** A cog: the way into Settings (the canvas "settings" glyph reads as a sun next to Look). */
+  gear: [
+    'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z',
+    [12, 12, 3],
+  ],
+  medal: [[12, 15, 5], 'M8.5 3.5l2.2 6.8', 'M15.5 3.5l-2.2 6.8', 'M12 13v4'],
+  heart: ['M12 19.5S4 15 4 9.5A4 4 0 0 1 12 8a4 4 0 0 1 8 1.5c0 5.5-8 10-8 10z'],
+  logout: ['M14.5 4.5h4.5v15h-4.5', 'M10 8l-4 4 4 4', 'M6 12h10.5'],
   home: ['M4 11l8-7 8 7', 'M6 9.5V20h12V9.5', 'M10 20v-5h4v5'],
   bowl: ['M3.5 11h17a8.5 8.5 0 0 1-17 0z', 'M9 4c0 2 1.6 2 1.6 4', 'M13.5 4c0 2 1.6 2 1.6 4'],
   dumbbell: ['M6.5 7v10', 'M17.5 7v10', 'M3.5 9.5v5', 'M20.5 9.5v5', 'M6.5 12h11'],
@@ -102,7 +113,8 @@ export function Icon({ name, size = 20, color }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke={color}
-      strokeWidth={1.8}
+      // Dot glyphs need a heavier stroke to read as dots (same as the canvas).
+      strokeWidth={name === 'more' || name === 'grip' ? 3 : 1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden

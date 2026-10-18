@@ -26,7 +26,7 @@ import { AiPrivacySection } from './AiConsent';
 export function AiHubScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const goBack = useBack('/profile');
+  const goBack = useBack('/profile/settings');
   const barHeight = useTabBarHeight();
   const stored = useAiSettings();
   const showToast = useToastStore((s) => s.show);

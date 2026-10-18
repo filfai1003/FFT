@@ -146,7 +146,7 @@ export function PrivacyScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
-        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
         <Text variant="screenTitle" style={{ fontSize: 28 }}>
           {t('privacy.title')}
         </Text>

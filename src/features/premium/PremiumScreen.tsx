@@ -32,7 +32,7 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
       {gate ? null : (
-        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
       )}
       <View style={{ gap: 6 }}>
         <Text variant="screenTitle">{t('premium.plansTitle')}</Text>

@@ -40,7 +40,7 @@ export function ApiScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const goBack = useBack('/profile');
+  const goBack = useBack('/profile/settings');
   const barHeight = useActionBarHeight();
   const showToast = useToastStore((s) => s.show);
   // Every account (DECISIONS 47); the account-less mode has no server account to connect.

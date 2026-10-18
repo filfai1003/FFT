@@ -1,9 +1,19 @@
+import { createContext, useContext } from 'react';
 import { type StyleProp, type ViewStyle } from 'react-native';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
 import { AnimatedPressable, usePressScale } from './motion';
+
+/**
+ * `outline` = round white button with a hairline border (headers of the main pages, cards);
+ * `plain` = the bare icon in a 44px target (top bar of pushed pages: back, close, more).
+ */
+export type IconButtonLook = 'outline' | 'plain';
+
+/** Lets a container (the TopBar) switch the icon buttons inside it to its own look. */
+export const IconButtonLookContext = createContext<IconButtonLook>('outline');
 
 export type IconButtonProps = {
   icon: IconName;
@@ -13,6 +23,7 @@ export type IconButtonProps = {
   disabled?: boolean;
   /** Visual size, never below the 44px touch target. */
   size?: number;
+  look?: IconButtonLook;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -22,9 +33,12 @@ export function IconButton({
   onPress,
   disabled = false,
   size = touch.minTarget,
+  look,
   style,
 }: IconButtonProps) {
   const { colors } = useTheme();
+  const inherited = useContext(IconButtonLookContext);
+  const plain = (look ?? inherited) === 'plain';
   const press = usePressScale(0.92);
   const box = Math.max(size, touch.minTarget);
   return (
@@ -45,9 +59,13 @@ export function IconButton({
           width: box,
           height: box,
           borderRadius: box / 2,
-          borderWidth: 1,
+          borderWidth: plain ? 0 : 1,
           borderColor: colors.borderDecorative,
-          backgroundColor: colors.surface,
+          backgroundColor: plain
+            ? press.pressed
+              ? colors.surfaceAlt
+              : 'transparent'
+            : colors.surface,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
@@ -56,7 +74,7 @@ export function IconButton({
         press.style,
       ]}
     >
-      <Icon name={icon} color={colors.text} />
+      <Icon name={icon} size={plain ? 24 : 20} color={colors.text} />
     </AnimatedPressable>
   );
 }

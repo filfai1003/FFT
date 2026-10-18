@@ -56,7 +56,7 @@ export function AccessibilityScreen() {
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+      <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
       <Text variant="screenTitle">{t('a11y.title')}</Text>
 
       <Card gap={6}>
