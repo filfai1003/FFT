@@ -73,7 +73,8 @@ export function IconButton({
               ? colors.surfaceAlt
               : 'transparent'
             : soft
-              ? colors.surfaceAlt
+              ? // The empty-track colour: a shade lighter than the card in dark, darker in light.
+                colors.dotOff
               : colors.surface,
           alignItems: 'center',
           justifyContent: 'center',

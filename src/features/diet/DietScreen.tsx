@@ -78,7 +78,7 @@ function FoodLog() {
             </Text>
           </View>
           <IconButton
-            icon="settings"
+            icon="gear"
             accessibilityLabel={t('diet.goalsAndMode')}
             onPress={() => router.push('/diet-goals')}
           />

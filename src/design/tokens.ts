@@ -84,7 +84,7 @@ const dark: Palette = {
   surface: '#1D1C1A',
   surfaceAlt: '#181715',
   surfaceSelected: '#262522',
-  surfaceRaised: '#2A2926',
+  surfaceRaised: '#3A3834',
   borderDecorative: '#2E2C29',
   borderControl: '#7F7B74',
   borderSelected: '#F4F3F0',
