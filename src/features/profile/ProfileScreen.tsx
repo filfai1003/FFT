@@ -14,6 +14,7 @@ import { deviceTimeZone, localDay } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
 import { latestRecords, nextBadges } from '@/domain/gamification';
+import { ProfileCommunityCard } from '@/features/community/ProfileCommunityCard';
 import { useGoalForDay } from '@/features/diet/log';
 import {
   BadgeDisc,
@@ -429,6 +430,8 @@ export function ProfileScreen() {
           ))
         )}
       </Card>
+
+      <ProfileCommunityCard />
 
       <MenuList
         items={[

@@ -2010,5 +2010,236 @@
       "name": "Early bird",
       "how": "Start 5 workouts before 8:00"
     }
+  },
+  "community": {
+    "needsAccount": "The community needs an account",
+    "needsAccountInfo": "Leaderboards are shared through our server, so they need an account. Everything else keeps working on this phone.",
+    "error": "Could not reach the community. Check the connection and try again.",
+    "retry": "Try again",
+    "metric": {
+      "workouts": "Workouts",
+      "diet": "Diet",
+      "training": "Training",
+      "strength": "Strength"
+    },
+    "metricDetail": {
+      "workouts": "Per week or month",
+      "diet": "Days on target",
+      "training": "Planned workouts done",
+      "strength": "Gain in %"
+    },
+    "join": {
+      "title": "Join the community",
+      "intro": "Leaderboards anyone can win: each score is measured against where you started, not against how strong you are.",
+      "appearAs": "You will appear as",
+      "yourName": "Your profile name",
+      "change": "Change",
+      "changeA11y": "Change your name",
+      "changeInfo": "Changing it here changes your profile name everywhere.",
+      "othersSee": "Others see",
+      "never": "Never shared",
+      "shared": {
+        "name": "Your name",
+        "scores": "Your scores",
+        "badges": "Your badges"
+      },
+      "notShared": {
+        "weight": "Weight",
+        "measurements": "Measurements",
+        "photos": "Photos"
+      },
+      "button": "Join",
+      "leaveInfo": "You can leave at any time from your community profile.",
+      "joined": "You joined the community",
+      "noName": "Add your name first: others see it on the leaderboards."
+    },
+    "name": {
+      "title": "Your name",
+      "label": "Name",
+      "save": "Save",
+      "saved": "Name changed"
+    },
+    "whatToCompare": "What to compare",
+    "subjects": "Which strength score",
+    "overall": "Overall",
+    "compareA11y": "Who you compare with: {{who}}. Change",
+    "periodA11y": "Period: {{period}}. Change",
+    "period": {
+      "week": "This week",
+      "month": "This month"
+    },
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left",
+    "lastDay": "Last day",
+    "audience": {
+      "everyone": "Everyone",
+      "friends": "Friends",
+      "country": "Your country",
+      "class": "Age and weight class"
+    },
+    "audienceDetail": {
+      "everyone": "Everyone in the community",
+      "everyoneCount": "All {{count}} people on this leaderboard",
+      "friends": "Only the people you added",
+      "country": "People in your country",
+      "class": "Your age group and weight class"
+    },
+    "supporterTag": "Supporter",
+    "supporterA11y": "{{name}}. Supporter, coming soon",
+    "filters": {
+      "title": "Compare with",
+      "period": "Period",
+      "note": "Supporter filters are coming soon. Everything competitive stays free.",
+      "what": "What is Supporter?",
+      "show": "Show leaderboard"
+    },
+    "board": {
+      "title": {
+        "workouts": "Most workouts",
+        "diet": "Most days on target",
+        "training": "Most planned workouts done",
+        "strength": "{{subject}}, biggest gain"
+      },
+      "info": {
+        "workouts": "Workouts finished since {{date}}.",
+        "diet": "Share of days within 10% of each person's own calorie target since {{date}}.",
+        "training": "Share of each person's own planned workouts done since {{date}}.",
+        "strength": "Estimated 1RM change since {{date}}. Measured against where each person started, so anyone can win."
+      },
+      "empty": "No scores here yet. Scores update when members open Progress, at most every 10 minutes.",
+      "podiumA11y": "{{place}}: {{name}}, {{value}}",
+      "rowA11y": "{{place}}. {{name}}, {{value}}, {{move}}"
+    },
+    "move": {
+      "up_one": "Up {{count}}",
+      "up_other": "Up {{count}}",
+      "down_one": "Down {{count}}",
+      "down_other": "Down {{count}}",
+      "same": "Same place"
+    },
+    "you": {
+      "top": "You · top {{pct}}%",
+      "up_one": "Up {{count}} place since yesterday",
+      "up_other": "Up {{count}} places since yesterday",
+      "down_one": "Down {{count}} place since yesterday",
+      "down_other": "Down {{count}} places since yesterday",
+      "same": "Same place as yesterday",
+      "a11y": "Your place: {{place}} of {{total}}, {{move}}, {{value}}",
+      "noScore": "You have no score here yet",
+      "noScoreInfo": "Train or log this period to get one."
+    },
+    "friends": {
+      "title": "Friends",
+      "add": "Add a friend",
+      "none": "No friends yet. Share your code, or add someone's.",
+      "askedYou": "Wants to be your friend",
+      "asked": "Request sent",
+      "accept": "Accept",
+      "acceptA11y": "Accept {{name}}",
+      "decline": "Decline",
+      "declineA11y": "Decline {{name}}",
+      "declined": "Request declined",
+      "accepted": "You are now friends",
+      "noScore": "No score yet",
+      "count_one": "{{count}} friend",
+      "count_other": "{{count}} friends",
+      "and": "{{list}} and {{last}}",
+      "seeFriends": "See friends"
+    },
+    "avatarA11y": "Your community profile",
+    "profile": {
+      "note": "This is how others see you",
+      "noteInfo": "They also get an Add friend button here.",
+      "since": "In the community since {{date}}",
+      "badges_one": "{{count}} badge",
+      "badges_other": "{{count}} badges",
+      "thisMonth": "This month",
+      "stat": {
+        "workouts": "Workouts this month",
+        "diet": "Days on diet target",
+        "training": "Planned workouts done",
+        "strength": "Strength gain"
+      },
+      "statA11y": "{{label}}: {{value}}",
+      "top": "Top {{pct}}%",
+      "placeWhat": {
+        "workouts": "Workouts",
+        "diet": "Days on target",
+        "training": "Planned workouts done",
+        "strength": "Strength gain"
+      },
+      "placeWhen": {
+        "week": "This week · place {{place}} of {{total}}",
+        "month": "This month · place {{place}} of {{total}}"
+      },
+      "badgesOnShow": "Badges on show",
+      "noBadges": "No badges yet.",
+      "privacy": "Others see only your name, level, scores and badges. Never your weight, measurements or photos.",
+      "leave": "Leave the community",
+      "leaveTitle": "Leave the community?",
+      "leaveInfo": "Your member profile, scores and friends are deleted from our server now. You can join again later, as a new member.",
+      "leaveYes": "Leave",
+      "left": "You left the community",
+      "rejoined": "You are back in the community. Friends need to be added again.",
+      "addFriend": "Add friend",
+      "requested": "Request sent",
+      "isFriend": "Friends",
+      "removeFriend": "Remove friend",
+      "removed": "Friend removed",
+      "notFound": "This member left the community."
+    },
+    "code": {
+      "my": "My code",
+      "title": "Your friend code",
+      "info": "Friends type this code in \"Add a friend\". It only lets people send you a request.",
+      "qrA11y": "QR code of your friend code {{code}}",
+      "copy": "Copy code",
+      "copied": "Code copied",
+      "add": "Add by code",
+      "label": "Friend code",
+      "send": "Send request",
+      "sent": "Request sent",
+      "nowFriends": "You are now friends",
+      "unknown": "No member has this code",
+      "own": "This is your own code"
+    },
+    "supporter": {
+      "title": "Supporter",
+      "intro": "Everything competitive stays free. Supporter adds extras for people who want to back FFT.",
+      "freeTitle": "Free for everyone",
+      "free": {
+        "boards": "Every leaderboard: workouts, diet, training, strength",
+        "badges": "Every badge, streak and level",
+        "friends": "Friends and their scores",
+        "profile": "Your community profile"
+      },
+      "addsTitle": "Supporter adds",
+      "extras": {
+        "filters": "Compare with friends, country, age and weight class",
+        "filtersInfo": "Extra choices in the Everyone menu of every leaderboard",
+        "history": "Deeper stats history",
+        "historyInfo": "Every score and record since you joined",
+        "badge": "Supporter badge",
+        "badgeInfo": "Shown on your profile and on leaderboards",
+        "cosmetics": "Profile cosmetics",
+        "cosmeticsInfo": "Colours and frames for your avatar"
+      },
+      "framePreview": "Frame preview",
+      "frames": {
+        "black": "Black frame",
+        "blue": "Blue frame",
+        "green": "Green frame",
+        "orange": "Orange frame"
+      },
+      "price": "Price",
+      "comingSoon": "Coming soon",
+      "noPurchase": "Nothing can be bought yet: Supporter is not available."
+    },
+    "profileCard": {
+      "seeHow": "See how others see you",
+      "seeHowInfo": "Name, level, scores and badges only",
+      "join": "Join the community",
+      "joinInfo": "Leaderboards anyone can win, opt-in"
+    }
   }
 }

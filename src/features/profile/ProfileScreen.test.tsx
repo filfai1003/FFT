@@ -28,6 +28,9 @@ jest.mock('./api', () => ({
 jest.mock('./stats', () => ({
   useProfileStats: () => ({ data: { streak: 12, loggedThisMonth: 9, daysSoFar: 18 } }),
 }));
+jest.mock('@/features/community/ProfileCommunityCard', () => ({
+  ProfileCommunityCard: () => null,
+}));
 jest.mock('@/features/progress/strength', () => ({ useStrength: () => ({ overall: 3.5 }) }));
 jest.mock('@/features/diet/log', () => ({
   useGoalForDay: () => ({ kcal: 2600 }),
