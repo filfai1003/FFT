@@ -15,6 +15,7 @@ import { createApkPublisher } from '../../server/apk.js';
 import { boundedMap } from '../../server/bounded-map.js';
 import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
+import { panelRoleSetup } from '../../admin/roles.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -3263,5 +3264,42 @@ describe('in-memory limits forget old entries one at a time (server/bounded-map.
     m.set('e', { stale: false });
     assert.ok(m.get('victim'), 'the recently used entry survives a flood');
     assert.equal(m.size, 3);
+  });
+});
+
+describe('the admin panel cannot change its own log (admin/roles.js, DECISIONS 97)', () => {
+  it('admin_panel adds to admin_audit and edits data, but cannot update, delete or empty the log', async () => {
+    await admin();
+    for (const sql of panelRoleSetup('test-panel-password-0123')) await db.exec(sql);
+    await db.exec(`insert into public.admin_audit (action, detail) values ('test.panel', '{}')`);
+    await db.exec('set role admin_panel');
+    await db.exec(
+      `insert into public.admin_audit (action, detail) values ('test.panel', '{"by":"panel"}')`,
+    );
+    await db.exec(`insert into public.vip_users (user_id, note) values ('${C}', 'panel test')`);
+    await db.exec(`delete from public.vip_users where user_id = '${C}'`);
+    await rejects(
+      `update public.admin_audit set detail = '{}' where action = 'test.panel'`,
+      '42501',
+    );
+    await rejects(`delete from public.admin_audit where action = 'test.panel'`, '42501');
+    await rejects(`truncate public.admin_audit`, '42501');
+    await rejects(
+      `alter table public.admin_audit disable trigger admin_audit_append_only`,
+      '42501',
+    );
+    await admin();
+    // Even with the right given back, the trigger still refuses it.
+    await db.exec('grant update, delete on public.admin_audit to admin_panel');
+    await db.exec('set role admin_panel');
+    await rejects(`delete from public.admin_audit where action = 'test.panel'`, '42501');
+    await admin();
+    await db.exec('revoke update, delete on public.admin_audit from admin_panel');
+    assert.equal(
+      await count(`select count(*) as n from public.admin_audit where action = 'test.panel'`),
+      2,
+    );
+    // The owner's own jobs still work (cleanup, anonymisation).
+    await db.exec(`delete from public.admin_audit where action = 'test.panel'`);
   });
 });
