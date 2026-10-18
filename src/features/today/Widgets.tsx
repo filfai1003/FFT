@@ -1,20 +1,30 @@
 import { useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
-import { Icon } from '@/components/ui/Icon';
-import { IconTile } from '@/components/ui/IconTile';
+import { CheckFill } from '@/components/ui/CheckFill';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, compactDateLabel, deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { addDays, compactDateLabel, shortDateLabel } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
@@ -33,8 +43,7 @@ import { useBodyEntries } from '@/features/progress/data';
 import { useToday } from '@/features/profile/use-today';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
-import { useMonthSessions } from '@/features/train/history';
-import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
+import { estimateMinutes } from '@/features/train/plans';
 import { NewPlanSheet } from '@/features/train/NewPlanSheet';
 import { useAskCoach, useCoachReady } from '@/features/ai/use-coach-ready';
 import { confirm } from '@/lib/haptics';
@@ -42,36 +51,42 @@ import { useToastStore } from '@/lib/toast-store';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
 import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import { StreakWidget } from '@/features/gamification/StreakWidget';
+import { supplementsCount, waterGoal, weightLine, weightTrend } from './day-logic';
+import { useTodayWorkout } from './day-status';
 import type { WidgetId, WidgetSize } from './layout-store';
 
 type Props = { size: WidgetSize };
 
-/** A widget box: a full-width card, or a small tile that shares the row with another. */
+/** Header tile size: the same on every Today card, full or half width. */
+const HEAD_TILE = 32;
+
+/**
+ * A widget box: a full-width card, or a small tile that shares the row with another. Every card
+ * has the same header: its area's icon tile and its title (colour code, DECISIONS 107).
+ */
 function Frame({
   size,
   label,
+  icon,
+  area,
   right,
   onPress,
   children,
 }: {
   size: WidgetSize;
   label: string;
+  icon: IconName;
+  area: Area;
   right?: ReactNode;
   onPress?: () => void;
   children: ReactNode;
 }) {
-  // Canvas Home: a full card is titled in 15 semibold ("Calories"), a tile in 13 muted ("Water").
   const head = (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      {size === 'large' ? (
-        <Text semibold accessibilityRole="header">
-          {label}
-        </Text>
-      ) : (
-        <Text variant="bodyS" muted>
-          {label}
-        </Text>
-      )}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 }}>
+      <IconTile icon={icon} area={area} size={HEAD_TILE} />
+      <Text semibold accessibilityRole="header" numberOfLines={2} style={{ flex: 1 }}>
+        {label}
+      </Text>
       {right}
     </View>
   );
@@ -91,7 +106,7 @@ function Frame({
   return (
     <Card
       size="small"
-      gap={10}
+      gap={12}
       style={{ flexGrow: 1, padding: 16 }}
       onPress={onPress}
       accessibilityLabel={onPress ? label : undefined}
@@ -210,8 +225,7 @@ export function NutritionWidget({ size }: Props) {
     const markLabel = nextMeal ? t('today.markEaten', { name: nextMeal.name }) : '';
     if (size === 'small') {
       return (
-        <Frame size="small" label={t('today.calories')}>
-          <IconTile icon="bowl" area="nutrition" size={44} />
+        <Frame size="small" label={t('today.calories')} icon="bowl" area="nutrition">
           <Text variant="bodyS" semibold numberOfLines={2}>
             {fixed && nextMeal ? nextMeal.name : t('today.firstMeal')}
           </Text>
@@ -226,19 +240,16 @@ export function NutritionWidget({ size }: Props) {
     }
     const yesterdayKcal = Math.round(yesterdayEntries.reduce((a, e) => a + e.macros.kcal, 0));
     return (
-      <Frame size="large" label={t('today.calories')}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <IconTile icon="bowl" area="nutrition" size={56} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="titleM">{t('today.firstMeal')}</Text>
-            <Text variant="bodyS" muted>
-              {fixed
-                ? t('today.firstMealFixed')
-                : target
-                  ? t('today.firstMealTarget', { kcal: formatInt(target.kcal) })
-                  : t('today.firstMealNoTarget')}
-            </Text>
-          </View>
+      <Frame size="large" label={t('today.calories')} icon="bowl" area="nutrition">
+        <View style={{ gap: 2 }}>
+          <Text variant="titleM">{t('today.firstMeal')}</Text>
+          <Text variant="bodyS" muted>
+            {fixed
+              ? t('today.firstMealFixed')
+              : target
+                ? t('today.firstMealTarget', { kcal: formatInt(target.kcal) })
+                : t('today.firstMealNoTarget')}
+          </Text>
         </View>
         {fixed ? (
           nextMeal ? (
@@ -269,7 +280,7 @@ export function NutritionWidget({ size }: Props) {
   // No target (DECISIONS 104): what was eaten, no "left" and no arcs, and a quiet way to set one.
   if (!target && size === 'small') {
     return (
-      <Frame size="small" label={t('today.calories')}>
+      <Frame size="small" label={t('today.calories')} icon="bowl" area="nutrition">
         <View>
           <Text variant="displayS" numeric>
             {formatInt(eaten.kcal)}
@@ -297,7 +308,7 @@ export function NutritionWidget({ size }: Props) {
 
   if (size === 'small') {
     return (
-      <Frame size="small" label={t('today.caloriesLeft')}>
+      <Frame size="small" label={t('today.caloriesLeft')} icon="bowl" area="nutrition">
         <Gauge
           value={share}
           size={110}
@@ -332,7 +343,7 @@ export function NutritionWidget({ size }: Props) {
   }
 
   return (
-    <Frame size="large" label={t('today.calories')}>
+    <Frame size="large" label={t('today.calories')} icon="bowl" area="nutrition">
       {target ? null : (
         <>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
@@ -482,20 +493,11 @@ export function WorkoutWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const today = useToday();
-  const profile = useProfile();
-  const { plan } = useActivePlan();
-  const rotation = useRotation(plan);
+  const { plan, rotation, upNext, doneToday } = useTodayWorkout();
   const { startDay } = useStartWorkout();
   const [creating, setCreating] = useState(false);
   const coachReady = useCoachReady();
   const askCoach = useAskCoach();
-  const tz = profile.data?.timezone ?? deviceTimeZone();
-  const monthSessions = useMonthSessions(today.slice(0, 7));
-  const doneToday = (monthSessions.data ?? []).filter(
-    (s) => localDay(new Date(s.startedAt), tz) === today,
-  );
-  const upNext = plan?.days.find((d) => d.id === rotation?.state.upNextDayId) ?? plan?.days[0];
   const openPlan = () =>
     plan && router.push({ pathname: '/train/plan/[planId]', params: { planId: plan.id } });
   const small = size === 'small';
@@ -568,19 +570,16 @@ export function WorkoutWidget({ size }: Props) {
       </>
     ) : (
       <>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-          <IconTile icon="dumbbell" area="training" size={56} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="displayM" numberOfLines={1}>
-              {upNext.name}
-            </Text>
-            <Text variant="bodyS" muted>
-              {t('train.exerciseCount', {
-                count: upNext.exercises.length,
-                min: estimateMinutes(upNext),
-              })}
-            </Text>
-          </View>
+        <View style={{ gap: 2 }}>
+          <Text variant="displayM" numberOfLines={1}>
+            {upNext.name}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('train.exerciseCount', {
+              count: upNext.exercises.length,
+              min: estimateMinutes(upNext),
+            })}
+          </Text>
         </View>
         {upNext.exercises.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -646,11 +645,85 @@ export function WorkoutWidget({ size }: Props) {
 
   return (
     <>
-      <Frame size={size} label={t('today.workout')} right={cycle}>
+      <Frame size={size} label={t('today.workout')} icon="dumbbell" area="training" right={cycle}>
         {body}
       </Frame>
       <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />
     </>
+  );
+}
+
+/** One wave period is the glass's width: the wave strip is two periods wide and slides by one. */
+const WAVE_MS = 2600;
+const WAVE_AMP = 3;
+
+/**
+ * A glass filled to `share` (0..1) with water whose surface moves in a small wave. Still with
+ * "reduce motion" (and when empty or full the wave is out of sight anyway).
+ */
+export function WaterGlass({
+  share,
+  width,
+  height,
+  accessibilityLabel,
+}: {
+  share: number;
+  width: number;
+  height: number;
+  accessibilityLabel: string;
+}) {
+  const { colors, reduceMotion } = useTheme();
+  const level = Math.max(0, Math.min(1, share));
+  const fillH = Math.round(level * height);
+  const moving = !reduceMotion && level > 0 && level < 1;
+  const phase = useSharedValue(0);
+  useEffect(() => {
+    cancelAnimation(phase);
+    phase.set(0);
+    if (!moving) return;
+    phase.set(withRepeat(withTiming(1, { duration: WAVE_MS, easing: Easing.linear }), -1, false));
+    return () => cancelAnimation(phase);
+  }, [moving, phase]);
+  const slide = useAnimatedStyle(() => ({ transform: [{ translateX: -phase.get() * width }] }));
+
+  // Crest at the top of the strip, trough 2 × amplitude below: the mean level sits at `fillH`.
+  const w = width;
+  const svgH = fillH + WAVE_AMP * 2;
+  const wave =
+    `M0 ${WAVE_AMP} Q${w / 4} ${-WAVE_AMP} ${w / 2} ${WAVE_AMP} T${w} ${WAVE_AMP} ` +
+    `T${w * 1.5} ${WAVE_AMP} T${w * 2} ${WAVE_AMP} L${w * 2} ${svgH} L0 ${svgH} Z`;
+
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={accessibilityLabel}
+      testID="water-glass"
+      style={{
+        width,
+        height,
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        backgroundColor: colors.waterSoft,
+        overflow: 'hidden',
+      }}
+    >
+      {fillH > 0 ? (
+        <View
+          aria-hidden
+          testID="water-level"
+          style={{ position: 'absolute', left: 0, bottom: 0, width, height: fillH + WAVE_AMP }}
+        >
+          <Animated.View style={[{ width: w * 2, height: svgH }, slide]}>
+            <Svg width={w * 2} height={svgH}>
+              <Path d={wave} fill={colors.water} />
+            </Svg>
+          </Animated.View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -664,8 +737,10 @@ export function WaterWidget({ size }: Props) {
   const water = useWater(today);
   const addWater = useAddWater();
   const removeWater = useRemoveWater();
-  const goalGlasses = Math.max(1, Math.round(2000 / glassMl));
-  const glasses = Math.round((water.data?.totalMl ?? 0) / glassMl);
+  const goalGlasses = waterGoal(glassMl).glasses;
+  const totalMl = water.data?.totalMl ?? 0;
+  const glasses = Math.round(totalMl / glassMl);
+  const small = size === 'small';
 
   const onWater = async () => {
     const id = await addWater.mutateAsync({ day: today, ml: glassMl });
@@ -693,39 +768,27 @@ export function WaterWidget({ size }: Props) {
   };
 
   return (
-    <Frame size={size} label={t('today.waterLabel')}>
-      <View
-        style={{ flexDirection: 'row', gap: size === 'small' ? 10 : 12, alignItems: 'flex-end' }}
-      >
-        {/* A glass that fills (water is part of nutrition: teal). */}
-        <View
-          accessible
-          accessibilityRole="progressbar"
+    <Frame
+      size={size}
+      label={t('today.waterLabel')}
+      icon="droplet"
+      area="water"
+      right={
+        <Text variant="label" muted numeric aria-hidden>
+          {t('today.glassesOf', { n: glasses, total: goalGlasses })}
+        </Text>
+      }
+    >
+      <View style={{ flexDirection: 'row', gap: small ? 10 : 12, alignItems: 'flex-end' }}>
+        {/* A glass that fills to today's amount (water: sky blue). */}
+        <WaterGlass
+          share={glasses / goalGlasses}
+          width={small ? 40 : 44}
+          height={small ? 64 : 72}
           accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
-          style={{
-            // Half width: a slimmer glass leaves the litres room to breathe.
-            width: size === 'small' ? 32 : 40,
-            height: size === 'small' ? 56 : 68,
-            borderTopLeftRadius: 9,
-            borderTopRightRadius: 9,
-            borderBottomLeftRadius: 14,
-            borderBottomRightRadius: 14,
-            backgroundColor: colors.waterSoft,
-            overflow: 'hidden',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <View
-            style={{
-              height: `${Math.min(100, (glasses / goalGlasses) * 100)}%`,
-              backgroundColor: colors.water,
-            }}
-          />
-        </View>
+        />
         <View style={{ flex: 1 }}>
-          <Text variant="displayS" numeric>
-            {t('today.litres', { l: ((water.data?.totalMl ?? 0) / 1000).toFixed(1) })}
-          </Text>
+          <BigNumber value={(totalMl / 1000).toFixed(1)} unit={t('today.litresUnit')} />
           <Text variant="label" muted numeric>
             {glasses >= goalGlasses
               ? t('today.waterGoalReached')
@@ -763,7 +826,7 @@ export function WaterWidget({ size }: Props) {
             flex: 1,
             minHeight: 44,
             borderRadius: 22,
-            backgroundColor: colors.nutritionSoft,
+            backgroundColor: colors.waterSoft,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
@@ -771,8 +834,8 @@ export function WaterWidget({ size }: Props) {
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Icon name="plus" size={18} color={colors.nutritionInk} />
-          <Text variant="bodyS" semibold style={{ color: colors.nutritionInk }}>
+          <Icon name="plus" size={18} color={colors.waterInk} />
+          <Text variant="bodyS" semibold style={{ color: colors.waterInk }}>
             {t('today.addGlass')}
           </Text>
         </Pressable>
@@ -781,60 +844,85 @@ export function WaterWidget({ size }: Props) {
   );
 }
 
-/** The latest weight and how it moved over the last week. Opens Body. */
+/**
+ * The number of a small Home card, in the calories' style (big, semibold, tabular digits), with
+ * its unit beside it in muted text.
+ */
+function BigNumber({ value, unit }: { value: string; unit?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
+      <Text variant="displayM" numeric>
+        {value}
+      </Text>
+      {unit ? (
+        <Text variant="bodyS" muted>
+          {unit}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** The latest weight, a line of the last weeks and how it moved this week. Opens Body. */
 export function WeightWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
-  const entries = useBodyEntries();
-  const weights = (entries.data ?? []).filter((e) => e.weightKg != null);
-  const latest = weights[0];
-  const weekAgo = weights.find((e) => e.day <= addDays(today, -7));
-  const change =
-    latest?.weightKg != null && weekAgo?.weightKg != null
-      ? latest.weightKg - weekAgo.weightKg
-      : null;
-  // Better or worse depends on the goal: down when losing fat, up when building muscle.
-  const goal = useProfile().data?.goal;
-  const better =
-    change == null || Math.abs(change) < 0.05
-      ? null
-      : goal === 'build_muscle'
-        ? change > 0
-        : goal === 'lose_fat'
-          ? change < 0
-          : Math.abs(change) <= 0.3;
-  // The last two weeks, oldest first (entries come newest first).
-  const line = weights
-    .filter((e) => e.day > addDays(today, -15))
-    .map((e) => e.weightKg as number)
-    .reverse();
+  const entries = useBodyEntries().data ?? [];
+  const latest = entries.find((e) => e.weightKg != null);
+  // Toward the profile goal is green; otherwise neutral (arrow and words say the direction).
+  const trend = weightTrend(entries, today, useProfile().data?.goal);
+  const line = weightLine(entries, today);
   const small = size === 'small';
+  const kg = trend ? Math.abs(trend.change).toFixed(1) : '';
 
   return (
-    <Frame size={size} label={t('today.weight')} onPress={() => router.push('/progress/body')}>
+    <Frame
+      size={size}
+      label={t('today.weight')}
+      icon="scale"
+      area="neutral"
+      onPress={() => router.push('/progress/body')}
+    >
       {latest?.weightKg != null ? (
         <>
-          <Text variant="displayS" numeric>
-            {t('today.kg', { kg: latest.weightKg.toFixed(1) })}
-          </Text>
+          <BigNumber value={latest.weightKg.toFixed(1)} unit={t('today.kgUnit')} />
           {line.length > 1 ? (
             <Sparkline
               values={line}
-              height={small ? 32 : 44}
+              height={small ? 40 : 48}
               color={colors.text}
               accessibilityLabel={t('today.weightLineA11y')}
             />
           ) : null}
-          {change != null ? (
-            <StatusChip
-              area={better == null ? 'neutral' : better ? 'better' : 'worse'}
-              icon={change < 0 ? 'arrowDown' : change > 0 ? 'arrowUp' : undefined}
-              label={t(small ? 'today.weightChangeShort' : 'today.weightChange', {
-                kg: (change > 0 ? '+' : '') + change.toFixed(1),
-              })}
-            />
+          {trend ? (
+            <View
+              accessible
+              accessibilityLabel={
+                trend.direction === 'flat'
+                  ? t('today.weightSteady')
+                  : t(trend.direction === 'down' ? 'today.weightDownA11y' : 'today.weightUpA11y', {
+                      kg,
+                    })
+              }
+            >
+              <StatusChip
+                area={trend.towardGoal ? 'better' : 'neutral'}
+                icon={
+                  trend.direction === 'down'
+                    ? 'arrowDown'
+                    : trend.direction === 'up'
+                      ? 'arrowUp'
+                      : undefined
+                }
+                label={
+                  trend.direction === 'flat'
+                    ? t('today.weightSteady')
+                    : t('today.weightChange', { kg })
+                }
+              />
+            </View>
           ) : (
             // Half width: "Logged Sun 18", wrapping rather than cut.
             <Text variant={small ? 'label' : 'bodyS'} muted>
@@ -854,7 +942,7 @@ export function WeightWidget({ size }: Props) {
 }
 
 /**
- * Today's supplements: the list (same as the calendar) with an on/off for each one taken.
+ * Today's supplements: how many are taken (number and filled bar) and the list as pills to tick.
  * The pencil opens the list to add or remove supplements.
  */
 export function SupplementsWidget({ size }: Props) {
@@ -865,12 +953,15 @@ export function SupplementsWidget({ size }: Props) {
   const list = useSupplements().data ?? [];
   const taken = useSupplementLogs(today, today).data?.get(today);
   const setTaken = useSetTaken();
+  const count = supplementsCount(list, taken);
 
   return (
     <>
       <Frame
         size={size}
         label={t('today.supplements')}
+        icon="pill"
+        area="supplements"
         right={
           <IconButton
             icon={list.length ? 'edit' : 'plus'}
@@ -882,7 +973,37 @@ export function SupplementsWidget({ size }: Props) {
           />
         }
       >
-        {/* Taking a supplement is a tick, not a setting: tap the pill (nutrition: teal). */}
+        {list.length === 0 ? (
+          <Text variant="bodyS" muted>
+            {t('today.supplementsEmpty')}
+          </Text>
+        ) : (
+          <View style={{ gap: 8 }}>
+            <View
+              accessible
+              accessibilityLabel={t('today.supplementsTaken', {
+                n: count.taken,
+                total: count.total,
+              })}
+              style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}
+            >
+              <Text variant="displayM" numeric aria-hidden>
+                {String(count.taken)}
+              </Text>
+              <Text variant="bodyS" muted numeric aria-hidden>
+                {t('today.supplementsOfTaken', { total: count.total })}
+              </Text>
+            </View>
+            <DotBar
+              total={count.total}
+              on={count.taken}
+              color={colors.success}
+              track={colors.successSoft}
+              accessibilityLabel={t('today.supplements')}
+            />
+          </View>
+        )}
+        {/* Taking a supplement is a tick, not a setting: tap the pill (supplements: green). */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {list.map((s) => {
             const label = s.dose ? `${s.name} · ${s.dose}` : s.name;
@@ -905,7 +1026,7 @@ export function SupplementsWidget({ size }: Props) {
                   borderRadius: 14,
                   borderWidth: on ? 0 : 1,
                   borderColor: colors.borderControl,
-                  backgroundColor: on ? colors.nutritionSoft : colors.surface,
+                  backgroundColor: on ? colors.successSoft : colors.surface,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
@@ -918,14 +1039,20 @@ export function SupplementsWidget({ size }: Props) {
                     width: 24,
                     height: 24,
                     borderRadius: 12,
-                    borderWidth: on ? 0 : 2,
-                    borderColor: colors.borderControl,
-                    backgroundColor: on ? colors.nutrition : 'transparent',
+                    borderWidth: 2,
+                    borderColor: on ? colors.success : colors.borderControl,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  {on ? <Icon name="check" size={14} color={colors.surface} /> : null}
+                  <CheckFill
+                    done={on}
+                    size={20}
+                    fill={colors.success}
+                    iconOn={colors.surface}
+                    iconOff="transparent"
+                    iconSize={14}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   {/* Half width: long names wrap to a second line instead of being cut. */}
@@ -933,7 +1060,7 @@ export function SupplementsWidget({ size }: Props) {
                     variant="bodyS"
                     semibold
                     numberOfLines={size === 'small' ? 2 : 1}
-                    style={on ? { color: colors.nutritionInk } : undefined}
+                    style={on ? { color: colors.successText } : undefined}
                   >
                     {s.name}
                   </Text>
@@ -942,7 +1069,7 @@ export function SupplementsWidget({ size }: Props) {
                       variant="label"
                       numberOfLines={size === 'small' ? 2 : 1}
                       muted={!on}
-                      style={on ? { color: colors.nutritionInk } : undefined}
+                      style={on ? { color: colors.successText } : undefined}
                     >
                       {s.dose}
                     </Text>
