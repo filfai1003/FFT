@@ -3360,3 +3360,45 @@ describe('the admin panel cannot change its own log (admin/roles.js, DECISIONS 9
     await db.exec(`delete from public.admin_audit where action = 'test.panel'`);
   });
 });
+
+describe('the server refuses a birth date under 18 (profile_min_age, DECISIONS 96)', () => {
+  const push = (uid, birth, at) =>
+    db.query(`select public.sync_push('profiles', $1::jsonb, '[]'::jsonb)`, [
+      JSON.stringify([{ id: uid, birth_date: birth, updated_at: at }]),
+    ]);
+  const yearsAgo = (n) => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it('sync_push and direct writes refuse it with a clear error; adults pass', async () => {
+    await as(A);
+    await assert.rejects(
+      () => push(A, yearsAgo(15), new Date().toISOString()),
+      (e) => e.code === 'P0001' && /^AGE_UNDER_18/.test(e.message),
+    );
+    await assert.rejects(
+      () => db.query(`update public.profiles set birth_date = $1 where id = $2`, [yearsAgo(17), A]),
+      (e) => e.code === 'P0001',
+    );
+    await push(A, yearsAgo(30), new Date().toISOString());
+    await admin();
+    assert.equal(
+      (await one(`select birth_date::text as d from public.profiles where id = '${A}'`)).d,
+      yearsAgo(30),
+    );
+  });
+
+  it('a profile stored before the check is not locked out: the same date passes again', async () => {
+    await admin();
+    await db.exec(`alter table public.profiles disable trigger profiles_min_age`);
+    await db.query(`update public.profiles set birth_date = $1 where id = $2`, [yearsAgo(16), B]);
+    await db.exec(`alter table public.profiles enable trigger profiles_min_age`);
+    await as(B);
+    await push(B, yearsAgo(16), new Date(Date.now() + 60_000).toISOString());
+    await db.query(`update public.profiles set name = 'Bee' where id = $1`, [B]);
+    await admin();
+    await db.query(`update public.profiles set birth_date = null where id = $1`, [B]);
+  });
+});
