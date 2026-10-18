@@ -77,7 +77,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {active ? (
               <View
-                style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
+                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }}
               />
             ) : null}
             <Text variant="bodyS" muted>
@@ -100,14 +100,15 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
               <View
                 key={d.id}
                 style={{
-                  borderRadius: radius.cardSmall,
-                  borderWidth: 1,
+                  // Canvas "Plan detail": white cards, the next day selected with a 2px border.
+                  borderRadius: radius.card,
+                  borderWidth: isNext ? 2 : 1,
                   borderColor: isNext ? colors.borderSelected : colors.borderDecorative,
-                  backgroundColor: isNext ? colors.surface : colors.surfaceAlt,
-                  paddingTop: 12,
-                  paddingBottom: 12,
-                  paddingLeft: 16,
-                  paddingRight: 8,
+                  backgroundColor: colors.surface,
+                  paddingTop: isNext ? 11 : 12,
+                  paddingBottom: isNext ? 11 : 12,
+                  paddingLeft: isNext ? 15 : 16,
+                  paddingRight: isNext ? 7 : 8,
                   gap: 10,
                 }}
               >
@@ -141,6 +142,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                     </Text>
                   </Pressable>
                   <IconButton
+                    look="soft"
                     icon="edit"
                     accessibilityLabel={t('plan.editDay', { name: d.name })}
                     onPress={() =>
@@ -152,6 +154,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                   />
                   {!isNext ? (
                     <IconButton
+                      look="soft"
                       icon="play"
                       accessibilityLabel={t('plan.startNow', { name: d.name })}
                       disabled={d.exercises.length === 0}
