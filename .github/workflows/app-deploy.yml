@@ -4,8 +4,7 @@
 # next time they are opened. The choice is made by the project "fingerprint" (runtimeVersion policy in
 # app.json): an update only reaches builds with the same native fingerprint.
 # The server (Railway) redeploys by itself from the same push.
-# Needs the repository secrets EXPO_TOKEN (expo.dev -> Account settings -> Access tokens) and
-# EXPO_UPDATES_PRIVATE_KEY (signs the updates; docs/DEPLOY.md "Signed updates", DECISIONS 87).
+# Needs the repository secret EXPO_TOKEN (expo.dev -> Account settings -> Access tokens).
 name: App deploy
 
 on:
@@ -22,9 +21,6 @@ on:
       - '.github/**'
       - '*.md'
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 concurrency:
   group: app-deploy
@@ -45,46 +41,10 @@ jobs:
         with:
           eas-version: 25.1.1
           token: ${{ secrets.EXPO_TOKEN }}
-      # What expo/expo-github-action/continuous-deploy-fingerprint did, written out so that `eas update`
-      # can sign the update (the action has no input for a signing key; DECISIONS 87). Same commands:
-      # the Android fingerprint computed with the preview EAS environment, the newest preview build
-      # with that runtime version, a new build when there is none (or it failed or was cancelled),
-      # then the update on branch "preview" in every case.
-      - name: Fingerprint
-        id: fingerprint
-        run: |
-          eas env:exec --non-interactive preview "npx expo-updates fingerprint:generate --platform android" > fingerprint.json
-          hash=$(node -p "JSON.parse(require('fs').readFileSync('fingerprint.json')).hash")
-          if [ -z "$hash" ] || [ "$hash" = "undefined" ]; then echo "No fingerprint" >&2; exit 1; fi
-          echo "Android fingerprint: $hash"
-          echo "hash=$hash" >> "$GITHUB_OUTPUT"
-      - name: Build a new APK when no build has this fingerprint
-        env:
-          FINGERPRINT: ${{ steps.fingerprint.outputs.hash }}
-        run: |
-          eas build:list --platform android --build-profile preview --runtime-version "$FINGERPRINT" \
-            --limit 1 --json --non-interactive > builds.json
-          existing=$(node -p "const b = JSON.parse(require('fs').readFileSync('builds.json'))[0]; b && ['NEW', 'IN_QUEUE', 'IN_PROGRESS', 'FINISHED'].includes(b.status) ? b.id : ''")
-          if [ -n "$existing" ]; then
-            echo "Existing Android build with this fingerprint: $existing"
-          else
-            echo "No Android build with this fingerprint: starting one"
-            eas build --profile preview --platform android --non-interactive --json --no-wait
-          fi
-      # Loads the EAS environment variables (backend URL and anon key) into the update bundle and signs
-      # it. The private key (secret EXPO_UPDATES_PRIVATE_KEY, the pair of certs/certificate.pem) exists
-      # only during this step, in a file only the runner user can read, deleted when the step ends.
-      - name: Publish the signed update
-        env:
-          EXPO_UPDATES_PRIVATE_KEY: ${{ secrets.EXPO_UPDATES_PRIVATE_KEY }}
-        run: |
-          if [ -z "$EXPO_UPDATES_PRIVATE_KEY" ]; then
-            echo "The secret EXPO_UPDATES_PRIVATE_KEY is missing: installed apps refuse unsigned updates" >&2
-            exit 1
-          fi
-          key="$RUNNER_TEMP/private-key.pem"
-          trap 'rm -f "$key"' EXIT
-          (umask 077 && printf '%s\n' "$EXPO_UPDATES_PRIVATE_KEY" > "$key")
-          eas update --auto --branch preview --environment preview --platform android \
-            --private-key-path "$key" --non-interactive --json > update.json
-          node -e "for (const u of JSON.parse(require('fs').readFileSync('update.json'))) console.log(u.platform, u.runtimeVersion, u.group)"
+      - uses: expo/expo-github-action/continuous-deploy-fingerprint@eab7a230208c952974db8c3245cfd78402c7b385 # main on 2026-10-18
+        with:
+          profile: preview
+          branch: preview
+          # Loads the EAS environment variables (backend URL and anon key) into the update bundle.
+          environment: preview
+          platform: android
