@@ -183,6 +183,7 @@ before the phase that depends on it.
 
 108. **Fewer taps in the workout and on the first days** (owner-approved list, 2026-10-18).
    - **Sets start filled in** (extends 48, version A; `features/session/logic.ts` `emptySet`, `suggestedReps`, `toggleSet`, `addSet`; tests in `logic.test.ts`, `widgets/controller.test.ts`). Besides the weight, a set now starts with its reps (and a timed set with last time's time and distance), so one tap on its tick saves it as shown; anything typed over stays. Reps: with a weight suggestion, the bottom of the target after a step up or down, else last time's reps + 1 (at most the top of the target); without one, last time's reps, else the bottom of the target; warm-ups keep last time's reps. A tick on a set whose reps were cleared takes the target (or the set before), as the widget's quick tick does. An added set copies the reps and the "Previous" of the set before, so the Previous column shows last time whenever there is history.
+   - **Finish with nothing done** (`session/FinishSheet.tsx`; test `FinishSheet.test.tsx`): instead of every exercise marked "Not started", one sentence ("No sets done yet", tick a set to save or discard), then Discard workout as a full button at the top (still confirmed in its own sheet) and Keep training; no Finish and save. With some sets done the sheet is as before (what is left, Finish and save, Keep training, Discard).
 
 ## Still open
 
