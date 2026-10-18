@@ -163,11 +163,40 @@ the repository; nothing here changes Railway by itself):
 - The admin panel shows the last run (Overview > Last backup); a failed run appears under Problems
   ("Nightly backup"). The panel itself cannot download a dump any more (DECISIONS 75): these
   encrypted backups are the only copies. Do not keep decrypted dumps around after a restore.
-- Restore a backup:
+- Restore a backup (drill on a local copy: 2026-10-18, about 10 minutes for a 200 KB dump):
   1. Download the file from the bucket (`db/<time>.sql.gz.enc`), with any S3 client using the
-     bucket's credentials from Railway.
+     bucket's credentials from Railway (variables of the `backup` service: `BUCKET_ENDPOINT`
+     `https://t3.storageapi.dev`, virtual-host style, region `auto`). Work in a temporary folder
+     outside the repository.
   2. `BACKUP_KEY=<key> node backup/restore.mjs <file>.sql.gz.enc dump.sql` (decrypts and un-gzips).
-  3. Load it into an EMPTY Postgres 17 database: `psql "$DATABASE_URL" -f dump.sql`.
+  3. Load it. The target is the same image as production (`supabase/postgres:17.6.x`), on a NEW
+     empty volume, with `auth`, `storage`, `rest` and `api` stopped. Run psql inside that container
+     (`psql` 17.6 or newer: the dump starts with `\restrict`), as `supabase_admin`. A plain
+     `postgres:17` does not work: it lacks the roles (`anon`, `authenticated`, `service_role`,
+     `supabase_auth_admin`, `supabase_storage_admin`) and the `extensions` schema.
+     - **Dumps made from 2026-10-18 on** (owners and grants kept). The image creates its own
+       `auth`, `storage` and `public` schemas, which the dump creates again, so drop them first:
+       ```
+       psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+         -c "drop schema auth cascade" -c "drop schema storage cascade" \
+         -c "drop schema public cascade" -c "create extension if not exists pg_trgm schema extensions"
+       psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 --single-transaction -f dump.sql
+       ```
+       Then start `auth`, `storage`, `rest` and `api` again.
+     - **Older dumps** (`--no-owner --no-privileges`, until 2026-10-18 03:01 UTC). Loaded as above
+       they come back without grants (the app gets nothing) and with every function executable by
+       `anon` (also those the migrations revoked) and GoTrue / storage-api not owning their
+       schemas: never load them whole. Instead let the services build the schema on the empty
+       volume (start `auth`, `storage`, then `api`, which applies our migrations and the seed),
+       stop them again, and load only the rows:
+       `node backup/data-only.mjs dump.sql data.sql`, then
+       `psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 --single-transaction -f data.sql`
+       (empties the tables and loads the rows with triggers and foreign keys off). It fails, and
+       changes nothing, if a later migration dropped or renamed a column the dump has: then check
+       out the commit of the dump's day for the migrations.
+     - Check: the row counts of the main tables (`auth.users`, `profiles`, `food_logs`,
+       `plan_exercises`…) against the `COPY` blocks of `dump.sql`, and a REST call with a user's
+       token.
   4. Photos: download `photos/<bucket>/<path>.enc`, decrypt each with `restore.mjs`, and upload
      them back to the same bucket and path in storage.
   5. **Delete again the accounts deleted since the dump** (never skip this: a restore must not
@@ -177,6 +206,9 @@ the repository; nothing here changes Railway by itself):
      Then, against the restored database and storage:
      `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt]`
      (deletes those accounts with everything they own, and their files in the three buckets).
-  6. Delete the decrypted files (dump.sql, deletions.json, photos) from your computer.
+  6. Delete the decrypted files (dump.sql, data.sql, deletions.json, photos) from your computer.
+  7. Not in the backups (put back by hand): the files of the public buckets `exercise-images`
+     (`npm run db:images`) and `downloads` (run the `Publish APK` workflow), and the end-to-end
+     encrypted files of `vault-files` (the phones still have the data and send it again).
 - Deleted data (DECISIONS 79): the api service deletes for good, every day, rows deleted more than
   7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.

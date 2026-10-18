@@ -96,11 +96,12 @@ async function deleteKeys(keys) {
 // ---------------------------------------------------------------- database
 async function backupDatabase(stamp) {
   const file = `/tmp/db-${stamp}.enc`;
+  // Owners and grants are kept (no --no-owner / --no-privileges): without them a restored
+  // database lets anon run functions the migrations revoked, and GoTrue / storage-api lose their
+  // own schemas (restore drill 2026-10-18). Restore into the same supabase/postgres image.
   const dump = spawn(
     'pg_dump',
     [
-      '--no-owner',
-      '--no-privileges',
       '--schema=public',
       '--schema=auth',
       '--schema=storage',
