@@ -2067,6 +2067,33 @@ describe('forgot password (request_password_reset)', () => {
   });
 });
 
+describe('the export includes what the server keeps about the account (DECISIONS 82)', () => {
+  it('email, tokens without hashes, own error reports only; users only get their own', async () => {
+    await as(A);
+    await db.query(`select public.report_error('crash', 'mine', null)`);
+    await as(B);
+    await db.query(`select public.report_error('crash', 'not mine', null)`);
+    await as(A);
+    const out = (await one('select public.export_my_account() as out')).out;
+    assert.equal(out.account.email, 'a@test.dev');
+    assert.ok(Array.isArray(out.api_tokens) && out.api_tokens.length > 0);
+    for (const t of out.api_tokens) {
+      assert.equal(t.token_hash, undefined);
+      assert.equal(t.refresh_hash, undefined);
+    }
+    assert.ok(out.error_reports.some((e) => e.message === 'mine'));
+    assert.ok(!out.error_reports.some((e) => e.message === 'not mine'));
+    for (const key of ['plan', 'ai_usage', 'server_copy', 'paired_phones', 'admin_log_entries'])
+      assert.ok(key in out, key);
+    await admin();
+    await db.exec('set role anon');
+    await rejects('select public.export_my_account()', '42501');
+    // The error reporting tests count reports: leave none behind.
+    await admin();
+    await db.exec(`delete from public.app_errors where message in ('mine', 'not mine')`);
+  });
+});
+
 describe('error reporting (report_error)', () => {
   it('anyone can report; the same problem gets the same fingerprint; users cannot read them', async () => {
     await as(A);

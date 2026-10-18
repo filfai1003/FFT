@@ -12,6 +12,8 @@ import { getAuthClient } from '@/lib/supabase';
  * client. Only changes are sent: no row on the server means "given", as for every account so far.
  */
 const keyOf = (userId: string) => `fft.consent-server.${userId}`;
+/** Removed when the account is deleted. */
+export const consentKeyOf = keyOf;
 const RETRY_MS = 60_000;
 
 const server = () => getAuthClient() as unknown as SupabaseClient;

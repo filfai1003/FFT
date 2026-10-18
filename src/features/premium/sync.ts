@@ -523,6 +523,15 @@ export async function syncOnce(userId: string): Promise<boolean> {
 
 const resendKey = (userId: string) => `fft.sync.resent-2.${userId}`;
 
+/** Every key this module keeps for an account (removed when the account is deleted). */
+export const syncKeysOf = (userId: string) => [
+  cursorKey(userId),
+  vaultCursorKey(userId),
+  vaultClearKey(userId),
+  resendKey(userId),
+  cleanupKey(userId),
+];
+
 /** When this device last finished a sync, and how many rows the server refused then. */
 export const useSyncStatus = create<{ lastAt: string | null; refused: number }>(() => ({
   lastAt: null,
