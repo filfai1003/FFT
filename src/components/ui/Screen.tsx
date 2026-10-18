@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
   StyleSheet,
   View,
+  type ScrollView,
   type ScrollViewProps,
   type StyleProp,
   type ViewStyle,
@@ -30,6 +31,8 @@ export type ScreenProps = {
   style?: StyleProp<ViewStyle>;
   /** Scroll events of a scrolling page (Home hides its coach bar while scrolling down). */
   onScroll?: ScrollViewProps['onScroll'];
+  /** The scroll view of a scrolling page (Home scrolls to a card when its day ring is tapped). */
+  scrollRef?: Ref<ScrollView>;
 };
 
 /** A page: theme background, safe areas and the side padding of the design. */
@@ -42,6 +45,7 @@ export function Screen({
   gap = 16,
   style,
   onScroll,
+  scrollRef,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -59,6 +63,9 @@ export function Screen({
         {scroll ? (
           // Scrolls the focused field above the keyboard (and above a fixed action bar).
           <KeyboardAwareScrollView
+            // Phones: the keyboard-aware view is a ScrollView with one more method; the web one is a
+            // plain ScrollView. Callers only use the ScrollView part (scrollTo).
+            ref={scrollRef as never}
             enabled={keyboardAware}
             style={styles.fill}
             bottomOffset={bottomBarHeight > 0 ? bottomBarHeight + space.gapM : space.gapXL}
