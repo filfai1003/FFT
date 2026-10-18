@@ -302,7 +302,7 @@ function DeviceRow({
   );
 }
 
-/** Data & sync: sync with another phone without a copy on the server. */
+/** Your data: sync with another phone without a copy on the server. */
 export function RelayCard() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();

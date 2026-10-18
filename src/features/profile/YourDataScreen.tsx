@@ -9,12 +9,14 @@ import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
-import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
-import { authenticate, canAuthenticate, unlockApp } from '@/lib/biometrics';
+import { useSessionStore } from '@/features/auth/session-store';
+import { RelayCard } from '@/features/premium/RelayCard';
+import { ServerCopyCard } from '@/features/premium/ServerCopy';
+import { SyncCard } from '@/features/premium/SyncCard';
 import { openLegal } from '@/lib/legal';
 import { getMode } from '@/lib/mode';
 import { goBack } from '@/lib/navigation';
@@ -27,24 +29,27 @@ import {
   useSetConsent,
 } from './account';
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
-import { LOCK_AFTER_OPTIONS, type LockAfter, usePrivacyStore } from './privacy-store';
-import { ActionRow, ToggleRows } from './settings-rows';
+import { importExport, pickExportFile } from './import';
+import { ActionRow, useOpenSibling } from './settings-rows';
 
 /**
- * Privacy (DECISIONS 101): the everyday settings in plain words. App lock, screenshots, photos,
- * what the AI coach sees, consents, export, policies and delete account. The technical part
- * (server copy, encryption, other phones, import) is on Data & sync (`/profile/data`).
+ * Your data (DECISIONS 102): everything that changes how your data is processed, where it goes
+ * and who handles it. Consents, what the AI coach sees, the copy on the server (categories,
+ * end-to-end encryption), syncing with another phone, the sync check, export and import,
+ * policies and delete account last. What only changes this phone is on Phone privacy.
  */
-export function PrivacyScreen() {
+export function YourDataScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
+  const openSibling = useOpenSibling();
   const queryClient = useQueryClient();
-  const privacy = usePrivacyStore();
   const consents = useConsents();
   const setConsent = useSetConsent();
   const showToast = useToastStore((s) => s.show);
-  const [busy, setBusy] = useState<'full' | 'workouts' | null>(null);
+  const userId = useSessionStore((st) => st.userId);
+  const cloud = userId != null && getMode() === 'cloud';
+  const [busy, setBusy] = useState<'full' | 'workouts' | 'import' | null>(null);
   const [withdraw, setWithdraw] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [typed, setTyped] = useState('');
@@ -81,22 +86,27 @@ export function PrivacyScreen() {
     }
   };
 
-  const toggleLock = async (value: boolean) => {
-    if (value && !(await authenticate(t('photos.unlockToEnable')))) return;
-    privacy.set('lockPhotos', value);
-  };
-
-  /** App lock (DECISIONS 95): only with a lock on the phone, and after passing it once. */
-  const toggleAppLock = async (value: boolean) => {
-    if (!value) {
-      privacy.set('appLock', false);
-      return;
+  /** An earlier export comes back: added to what is here, nothing is deleted. */
+  const runImport = async () => {
+    setError(null);
+    const zip = await pickExportFile().catch(() => null);
+    if (!zip || !userId) return;
+    setBusy('import');
+    try {
+      const r = await importExport(zip, userId);
+      await queryClient.invalidateQueries();
+      showToast({ message: t('privacy.imported', { count: r.rows, photos: r.photos }) });
+    } catch (e) {
+      setError(
+        e instanceof Error && e.message === 'not an FFT export'
+          ? t('privacy.notAnExport')
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      );
+    } finally {
+      setBusy(null);
     }
-    if (!(await canAuthenticate())) {
-      showToast({ message: t('privacy.appLockUnavailable') });
-      return;
-    }
-    if ((await unlockApp(t('appLock.reason'))) === 'passed') privacy.set('appLock', true);
   };
 
   return (
@@ -109,90 +119,6 @@ export function PrivacyScreen() {
         <Text variant="bodyS" muted>
           {t('privacy.intro')}
         </Text>
-
-        {/* Lock and screen protection of this phone (DECISIONS 95). */}
-        {Platform.OS !== 'web' ? (
-          <Card size="small" gap={0}>
-            <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-              {t('privacy.device')}
-            </Text>
-            <ToggleRows
-              items={[
-                {
-                  name: t('privacy.appLock'),
-                  detail: t('privacy.appLockDetail'),
-                  value: privacy.appLock,
-                  onChange: (v) => void toggleAppLock(v),
-                },
-              ]}
-            />
-            {privacy.appLock ? (
-              <View style={{ gap: 8, paddingVertical: 10 }}>
-                <Text variant="bodyS">{t('privacy.lockAfter')}</Text>
-                <Segmented
-                  options={LOCK_AFTER_OPTIONS.map((m) => ({
-                    value: String(m),
-                    label: t('privacy.lockAfterMin', { count: m }),
-                  }))}
-                  value={String(privacy.lockAfterMin)}
-                  onChange={(v) => privacy.set('lockAfterMin', Number(v) as LockAfter)}
-                  accessibilityLabel={t('privacy.lockAfter')}
-                />
-              </View>
-            ) : null}
-            <View style={{ borderTopWidth: 1, borderColor: colors.borderDecorative }}>
-              <ToggleRows
-                items={[
-                  {
-                    name: t('privacy.protectPhotos'),
-                    detail: t('privacy.protectPhotosDetail'),
-                    value: privacy.protectPhotos,
-                    onChange: (v) => privacy.set('protectPhotos', v),
-                  },
-                  {
-                    name: t('privacy.hideContent'),
-                    detail: t('privacy.hideContentDetail'),
-                    value: privacy.hideContent,
-                    onChange: (v) => privacy.set('hideContent', v),
-                  },
-                ]}
-              />
-            </View>
-          </Card>
-        ) : null}
-
-        <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.photos')}
-          </Text>
-          <ToggleRows
-            items={[
-              {
-                name: t('privacy.blur'),
-                detail: t('privacy.blurDetail'),
-                value: privacy.blurPhotos,
-                onChange: (v) => privacy.set('blurPhotos', v),
-              },
-              {
-                name: t('privacy.lock'),
-                detail: t('privacy.lockDetail'),
-                value: privacy.lockPhotos,
-                onChange: toggleLock,
-              },
-            ]}
-          />
-        </Card>
-
-        {/* What the coach may read lives with the coach settings (DECISIONS 66). */}
-        <Card size="small" gap={0}>
-          <ListRow
-            title={t('privacy.aiSees')}
-            info={t('privacy.aiSeesDetail')}
-            divider={false}
-            right={chevron}
-            onPress={() => router.push('/profile/ai')}
-          />
-        </Card>
 
         <Card size="small" gap={0}>
           <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
@@ -231,9 +157,26 @@ export function PrivacyScreen() {
           />
         </Card>
 
+        {/* What the coach may read lives with the coach settings (DECISIONS 66). */}
+        <Card size="small" gap={0}>
+          <ListRow
+            title={t('privacy.aiSees')}
+            info={t('privacy.aiSeesDetail')}
+            divider={false}
+            right={chevron}
+            onPress={() => router.push('/profile/ai')}
+          />
+        </Card>
+
+        {/* Keep a copy on the server (DECISIONS 62-64): accounts only. */}
+        {cloud ? <ServerCopyCard /> : null}
+        {/* Sync with another phone without a copy on the server (DECISIONS 65). */}
+        {cloud ? <RelayCard /> : null}
+        {userId ? <SyncCard userId={userId} /> : null}
+
         <Card size="small" gap={0}>
           <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.yourData')}
+            {t('privacy.exportImport')}
           </Text>
           <ActionRow
             name={t('privacy.downloadAll')}
@@ -249,6 +192,14 @@ export function PrivacyScreen() {
             label={t('privacy.export')}
             disabled={busy != null}
             onPress={() => void runExport('workouts')}
+          />
+          <ActionRow
+            divider
+            name={t('privacy.importTitle')}
+            detail={t('privacy.importDetail')}
+            label={t('privacy.import')}
+            disabled={busy != null}
+            onPress={() => void runImport()}
           />
           {busy ? (
             <Text variant="bodyS" muted>
@@ -277,14 +228,14 @@ export function PrivacyScreen() {
           ))}
         </Card>
 
-        {/* The technical part: copy on the server, encryption, other phones (DECISIONS 101). */}
+        {/* What only changes this phone: lock, screenshots, photos (DECISIONS 102). */}
         <Card size="small" gap={0}>
           <ListRow
-            title={t('privacy.technical')}
-            info={t('privacy.technicalDetail')}
+            title={t('privacy.phonePrivacy')}
+            info={t('privacy.phonePrivacyDetail')}
             divider={false}
             right={chevron}
-            onPress={() => router.push('/profile/data')}
+            onPress={() => openSibling('phone-privacy', '/profile/phone-privacy')}
           />
         </Card>
 

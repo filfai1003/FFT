@@ -1,5 +1,5 @@
-import { DataSyncScreen } from '@/features/profile/DataSyncScreen';
+import { YourDataScreen } from '@/features/profile/YourDataScreen';
 
-export default function DataSync() {
-  return <DataSyncScreen />;
+export default function YourData() {
+  return <YourDataScreen />;
 }

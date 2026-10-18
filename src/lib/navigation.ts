@@ -22,8 +22,8 @@ const PAGES = new Set([
   '/profile/premium',
   '/profile/ai',
   '/profile/accessibility',
-  '/profile/privacy',
   '/profile/data',
+  '/profile/phone-privacy',
 ]);
 
 /** One level up: "/progress/calendar" -> "/progress"; the nearest page when a level has none. */

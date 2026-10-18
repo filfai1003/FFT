@@ -1,3 +1,4 @@
+import { type Href, useNavigation, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
@@ -85,4 +86,18 @@ export function ActionRow({
       />
     </View>
   );
+}
+
+/**
+ * Opens a sibling settings page (Your data and Phone privacy, DECISIONS 102): back when it is the
+ * page underneath, so the two do not pile up; otherwise pushed.
+ */
+export function useOpenSibling() {
+  const router = useRouter();
+  const navigation = useNavigation();
+  return (routeName: string, href: Href) => {
+    const routes = navigation.getState()?.routes ?? [];
+    if (routes.length > 1 && routes[routes.length - 2].name === routeName) router.back();
+    else router.push(href);
+  };
 }

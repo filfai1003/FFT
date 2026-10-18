@@ -107,18 +107,18 @@ export function SettingsHubScreen() {
     {
       title: t('settings.group.data'),
       items: [
+        // Split by effect (DECISIONS 102): what happens to the data, then what only this phone does.
         {
           icon: 'shield',
-          label: t('profile.menu.privacy'),
-          help: t('settings.privacyHelp'),
-          onPress: () => router.push('/profile/privacy'),
-        },
-        // The technical part of Privacy (DECISIONS 101): server copy, encryption, other phones.
-        {
-          icon: 'swap',
           label: t('profile.menu.data'),
           help: t('settings.dataHelp'),
           onPress: () => router.push('/profile/data'),
+        },
+        {
+          icon: 'lock',
+          label: t('profile.menu.privacy'),
+          help: t('settings.privacyHelp'),
+          onPress: () => router.push('/profile/phone-privacy'),
         },
         ...(offline
           ? []
