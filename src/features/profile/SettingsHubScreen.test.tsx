@@ -37,24 +37,22 @@ describe('Settings (the gear on your profile)', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/profile-edit');
     await fireEvent.press(screen.getByLabelText(/^Units, look and reminders/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/preferences');
-    await fireEvent.press(screen.getByLabelText(/^Privacy,/));
-    expect(mockPush).toHaveBeenLastCalledWith('/profile/privacy');
-    await fireEvent.press(screen.getByLabelText(/^Data & sync,/));
+    await fireEvent.press(screen.getByLabelText(/^Your data,/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/data');
+    await fireEvent.press(screen.getByLabelText(/^Phone privacy,/));
+    expect(mockPush).toHaveBeenLastCalledWith('/profile/phone-privacy');
   });
 
-  it('the Data section: Privacy, then Data & sync, each with a help line, then API & MCP', async () => {
+  it('the Data section: Your data, then Phone privacy, each with a help line, then API & MCP', async () => {
     await renderUI(<SettingsHubScreen />);
-    expect(
-      screen.getByText('App lock, screenshots, consents, export, delete account'),
-    ).toBeTruthy();
-    expect(screen.getByText('Copy on the server, encryption, syncing your phones')).toBeTruthy();
+    expect(screen.getByText('Where your data goes and who can see it')).toBeTruthy();
+    expect(screen.getByText('Lock and screenshots on this phone')).toBeTruthy();
     const labels = screen
       .getAllByRole('button')
       .map((b) => b.props.accessibilityLabel as string | undefined)
-      .filter((l): l is string => !!l && /^(Privacy|Data & sync|API & MCP),/.test(l))
+      .filter((l): l is string => !!l && /^(Your data|Phone privacy|API & MCP),/.test(l))
       .map((l) => l.split(',')[0]);
-    expect(labels).toEqual(['Privacy', 'Data & sync', 'API & MCP']);
+    expect(labels).toEqual(['Your data', 'Phone privacy', 'API & MCP']);
   });
 
   it('has no Help & feedback row (not built)', async () => {

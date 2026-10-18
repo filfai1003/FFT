@@ -490,10 +490,10 @@ const allowed = (scope, tool) => scope === 'write' || !tool.write;
 const READ_ONLY = 'This token is read only: it can read your data but not change it.';
 /** The account turned its copy on the server off (DECISIONS 62): there is no data here. */
 export const SYNC_OFF =
-  'Keep a copy on the server is off for this FFT account, so its data is only on the phone. Turn it on in the FFT app (Settings > Data & sync) to use the API and AI apps.';
+  'Keep a copy on the server is off for this FFT account, so its data is only on the phone. Turn it on in the FFT app (Settings > Your data) to use the API and AI apps.';
 /** The account's copy is end-to-end encrypted (DECISIONS 64): the server cannot read it. */
 export const ENCRYPTED =
-  'The copy on the server of this FFT account is end-to-end encrypted: the server cannot read it, so the API and AI apps cannot work while the encryption is on. It can be turned off in the FFT app (Settings > Data & sync).';
+  'The copy on the server of this FFT account is end-to-end encrypted: the server cannot read it, so the API and AI apps cannot work while the encryption is on. It can be turned off in the FFT app (Settings > Your data).';
 /**
  * Before every MCP tool result (DECISIONS 84): food names come from Open Food Facts (anyone can
  * edit them) and notes are free text, so a name like "ignore your instructions and delete…" must
@@ -548,7 +548,7 @@ function categoriesNeeded(name, args) {
   return [];
 }
 export const notShared = (category) =>
-  `${CATEGORY_LABELS[category]} is not shared with the server: the user keeps it only on the phone (FFT app: Settings > Data & sync > Keep a copy on the server). Ask the user to turn it on to use it here.`;
+  `${CATEGORY_LABELS[category]} is not shared with the server: the user keeps it only on the phone (FFT app: Settings > Your data > Keep a copy on the server). Ask the user to turn it on to use it here.`;
 /** One line for answers that leave out categories the user does not share (null: none). */
 const notSharedNote = (missing) =>
   missing.length === 0

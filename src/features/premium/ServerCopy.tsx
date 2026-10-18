@@ -26,7 +26,7 @@ import { SyncCategoryList, toggled } from './SyncCategories';
 
 /**
  * Keep a copy on the server (DECISIONS 62): what it gives and what it means, the choice a new
- * account makes, the switch in Data & sync, and the notes where a feature needs it.
+ * account makes, the switch in Your data, and the notes where a feature needs it.
  */
 
 /** What the copy on the server gives, and that it lives on our server in the EU. */
@@ -378,7 +378,7 @@ function CategoriesOnServer({ web }: { web: boolean }) {
   );
 }
 
-/** Data & sync: the switch. Off asks first and deletes the copy; on explains first. */
+/** Your data: the switch. Off asks first and deletes the copy; on explains first. */
 export function ServerCopyCard() {
   const { t } = useTranslation();
   const choice = useSyncChoice();
