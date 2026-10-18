@@ -70,9 +70,10 @@ Package name: `com.filfai1003.fft`.
   are deleted 30 days after they were sent, and with the account (DECISIONS 82).
 
 ## Rotating the keys (JWT secret, anon and service-role keys)
-When a key may have leaked (the service-role key was a GitHub secret until 2026-10-18). Users stay
-signed in: their refresh tokens live in the database and the app gets a new access token by itself;
-only apps still on the old anon key cannot reach the server until they take the update (a few minutes).
+When a key may have leaked (the service-role key was a GitHub secret until 2026-10-18; rotated on
+2026-10-18). An app that opens with the old anon key before taking the update fails to renew its
+session and signs out: the user signs in once more and finds everything (the data stays on the
+device, per account). Web sessions end too.
 1. `node supabase/scripts/rotate-jwt.mjs` → `.secrets/rotation-<day>.txt` (git-ignored; prints nothing).
 2. Railway → `backend` → Variables: open `KONG_DECLARATIVE_CONFIG_STRING` and check whether the keys
    are written out in it or referenced as `${{ANON_KEY}}` / `${{SERVICE_ROLE_KEY}}`.
