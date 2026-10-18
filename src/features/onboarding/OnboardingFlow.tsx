@@ -93,14 +93,13 @@ export function OnboardingFlow() {
           shape="segment"
           total={steps.length}
           on={step + 1}
-          accentIndex={step}
           accessibilityLabel={t('onboarding.progress', { current: step + 1, total: steps.length })}
         />
         <View style={{ gap: 6 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" semibold muted>
             {t('onboarding.progress', { current: step + 1, total: steps.length })}
           </Text>
-          <Text variant="displayM" accessibilityRole="header">
+          <Text variant="screenTitle" accessibilityRole="header">
             {t(`onboarding.${id}.title`)}
           </Text>
         </View>
