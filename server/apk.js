@@ -7,8 +7,67 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 const BUCKET = 'downloads';
 const MAX_BYTES = 300 * 1024 * 1024;
-/** EAS build artifacts only: the server never fetches an address someone else chose. */
+/**
+ * EAS build artifacts only: the server never fetches an address someone else chose. Exactly
+ * https://expo.dev/artifacts/eas/<id>.apk: no other host, port, user, query or fragment. This
+ * cannot prove the build belongs to our EAS project (the address does not say): the token holder
+ * is trusted to name one of ours (DECISIONS 86).
+ */
 const ARTIFACT = /^https:\/\/expo\.dev\/artifacts\/eas\/[A-Za-z0-9_-]{8,80}\.apk$/;
+export const isArtifactUrl = (s) => {
+  if (typeof s !== 'string' || !ARTIFACT.test(s)) return false;
+  let u;
+  try {
+    u = new URL(s);
+  } catch {
+    return false;
+  }
+  return (
+    u.protocol === 'https:' &&
+    u.hostname === 'expo.dev' &&
+    u.port === '' &&
+    u.username === '' &&
+    u.password === '' &&
+    u.search === '' &&
+    u.hash === '' &&
+    u.href === s
+  );
+};
+
+/**
+ * An APK is a zip with an AndroidManifest.xml: local file header "PK\x03\x04" at the start, the
+ * end of central directory record "PK\x05\x06" in the last 64 KB + 22 bytes, and the manifest's
+ * name in the central directory (names are stored uncompressed). At most MAX_BYTES.
+ */
+export function looksLikeApk(bytes) {
+  if (bytes.length < 22 || bytes.length > MAX_BYTES) return false;
+  if (bytes.subarray(0, 4).toString('binary') !== 'PK\x03\x04') return false;
+  const tail = bytes.subarray(Math.max(0, bytes.length - 65557));
+  if (tail.lastIndexOf(Buffer.from('PK\x05\x06', 'binary')) < 0) return false;
+  return bytes.includes(Buffer.from('AndroidManifest.xml'));
+}
+
+/** Reads a response body, giving up past `max` bytes (null), whatever content-length said. */
+async function readCapped(res, max) {
+  if (!res.body?.getReader) {
+    const b = Buffer.from(await res.arrayBuffer());
+    return b.length > max ? null : b;
+  }
+  const reader = res.body.getReader();
+  const parts = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > max) {
+      await reader.cancel().catch(() => null);
+      return null;
+    }
+    parts.push(Buffer.from(value));
+  }
+  return Buffer.concat(parts);
+}
 const BUILD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
 
@@ -62,7 +121,7 @@ export function createApkPublisher({
     const buildId = String(body?.build_id ?? '');
     const buildUrl = String(body?.build_url ?? '');
     const version = String(body?.version ?? '');
-    if (!BUILD_ID.test(buildId) || !ARTIFACT.test(buildUrl) || !VERSION.test(version))
+    if (!BUILD_ID.test(buildId) || !isArtifactUrl(buildUrl) || !VERSION.test(version))
       return {
         status: 400,
         body: {
@@ -77,15 +136,16 @@ export function createApkPublisher({
     if (current?.ok && (await current.text()).includes(buildId))
       return { status: 200, body: { published: false, reason: 'already published' } };
 
+    // EAS answers with a redirect to its file storage: followed, but only to https.
     const apk = await fetch(buildUrl, { redirect: 'follow' });
     if (!apk.ok) return { status: 502, body: { error: `EAS answered ${apk.status}` } };
+    if (apk.url && !String(apk.url).startsWith('https://'))
+      return { status: 502, body: { error: 'EAS redirected to a non-https address' } };
     if (Number(apk.headers.get('content-length') ?? 0) > MAX_BYTES)
       return { status: 413, body: { error: 'the APK is too large' } };
-    const bytes = Buffer.from(await apk.arrayBuffer());
-    if (bytes.length > MAX_BYTES) return { status: 413, body: { error: 'the APK is too large' } };
-    // An APK is a zip: "PK\x03\x04".
-    if (bytes.subarray(0, 4).toString('binary') !== 'PK\x03\x04')
-      return { status: 422, body: { error: 'not an APK' } };
+    const bytes = await readCapped(apk, MAX_BYTES);
+    if (!bytes) return { status: 413, body: { error: 'the APK is too large' } };
+    if (!looksLikeApk(bytes)) return { status: 422, body: { error: 'not an APK' } };
 
     // The bucket exists after the first publish; made here otherwise (public, 300 MB files).
     await storage('bucket', {

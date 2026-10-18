@@ -218,7 +218,10 @@
                 as a SHA-256 hash. For AI apps connected with "Sign in with FFT" (OAuth): the app's
                 name, the address it signed in from (for example claude.ai), its access, and when it
                 connected and was last used. A connection ends after 30 days without use and in any
-                case 90 days after you signed in.
+                case 90 days after you signed in. A token you revoke can be brought back with Undo
+                for a short moment only; a connection our server ended (for example because its
+                sign-in was reused) cannot be brought back. Revoked tokens and ended connections are
+                deleted for good 7 days later.
               </td>
               <td>To let the tools you choose use your data, and let you revoke them.</td>
             </tr>
@@ -275,7 +278,8 @@
           is stored. You can withdraw it at any time in Privacy &amp; data; the app then pauses
           until you give it again, export your data or delete your account, and our server stops
           using your data too: the API, MCP, connected AI apps and the included AI coach are
-          refused for your account. Withdrawing does not affect what was done before.
+          refused for your account (and when the server cannot check your consent, the included
+          AI coach refuses rather than sending anything). Withdrawing does not affect what was done before.
         </li>
         <li>
           <strong>A separate explicit consent</strong> (art. 9(2)(a) and 6(1)(a)) for the AI coach:
@@ -420,7 +424,8 @@
         <li>
           <strong>Error reports</strong>: 60 days, then deleted automatically. The ones sent while
           you were signed in are deleted with your account; the ones sent without an account carry
-          no account id and expire after 60 days.
+          no account id and expire after 60 days. A report sent after the deletion by a phone that
+          was still signed in is stored without the account id.
         </li>
         <li>
           <strong>Password reset requests</strong>: at most 30 days after you sent them (handled or
@@ -469,7 +474,8 @@
           items marked as deleted that are not yet gone), what our server keeps about your account
           (email, plan, AI credit and usage, API tokens and connected apps, consent and copy
           settings, paired phones, your error reports, password requests and our admin log entries
-          about your account), and what only this device has (AI conversations, AI settings
+          about your account: found by your exact account id or email, without the admin's IP
+          address or the text of admin queries), and what only this device has (AI conversations, AI settings
           without your own API key). The file is removed from the app's storage an hour after
           you share it, and when you delete your account;
         </li>
