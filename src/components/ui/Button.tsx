@@ -14,14 +14,16 @@ export type ButtonVariant =
   /** Plain text button, e.g. "Train a different day". */
   | 'ghost'
   /** Destructive, outlined in the danger colour. Never pinned to the bottom bar. */
-  | 'danger';
+  | 'danger'
+  /** Filled in the text colour (not the accent): a compact header action ("Check-in"). */
+  | 'dark';
 
 export type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
-  /** `large` = 56px (bottom action bar); `medium` = 52px (inline). */
-  size?: 'large' | 'medium';
+  /** `large` = 52px (bottom action bar); `medium` = 48px (inline); `small` = 44px pill (headers). */
+  size?: 'large' | 'medium' | 'small';
   icon?: IconName;
   disabled?: boolean;
   /** Fills the width of its container. Default true. */
@@ -44,8 +46,13 @@ export function Button({
   const { colors } = useTheme();
   const press = usePressScale();
   const large = size === 'large';
-  const height = large ? touch.primaryButtonHeight : touch.secondaryButtonHeight;
-  const corner = 14;
+  const small = size === 'small';
+  const height = large
+    ? touch.primaryButtonHeight
+    : small
+      ? touch.minTarget
+      : touch.secondaryButtonHeight;
+  const corner = small ? touch.minTarget / 2 : 14;
 
   const look = {
     primary: {
@@ -78,6 +85,10 @@ export function Button({
       },
       fg: colors.danger,
     },
+    dark: {
+      container: { backgroundColor: colors.text, borderRadius: corner },
+      fg: colors.bg,
+    },
   } as const satisfies Record<ButtonVariant, { container: ViewStyle; fg: string }>;
 
   const { container, fg } = look[variant];
@@ -102,8 +113,8 @@ export function Button({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
-          paddingHorizontal: 22,
+          gap: small ? 6 : 8,
+          paddingHorizontal: small ? 14 : 22,
           // Inline buttons sit in rows (or centred columns): centre them, never pin them to the top.
           alignSelf: block ? 'stretch' : 'center',
           opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
@@ -113,7 +124,7 @@ export function Button({
         press.style,
       ]}
     >
-      {icon ? <Icon name={icon} size={20} color={fg} /> : null}
+      {icon ? <Icon name={icon} size={small ? 16 : 20} color={fg} /> : null}
       {/*
         One line: Android measures the semibold font a little short and wrapped the last word onto
         a second line that the button's fixed height cut off ("Add to ChatGPT" showed "Add to").
