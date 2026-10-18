@@ -2,6 +2,7 @@ import '@/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { useState } from 'react';
+import { StyleSheet } from 'react-native';
 import { Text } from '@/components/ui/Text';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { renderUI } from '@/test/render';
@@ -229,5 +230,20 @@ describe('Today edit mode: the grid', () => {
     expect(screen.queryByText('card-water')).toBeNull();
     await fireEvent.press(screen.getByLabelText('Add Weight'));
     expect(order()).toContain('weight:small:true');
+  });
+
+  it('the remove and size controls sit in a row above the card, never over its content', async () => {
+    await act(() => useAppearanceStore.getState().set('oneHandMode', true));
+    await renderUI(<Harness editing />);
+    const toolbar = screen.getByTestId('edit-toolbar-water', { includeHiddenElements: true });
+    // In the flow (not absolutely placed over the card), first in the card, then the content.
+    expect(StyleSheet.flatten(toolbar.props.style).position).toBeUndefined();
+    const card = toolbar.parent!;
+    const kids = card.children.filter((c) => typeof c !== 'string');
+    expect(kids[0]).toBe(toolbar);
+    // Touch targets: 52 in one-hand mode.
+    const hide = screen.getByLabelText('Hide Water');
+    expect(StyleSheet.flatten(hide.props.style)).toMatchObject({ width: 52, height: 52 });
+    expect(screen.getByLabelText('Make Water full width')).toBeTruthy();
   });
 });
