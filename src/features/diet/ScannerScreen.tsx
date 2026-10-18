@@ -114,7 +114,7 @@ export function ScannerScreen() {
           {permission?.granted ? <Frame /> : null}
         </View>
 
-        <Text variant="label" muted style={{ textAlign: 'center' }}>
+        <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
           {t('scanner.hint')}
         </Text>
 
@@ -184,13 +184,13 @@ export function ScannerScreen() {
         }
       >
         {state.kind !== 'scanning' ? (
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('scanner.found', { code: state.code })}
           </Text>
         ) : null}
         {state.kind === 'found' ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('diet.per100', {
                 p: state.food.per100.protein,
                 c: state.food.per100.carbs,

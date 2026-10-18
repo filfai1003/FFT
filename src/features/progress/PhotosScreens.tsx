@@ -72,7 +72,7 @@ export function PhotosScreen() {
         <Text variant="screenTitle">{t('photos.title')}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Icon name="lock" size={14} color={colors.textMuted} />
-          <Text variant="label" muted style={{ flex: 1 }}>
+          <Text variant="bodyS" muted style={{ flex: 1 }}>
             {t('photos.private')}
           </Text>
         </View>
@@ -97,7 +97,7 @@ export function PhotosScreen() {
             <View key={day} style={{ gap: 8 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text variant="label">{shortDateLabel(day)}</Text>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {infoFor(entry, unit)}
                 </Text>
               </View>
@@ -251,7 +251,7 @@ export function ComparePhotosScreen() {
                     revealed={revealed}
                     interactive={false}
                   />
-                  <Text variant="label" muted style={{ textAlign: 'center' }}>
+                  <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
                     {infoFor(entryOf(day), unit)}
                   </Text>
                 </View>
@@ -273,7 +273,7 @@ export function ComparePhotosScreen() {
                     <Text variant="displayS" numeric>
                       {d.v}
                     </Text>
-                    <Text variant="label" muted>
+                    <Text variant="bodyS" muted>
                       {d.l}
                     </Text>
                   </View>

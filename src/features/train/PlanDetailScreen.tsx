@@ -80,7 +80,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                 style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
               />
             ) : null}
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {headerLine(p, rotation, t as Translate)}
             </Text>
           </View>
@@ -129,7 +129,7 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                     <Text variant="bodyL" medium>
                       {d.name}
                     </Text>
-                    <Text variant="label" muted>
+                    <Text variant="bodyS" muted>
                       {tagFor(d)}
                     </Text>
                     <Text variant="bodyS" muted numberOfLines={2}>

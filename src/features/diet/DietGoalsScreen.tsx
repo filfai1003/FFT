@@ -180,7 +180,7 @@ export function DietGoalsScreen() {
         />
 
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('goals.howYouTrack')}
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
@@ -204,14 +204,14 @@ export function DietGoalsScreen() {
         </View>
 
         <Card gap={12}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('goals.dailyCalories')}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
             <Text variant="displayXL" numeric style={{ fontSize: 52, lineHeight: 52 }}>
               {kcal}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('common.kcal')}
             </Text>
           </View>
@@ -236,7 +236,7 @@ export function DietGoalsScreen() {
               paddingTop: 10,
             }}
           >
-            <Text variant="label" muted style={{ flex: 1, lineHeight: 16 }}>
+            <Text variant="bodyS" muted style={{ flex: 1, lineHeight: 16 }}>
               {suggestion}
             </Text>
             <Button
@@ -272,7 +272,7 @@ export function DietGoalsScreen() {
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text>{t('goals.trainingBonus')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('goals.trainingBonusDetail')}
             </Text>
           </View>
@@ -285,7 +285,7 @@ export function DietGoalsScreen() {
 
         {chosenMode === 'fixed_meals' ? (
           <View style={{ gap: 12 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('goals.mealsTitle')}
             </Text>
             <Input

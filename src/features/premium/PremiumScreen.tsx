@@ -64,7 +64,7 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
               </Text>
             </View>
             {mine ? (
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('premium.yourPlan')}
               </Text>
             ) : null}

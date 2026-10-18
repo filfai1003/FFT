@@ -7,7 +7,7 @@ import { Text } from './Text';
 
 export type ListRowProps = {
   title: string;
-  /** Small mono line under the title. */
+  /** Muted line under the title (13px, as in the canvas lists). */
   info?: string;
   /** Next to the title: "MINE", "IN DAY"… */
   badge?: string;
@@ -22,7 +22,7 @@ export type ListRowProps = {
   divider?: boolean;
 };
 
-/** A list item (≥ 52, usually 60 px high) with a dashed divider. */
+/** A list item (≥ 52, usually 60 px high) with a hairline divider. */
 export function ListRow({
   title,
   info,
@@ -41,7 +41,9 @@ export function ListRow({
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Text variant="body">{title}</Text>
+          <Text variant="body" medium>
+            {title}
+          </Text>
           {badge ? (
             <View
               style={{
@@ -59,7 +61,7 @@ export function ListRow({
           ) : null}
         </View>
         {info ? (
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {info}
           </Text>
         ) : null}
@@ -74,7 +76,7 @@ export function ListRow({
     alignItems: 'center' as const,
     gap: 12,
     borderBottomWidth: divider ? 1 : 0,
-    borderBottomColor: colors.borderDecorative,
+    borderBottomColor: colors.divider,
     paddingVertical: 6,
   };
 

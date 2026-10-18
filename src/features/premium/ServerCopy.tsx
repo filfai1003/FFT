@@ -364,7 +364,7 @@ function CategoriesOnServer({ web }: { web: boolean }) {
 
   return (
     <View style={{ gap: 6, paddingTop: 4 }}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('serverCopy.categoriesTitle')}
       </Text>
       <SyncCategoryList value={shared} readOnly={web} onToggle={(c, on) => void toggle(c, on)} />
@@ -401,7 +401,7 @@ export function ServerCopyCard() {
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text variant="bodyS">{t('serverCopy.title')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {on ? t('serverCopy.onDetail') : t('serverCopy.offDetail')}
             </Text>
           </View>
@@ -414,7 +414,7 @@ export function ServerCopyCard() {
           )}
         </View>
         {web ? (
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('serverCopy.webNote')}
           </Text>
         ) : null}

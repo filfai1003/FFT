@@ -47,7 +47,7 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
 
   return (
     <Card gap={10}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('ai.preview')}
       </Text>
 
@@ -58,17 +58,17 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
               ? t('ai.updatesPlan', { name: replaces.name })
               : t('ai.newPlan', { name: workout.name })}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('ai.workoutSummary', {
               days: workout.days.length,
               exercises: workout.days.reduce((a, d) => a + d.exercises.length, 0),
             })}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {workout.days.map((d) => d.name).join(' · ')}
           </Text>
           {created > 0 ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('ai.willCreate', { count: created })}
             </Text>
           ) : null}
@@ -78,7 +78,7 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
             </Text>
           ) : null}
           {replaces ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('ai.backupNote')}
             </Text>
           ) : null}
@@ -139,7 +139,7 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
         >
           <Text muted>{t('ai.confirmDietBody')}</Text>
           <View style={{ gap: 4 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('ai.currentDiet')}
             </Text>
             <Text variant="bodyS">
@@ -160,7 +160,7 @@ export function ImportPreview({ bundle, onApply, busy, done }: Props) {
             </Text>
           </View>
           <View style={{ gap: 4 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('ai.newDiet')}
             </Text>
             <DietDetail diet={diet} />

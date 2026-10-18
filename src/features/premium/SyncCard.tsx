@@ -49,7 +49,7 @@ export function SyncCard({ userId }: { userId: string }) {
 
   return (
     <Card size="small" gap={10}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('sync.title')}
       </Text>
       <Text variant="bodyS">

@@ -103,7 +103,7 @@ export function ExerciseDetailScreen({
             <Text variant="titleM" accessibilityRole="header">
               {exercise.name}
             </Text>
-            <Text variant="label" muted style={{ lineHeight: 16 }}>
+            <Text variant="bodyS" muted style={{ lineHeight: 16 }}>
               {[exercise.primaryMuscle, ...exercise.secondaryMuscles, exercise.equipment]
                 .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
                 .join(' · ')}
@@ -170,7 +170,7 @@ export function ExerciseDetailScreen({
                         backgroundColor: colors.accent,
                       }}
                     />
-                    <Text variant="label" muted>
+                    <Text variant="bodyS" muted>
                       {t('exerciseDetail.change', {
                         delta: `${delta! >= 0 ? '+' : '−'}${Math.abs(delta!)}`,
                         unit: unit,
@@ -202,7 +202,7 @@ export function ExerciseDetailScreen({
           </>
         ) : (
           <Card size="small" gap={4}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('exerciseDetail.best')}
             </Text>
             <Text variant="displayM" numeric>
@@ -295,18 +295,18 @@ function StatCard({
 }) {
   return (
     <Card size="small" gap={6} style={{ flex: 1 }}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
         <Text variant="displayM" numeric>
           {value}
         </Text>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {unit}
         </Text>
       </View>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {note}
       </Text>
     </Card>

@@ -60,7 +60,7 @@ export function AccessibilityScreen() {
       <Text variant="screenTitle">{t('a11y.title')}</Text>
 
       <Card gap={6}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('a11y.preview')}
         </Text>
         <Text variant="bodyS">{t('today.caloriesLeft')}</Text>
@@ -68,7 +68,7 @@ export function AccessibilityScreen() {
           <Text variant="displayL" numeric>
             {1360}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('common.kcal')}
           </Text>
         </View>
@@ -76,7 +76,7 @@ export function AccessibilityScreen() {
 
       {sections.map((s) => (
         <Card key={s.title} gap={0}>
-          <Text variant="label" muted accessibilityRole="header" style={{ paddingBottom: 6 }}>
+          <Text variant="bodyS" muted accessibilityRole="header" style={{ paddingBottom: 6 }}>
             {s.title}
           </Text>
           {s.size ? (
@@ -159,7 +159,7 @@ export function AccessibilityScreen() {
             >
               <View style={{ flex: 1, gap: 2 }}>
                 <Text>{t(`a11y.option.${r.name}.name`)}</Text>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t(`a11y.option.${r.name}.detail`)}
                 </Text>
               </View>

@@ -73,7 +73,7 @@ export function AiHubScreen() {
         />
       ) : (
         <Card gap={12}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('ai.keyTitle')}
           </Text>
           <Segmented
@@ -165,7 +165,7 @@ function IncludedCard() {
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}
         >
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('premium.plan.premium')}
           </Text>
           <Text variant="label" numeric>
@@ -192,7 +192,7 @@ function IncludedCard() {
   const inUse = effectiveAiSettings(settings, plan).provider === 'included';
   return (
     <Card gap={10}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('ai.includedTitle')}
       </Text>
       <Text variant="titleM" numeric>

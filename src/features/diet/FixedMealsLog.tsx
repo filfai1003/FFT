@@ -184,23 +184,23 @@ export function FixedMealsLog() {
                             backgroundColor: colors.accent,
                           }}
                         />
-                        <Text variant="label" muted>
+                        <Text variant="bodyS" muted>
                           {t('diet.upNext')}
                         </Text>
                       </View>
                     ) : null}
                     {done ? (
-                      <Text variant="label" muted>
+                      <Text variant="bodyS" muted>
                         {check?.status === 'adjusted' ? t('diet.adjusted') : t('diet.done')}
                       </Text>
                     ) : null}
                     {skipped ? (
-                      <Text variant="label" muted>
+                      <Text variant="bodyS" muted>
                         {t('diet.skipped')}
                       </Text>
                     ) : null}
                   </View>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {t('diet.mealLine', {
                       kcal: 'kcal' in planned ? planned.kcal : 0,
                       p: Math.round(planned.proteinG),

@@ -59,7 +59,7 @@ function AccessRows({
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text variant="bodyS">{t(`ai.access.${c}`)}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t(`ai.access.${c}Detail`)}
             </Text>
           </View>
@@ -83,7 +83,7 @@ export function AiAccessCard() {
   if (!userId) return null;
   return (
     <Card size="small" gap={4}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('ai.access.title')}
       </Text>
       <Text variant="bodyS" muted>
@@ -147,7 +147,7 @@ export function AiConsentCard({ onDecline }: { onDecline: () => void }) {
       <Text>{t('ai.consent.anonymous')}</Text>
       <Text>{t('ai.consent.noTraining')}</Text>
       <View style={{ gap: 4 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('ai.access.title')}
         </Text>
         <AccessRows value={draft} onChange={(c, on) => setDraft((d) => ({ ...d, [c]: on }))} />

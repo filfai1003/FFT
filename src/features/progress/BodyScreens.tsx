@@ -55,18 +55,18 @@ function Stat({
 }) {
   return (
     <Card size="small" style={{ flex: 1 }} gap={10}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
         <Text variant="displayL" numeric>
           {value}
         </Text>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {unit}
         </Text>
       </View>
-      <Text variant="label" muted={change == null}>
+      <Text variant="bodyS" muted={change == null}>
         {change ?? '—'}
       </Text>
       {children}
@@ -198,7 +198,7 @@ export function BodyScreen() {
           }
         />
         <View style={{ gap: 4 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t(`progress.periodLong.${period}`)}
           </Text>
           <Text variant="screenTitle">{t('progress.bodyTitle')}</Text>
@@ -230,14 +230,14 @@ export function BodyScreen() {
             />
           ) : null}
           {p.weight.sevenDayKg != null ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('progress.sevenDay', { value: shown(p.weight.sevenDayKg) })}
             </Text>
           ) : null}
           <View style={[{ gap: 8 }, divider]}>
             {target != null ? (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t('progress.goal', { value: shown(target), unit: u })}
                 </Text>
                 {toGo != null ? (
@@ -281,7 +281,7 @@ export function BodyScreen() {
             <View style={[{ flexDirection: 'row' }, divider]}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="displayS" numeric>{`${displayWeight(b.leanKg, unit)} ${u}`}</Text>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t('progress.lean', {
                     delta: b.leanDelta != null ? ` · ${signed(b.leanDelta)}` : '',
                   })}
@@ -289,7 +289,7 @@ export function BodyScreen() {
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="displayS" numeric>{`${displayWeight(b.fatKg, unit)} ${u}`}</Text>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t('progress.fat', {
                     delta: b.fatDelta != null ? ` · ${signed(b.fatDelta)}` : '',
                   })}
@@ -300,7 +300,7 @@ export function BodyScreen() {
           <View style={[{ gap: 8 }, divider]}>
             {fatTarget != null ? (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t('progress.goalFat', { value: Math.round(fatTarget * 10) / 10 })}
                 </Text>
                 {fatToGo != null ? (
@@ -327,7 +327,7 @@ export function BodyScreen() {
             />
           </View>
           <View style={[{ gap: 10 }, divider]}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('progress.measuredWith')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -359,13 +359,13 @@ export function BodyScreen() {
               const m = p.measures[k];
               return (
                 <Card key={k} size="small" gap={6} style={{ flexBasis: '47%', flexGrow: 1 }}>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {t(`progress.measure.${k}`)}
                   </Text>
                   <Text variant="displayS" numeric>
                     {m ? len(m.value) : '—'}
                   </Text>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {m ? (m.delta === 0 ? '0.0' : signed(m.delta)) : ' '}
                   </Text>
                 </Card>
@@ -396,7 +396,7 @@ export function BodyScreen() {
                     <Text variant="bodyS">{dayLabel(e.day)}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       {delta != null ? (
-                        <Text variant="label" muted>
+                        <Text variant="bodyS" muted>
                           {signed(shown(Math.abs(delta)) * Math.sign(delta))}
                         </Text>
                       ) : null}

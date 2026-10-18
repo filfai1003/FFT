@@ -54,7 +54,7 @@ export function AiChatsScreen() {
               style={{ flex: 1, gap: 2, minHeight: 44, justifyContent: 'center' }}
             >
               <Text numberOfLines={1}>{c.title || t('ai.untitledChat')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {new Date(c.updatedAt).toLocaleDateString()} ·{' '}
                 {t('ai.messageCount', {
                   count: c.messages.filter((m) => m.role === 'user').length,

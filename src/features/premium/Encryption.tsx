@@ -80,7 +80,7 @@ function PassphraseFields({
           pair.tried && pair.tooShort ? t('vault.tooShort', { count: MIN_PASSPHRASE }) : undefined
         }
       />
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('vault.passphraseHint', { count: MIN_PASSPHRASE })}
       </Text>
       <Input
@@ -494,7 +494,7 @@ export function EncryptionSection({ web }: { web: boolean }) {
       >
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodyS">{t('vault.title')}</Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {encrypted ? t('vault.onDetail') : t('vault.offDetail')}
           </Text>
         </View>
@@ -507,13 +507,13 @@ export function EncryptionSection({ web }: { web: boolean }) {
         )}
       </View>
       {web ? (
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('vault.webNote')}
         </Text>
       ) : null}
       {encrypted && !unlocked ? (
         <>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('vault.lockedDetail')}
           </Text>
           <Button

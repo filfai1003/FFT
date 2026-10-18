@@ -87,7 +87,7 @@ export function UnitsScreen() {
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text>{t('settings.smallPlates')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('settings.smallPlatesDetail', {
                 step: prefs.weightUnit === 'kg' ? '1.25 kg' : '2.5 lb',
               })}
@@ -235,7 +235,7 @@ export function NotificationsScreen() {
             <Text variant="bodyS" medium>
               {t('settings.notification.rest_timer.name')}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {prefs.notifications.rest_timer
                 ? t('settings.notification.rest_timer.detail')
                 : t('settings.off')}

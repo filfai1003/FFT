@@ -44,12 +44,12 @@ export function SyncCategoryList({
           >
             <View style={{ flex: 1, gap: 2, paddingVertical: 8 }}>
               <Text variant="bodyS">{title}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t(`serverCopy.categoryDetail.${c}`)}
               </Text>
             </View>
             {readOnly ? (
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {on ? t('serverCopy.categoryKept') : t('serverCopy.categoryNotKept')}
               </Text>
             ) : (
@@ -58,7 +58,7 @@ export function SyncCategoryList({
           </View>
         );
       })}
-      <Text variant="label" muted style={{ paddingTop: 8 }}>
+      <Text variant="bodyS" muted style={{ paddingTop: 8 }}>
         {alwaysNote === 'relay' ? t('relay.alwaysSent') : t('serverCopy.alwaysSent')}
       </Text>
     </View>

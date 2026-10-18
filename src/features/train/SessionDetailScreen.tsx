@@ -69,7 +69,7 @@ export function SessionDetailScreen({
       />
 
       <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {s.planName ? `${when} · ${s.planName}` : when}
         </Text>
         <Text variant="screenTitle" accessibilityRole="header">
@@ -84,7 +84,7 @@ export function SessionDetailScreen({
               <Text variant="displayM" numeric>
                 {x.value}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {x.label}
               </Text>
             </View>
