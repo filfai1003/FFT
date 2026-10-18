@@ -13,7 +13,19 @@ import { useTheme } from '@/design/use-theme';
 import { deviceTimeZone, localDay } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
+import { latestRecords, nextBadges } from '@/domain/gamification';
+import { ProfileCommunityCard } from '@/features/community/ProfileCommunityCard';
 import { useGoalForDay } from '@/features/diet/log';
+import {
+  BadgeDisc,
+  badgeHow,
+  badgeName,
+  dayMonth,
+  useBadgeLabel,
+} from '@/features/gamification/components';
+import { useGamification } from '@/features/gamification/data';
+import { GainPill, SectionHead, useRecordText } from '@/features/gamification/MeCards';
+import { useProgressView } from '@/features/gamification/progress-view';
 import { useStrength } from '@/features/progress/strength';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
@@ -37,9 +49,8 @@ const GOALS = ['lose_fat', 'maintain', 'build_muscle'] as const;
 
 /**
  * Your own page (the avatar on Home), after the canvas "Your profile": who you are and a few of
- * your numbers, all computed on the device; Settings sit behind the gear. Levels, badges, records
- * and friends (canvas "Progress · Me" / community) are planned, not built: they will go under
- * "This month", where the canvas has them.
+ * your numbers, all computed on the device; Settings sit behind the gear. The level ring, records
+ * and badges come from the gamification (DECISIONS 89), computed on the device too.
  */
 export function ProfileScreen() {
   const { t } = useTranslation();
@@ -53,6 +64,7 @@ export function ProfileScreen() {
   const strength = useStrength('4w');
   const goal = useGoalForDay(today);
   const month = useMonthSessions(today.slice(0, 7));
+  const game = useGamification();
 
   const p = profile.data;
   const name = p?.name?.trim() || t('profile.you');
@@ -76,7 +88,14 @@ export function ProfileScreen() {
     : '';
   const subtitle = [
     goalKey ? t(`profile.goal.${goalKey}`) : null,
-    since ? t('profile.memberSince', { date: since }) : null,
+    game
+      ? t('game.xpToNext', {
+          xp: formatInt(game.level.nextLevelXp - game.level.xp),
+          next: game.level.level + 1,
+        })
+      : since
+        ? t('profile.memberSince', { date: since })
+        : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -91,9 +110,6 @@ export function ProfileScreen() {
     .filter(Boolean)
     .join(' · ');
 
-  const monthName = new Intl.DateTimeFormat('en', { month: 'long', timeZone: 'UTC' }).format(
-    new Date(`${today}T12:00:00Z`),
-  );
   const monthSessions = (month.data ?? []).filter((s) =>
     localDay(new Date(s.startedAt), tz).startsWith(today.slice(0, 7)),
   );
@@ -101,6 +117,17 @@ export function ProfileScreen() {
   const daysSoFar = stats.data?.daysSoFar ?? Number(today.slice(8, 10));
   const score = strength.overall;
   const none = t('profile.stats.none');
+  const earned = (game?.badges ?? [])
+    .filter((b) => b.earned)
+    .sort((a, b) => (b.earnedOn ?? '').localeCompare(a.earnedOn ?? ''));
+  const records = game ? latestRecords(game.records, '0000-01-01', 3) : [];
+  const recordText = useRecordText();
+  const openBadges = () => {
+    useProgressView.getState().setView('me');
+    router.push('/progress');
+  };
+  const level = game?.level;
+  const badgeLabel = useBadgeLabel();
 
   const pills: {
     key: string;
@@ -112,16 +139,16 @@ export function ProfileScreen() {
     {
       key: 'streak',
       icon: 'flame',
-      value: stats.data ? formatInt(stats.data.streak) : none,
+      value: game ? formatInt(game.streak) : stats.data ? formatInt(stats.data.streak) : none,
       label: t('profile.stats.dayStreak'),
-      onPress: () => router.push('/calendar'),
+      onPress: openBadges,
     },
     {
-      key: 'workouts',
-      icon: 'dumbbell',
-      value: month.data ? formatInt(monthSessions.length) : none,
-      label: t('profile.stats.workouts', { month: monthName }),
-      onPress: () => router.push('/train/history'),
+      key: 'badges',
+      icon: 'medal',
+      value: game ? formatInt(earned.length) : none,
+      label: t('profile.stats.badges'),
+      onPress: openBadges,
     },
     {
       key: 'strength',
@@ -180,18 +207,60 @@ export function ProfileScreen() {
       />
 
       <View style={{ alignItems: 'center', gap: 6 }}>
-        <View
-          aria-hidden
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: 44,
-            backgroundColor: colors.borderDecorative,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text variant="displayM">{initials}</Text>
+        {/* Canvas Profile: the level ring around the avatar, "Lv 7" under it. */}
+        <View style={{ width: 112, height: 112 }}>
+          <Gauge
+            value={level?.progress ?? 0}
+            size={112}
+            stroke={6}
+            track={colors.borderDecorative}
+            accessibilityLabel={
+              level
+                ? t('game.levelRingA11y', {
+                    level: level.level,
+                    pct: Math.round(level.progress * 100),
+                    next: level.level + 1,
+                  })
+                : name
+            }
+          >
+            <View
+              aria-hidden
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: 44,
+                backgroundColor: colors.borderDecorative,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text variant="displayM">{initials}</Text>
+            </View>
+          </Gauge>
+          {level ? (
+            <View
+              aria-hidden
+              style={{
+                position: 'absolute',
+                bottom: -2,
+                alignSelf: 'center',
+                minHeight: 26,
+                minWidth: 36,
+                paddingHorizontal: 8,
+                borderRadius: 13,
+                backgroundColor: colors.dotOn,
+                borderWidth: 2,
+                borderColor: colors.bg,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text variant="label" semibold style={{ color: colors.surface }}>
+                {t('game.levelShort', { level: level.level })}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <Text
           variant="screenTitle"
@@ -266,6 +335,103 @@ export function ProfileScreen() {
           </Card>
         ))}
       </View>
+
+      <SectionHead
+        title={t('game.records')}
+        right={t('game.seeAll')}
+        onRight={() => router.push('/progress/strength')}
+      />
+      {records.length > 0 ? (
+        <Card style={{ paddingVertical: 0, paddingHorizontal: 14 }} gap={0}>
+          {records.map((r, i) => {
+            const x = recordText(r);
+            return (
+              <Pressable
+                key={`${r.exerciseId}-${r.day}`}
+                accessibilityRole="button"
+                accessibilityLabel={x.a11y}
+                onPress={() => {
+                  tick();
+                  router.push({
+                    pathname: '/progress/exercise/[exerciseId]',
+                    params: { exerciseId: r.exerciseId },
+                  });
+                }}
+                style={{
+                  minHeight: 56,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  borderTopWidth: i === 0 ? 0 : 1,
+                  borderTopColor: colors.divider,
+                }}
+              >
+                <View
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.surfaceAlt,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="trophy" size={17} color={colors.text} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text medium numberOfLines={1}>
+                    {x.name}
+                  </Text>
+                  <Text variant="label" muted>
+                    {dayMonth(r.day)}
+                  </Text>
+                </View>
+                <Text variant="titleM" semibold numeric>{`${formatInt(x.value)} ${x.unit}`}</Text>
+                <GainPill text={t('game.gainShort', { pct: r.pct })} />
+              </Pressable>
+            );
+          })}
+        </Card>
+      ) : (
+        <Card>
+          <Text variant="bodyS" muted>
+            {t('game.noRecords')}
+          </Text>
+        </Card>
+      )}
+
+      <SectionHead
+        title={t('game.badges')}
+        right={t('game.badgesSeeAll', {
+          count: earned.length,
+          total: game?.badges.length ?? 0,
+        })}
+        onRight={openBadges}
+      />
+      <Card style={{ paddingVertical: 14, paddingHorizontal: 8, flexDirection: 'row' }} gap={4}>
+        {earned.length === 0 ? (
+          <Text variant="bodyS" muted style={{ flex: 1, paddingHorizontal: 6 }}>
+            {game ? badgeHow(t, nextBadges(game.badges, 1)[0]?.id ?? 'first_workout') : none}
+          </Text>
+        ) : (
+          earned.slice(0, 4).map((b) => (
+            <View
+              key={b.id}
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={badgeLabel(b)}
+              style={{ flex: 1, flexBasis: 0, alignItems: 'center', gap: 6 }}
+            >
+              <BadgeDisc badge={b} />
+              <Text variant="label" semibold style={{ textAlign: 'center' }}>
+                {badgeName(t, b.id)}
+              </Text>
+            </View>
+          ))
+        )}
+      </Card>
+
+      <ProfileCommunityCard />
 
       <MenuList
         items={[

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'supplements';
+export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'streak' | 'supplements';
 /** small = half the width (two side by side), large = the whole width. */
 export type WidgetSize = 'small' | 'large';
 export type WidgetItem = { id: WidgetId; size: WidgetSize; visible: boolean };
@@ -11,6 +11,8 @@ export const defaultWidgets: readonly WidgetItem[] = [
   { id: 'workout', size: 'large', visible: true },
   { id: 'water', size: 'small', visible: true },
   { id: 'weight', size: 'small', visible: true },
+  // Streak and next badge (canvas Home, DECISIONS 89).
+  { id: 'streak', size: 'large', visible: true },
   { id: 'supplements', size: 'small', visible: true },
 ];
 

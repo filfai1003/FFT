@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { TabBar, type TabBarItem } from '@/components/ui/TabBar';
 import { useTheme } from '@/design/use-theme';
 import { SwipeTabs, type SwipeTabBarProps } from '@/features/navigation/SwipeTabs';
+import { BadgeUnlockWatcher } from '@/features/gamification/BadgeUnlocked';
 import { AddSheet, useAddSheet } from '@/features/today/AddSheet';
 import type { IconName } from '@/components/ui/Icon';
 
@@ -70,6 +71,7 @@ export default function TabsLayout() {
         ))}
       </SwipeTabs>
       <AddSheet />
+      <BadgeUnlockWatcher />
     </>
   );
 }

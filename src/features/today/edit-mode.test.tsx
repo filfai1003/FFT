@@ -69,6 +69,7 @@ describe('Today layout: edits', () => {
       'water',
       'weight',
       'workout',
+      'streak',
       'supplements',
     ]);
     expect(moveShown(ws, 'nutrition', -1)).toBe(ws);

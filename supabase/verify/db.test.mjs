@@ -3088,6 +3088,229 @@ describe('encrypted relay between phones (DECISIONS 65)', () => {
 });
 
 // Last on purpose: by now every table holds rows of the test accounts, which this copies.
+describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', () => {
+  const week = `public.community_period_start('week', current_date)`;
+  const month = `public.community_period_start('month', current_date)`;
+  /** Lets the next submission through the once-a-minute limit. */
+  const unthrottle = async () => {
+    await admin();
+    await db.exec(
+      `update public.community_members set submitted_at = now() - interval '2 minutes'`,
+    );
+  };
+  const submit = async (uid, level, scores, badges = ['first_workout']) => {
+    await as(uid);
+    const { rows } = await db.query(`select ${week} as w, ${month} as m`);
+    const at = { week: rows[0].w, month: rows[0].m };
+    return db.query(`select public.community_submit($1, $2, $3::jsonb)`, [
+      level,
+      badges,
+      JSON.stringify(scores.map((s) => ({ subject: '', period_start: at[s.period], ...s }))),
+    ]);
+  };
+  const board = async (uid, metric, subject = '', period = 'month') => {
+    await as(uid);
+    const r = await one(
+      `select public.community_leaderboard($1, ${period === 'week' ? week : month}, $2, $3) as b`,
+      [period, metric, subject],
+    );
+    return r.b;
+  };
+
+  it('nothing is readable or writable directly; non-members read nothing', async () => {
+    await as(A);
+    await assert.rejects(() =>
+      db.query(`select public.community_leaderboard('month', current_date, 'workouts')`),
+    );
+    await assert.rejects(() =>
+      db.query(
+        `insert into public.community_members (user_id, display_name, invite_code) values ($1, 'Mallory', 'ABCDEFGH')`,
+        [A],
+      ),
+    );
+    assert.equal(await one(`select public.community_me() as m`).then((r) => r.m), null);
+  });
+
+  it('joining uses the given name; a member sees only its own rows in the tables', async () => {
+    await as(A);
+    const me = (await one(`select public.community_join('  Anna   Bianchi ') as m`)).m;
+    assert.equal(me.name, 'Anna Bianchi');
+    assert.match(me.invite_code, /^[A-Z2-9]{8}$/);
+    assert.notEqual(me.public_id, A);
+    await as(B);
+    await db.query(`select public.community_join('Bea')`);
+    assert.equal(await count('select count(*) as n from public.community_members'), 1);
+    await as(A);
+    await db.query(`select public.community_set_name('Anna')`);
+    assert.equal((await one(`select public.community_me() as m`)).m.name, 'Anna');
+    await rejects(`select public.community_set_name('   ')`, '22023');
+  });
+
+  it('scores: a leaderboard of names and numbers only, with places now and yesterday', async () => {
+    await submit(A, 5, [
+      { period: 'month', metric: 'workouts', value: 1 },
+      { period: 'month', metric: 'strength', value: 4.2 },
+      { period: 'month', metric: 'strength', subject: 'group:chest', value: 6 },
+      { period: 'week', metric: 'diet', value: 80 },
+    ]);
+    await submit(B, 3, [
+      { period: 'month', metric: 'workouts', value: 2 },
+      { period: 'month', metric: 'strength', value: 1.5 },
+    ]);
+    const b = await board(A, 'workouts');
+    assert.equal(b.total, 2);
+    assert.deepEqual(
+      b.rows.map((r) => [r.name, Number(r.value), r.place, r.is_me]),
+      [
+        ['Bea', 2, 1, false],
+        ['Anna', 1, 2, true],
+      ],
+    );
+    // Never the account ids, never anything but the score.
+    const text = JSON.stringify(b);
+    assert.ok(!text.includes(A) && !text.includes(B));
+    assert.deepEqual(Object.keys(b.rows[0]).sort(), [
+      'is_me',
+      'level',
+      'name',
+      'place',
+      'place_before',
+      'public_id',
+      'value',
+    ]);
+    const chest = await board(B, 'strength', 'group:chest');
+    assert.deepEqual(
+      chest.rows.map((r) => r.name),
+      ['Anna'],
+    );
+    // B reads its own scores only.
+    await as(B);
+    assert.equal(await count('select count(*) as n from public.community_scores'), 2);
+    // Yesterday's value is kept when a new day's value comes.
+    await admin();
+    await db.exec(
+      `update public.community_scores set value_day = current_date - 1, prev_value = null where metric = 'workouts'`,
+    );
+    await unthrottle();
+    await submit(A, 5, [{ period: 'month', metric: 'workouts', value: 3 }]);
+    const after = await board(A, 'workouts');
+    const anna = after.rows.find((r) => r.is_me);
+    assert.equal(anna.place, 1);
+    assert.equal(anna.place_before, 2);
+  });
+
+  it('impossible numbers are refused, the whole submission at once', async () => {
+    const tries = [
+      [{ period: 'week', metric: 'workouts', value: 30 }],
+      [{ period: 'week', metric: 'workouts', value: 1.5 }],
+      [{ period: 'month', metric: 'diet', value: 120 }],
+      [{ period: 'month', metric: 'training', value: -1 }],
+      [{ period: 'month', metric: 'strength', value: 80 }],
+      [{ period: 'month', metric: 'strength', value: 30 }], // 25.8 points from 4.2 within a minute
+      [{ period: 'month', metric: 'workouts', value: 1, period_start: '2020-01-01' }],
+      [{ period: 'month', metric: 'weight', value: 80 }],
+      [{ period: 'month', metric: 'workouts', subject: 'group:chest', value: 1 }],
+    ];
+    for (const scores of tries) {
+      await unthrottle();
+      await assert.rejects(() => submit(A, 5, scores), JSON.stringify(scores));
+    }
+    await unthrottle();
+    await assert.rejects(() => submit(A, 50, []), 'a level jump of 45');
+    await unthrottle();
+    await assert.rejects(() => submit(A, 5, [], ['Bad badge']), 'badge id');
+    // Nothing of the refused ones was written.
+    await admin();
+    assert.equal(
+      await count(
+        `select count(*) as n from public.community_scores where user_id = '${A}' and metric = 'diet' and period = 'month'`,
+      ),
+      0,
+    );
+    // At most once a minute.
+    await unthrottle();
+    await submit(A, 5, [{ period: 'month', metric: 'workouts', value: 3 }]);
+    await assert.rejects(
+      () => submit(A, 5, []),
+      (e) => e.code === '54000',
+    );
+  });
+
+  it('friends: by invite code, accept, decline, remove; profiles say who is a friend', async () => {
+    await as(A);
+    const code = (await one(`select public.community_me() as m`)).m.invite_code;
+    const annaId = (await one(`select public.community_me() as m`)).m.public_id;
+    await as(B);
+    await rejects(`select public.community_add_friend('NOPE1234')`, 'P0002');
+    assert.equal(
+      (await one(`select public.community_add_friend($1) as s`, [code.toLowerCase()])).s,
+      'asked',
+    );
+    const beaId = (await one(`select public.community_me() as m`)).m.public_id;
+    await rejects(
+      `select public.community_add_friend('${(await one(`select public.community_me() as m`)).m.invite_code}')`,
+      '22023',
+    );
+    await as(A);
+    let friends = (await one(`select public.community_friends() as f`)).f;
+    assert.deepEqual(
+      friends.map((f) => [f.name, f.status]),
+      [['Bea', 'asked_you']],
+    );
+    await db.query(`select public.community_answer_friend($1, false)`, [beaId]);
+    assert.deepEqual((await one(`select public.community_friends() as f`)).f, []);
+    await as(B);
+    await db.query(`select public.community_add_friend(null, $1)`, [annaId]);
+    await as(A);
+    await db.query(`select public.community_answer_friend($1, true)`, [beaId]);
+    friends = (await one(`select public.community_friends('month', ${month}, 'workouts') as f`)).f;
+    assert.deepEqual(
+      friends.map((f) => [f.name, f.status, Number(f.value)]),
+      [['Bea', 'friends', 2]],
+    );
+    const profile = (await one(`select public.community_profile($1) as p`, [beaId])).p;
+    assert.equal(profile.friend, 'friends');
+    assert.equal(profile.name, 'Bea');
+    assert.ok(!JSON.stringify(profile).includes(B));
+    const own = (await one(`select public.community_profile() as p`)).p;
+    assert.equal(own.is_me, true);
+    assert.ok(own.scores.some((s) => s.metric === 'workouts' && s.top_pct === 50));
+    await db.query(`select public.community_remove_friend($1)`, [beaId]);
+    assert.deepEqual((await one(`select public.community_friends() as f`)).f, []);
+    // Friends again for the leave test.
+    await db.query(`select public.community_add_friend(null, $1)`, [beaId]);
+  });
+
+  it('the export lists the community data; leaving deletes member, scores and friendships', async () => {
+    await as(A);
+    const exp = (await one(`select public.community_export() as e`)).e;
+    assert.equal(exp.member.name, 'Anna');
+    assert.ok(exp.scores.length > 0);
+    assert.equal(exp.friends.length, 1);
+    await db.query(`select public.community_leave()`);
+    await admin();
+    for (const t of ['community_members', 'community_scores'])
+      assert.equal(
+        await count(`select count(*) as n from public.${t} where user_id = '${A}'`),
+        0,
+        t,
+      );
+    assert.equal(
+      await count(
+        `select count(*) as n from public.friendships where user_id = '${A}' or friend_id = '${A}'`,
+      ),
+      0,
+    );
+    const b = await board(B, 'workouts');
+    assert.deepEqual(
+      b.rows.map((r) => r.name),
+      ['Bea'],
+    );
+    await as(A);
+    await assert.rejects(() => db.query(`select public.community_profile()`));
+  });
+});
+
 describe('deleting an account leaves nothing (DECISIONS 85)', () => {
   const Z = '84000000-0000-0000-0000-00000000000f';
   const MAIL = 'zed@test.dev';
@@ -3109,6 +3332,9 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     body_goals: `insert into public.body_goals (user_id, valid_from, target_weight_kg) values ($1, '2026-10-01', 70)`,
     relay_devices: `insert into public.relay_devices (user_id, device_id, name) values ($1, gen_random_uuid()::text, 'Zed phone')`,
     relay_messages: `insert into public.relay_messages (user_id, to_device, from_device, payload) values ($1, 'a', 'b', 'sealed')`,
+    community_members: `insert into public.community_members (user_id, display_name, invite_code) values ($1, 'Zed', 'ZEDCODE1')`,
+    community_scores: `insert into public.community_scores (user_id, period, period_start, metric, value) values ($1, 'month', current_date, 'workouts', 3)`,
+    friendships: `insert into public.friendships (user_id, friend_id) values ($1, '${B}')`,
     user_plans: `insert into public.user_plans (user_id, plan) values ($1, 'premium')`,
     vault_keys: `insert into public.vault_keys (user_id, kdf, salt, wrapped_by_passphrase, wrapped_by_recovery, key_check) values ($1, '{}', 's', 'w', 'r', 'k')`,
     vault_rows: `insert into public.vault_rows (user_id, tbl, row_id, updated_at, ciphertext) values ($1, 'water_logs', 'r1', now(), 'sealed')`,

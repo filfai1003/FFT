@@ -140,6 +140,23 @@ async function accountPart(): Promise<unknown> {
   }
 }
 
+/**
+ * What the community holds about the account (DECISIONS 90): membership, scores, friends. Null
+ * without an account or when not a member.
+ */
+async function communityPart(): Promise<unknown> {
+  if (getMode() !== 'cloud') return null;
+  try {
+    const { data, error } = await (getAuthClient() as unknown as SupabaseClient).rpc(
+      'community_export',
+    );
+    if (error) return { unavailable: error.message };
+    return data;
+  } catch (e) {
+    return { unavailable: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /** What only this device has: AI conversations, AI and copy settings (never the AI key itself). */
 function devicePart(userId: string | null) {
   const conversations = Object.values(useConversations.getState().conversations).filter(
@@ -165,7 +182,7 @@ function devicePart(userId: string | null) {
   };
 }
 
-/** Everything as a ZIP: data.json, account.json, device.json, a few CSVs and the photos. */
+/** Everything as a ZIP: data.json, account.json, community.json, device.json, a few CSVs and the photos. */
 export async function fullExportZip(): Promise<Uint8Array> {
   const data = await collectData();
   const names = await exerciseNames();
@@ -175,6 +192,7 @@ export async function fullExportZip(): Promise<Uint8Array> {
       JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2),
     ),
     'account.json': strToU8(JSON.stringify(await accountPart(), null, 2)),
+    'community.json': strToU8(JSON.stringify(await communityPart(), null, 2)),
     'device.json': strToU8(JSON.stringify(devicePart(userId), null, 2)),
     'workouts.csv': strToU8(toCsv(workoutRows(data, names), workoutColumns)),
     'food_log.csv': strToU8(

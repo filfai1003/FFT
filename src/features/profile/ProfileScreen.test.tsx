@@ -28,6 +28,9 @@ jest.mock('./api', () => ({
 jest.mock('./stats', () => ({
   useProfileStats: () => ({ data: { streak: 12, loggedThisMonth: 9, daysSoFar: 18 } }),
 }));
+jest.mock('@/features/community/ProfileCommunityCard', () => ({
+  ProfileCommunityCard: () => null,
+}));
 jest.mock('@/features/progress/strength', () => ({ useStrength: () => ({ overall: 3.5 }) }));
 jest.mock('@/features/diet/log', () => ({
   useGoalForDay: () => ({ kcal: 2600 }),
@@ -42,6 +45,31 @@ jest.mock('@/features/train/history', () => ({
   }),
 }));
 
+jest.mock('@/features/train/exercises', () => ({
+  useExercises: () => ({ data: [{ id: 'bench', name: 'Bench press' }] }),
+}));
+jest.mock('@/features/gamification/data', () => {
+  const { computeGamification } = jest.requireActual('@/domain/gamification');
+  const day = (n: number) => `2026-10-${String(n).padStart(2, '0')}`;
+  const workouts = Array.from({ length: 10 }, (_, i) => ({
+    id: `w${i}`,
+    day: day(i + 1),
+    hour: 18,
+  }));
+  const activity = {
+    loggedDays: new Set(Array.from({ length: 12 }, (_, i) => day(i + 7))),
+    workouts,
+    dietOnTargetDays: new Set(),
+    checkInDays: new Set(),
+    exerciseDays: [
+      { exerciseId: 'bench', day: day(2), bestWeightKg: 80, bestE1rmKg: 90 },
+      { exerciseId: 'bench', day: day(9), bestWeightKg: 85, bestE1rmKg: 92 },
+    ],
+  };
+  const game = { ...computeGamification({ ...activity, today: '2026-10-18' }), activity };
+  return { useGamification: () => game };
+});
+
 describe('Profile (your own page)', () => {
   beforeEach(() => mockPush.mockClear());
 
@@ -49,10 +77,17 @@ describe('Profile (your own page)', () => {
     await renderUI(<ProfileScreen />);
     expect(screen.getByText('Filippo Rossi')).toBeTruthy();
     expect(screen.getByText('FR', { includeHiddenElements: true })).toBeTruthy();
-    expect(screen.getByText('Build muscle · Member since July 2026')).toBeTruthy();
-    // Streak, workouts this month (September's session left out), strength.
+    expect(screen.getByText(/^Build muscle · [0-9,]+ XP to level [0-9]+$/)).toBeTruthy();
+    // Streak, badges, strength; the level ring, records and badges (canvas Profile).
     expect(screen.getByLabelText('12 Day streak')).toBeTruthy();
-    expect(screen.getByLabelText('2 Workouts in October')).toBeTruthy();
+    expect(screen.getByLabelText('4 Badges')).toBeTruthy();
+    expect(
+      screen.getByLabelText(/^Level [0-9]+, [0-9]+% of the way to level [0-9]+$/),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('Bench press: new record 85 kg, up 5 kg, 6.3 percent, 9 Oct'),
+    ).toBeTruthy();
+    expect(screen.getByLabelText('10 workouts: earned 10 Oct')).toBeTruthy();
     expect(screen.getByLabelText('+3.5% Strength, 4 wk')).toBeTruthy();
     expect(screen.getByLabelText('9 of 18 days this month with something logged')).toBeTruthy();
     expect(screen.getByText('Only you see: 81.2 kg · 180 cm · 2,600 kcal')).toBeTruthy();

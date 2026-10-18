@@ -1,17 +1,30 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
+import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
-import { periods, type Period } from '@/domain/progress';
+import { periods } from '@/domain/progress';
 import { displayWeight } from '@/domain/units';
+import {
+  CommunityAvatarButton,
+  CommunityPinned,
+  CommunityView,
+  useCommunityBottomSpace,
+} from '@/features/community/CommunityView';
+import { PillButton, dayMonth } from '@/features/gamification/components';
+import { useGamification } from '@/features/gamification/data';
+import { BadgeGrid, NextBadgeCard, RecordsRow, StreakCard } from '@/features/gamification/MeCards';
+import { useProgressView, type ProgressView } from '@/features/gamification/progress-view';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { poses, useBodyEntries, usePhotos } from './data';
@@ -29,14 +42,128 @@ export const chartValues = (v: (number | null)[]) => {
   return v.map((x) => x ?? min);
 };
 
-/** Progress tab: strength, body weight, body fat and photos over the chosen period. */
+/**
+ * Progress tab, "Me" / "Community" (canvas ProgressMe, ProgressCommunity). Me: streak, level,
+ * next badge, new records, the period's numbers (strength, body, photos) and every badge.
+ */
 export function ProgressScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { period, setPeriod } = useProgressPeriod();
+  const strength = useStrength(period);
+  const game = useGamification();
+  const { view, setView } = useProgressView();
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const communityBottom = useCommunityBottomSpace();
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Screen scroll bottomBarHeight={view === 'community' ? communityBottom : 24} gap={14}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <Text variant="screenTitle" accessibilityRole="header">
+              {t('nav.progress')}
+            </Text>
+          </View>
+          {view === 'me' ? (
+            // Canvas "Progress": a dark "Check-in" pill (the accent stays for the main actions).
+            <Button
+              variant="dark"
+              size="small"
+              block={false}
+              icon="plus"
+              label={t('checkIn.title')}
+              accessibilityLabel={t('progress.newCheckIn')}
+              onPress={() => router.push('/check-in')}
+            />
+          ) : (
+            <CommunityAvatarButton />
+          )}
+        </View>
+
+        <Segmented
+          accessibilityLabel={t('progress.view')}
+          value={view}
+          onChange={(v: ProgressView) => setView(v)}
+          options={[
+            { value: 'me', label: t('progress.me') },
+            { value: 'community', label: t('progress.community') },
+          ]}
+        />
+
+        {view === 'community' ? (
+          <CommunityView />
+        ) : (
+          <>
+            {game ? (
+              <>
+                <StreakCard game={game} />
+                <NextBadgeCard game={game} />
+                <RecordsRow game={game} />
+              </>
+            ) : null}
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingTop: 4,
+                paddingLeft: 2,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text variant="titleM" semibold accessibilityRole="header">
+                  {t('progress.yourNumbers')}
+                </Text>
+                <Text variant="label" muted>
+                  {t('progress.since', { date: dayMonth(strength.from) })}
+                </Text>
+              </View>
+              <PillButton
+                label={t(`progress.periodLong.${period}`)}
+                accessibilityLabel={t('progress.periodA11y', {
+                  period: t(`progress.periodLong.${period}`),
+                })}
+                onPress={() => setPeriodOpen(true)}
+              />
+            </View>
+            <MeNumbers />
+            {game ? <BadgeGrid badges={game.badges} /> : null}
+          </>
+        )}
+        <Sheet
+          visible={periodOpen}
+          onClose={() => setPeriodOpen(false)}
+          title={t('progress.periodTitle')}
+          closeLabel={t('common.close')}
+        >
+          {periods.map((p) => (
+            <OptionCard
+              key={p}
+              title={t(`progress.periodLong.${p}`)}
+              selected={p === period}
+              onPress={() => {
+                setPeriod(p);
+                setPeriodOpen(false);
+              }}
+            />
+          ))}
+        </Sheet>
+      </Screen>
+      {view === 'community' ? <CommunityPinned /> : null}
+    </View>
+  );
+}
+
+/** The existing Progress cards (strength, body, photos) for the chosen period. */
+function MeNumbers() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
-  const { period, setPeriod } = useProgressPeriod();
+  const { period } = useProgressPeriod();
   const strength = useStrength(period);
   const entries = useBodyEntries();
   const photos = usePhotos();
@@ -55,37 +182,7 @@ export function ProgressScreen() {
       : null;
 
   return (
-    <Screen scroll bottomBarHeight={24} gap={14}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyS" muted>
-            {t('progress.since', {
-              date: shortDateLabel(strength.from).split(' ').slice(1).join(' '),
-            })}
-          </Text>
-          <Text variant="screenTitle" accessibilityRole="header">
-            {t('nav.progress')}
-          </Text>
-        </View>
-        {/* Canvas "Progress": a dark "Check-in" pill (the accent stays for the main actions). */}
-        <Button
-          variant="dark"
-          size="small"
-          block={false}
-          icon="plus"
-          label={t('checkIn.title')}
-          accessibilityLabel={t('progress.newCheckIn')}
-          onPress={() => router.push('/check-in')}
-        />
-      </View>
-
-      <Segmented
-        accessibilityLabel={t('progress.range')}
-        value={period}
-        onChange={(p: Period) => setPeriod(p)}
-        options={periods.map((p) => ({ value: p, label: t(`progress.period.${p}`) }))}
-      />
-
+    <>
       <Card
         onPress={() => router.push('/progress/strength')}
         accessibilityLabel={t('progress.strength')}
@@ -230,10 +327,7 @@ export function ProgressScreen() {
         disabled={photoDays < 2}
         onPress={() => router.push('/progress/photos/compare')}
       />
-      <Text variant="bodyS" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
-        {t('progress.today', { date: shortDateLabel(today) })}
-      </Text>
-    </Screen>
+    </>
   );
 }
 
