@@ -19,6 +19,10 @@ const IN_MS = 220;
 /** A move made with the buttons slides in from this share of the width (with a fade). */
 const SHIFT = 0.15;
 
+// A plain function: a worklet cannot capture the Keyboard module itself (Worklets refuses to copy
+// `KeyboardImpl`, and that error closed the app on opening a workout), only call this back on JS.
+const dismissKeyboard = () => Keyboard.dismiss();
+
 /**
  * Swipe left / right between the exercises of the workout (DECISIONS 71). The content follows
  * the finger, leaves on that side and the next one comes in from the other; moves made with the
@@ -87,7 +91,7 @@ export function ExerciseSwiper({
     .onStart(() => {
       'worklet';
       cancelAnimation(offset);
-      scheduleOnRN(Keyboard.dismiss);
+      scheduleOnRN(dismissKeyboard);
     })
     .onUpdate((e) => {
       'worklet';
