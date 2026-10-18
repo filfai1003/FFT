@@ -1,5 +1,7 @@
 // Publishes an APK as the public download of the install page: uploads it to the public `downloads`
 // bucket (service role) and publishes its version and size as config.js in the same bucket (the install page reads it).
+// By hand only, from the owner's computer: the GitHub workflow uses the api service instead
+// (POST /internal/apk, server/apk.js), so the service-role key is never in GitHub.
 // Usage: SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… [APK_BUILD_ID=…] node supabase/scripts/publish-apk.mjs path/to/fft.apk
 import fs from 'node:fs';
 import path from 'node:path';

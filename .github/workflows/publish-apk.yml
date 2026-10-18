@@ -1,7 +1,11 @@
-# Puts the newest finished Android build (EAS, profile "preview") on the install page: copies the APK to
-# the public `downloads` bucket and publishes its description (config.js) there. Runs every 3 hours and by hand
-# (Actions -> "Publish APK" -> Run workflow); does nothing when the page already has that build.
-# Needs the repository secrets EXPO_TOKEN, SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
+# Puts the newest finished Android build (EAS, profile "preview") on the install page. Runs every
+# 3 hours and by hand (Actions -> "Publish APK" -> Run workflow); does nothing when the page already
+# has that build. It only tells the api service which build to publish (POST /internal/apk): the
+# service fetches the APK from EAS and puts it in the public `downloads` bucket itself, so no key to
+# the database or the storage is ever here (DECISIONS 75).
+# Needs the repository secrets EXPO_TOKEN and APK_UPLOAD_TOKEN (its SHA-256 is the api service's
+# variable APK_UPLOAD_TOKEN_SHA256; see docs/DEPLOY.md). Actions and eas-cli are pinned: update
+# them by hand, after reading what changed.
 name: Publish APK
 
 on:
@@ -17,19 +21,21 @@ permissions:
 concurrency:
   group: publish-apk
 
+env:
+  API_URL: https://fft-api.up.railway.app
+
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - uses: expo/expo-github-action@v8
+      # No npm ci: nothing from npm runs here except the pinned eas-cli.
+      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
-          eas-version: latest
+          eas-version: 25.1.1
           token: ${{ secrets.EXPO_TOKEN }}
       - name: Find the newest finished build
         id: build
@@ -37,19 +43,24 @@ jobs:
           eas build:list --platform android --build-profile preview --status finished --limit 1 --json --non-interactive > build.json
           echo "id=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.id ?? ''")" >> "$GITHUB_OUTPUT"
           echo "url=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.artifacts?.buildUrl ?? ''")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./app.json').expo.version")" >> "$GITHUB_OUTPUT"
       - name: Publish when it is new
         id: publish
         if: steps.build.outputs.id != ''
         env:
           BUILD_ID: ${{ steps.build.outputs.id }}
           BUILD_URL: ${{ steps.build.outputs.url }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VERSION: ${{ steps.build.outputs.version }}
+          APK_UPLOAD_TOKEN: ${{ secrets.APK_UPLOAD_TOKEN }}
         run: |
-          if curl -fsSL "$SUPABASE_URL/storage/v1/object/public/downloads/config.js" | grep -q "$BUILD_ID"; then echo "Already published"; exit 0; fi
-          curl -fsSL -o fft.apk "$BUILD_URL"
-          APK_BUILD_ID="$BUILD_ID" node supabase/scripts/publish-apk.mjs fft.apk
-          echo "new=true" >> "$GITHUB_OUTPUT"
+          body=$(node -e 'console.log(JSON.stringify({build_id: process.env.BUILD_ID, build_url: process.env.BUILD_URL, version: process.env.VERSION}))')
+          curl -fsS --max-time 600 -X POST "$API_URL/internal/apk" \
+            -H "Authorization: Bearer $APK_UPLOAD_TOKEN" -H 'content-type: application/json' \
+            --data "$body" -o result.json
+          cat result.json
+          if node -e 'process.exit(JSON.parse(require("fs").readFileSync("result.json")).published ? 0 : 1)'; then
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
       # An installed APK ignores updates older than its own build. Code pushed while the build ran
       # (its update was published before the build finished) would never reach it: publish the
       # latest code again, now newer than the APK.

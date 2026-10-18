@@ -11,6 +11,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
 import { createOAuth } from '../../server/oauth.js';
+import { createApkPublisher } from '../../server/apk.js';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { createHash } from 'node:crypto';
 
@@ -1548,6 +1549,86 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       const [after] = (await live()).rows;
       assert.ok(after.refresh_expires_at && after.ends_at);
     });
+  });
+});
+
+describe('publishing the APK with its own token (server/apk.js, DECISIONS 75)', () => {
+  const TOKEN = 'apk_' + 'k'.repeat(60);
+  const BUILD = '0f3c2a1b-1234-4abc-8def-0123456789ab';
+  const URL_OK = 'https://expo.dev/artifacts/eas/abcDEF123456.apk';
+  const apk = Buffer.concat([Buffer.from('PK\x03\x04', 'binary'), Buffer.alloc(2048)]);
+  /** A fake network: EAS, and a storage that remembers what was uploaded. */
+  const network = () => {
+    const stored = {};
+    const calls = [];
+    const fetch = async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url === URL_OK) return new Response(apk, { status: 200 });
+      if (url.endsWith('/object/public/downloads/config.js'))
+        return stored['config.js']
+          ? new Response(stored['config.js'])
+          : new Response('', { status: 404 });
+      const m = /\/storage\/v1\/object\/downloads\/(.+)$/.exec(url);
+      if (m) {
+        assert.equal(init.headers.authorization, 'Bearer service');
+        stored[m[1]] = typeof init.body === 'string' ? init.body : Buffer.from(init.body);
+        return new Response('{}', { status: 200 });
+      }
+      if (url.endsWith('/storage/v1/bucket')) return new Response('{}', { status: 409 });
+      throw new Error(`unexpected fetch ${url}`);
+    };
+    return { stored, calls, fetch };
+  };
+  const make = (net, tokenSha256 = createHash('sha256').update(TOKEN).digest('hex')) =>
+    createApkPublisher({
+      tokenSha256,
+      supabaseUrl: 'https://backend.test',
+      serviceKey: 'service',
+      fetch: net.fetch,
+    });
+  const body = { build_id: BUILD, build_url: URL_OK, version: '1.0.0' };
+  const auth = { authorization: `Bearer ${TOKEN}` };
+
+  it('off without its variable; the token is required', async () => {
+    const net = network();
+    assert.equal((await make(net, '')({ headers: auth, body })).status, 404);
+    assert.equal((await make(net)({ headers: {}, body })).status, 401);
+    assert.equal(
+      (await make(net)({ headers: { authorization: 'Bearer wrong' }, body })).status,
+      401,
+    );
+    assert.equal(net.calls.length, 0);
+  });
+
+  it('fetches only EAS artifacts and checks it is an APK', async () => {
+    const net = network();
+    const pub = make(net);
+    for (const build_url of [
+      'https://evil.test/x.apk',
+      'https://expo.dev.evil.test/artifacts/eas/abcDEF123456.apk',
+      'http://expo.dev/artifacts/eas/abcDEF123456.apk',
+      'https://expo.dev/artifacts/eas/../../x.apk',
+    ])
+      assert.equal(
+        (await pub({ headers: auth, body: { ...body, build_url } })).status,
+        400,
+        build_url,
+      );
+    assert.equal((await pub({ headers: auth, body: { ...body, build_id: 'x' } })).status, 400);
+    assert.equal(net.calls.length, 0);
+  });
+
+  it('publishes the APK and its description once', async () => {
+    const net = network();
+    const pub = make(net);
+    const r = await pub({ headers: auth, body });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(r.body.published, true);
+    assert.equal(net.stored['fft.apk'].length, apk.length);
+    assert.match(net.stored['config.js'], new RegExp(BUILD));
+    assert.match(net.stored['config.js'], /"url":"\/fft\.apk"/);
+    const again = await pub({ headers: auth, body });
+    assert.equal(again.body.published, false);
   });
 });
 

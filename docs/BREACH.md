@@ -11,7 +11,8 @@ Any event that makes users' data **readable by someone who should not see it**, 
 
 - someone gets into the admin panel, the database or the Railway account;
 - a secret leaks: `ADMIN_PASSWORD` (with `ADMIN_TOTP_SECRET`), `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET`, the database
-  password, `BACKUP_KEY` together with the backups, `OPENROUTER_API_KEY`;
+  password, `BACKUP_KEY` together with the backups, `OPENROUTER_API_KEY`, the GitHub secrets
+  `EXPO_TOKEN` and `APK_UPLOAD_TOKEN` (they can change the app people install);
 - a bug lets a user see another user's data (RLS rules, sync, API/MCP, photos);
 - data deleted or corrupted on the server without a usable backup;
 - a provider (Railway, OpenRouter) tells you about a breach that affects your data;
@@ -40,6 +41,8 @@ Only what the case needs:
 |---|---|
 | Admin panel breached or `ADMIN_PASSWORD` leaked | Railway → `admin` → Variables: new `ADMIN_PASSWORD` and new `ADMIN_TOTP_SECRET` (then add it again to the authenticator app). If needed, remove the public domain of the `admin` service |
 | `SUPABASE_SERVICE_ROLE_KEY` or `JWT_SECRET` leaked | New `JWT_SECRET` and new anon and service-role keys on Railway (all the services that use them). Careful: the anon key is inside the app (EAS variable), so an app update is needed; all users will have to sign in again |
+| `APK_UPLOAD_TOKEN` leaked (GitHub secret) | It can only publish an EAS build of our project as the install page's APK. Make a new token: new GitHub secret `APK_UPLOAD_TOKEN`, new `APK_UPLOAD_TOKEN_SHA256` on the `api` service (docs/DEPLOY.md → Publishing a new APK); or remove the variable to turn publishing off. Check that the APK on the install page is our newest build |
+| GitHub Actions or a CI dependency compromised | No database or storage key is in GitHub any more (only `EXPO_TOKEN` and `APK_UPLOAD_TOKEN`): rotate both, check the recent EAS builds and updates (expo.dev) and the APK on the install page |
 | Database password leaked | Change it on the Postgres service and update `DATABASE_URL` in the services that use it |
 | API tokens misused | Admin panel → All data → `api_tokens`: revoke (deleted_at) the tokens involved |
 | `OPENROUTER_API_KEY` leaked | Revoke it on openrouter.ai and put a new one on the `api` service |

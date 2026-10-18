@@ -6,6 +6,7 @@ import { Buffer } from 'node:buffer';
 import http from 'node:http';
 import pg from 'pg';
 import { createApi, pgDatabase } from './api.js';
+import { createApkPublisher } from './apk.js';
 import { createOAuth } from './oauth.js';
 import { migrate } from './migrate.js';
 
@@ -40,6 +41,28 @@ const oauth = createOAuth({
   // AI apps besides Claude and ChatGPT that may receive a sign-in (checked by the owner first).
   extraRedirectHosts: (process.env.OAUTH_REDIRECT_HOSTS ?? '').split(','),
 });
+
+// The GitHub workflow that publishes a new APK (off unless APK_UPLOAD_TOKEN_SHA256 is set).
+const publishApk = createApkPublisher({
+  tokenSha256: process.env.APK_UPLOAD_TOKEN_SHA256,
+  supabaseUrl: process.env.SUPABASE_URL,
+  serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+});
+
+async function serveInternal(req, res, raw) {
+  let body = null;
+  try {
+    body = raw.length && raw.length < 4096 ? JSON.parse(raw.toString('utf8')) : null;
+  } catch {
+    body = null;
+  }
+  const out =
+    req.method === 'POST'
+      ? await publishApk({ headers: req.headers, body })
+      : { status: 405, body: { error: 'POST only' } };
+  res.writeHead(out.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+  res.end(JSON.stringify(out.body));
+}
 
 async function serveOAuth(req, res, url, raw) {
   if (req.method === 'OPTIONS') return void res.writeHead(204, cors).end();
@@ -121,11 +144,14 @@ http
     if (path === '/health') return void res.writeHead(200).end('ok');
     const isApi = path === '/mcp' || path === '/v1' || path.startsWith('/v1/');
     const isOAuth = path.startsWith('/oauth/') || path.startsWith('/.well-known/');
+    const isInternal = path === '/internal/apk';
     const handler = handlers[path.split('/').pop() ?? ''];
-    if (!isApi && !isOAuth && !handler) return void res.writeHead(404).end('not found');
+    if (!isApi && !isOAuth && !isInternal && !handler)
+      return void res.writeHead(404).end('not found');
     try {
       const chunks = [];
       for await (const c of req) chunks.push(c);
+      if (isInternal) return void (await serveInternal(req, res, Buffer.concat(chunks)));
       if (isApi) return void (await serveApi(req, res, url, Buffer.concat(chunks)));
       if (isOAuth) return void (await serveOAuth(req, res, url, Buffer.concat(chunks)));
       const hasBody = !['GET', 'HEAD'].includes(req.method);
