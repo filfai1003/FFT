@@ -171,7 +171,7 @@ export function ProfileScreen() {
         backIcon="close"
         right={
           <IconButton
-            icon="settings"
+            icon="gear"
             look="outline"
             accessibilityLabel={t('profile.settings')}
             onPress={() => router.push('/profile/settings')}
