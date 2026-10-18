@@ -237,7 +237,7 @@ describe('widget quick actions', () => {
     expect(await alive('water_logs')).toEqual([]);
   });
 
-  it('workout: Set done saves the next set with its planned reps and starts the rest', async () => {
+  it('workout: Set done saves the next set with its suggested reps (last time + 1) and starts the rest', async () => {
     const session = buildSession({
       planId: null,
       planDayId: null,
@@ -267,12 +267,12 @@ describe('widget quick actions', () => {
     await saveSnapshot(snap);
     const a = snap!.workout.active!;
     expect(a).toEqual(
-      expect.objectContaining({ exercise: 'Bench press', setNumber: 1, reps: '8', quick: true }),
+      expect.objectContaining({ exercise: 'Bench press', setNumber: 1, reps: '9', quick: true }),
     );
 
     await tap('SET_DONE', { sessionId: a.sessionId, setId: a.setId });
     const set = useWorkoutStore.getState().active!.exercises[0].sets[0];
-    expect(set).toEqual(expect.objectContaining({ done: true, reps: '8' }));
+    expect(set).toEqual(expect.objectContaining({ done: true, reps: '9' }));
     expect(useWorkoutStore.getState().active!.rest).not.toBeNull();
     expect(showRestTimer).toHaveBeenCalled();
     expect(scheduleRestEnd).toHaveBeenCalled();
