@@ -43,10 +43,33 @@ Not applied: the data of earlier local accounts (nothing to migrate: free accoun
   part changed (new native package, Expo SDK, native config) it builds a new APK; otherwise it publishes an
   over-the-air update (EAS Update, branch `preview`) that installed apps get the next time they open.
   The decision uses the project fingerprint (`runtimeVersion` policy in `app.json`): an update only reaches
-  builds with the same fingerprint. Needs the GitHub secret `EXPO_TOKEN` (expo.dev → Account settings →
-  Access tokens). The new APK is on expo.dev → the project → Builds.
+  builds with the same fingerprint. Needs the GitHub secrets `EXPO_TOKEN` (expo.dev → Account settings →
+  Access tokens) and `EXPO_UPDATES_PRIVATE_KEY` (Signed updates below). The new APK is on expo.dev →
+  the project → Builds.
 - Play Store: `--profile production` (an `.aab`) and a Google Play developer account.
 Package name: `com.filfai1003.fft`.
+
+### Signed updates (DECISIONS 87)
+- Every over-the-air update is signed (expo-updates code signing, RSA SHA-256, key id `main`). The
+  APK carries the public certificate `certs/certificate.pem` (in the repository, valid 10 years,
+  set in `app.config.js` → `updates.codeSigningCertificate` / `codeSigningMetadata`) and refuses any
+  update that is not signed by the matching private key. So an EAS token alone can no longer push
+  code to installed phones.
+- The private key is **never** in the repository: the owner keeps it in
+  `.secrets/codesigning/private-key.pem` (git-ignored; back it up somewhere safe, e.g. the password
+  manager) and CI has it as the GitHub secret `EXPO_UPDATES_PRIVATE_KEY`
+  (`gh secret set EXPO_UPDATES_PRIVATE_KEY < .secrets/codesigning/private-key.pem`). `app-deploy.yml`
+  writes it to a temporary file for `eas update --private-key-path` and deletes it at the end of the
+  step (the continuous-deploy-fingerprint action could not pass a key, so its steps are written out:
+  fingerprint, `eas build:list --runtime-version`, `eas build` when none, `eas update`).
+- Publishing by hand: `npx eas-cli update --branch preview --environment preview --platform android
+  --private-key-path .secrets/codesigning/private-key.pem`.
+- **Key lost** (or the certificate expires, 2036-10): updates can no longer reach the installed APKs.
+  Make a new pair (`npx expo-updates codesigning:generate --key-output-directory .secrets/codesigning
+  --certificate-output-directory certs --certificate-validity-duration-years 10
+  --certificate-common-name "FFT"`), commit the new certificate, set the secret again: the
+  fingerprint changes, so CI builds a new APK and everyone must install it (from the install page)
+  to receive updates again. Same procedure when the key may have leaked (docs/BREACH.md).
 
 ## Access rules (who can reach what)
 - Only Kong has a public address. Postgres, auth, rest, storage and api have none (private network
