@@ -97,3 +97,22 @@ export function canContinue(step: StepId, d: OnboardingDraft, today: Date): bool
       return true;
   }
 }
+
+/** Why the main button does not work yet (shown under it), or null when it works. */
+export type ContinueReason = 'name' | 'adult' | 'fields' | 'goal' | 'mode' | 'meals' | 'consent';
+
+export function continueReason(
+  step: StepId,
+  d: OnboardingDraft,
+  today: Date,
+): ContinueReason | null {
+  if (canContinue(step, d, today)) return null;
+  if (step === 'body') {
+    const problems = bodyProblems(d, today);
+    if (problems.includes('name')) return 'name';
+    if (problems.includes('adult')) return 'adult';
+    return 'fields';
+  }
+  if (step === 'goal' || step === 'mode' || step === 'meals' || step === 'consent') return step;
+  return null;
+}

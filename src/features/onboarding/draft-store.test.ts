@@ -1,4 +1,4 @@
-import { canContinue, stepsFor, useOnboardingStore } from './draft-store';
+import { canContinue, continueReason, stepsFor, useOnboardingStore } from './draft-store';
 import { emptyDraft } from './logic';
 
 const today = new Date(2026, 9, 8);
@@ -28,6 +28,16 @@ describe('skipping (DECISIONS 103)', () => {
     expect(canContinue('body', { ...d, adultConfirmed: true }, today)).toBe(true);
     // Routine choices are all optional.
     expect(canContinue('lifestyle', emptyDraft, today)).toBe(true);
+  });
+
+  it('says why the main button does not work yet', () => {
+    expect(continueReason('body', emptyDraft, today)).toBe('name');
+    expect(continueReason('body', { ...emptyDraft, name: 'Alex' }, today)).toBe('adult');
+    const adult = { ...emptyDraft, name: 'Alex', adultConfirmed: true };
+    expect(continueReason('body', { ...adult, weightKg: '5' }, today)).toBe('fields');
+    expect(continueReason('body', adult, today)).toBeNull();
+    expect(continueReason('consent', emptyDraft, today)).toBe('consent');
+    expect(continueReason('lifestyle', emptyDraft, today)).toBeNull();
   });
 
   it('the health data consent cannot be skipped', () => {

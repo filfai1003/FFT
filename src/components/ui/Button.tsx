@@ -1,4 +1,4 @@
-import { type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { fontFamily, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
@@ -26,6 +26,11 @@ export type ButtonProps = {
   size?: 'large' | 'medium' | 'small';
   icon?: IconName;
   disabled?: boolean;
+  /**
+   * Why the button is disabled, when the screen knows ("Enter your name…"): shown under it and
+   * read with it. Only shown while disabled.
+   */
+  disabledReason?: string;
   /** Fills the width of its container. Default true. */
   block?: boolean;
   accessibilityLabel?: string;
@@ -39,6 +44,7 @@ export function Button({
   size = 'medium',
   icon,
   disabled = false,
+  disabledReason,
   block = true,
   accessibilityLabel,
   style,
@@ -91,12 +97,32 @@ export function Button({
     },
   } as const satisfies Record<ButtonVariant, { container: ViewStyle; fg: string }>;
 
-  const { container, fg } = look[variant];
+  // Disabled: a neutral look (never a faded accent), the label still readable (tokens.test.ts).
+  const off = {
+    primary: {
+      container: { backgroundColor: colors.disabledSurface, borderRadius: corner },
+      fg: colors.disabledText,
+    },
+    dark: {
+      container: { backgroundColor: colors.disabledSurface, borderRadius: corner },
+      fg: colors.disabledText,
+    },
+    secondary: {
+      container: { ...look.secondary.container, borderColor: colors.borderDecorative },
+      fg: colors.disabledText,
+    },
+    danger: { container: look.danger.container, fg: colors.disabledText },
+    ghost: { container: look.ghost.container, fg: colors.disabledText },
+  } as const satisfies Record<ButtonVariant, { container: ViewStyle; fg: string }>;
 
-  return (
+  const { container, fg } = disabled ? off[variant] : look[variant];
+  const reason = disabled && disabledReason ? disabledReason : undefined;
+
+  const button = (
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={reason}
       accessibilityState={{ disabled }}
       aria-disabled={disabled}
       disabled={disabled}
@@ -117,7 +143,7 @@ export function Button({
           paddingHorizontal: small ? 14 : 22,
           // Inline buttons sit in rows (or centred columns): centre them, never pin them to the top.
           alignSelf: block ? 'stretch' : 'center',
-          opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
+          opacity: !disabled && press.pressed ? 0.85 : 1,
         },
         container,
         style,
@@ -137,5 +163,16 @@ export function Button({
         {label}
       </Text>
     </AnimatedPressable>
+  );
+
+  if (!reason) return button;
+  return (
+    <View style={{ gap: 6, alignSelf: block ? 'stretch' : 'center' }}>
+      {button}
+      {/* Read as the button's hint; hidden here so screen readers do not read it twice. */}
+      <Text variant="bodyS" muted aria-hidden style={{ textAlign: 'center' }}>
+        {reason}
+      </Text>
+    </View>
   );
 }
