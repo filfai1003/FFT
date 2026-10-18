@@ -12,6 +12,8 @@ import { Text } from '@/components/ui/Text';
 import { startAuthListener, useSessionStore } from '@/features/auth/session-store';
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
+import { AppLockGate } from '@/features/profile/AppLock';
+import { useAppScreenPrivacy } from '@/features/profile/screen-privacy';
 import { SyncChoiceScreen, WebSyncOffScreen } from '@/features/premium/ServerCopy';
 import { VaultUnlockScreen } from '@/features/premium/Encryption';
 import { RelayJoinScreen } from '@/features/premium/RelayCard';
@@ -65,6 +67,8 @@ export default function RootLayout() {
   // Error reports say on which screen they happened (route only, ids removed: DECISIONS 96).
   const pathname = usePathname();
   useEffect(() => setErrorScreen(pathname), [pathname]);
+  // "Hide the whole app from screenshots" (DECISIONS 95).
+  useAppScreenPrivacy();
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -83,8 +87,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <QueryClientProvider client={queryClient}>
-          <AppNavigator />
-          <ToastHost />
+          {/* Optional app lock (DECISIONS 95): covers everything, the screens stay mounted. */}
+          <AppLockGate>
+            <AppNavigator />
+            <ToastHost />
+          </AppLockGate>
         </QueryClientProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

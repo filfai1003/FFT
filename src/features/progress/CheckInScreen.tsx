@@ -1,3 +1,4 @@
+import { usePhotoScreenPrivacy } from '@/features/profile/screen-privacy';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -32,6 +33,8 @@ import { usePhotoDraft } from './photo-draft';
 
 /** Check-in: weight, body fat, measurements, photos and notes. Every field is optional. */
 export function CheckInScreen() {
+  // Kept out of screenshots and recent apps (DECISIONS 95).
+  usePhotoScreenPrivacy();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();

@@ -1177,7 +1177,24 @@
     "deleteNote": "Removes all your data and photos from this phone and from our server right away. Copies in backups disappear when the backups expire. This can't be undone.",
     "aiConsent": "AI coach consent",
     "aiConsentDetail": "Needed to send messages to the AI coach",
-    "aiWithdrawn": "AI coach consent withdrawn. The coach asks again next time."
+    "aiWithdrawn": "AI coach consent withdrawn. The coach asks again next time.",
+    "device": "This phone",
+    "appLock": "Lock with fingerprint or face",
+    "appLockDetail": "Asked when the app opens and after a while away. Your phone's code works too.",
+    "appLockUnavailable": "Set up a fingerprint, face or screen lock in your phone's settings first.",
+    "lockAfter": "Lock again after",
+    "lockAfterMin": "{{count}} min",
+    "protectPhotos": "Hide progress photos from screenshots",
+    "protectPhotosDetail": "Photo screens stay out of screenshots, recordings and recent apps",
+    "hideContent": "Hide the whole app from screenshots",
+    "hideContentDetail": "No screenshots, and a blank preview in recent apps",
+    "localNote": "Data on this phone is protected by your phone's own lock and encryption; FFT does not encrypt it again."
+  },
+  "appLock": {
+    "title": "FFT is locked",
+    "body": "Unlock with your fingerprint, face or phone code to see your data.",
+    "unlock": "Unlock",
+    "reason": "Unlock FFT"
   },
   "gate": {
     "title": "Consent withdrawn",

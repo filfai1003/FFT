@@ -1,3 +1,4 @@
+import { usePhotoScreenPrivacy } from '@/features/profile/screen-privacy';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -46,6 +47,8 @@ const infoFor = (e: BodyEntry | undefined, unit: 'kg' | 'lb') =>
 
 /** Progress photos by check-in: private, blurred until tapped. */
 export function PhotosScreen() {
+  // Kept out of screenshots and recent apps (DECISIONS 95).
+  usePhotoScreenPrivacy();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
@@ -183,6 +186,8 @@ type View2 = 'side' | 'slider';
 
 /** Two check-ins side by side, or with a slider; with the change between them. */
 export function ComparePhotosScreen() {
+  // Kept out of screenshots and recent apps (DECISIONS 95).
+  usePhotoScreenPrivacy();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
