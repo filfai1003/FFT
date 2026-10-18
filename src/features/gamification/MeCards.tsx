@@ -70,13 +70,15 @@ export function StreakCard({ game }: { game: GameData }) {
           value={target ? game.streak / target : 1}
           size={120}
           stroke={10}
+          color={colors.streak}
+          track={colors.streakSoft}
           accessibilityLabel={
             target
               ? t('game.streakA11y', { count: game.streak, target })
               : t('game.streakA11yNoTarget', { count: game.streak })
           }
         >
-          <Icon name="flame" size={20} color={colors.text} />
+          <Icon name="flame" size={20} color={colors.streakInk} />
           <Text variant="displayM" numeric style={{ fontSize: 32, lineHeight: 34 }}>
             {formatInt(game.streak)}
           </Text>
@@ -141,6 +143,8 @@ export function NextBadgeCard({ game }: { game: GameData }) {
           value={next.share}
           size={68}
           stroke={6}
+          color={colors.streak}
+          track={colors.streakSoft}
           accessibilityLabel={t('game.nextBadgeA11y', {
             name,
             current: next.current,
@@ -152,12 +156,12 @@ export function NextBadgeCard({ game }: { game: GameData }) {
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: colors.surfaceAlt,
+              backgroundColor: colors.streakSoft,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Icon name={next.glyph} size={22} color={colors.text} />
+            <Icon name={next.glyph} size={22} color={colors.streakInk} />
           </View>
         </Gauge>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }} aria-hidden>
@@ -197,6 +201,8 @@ export function NextBadgeCard({ game }: { game: GameData }) {
                 </Text>
               </View>
               <DotBar
+                color={colors.streak}
+                track={colors.streakSoft}
                 total={b.target}
                 on={b.current}
                 size={6}
@@ -338,12 +344,12 @@ export function RecordsRow({ game }: { game: GameData }) {
                     width: 34,
                     height: 34,
                     borderRadius: 17,
-                    backgroundColor: colors.surfaceAlt,
+                    backgroundColor: colors.streakSoft,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Icon name="trophy" size={18} color={colors.text} />
+                  <Icon name="trophy" size={18} color={colors.streakInk} />
                 </View>
                 <Text semibold numberOfLines={1} style={{ fontSize: 14 }}>
                   {x.name}

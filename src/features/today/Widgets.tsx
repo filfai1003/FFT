@@ -1,12 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
-import { Toggle } from '@/components/ui/Toggle';
+import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
+import { Icon } from '@/components/ui/Icon';
+import { IconTile } from '@/components/ui/IconTile';
+import { Sparkline } from '@/components/ui/Sparkline';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
@@ -139,6 +142,16 @@ export function NutritionWidget({ size }: Props) {
       ] as const)
     : [];
   const share = target && target.kcal > 0 ? eaten.kcal / target.kcal : 0;
+  // Each macro's share of the calories eaten (protein and carbs 4 kcal/g, fat 9).
+  const macroKcal = { protein: eaten.protein * 4, carbs: eaten.carbs * 4, fat: eaten.fat * 9 };
+  const macroSum = macroKcal.protein + macroKcal.carbs + macroKcal.fat;
+  const macroSegments =
+    macroSum > 0
+      ? (['protein', 'carbs', 'fat'] as const).map((k) => ({
+          share: macroKcal[k] / macroSum,
+          color: colors.macroSplit[k],
+        }))
+      : undefined;
   const gaugeLabel = t('diet.caloriesBar', {
     eaten: Math.round(eaten.kcal),
     target: Math.round(target?.kcal ?? 0),
@@ -178,7 +191,15 @@ export function NutritionWidget({ size }: Props) {
   if (size === 'small') {
     return (
       <Frame size="small" label={t('today.caloriesLeft')}>
-        <Gauge value={share} size={110} stroke={10} sweep={0.75} accessibilityLabel={gaugeLabel}>
+        <Gauge
+          value={share}
+          size={110}
+          stroke={10}
+          sweep={0.75}
+          color={over ? colors.danger : colors.nutrition}
+          segments={over ? undefined : macroSegments}
+          accessibilityLabel={gaugeLabel}
+        >
           <Text variant="displayS" numeric>
             {formatInt(left)}
           </Text>
@@ -253,13 +274,16 @@ export function NutritionWidget({ size }: Props) {
       )}
       {target ? (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          {/* The arc is filled with the macro colours of what was eaten (colour code, DECISIONS 107);
+              each macro says how much is left. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
             <Gauge
               value={share}
               size={150}
-              stroke={12}
+              stroke={14}
               sweep={0.75}
-              color={over ? colors.warning : colors.dotOn}
+              color={over ? colors.danger : colors.nutrition}
+              segments={over ? undefined : macroSegments}
               accessibilityLabel={gaugeLabel}
             >
               <Text variant="displayM" numeric>
@@ -268,52 +292,39 @@ export function NutritionWidget({ size }: Props) {
               <Text variant="bodyS" muted>
                 {t('today.kcalLeftShort')}
               </Text>
+              <Text variant="label" muted numeric>
+                {t('today.eatenOf', {
+                  eaten: formatInt(eaten.kcal),
+                  target: formatInt(target?.kcal ?? 0),
+                })}
+              </Text>
             </Gauge>
-            <View style={{ flex: 1, gap: 10 }}>
-              <View>
-                <Text variant="bodyS" muted>
-                  {t('today.eaten')}
-                </Text>
-                <Text variant="displayS" numeric>
-                  {formatInt(eaten.kcal)}
-                </Text>
-              </View>
-              <View>
-                <Text variant="bodyS" muted>
-                  {t('today.target')}
-                </Text>
-                <Text variant="displayS" numeric>
-                  {formatInt(target?.kcal ?? 0)}
-                </Text>
-              </View>
+            <View style={{ flex: 1, gap: 12 }}>
+              {macroRows.map(([key, value, goal]) => (
+                <View key={key} style={{ gap: 5 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6 }}>
+                    <Text variant="bodyS" semibold>
+                      {t(`diet.macro.${key}`)}
+                    </Text>
+                    <Text variant="label" muted numeric>
+                      {value <= goal
+                        ? t('today.macroLeft', { g: Math.round(goal - value) })
+                        : t('today.macroOver', { g: Math.round(value - goal) })}
+                    </Text>
+                  </View>
+                  <DotBar
+                    total={Math.max(1, goal)}
+                    on={value}
+                    color={colors.macroSplit[key]}
+                    track={colors.macroSoft[key]}
+                    accessibilityLabel={`${t(`diet.macro.${key}`)} ${Math.round(value)} / ${Math.round(goal)} g`}
+                  />
+                  <Text variant="label" semibold numeric>
+                    {`${Math.round(value)} / ${Math.round(goal)} g`}
+                  </Text>
+                </View>
+              ))}
             </View>
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 12,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
-              paddingTop: 12,
-            }}
-          >
-            {macroRows.map(([key, value, goal]) => (
-              <View key={key} style={{ flex: 1, gap: 6 }}>
-                <Text variant="bodyS" medium>
-                  {t(`diet.macro.${key}`)}
-                </Text>
-                <DotBar
-                  total={Math.max(1, goal)}
-                  on={value}
-                  color={colors.macroSplit[key]}
-                  track={colors.macroSoft[key]}
-                  accessibilityLabel={t(`diet.macro.${key}`)}
-                />
-                <Text variant="bodyS" muted numeric>
-                  {`${Math.round(value)} / ${Math.round(goal)} g`}
-                </Text>
-              </View>
-            ))}
           </View>
         </>
       ) : null}
@@ -362,6 +373,7 @@ export function NutritionWidget({ size }: Props) {
 /** Today's workout: up next, or a note that it is already done. */
 export function WorkoutWidget({ size }: Props) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
   const profile = useProfile();
@@ -380,13 +392,33 @@ export function WorkoutWidget({ size }: Props) {
 
   const cycle =
     plan && rotation && !small ? (
-      <Text variant="bodyS" muted>
-        {t('today.cycleProgress', {
+      <View
+        accessible
+        accessibilityLabel={t('today.cycleProgress', {
           n: rotation.state.cycle,
           done: rotation.state.doneCount,
           total: rotation.state.totalDays,
         })}
-      </Text>
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+      >
+        <Text variant="label" muted aria-hidden>
+          {t('today.cycleShort', { n: rotation.state.cycle })}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 3 }} aria-hidden>
+          {Array.from({ length: rotation.state.totalDays }, (_, i) => (
+            <View
+              key={i}
+              style={{
+                width: 16,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor:
+                  i < rotation.state.doneCount ? colors.training : colors.trainingSoft,
+              }}
+            />
+          ))}
+        </View>
+      </View>
     ) : undefined;
 
   let body: ReactNode;
@@ -412,7 +444,7 @@ export function WorkoutWidget({ size }: Props) {
       <Button
         label={t('train.start')}
         icon="play"
-        block={small}
+        block
         disabled={upNext.exercises.length === 0}
         onPress={() => startDay(plan, upNext, rotation)}
       />
@@ -426,15 +458,9 @@ export function WorkoutWidget({ size }: Props) {
       </>
     ) : (
       <>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <IconTile icon="dumbbell" area="training" size={56} />
+          <View style={{ flex: 1, gap: 2 }}>
             <Text variant="displayM" numberOfLines={1}>
               {upNext.name}
             </Text>
@@ -445,8 +471,43 @@ export function WorkoutWidget({ size }: Props) {
               })}
             </Text>
           </View>
-          {start}
         </View>
+        {upNext.exercises.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {upNext.exercises.slice(0, 3).map((e) => (
+              <View
+                key={e.id}
+                style={{
+                  minHeight: 30,
+                  paddingHorizontal: 11,
+                  borderRadius: 15,
+                  backgroundColor: colors.surfaceAlt,
+                  justifyContent: 'center',
+                }}
+              >
+                <Text variant="bodyS" medium numberOfLines={1}>
+                  {e.exercise.name}
+                </Text>
+              </View>
+            ))}
+            {upNext.exercises.length > 3 ? (
+              <View
+                style={{
+                  minHeight: 30,
+                  paddingHorizontal: 11,
+                  borderRadius: 15,
+                  backgroundColor: colors.surfaceAlt,
+                  justifyContent: 'center',
+                }}
+              >
+                <Text variant="bodyS" medium>
+                  {t('today.moreExercises', { count: upNext.exercises.length - 3 })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+        {start}
         <Button label={t('train.differentDay')} variant="ghost" onPress={openPlan} />
       </>
     );
@@ -511,14 +572,18 @@ export function WaterWidget({ size }: Props) {
   return (
     <Frame size={size} label={t('today.waterLabel')}>
       <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end' }}>
+        {/* A glass that fills (water is part of nutrition: teal). */}
         <View
           accessible
           accessibilityRole="progressbar"
           accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
           style={{
-            width: 28,
-            height: 64,
-            borderRadius: 9,
+            width: 40,
+            height: 68,
+            borderTopLeftRadius: 9,
+            borderTopRightRadius: 9,
+            borderBottomLeftRadius: 14,
+            borderBottomRightRadius: 14,
             backgroundColor: colors.waterSoft,
             overflow: 'hidden',
             justifyContent: 'flex-end',
@@ -535,19 +600,56 @@ export function WaterWidget({ size }: Props) {
           <Text variant="displayS" numeric>
             {t('today.litres', { l: ((water.data?.totalMl ?? 0) / 1000).toFixed(1) })}
           </Text>
-          <Text variant="bodyS" muted>
-            {t('today.water', { n: glasses, total: goalGlasses })}
+          <Text variant="label" muted numeric>
+            {glasses >= goalGlasses
+              ? t('today.waterGoalReached')
+              : t('today.waterToGo', {
+                  l: (((goalGlasses - glasses) * glassMl) / 1000).toFixed(1),
+                })}
           </Text>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', gap: 4 }}>
+      <View aria-hidden style={{ flexDirection: 'row', gap: 3 }}>
+        {Array.from({ length: goalGlasses }, (_, i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: i < glasses ? colors.water : colors.waterSoft,
+            }}
+          />
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
         <IconButton
           icon="minus"
           accessibilityLabel={t('today.removeWater')}
           disabled={!water.data || water.data.rows.length === 0}
           onPress={onWaterLess}
         />
-        <IconButton icon="plus" accessibilityLabel={t('today.addWater')} onPress={onWater} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('today.addWater')}
+          onPress={onWater}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 44,
+            borderRadius: 22,
+            backgroundColor: colors.nutritionSoft,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Icon name="plus" size={18} color={colors.nutritionInk} />
+          <Text variant="bodyS" semibold style={{ color: colors.nutritionInk }}>
+            {t('today.addGlass')}
+          </Text>
+        </Pressable>
       </View>
     </Frame>
   );
@@ -567,6 +669,21 @@ export function WeightWidget({ size }: Props) {
     latest?.weightKg != null && weekAgo?.weightKg != null
       ? latest.weightKg - weekAgo.weightKg
       : null;
+  // Better or worse depends on the goal: down when losing fat, up when building muscle.
+  const goal = useProfile().data?.goal;
+  const better =
+    change == null || Math.abs(change) < 0.05
+      ? null
+      : goal === 'build_muscle'
+        ? change > 0
+        : goal === 'lose_fat'
+          ? change < 0
+          : Math.abs(change) <= 0.3;
+  // The last two weeks, oldest first (entries come newest first).
+  const line = weights
+    .filter((e) => e.day > addDays(today, -15))
+    .map((e) => e.weightKg as number)
+    .reverse();
 
   return (
     <Frame size={size} label={t('today.weight')} onPress={() => router.push('/progress/body')}>
@@ -575,14 +692,20 @@ export function WeightWidget({ size }: Props) {
           <Text variant="displayS" numeric>
             {t('today.kg', { kg: latest.weightKg.toFixed(1) })}
           </Text>
+          {line.length > 1 ? (
+            <Sparkline
+              values={line}
+              height={44}
+              color={colors.text}
+              accessibilityLabel={t('today.weightLineA11y')}
+            />
+          ) : null}
           {change != null ? (
-            <Text
-              variant="bodyS"
-              medium
-              style={{ color: change <= 0 ? colors.successText : colors.text }}
-            >
-              {t('today.weightChange', { kg: (change > 0 ? '+' : '') + change.toFixed(1) })}
-            </Text>
+            <StatusChip
+              area={better == null ? 'neutral' : better ? 'better' : 'worse'}
+              icon={change < 0 ? 'arrowDown' : change > 0 ? 'arrowUp' : undefined}
+              label={t('today.weightChange', { kg: (change > 0 ? '+' : '') + change.toFixed(1) })}
+            />
           ) : (
             <Text variant="bodyS" muted>
               {t('today.weightOn', { day: shortDateLabel(latest.day) })}
@@ -604,6 +727,7 @@ export function WeightWidget({ size }: Props) {
  */
 export function SupplementsWidget({ size }: Props) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const today = useToday();
   const [open, setOpen] = useState(false);
   const list = useSupplements().data ?? [];
@@ -626,34 +750,75 @@ export function SupplementsWidget({ size }: Props) {
           />
         }
       >
-        {list.map((s) => {
-          const label = s.dose ? `${s.name} · ${s.dose}` : s.name;
-          return (
-            <View
-              key={s.id}
-              style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyS" numberOfLines={1}>
-                  {s.name}
-                </Text>
-                {s.dose ? (
-                  <Text variant="bodyS" muted numberOfLines={1}>
-                    {s.dose}
-                  </Text>
-                ) : null}
-              </View>
-              <Toggle
-                value={taken?.has(s.id) ?? false}
+        {/* Taking a supplement is a tick, not a setting: tap the pill (nutrition: teal). */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {list.map((s) => {
+            const label = s.dose ? `${s.name} · ${s.dose}` : s.name;
+            const on = taken?.has(s.id) ?? false;
+            return (
+              <Pressable
+                key={s.id}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                aria-checked={on}
                 accessibilityLabel={label}
-                onValueChange={(v) => {
-                  if (v) confirm();
-                  setTaken.mutate({ day: today, supplementId: s.id, taken: v });
+                onPress={() => {
+                  if (!on) confirm();
+                  setTaken.mutate({ day: today, supplementId: s.id, taken: !on });
                 }}
-              />
-            </View>
-          );
-        })}
+                style={({ pressed }) => ({
+                  flexGrow: 1,
+                  flexBasis: size === 'large' ? '40%' : '100%',
+                  minHeight: 52,
+                  borderRadius: 14,
+                  borderWidth: on ? 0 : 1,
+                  borderColor: colors.borderControl,
+                  backgroundColor: on ? colors.nutritionSoft : colors.surface,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  paddingHorizontal: 12,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: on ? 0 : 2,
+                    borderColor: colors.borderControl,
+                    backgroundColor: on ? colors.nutrition : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {on ? <Icon name="check" size={14} color={colors.surface} /> : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    variant="bodyS"
+                    semibold
+                    numberOfLines={1}
+                    style={on ? { color: colors.nutritionInk } : undefined}
+                  >
+                    {s.name}
+                  </Text>
+                  {s.dose ? (
+                    <Text
+                      variant="label"
+                      numberOfLines={1}
+                      muted={!on}
+                      style={on ? { color: colors.nutritionInk } : undefined}
+                    >
+                      {s.dose}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </Frame>
       <SupplementsSheet visible={open} onClose={() => setOpen(false)} day={today} />
     </>

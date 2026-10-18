@@ -74,7 +74,10 @@ function WeekStrip() {
           status === 'onTarget'
             ? colors.success
             : status === 'off'
-              ? colors.warning
+              ? // Today is not over: not judged yet.
+                isToday
+                ? colors.surface
+                : colors.danger
               : 'transparent';
         return (
           <View

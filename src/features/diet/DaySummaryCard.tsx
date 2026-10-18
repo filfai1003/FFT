@@ -54,7 +54,8 @@ export function DaySummaryCard({ eaten, target, caption, onSetTarget }: Props) {
         total={Math.max(1, target.kcal)}
         on={eaten.kcal}
         size={12}
-        color={over ? colors.warning : colors.dotOn}
+        color={over ? colors.danger : colors.nutrition}
+        track={colors.nutritionSoft}
         accessibilityLabel={t('diet.caloriesBar', {
           eaten: Math.round(eaten.kcal),
           target: Math.round(target.kcal),

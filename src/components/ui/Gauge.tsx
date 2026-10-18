@@ -12,6 +12,11 @@ type ArcProps = {
   track?: string;
   /** Part of the circle the arc covers: 0.75 = a gauge open at the bottom, 1 = a full ring. */
   sweep?: number;
+  /**
+   * The filled part split in coloured pieces (the macros of what was eaten), in order. Their
+   * shares add up to 1; the whole filled part is still `value`.
+   */
+  segments?: readonly { share: number; color: string }[];
   /** Shown in the middle (the number). */
   children?: ReactNode;
   /** Text alternative ("1,440 kcal left of 2,600"). */
@@ -26,6 +31,7 @@ export function Gauge({
   color,
   track,
   sweep = 1,
+  segments,
   children,
   accessibilityLabel,
 }: ArcProps) {
@@ -62,7 +68,28 @@ export function Gauge({
           strokeDasharray={`${arc} ${c}`}
           transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
         />
-        {filled > 0 ? (
+        {filled > 0 && segments?.length
+          ? segments.map((seg, i) => {
+              const start = segments.slice(0, i).reduce((a, x) => a + x.share, 0) * filled;
+              const len = seg.share * filled;
+              if (len <= 0) return null;
+              return (
+                <Circle
+                  key={i}
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={r}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth={stroke}
+                  strokeDasharray={`${len} ${c}`}
+                  strokeDashoffset={-start}
+                  transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+                />
+              );
+            })
+          : null}
+        {filled > 0 && !segments?.length ? (
           <Circle
             cx={size / 2}
             cy={size / 2}

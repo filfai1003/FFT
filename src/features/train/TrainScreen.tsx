@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
+import { IconTile } from '@/components/ui/IconTile';
 import { Section } from '@/components/ui/Section';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
@@ -101,19 +102,22 @@ export function TrainScreen() {
         {plan && upNext ? (
           <Reveal index={1}>
             <Card gap={12}>
-              <Text variant="bodyS" semibold muted>
-                {t('train.nextWorkout')}
-              </Text>
-              <View style={{ gap: 4 }}>
-                <Text variant="displayS" numberOfLines={2}>
-                  {upNext.name}
-                </Text>
-                <Text variant="bodyS" muted>
-                  {t('train.exerciseCount', {
-                    count: upNext.exercises.length,
-                    min: estimateMinutes(upNext),
-                  })}
-                </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <IconTile icon="dumbbell" area="training" size={60} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="bodyS" semibold style={{ color: colors.trainingInk }}>
+                    {t('train.nextWorkout')}
+                  </Text>
+                  <Text variant="displayM" numberOfLines={2}>
+                    {upNext.name}
+                  </Text>
+                  <Text variant="bodyS" muted>
+                    {t('train.exerciseCount', {
+                      count: upNext.exercises.length,
+                      min: estimateMinutes(upNext),
+                    })}
+                  </Text>
+                </View>
               </View>
               <Button
                 label={t('train.start')}
@@ -158,11 +162,22 @@ export function TrainScreen() {
                   borderWidth: 1,
                   borderColor:
                     p.status === 'active' ? colors.borderSelected : colors.borderDecorative,
-                  backgroundColor: colors.surfaceAlt,
-                  paddingLeft: 16,
+                  backgroundColor: colors.surface,
+                  paddingLeft: 12,
+                  gap: 12,
                   paddingRight: 4,
                 }}
               >
+                <IconTile
+                  icon={
+                    p.status === 'active'
+                      ? 'dumbbell'
+                      : p.status === 'archived'
+                        ? 'archive'
+                        : 'edit'
+                  }
+                  area={p.status === 'active' ? 'training' : 'neutral'}
+                />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={p.name}

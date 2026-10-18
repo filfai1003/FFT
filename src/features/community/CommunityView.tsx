@@ -42,6 +42,15 @@ import {
 } from './api';
 import { useBoardChoice } from './board-store';
 import { NameSheet } from './NameSheet';
+import { IconTile, type Area } from '@/components/ui/IconTile';
+
+/** Colour code (DECISIONS 107): diet is nutrition, the rest is training. */
+const metricArea: Record<CommunityMetric, Area> = {
+  workouts: 'training',
+  diet: 'nutrition',
+  training: 'training',
+  strength: 'training',
+};
 
 const metricIcon: Record<CommunityMetric, IconName> = {
   workouts: 'dumbbell',
@@ -410,7 +419,7 @@ function BoardView({ name }: { name: string }) {
                 gap: 4,
               }}
             >
-              <Icon name={metricIcon[m]} size={20} color={colors.text} />
+              <IconTile icon={metricIcon[m]} area={metricArea[m]} size={32} />
               <Text variant="bodyS" semibold={on} medium={!on}>
                 {t(`community.metric.${m}`)}
               </Text>
@@ -418,6 +427,8 @@ function BoardView({ name }: { name: string }) {
           );
         })}
       </View>
+
+      <CommunityPinned />
 
       {metric === 'strength' && subjects.length > 1 ? (
         <ScrollView
@@ -566,7 +577,7 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
             }}
             style={{ flex: 1, alignItems: 'center', gap: 6 }}
           >
-            {first ? <Icon name="trophy" size={22} color={colors.text} /> : null}
+            {first ? <Icon name="trophy" size={24} color={colors.streakInk} /> : null}
             <Avatar name={r.name} size={size} ring={first} />
             <Text semibold numberOfLines={1} style={{ fontSize: 14 }}>
               {r.name}
@@ -581,7 +592,7 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
                 borderTopLeftRadius: 14,
                 borderTopRightRadius: 14,
                 backgroundColor: first
-                  ? colors.dotOn
+                  ? colors.streakSoft
                   : i === 0
                     ? colors.borderDecorative
                     : colors.divider,
@@ -592,7 +603,7 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
               <Text
                 variant="displayS"
                 numeric
-                style={{ color: first ? colors.surface : colors.text }}
+                style={{ color: first ? colors.streakInk : colors.text }}
               >
                 {r.place}
               </Text>
@@ -615,11 +626,7 @@ function MoveLine({
   const { colors } = useTheme();
   const m = movement(row.place, row.place_before);
   const ink =
-    m.kind === 'up'
-      ? colors.successText
-      : m.kind === 'down'
-        ? colors.warningText
-        : colors.textMuted;
+    m.kind === 'up' ? colors.successText : m.kind === 'down' ? colors.danger : colors.textMuted;
   const icon: IconName = m.kind === 'up' ? 'arrowUp' : m.kind === 'down' ? 'arrowDown' : 'minus';
   const text = long
     ? m.kind === 'same'
@@ -963,19 +970,7 @@ export function CommunityPinned() {
       })
     : t('community.you.noScore');
   return (
-    <View
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        paddingHorizontal: space.screenX,
-        paddingVertical: 10,
-        backgroundColor: colors.bg,
-        borderTopWidth: 1,
-        borderTopColor: colors.borderDecorative,
-      }}
-    >
+    <View style={{}}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={a11y}
@@ -985,22 +980,22 @@ export function CommunityPinned() {
         }}
         style={{
           minHeight: 60,
-          borderRadius: 18,
-          borderWidth: 2,
-          borderColor: colors.borderSelected,
+          borderRadius: 22,
+          borderWidth: 1,
+          borderColor: colors.borderDecorative,
           backgroundColor: colors.surface,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 10,
-          paddingHorizontal: 14,
+          gap: 12,
+          padding: 16,
         }}
       >
+        <IconTile icon="trophy" area="streak" size={44} />
         {mine ? (
-          <Text semibold numeric>
-            {mine.place}
+          <Text variant="displayL" numeric>
+            {`#${mine.place}`}
           </Text>
         ) : null}
-        <Avatar name={me.data.name} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text semibold numberOfLines={1}>
             {mine
@@ -1016,7 +1011,7 @@ export function CommunityPinned() {
           )}
         </View>
         {mine ? (
-          <Text variant="titleM" semibold numeric>
+          <Text variant="displayS" numeric>
             {formatScore(key.metric, mine.value)}
           </Text>
         ) : null}
@@ -1048,6 +1043,5 @@ export function CommunityAvatarButton() {
 
 /** Space under the community page: the pinned bar for members. */
 export function useCommunityBottomSpace(): number {
-  const me = useCommunityMe();
-  return me.data ? PINNED_HEIGHT + 24 : 24;
+  return 24;
 }

@@ -55,11 +55,11 @@ function Medal({ badge }: { badge: BadgeState }) {
     >
       <Svg width={220} height={176} viewBox="0 0 220 176">
         {RAYS.map((d) => (
-          <Path key={d} d={d} stroke={colors.dotOn} strokeWidth={3} strokeLinecap="round" />
+          <Path key={d} d={d} stroke={colors.streak} strokeWidth={3} strokeLinecap="round" />
         ))}
         <Circle cx={110} cy={88} r={62} fill={colors.surface} stroke={colors.borderDecorative} />
-        <Circle cx={110} cy={88} r={56} fill="none" stroke={colors.dotOn} strokeWidth={6} />
-        <Circle cx={110} cy={88} r={46} fill={colors.dotOn} />
+        <Circle cx={110} cy={88} r={56} fill="none" stroke={colors.streak} strokeWidth={6} />
+        <Circle cx={110} cy={88} r={46} fill={colors.streak} />
       </Svg>
       <View style={{ position: 'absolute', top: 62, left: 84 }}>
         <Icon name={badge.glyph} size={52} color={colors.surface} />
@@ -143,11 +143,11 @@ export function BadgeUnlockedSheet({
               minHeight: 28,
               paddingHorizontal: 10,
               borderRadius: 14,
-              backgroundColor: colors.dotOn,
+              backgroundColor: colors.streakSoft,
               justifyContent: 'center',
             }}
           >
-            <Text variant="bodyS" semibold numeric style={{ color: colors.surface }}>
+            <Text variant="bodyS" semibold numeric style={{ color: colors.streakInk }}>
               {t('game.unlocked.xp', { xp: badge.xp })}
             </Text>
           </View>
@@ -179,7 +179,7 @@ export function BadgeUnlockedSheet({
           <View
             style={{
               width: `${((before - level.levelStartXp) / span) * 100}%`,
-              backgroundColor: colors.dotOn,
+              backgroundColor: colors.streak,
             }}
           />
           <View

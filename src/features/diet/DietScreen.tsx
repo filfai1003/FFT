@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { IconTile } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
@@ -155,8 +156,8 @@ function MealSection({
         borderWidth: 1,
         borderColor: colors.borderDecorative,
         backgroundColor: colors.surface,
-        paddingVertical: 4,
-        paddingLeft: 14,
+        paddingVertical: 8,
+        paddingLeft: 12,
         paddingRight: 8,
       }}
     >
@@ -168,6 +169,9 @@ function MealSection({
           minHeight: touch.minTarget,
         }}
       >
+        <View style={{ marginRight: 12 }}>
+          <IconTile icon="bowl" area="nutrition" />
+        </View>
         <Text variant="titleM" accessibilityRole="header" style={{ flex: 1 }}>
           {name}
         </Text>

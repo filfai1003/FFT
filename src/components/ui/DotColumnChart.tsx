@@ -21,6 +21,10 @@ export type DotColumnChartProps = {
   /** Text alternative, e.g. "Strength rising steadily over 12 weeks". */
   accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
+  /** Fill of the columns (default: text colour). */
+  color?: string;
+  /** The last column (now) in this colour, the others in `color`. */
+  lastColor?: string;
 };
 
 /** Bar chart with rounded columns, one per data point (the name stays from the dot-matrix era). */
@@ -36,6 +40,8 @@ export function DotColumnChart({
   stretch = false,
   accessibilityLabel,
   style,
+  color,
+  lastColor,
 }: DotColumnChartProps) {
   const { colors } = useTheme();
   const levels = columnLevels(values, min, max, rows);
@@ -71,7 +77,8 @@ export function DotColumnChart({
               style={{
                 height: `${(level / rows) * 100}%`,
                 borderRadius: 6,
-                backgroundColor: colors.dotOn,
+                backgroundColor:
+                  lastColor && c === levels.length - 1 ? lastColor : (color ?? colors.dotOn),
               }}
             />
           </View>

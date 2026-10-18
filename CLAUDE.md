@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Full spec: `docs/PROJECT.md`. Design source of truth: the canvas Artifact "FFT app (current)" (https://claude.ai/artifact/CPEW41ox5JiCvhGVcWAEVu, drawn from the app as built; keep it in sync when screens change) and `docs/design/tokens.json`. The older canvas "FFT redesign" and the screens in `docs/design/screens` are abandoned: do not use them. Read the current canvas before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
+Full spec: `docs/PROJECT.md`. Design source of truth: the canvas Artifact "FFT app (redesign)" (https://claude.ai/artifact/1CksR7bi8jLftXfySoz85X: the livelier look and the colour code of DECISIONS 107, being brought into the app) and `docs/design/tokens.json`; "FFT app (current)" (https://claude.ai/artifact/CPEW41ox5JiCvhGVcWAEVu) shows the app before that. The older canvas "FFT redesign" and the screens in `docs/design/screens` are abandoned: do not use them. Read the current canvas before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
 
 ## Stack
 Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/app`, alias `@/*` → `src/*`) · Supabase (Postgres, Auth, Storage, RLS) · TanStack Query (server state) · Zustand (UI state) · i18next · offline-first active session · Open Food Facts.
@@ -31,7 +31,7 @@ Every device keeps ALL user data in its own database: `getSupabase()` returns `s
 
 ## Non-negotiables
 - UI copy in English, always through i18n (`t('…')`). Code, tables, variables in English. ESLint forbids literal JSX text.
-- Clean, light-first look (redesign 2026-10): warm off-white ground, white cards with 1px borders, Figtree everywhere (big numbers semibold, tabular digits), sentence case (no uppercase labels), progress shown with fills (arcs, rings, filled bars), ONE accent element per screen (the main action). Two theme settings: app theme and workout theme (light / dark / phone), both light by default; the workout in progress is wrapped in `WorkoutThemeScope`. Selection = 2px border in the text colour.
+- Clean, light-first look (redesign 2026-10): warm off-white ground, white cards with 1px borders, Figtree everywhere (big numbers semibold, tabular digits), sentence case (no uppercase labels), progress shown with fills (arcs, rings, filled bars), ONE accent element per screen (the main action). Colour code (DECISIONS 107): training purple, nutrition teal (protein pink, carbs yellow, fat sky blue), streak/achievements orange, better green, worse red, the rest black; use `IconTile`/`useAreaColors`, never a domain colour for another area. Two theme settings: app theme and workout theme (light / dark / phone), both light by default; the workout in progress is wrapped in `WorkoutThemeScope`. Selection = 2px border in the text colour.
 - Colours/sizes come from `src/design/tokens.ts` / `useTheme()`, never hard-coded in components. Text on the accent uses `colors.onAccent`.
 - Use `<Text variant=… numeric>` (never raw RN Text): it applies text scale, bold, tabular digits and the 12 px minimum.
 - Touch targets ≥ 44 (primary buttons 52, list rows ≥ 52), primary action in `BottomActionBar`, safe areas via `Screen`, text ≥ 12 px, inputs 16 px, control borders ≥ 3:1 and text ≥ 4.5:1 in both themes (tested in `tokens.test.ts`).

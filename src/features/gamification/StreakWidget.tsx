@@ -6,15 +6,16 @@ import { Gauge } from '@/components/ui/Gauge';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { nextBadges, nextStreakTarget, streakWeek } from '@/domain/gamification';
+import { nextStreakTarget, streakWeek } from '@/domain/gamification';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import type { WidgetSize } from '@/features/today/layout-store';
-import { WeekDayMark, badgeName } from './components';
+import { WeekDayMark } from './components';
 import { useGamification } from './data';
 
 /**
- * Home card (canvas Home): streak ring with this week's days, and the next badge. A Today card
+ * Home card (canvas Home): the streak in orange with this week's days (the next badge lives on
+ * Progress, DECISIONS 107). A Today card
  * like the others: edit mode can move, resize or hide it.
  */
 export function StreakWidget({ size }: { size: WidgetSize }) {
@@ -29,23 +30,24 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
   const week = game ? streakWeek(game.activity.loggedDays, today, weekStart) : [];
   const logged = week.filter((d) => d.state === 'done').length;
   const todayOpen = week.some((d) => d.state === 'today');
-  const next = game ? nextBadges(game.badges, 1)[0] : undefined;
   const ring = (
     <Gauge
       value={target ? streak / target : 1}
       size={52}
       stroke={5}
+      color={colors.streak}
+      track={colors.streakSoft}
       accessibilityLabel={
         target
           ? t('game.streakA11y', { count: streak, target })
           : t('game.streakA11yNoTarget', { count: streak })
       }
     >
-      <Icon name="flame" size={22} color={colors.text} />
+      <Icon name="flame" size={22} color={colors.streakInk} />
     </Gauge>
   );
   const title = (
-    <Text semibold numberOfLines={1}>
+    <Text variant="displayS" numberOfLines={1}>
       {t('game.streakWord', { count: streak })}
     </Text>
   );
@@ -87,37 +89,6 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
               {todayOpen ? t('game.logToday') : t('game.loggedToday')}
             </Text>
           </View>
-          {next ? (
-            <>
-              <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: colors.divider }} />
-              <View style={{ width: 76, alignItems: 'center', gap: 4 }}>
-                <Gauge
-                  value={next.share}
-                  size={40}
-                  stroke={4}
-                  accessibilityLabel={t('game.nextBadgeA11y', {
-                    name: badgeName(t, next.id),
-                    current: next.current,
-                    target: next.target,
-                  })}
-                >
-                  <Icon name={next.glyph} size={18} color={colors.text} />
-                </Gauge>
-                <Text
-                  variant="label"
-                  semibold
-                  numberOfLines={2}
-                  style={{ textAlign: 'center' }}
-                  aria-hidden
-                >
-                  {badgeName(t, next.id)}
-                </Text>
-                <Text variant="label" muted numeric aria-hidden>
-                  {t('game.ofCount', { current: next.current, target: next.target })}
-                </Text>
-              </View>
-            </>
-          ) : null}
         </>
       ) : (
         <>
@@ -126,14 +97,7 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
             <View style={{ flex: 1, minWidth: 0 }}>{title}</View>
           </View>
           <Text variant="label" muted numberOfLines={2}>
-            {next
-              ? `${t('game.nextBadge')}: ${badgeName(t, next.id)} · ${t('game.ofCount', {
-                  current: next.current,
-                  target: next.target,
-                })}`
-              : todayOpen
-                ? t('game.logToday')
-                : t('game.loggedToday')}
+            {todayOpen ? t('game.logToday') : t('game.loggedToday')}
           </Text>
         </>
       )}

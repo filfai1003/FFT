@@ -2,7 +2,7 @@ import '@/i18n';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { useToastStore } from '@/lib/toast-store';
 import { renderUI } from '@/test/render';
-import { CommunityPinned, CommunityView, formatScore } from './CommunityView';
+import { CommunityView, formatScore } from './CommunityView';
 import { PublicProfileScreen } from './PublicProfileScreen';
 
 const mockPush = jest.fn();
@@ -110,12 +110,8 @@ describe('Community: join', () => {
 describe('Community: leaderboard', () => {
   it('podium, places with movement words, friend requests and your place', async () => {
     mockState.member = true;
-    await renderUI(
-      <>
-        <CommunityView />
-        <CommunityPinned />
-      </>,
-    );
+    // Your place is part of the board now (DECISIONS 107), at the top.
+    await renderUI(<CommunityView />);
     expect(screen.getByText('Most workouts')).toBeTruthy();
     expect(screen.getByLabelText('1: Noor, 12')).toBeTruthy();
     expect(screen.getByLabelText('4. Kenji, 8, Up 2')).toBeTruthy();

@@ -1,10 +1,13 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconTile, type Area } from '@/components/ui/IconTile';
+import { Sparkline } from '@/components/ui/Sparkline';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
@@ -17,7 +20,6 @@ import { periods } from '@/domain/progress';
 import { displayWeight } from '@/domain/units';
 import {
   CommunityAvatarButton,
-  CommunityPinned,
   CommunityView,
   useCommunityBottomSpace,
 } from '@/features/community/CommunityView';
@@ -25,6 +27,7 @@ import { PillButton, dayMonth } from '@/features/gamification/components';
 import { useGamification } from '@/features/gamification/data';
 import { BadgeGrid, NextBadgeCard, RecordsRow, StreakCard } from '@/features/gamification/MeCards';
 import { useProgressView, type ProgressView } from '@/features/gamification/progress-view';
+import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { poses, useBodyEntries, usePhotos } from './data';
@@ -95,14 +98,6 @@ export function ProgressScreen() {
           <CommunityView />
         ) : (
           <>
-            {game ? (
-              <>
-                <StreakCard game={game} />
-                <NextBadgeCard game={game} />
-                <RecordsRow game={game} />
-              </>
-            ) : null}
-
             <View
               style={{
                 flexDirection: 'row',
@@ -113,11 +108,11 @@ export function ProgressScreen() {
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text variant="titleM" semibold accessibilityRole="header">
-                  {t('progress.yourNumbers')}
-                </Text>
                 <Text variant="label" muted>
                   {t('progress.since', { date: dayMonth(strength.from) })}
+                </Text>
+                <Text variant="displayS" accessibilityRole="header">
+                  {t('progress.youAreChanging')}
                 </Text>
               </View>
               <PillButton
@@ -128,8 +123,22 @@ export function ProgressScreen() {
                 onPress={() => setPeriodOpen(true)}
               />
             </View>
-            <MeNumbers />
-            {game ? <BadgeGrid badges={game.badges} /> : null}
+            <MeNumbers records={game ? <RecordsRow game={game} /> : null} />
+            {game ? (
+              <>
+                <Text
+                  variant="titleM"
+                  semibold
+                  accessibilityRole="header"
+                  style={{ paddingTop: 6, paddingLeft: 2 }}
+                >
+                  {t('progress.consistency')}
+                </Text>
+                <StreakCard game={game} />
+                <NextBadgeCard game={game} />
+                <BadgeGrid badges={game.badges} />
+              </>
+            ) : null}
           </>
         )}
         <Sheet
@@ -151,18 +160,21 @@ export function ProgressScreen() {
           ))}
         </Sheet>
       </Screen>
-      {view === 'community' ? <CommunityPinned /> : null}
     </View>
   );
 }
 
-/** The existing Progress cards (strength, body, photos) for the chosen period. */
-function MeNumbers() {
+/**
+ * The period's numbers, most important first (DECISIONS 107): weight, body fat, strength, then
+ * records and photos. Changes are green when they go the right way for the goal, red otherwise.
+ */
+function MeNumbers({ records }: { records: ReactNode }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
+  const goal = useProfile().data?.goal;
   const { period } = useProgressPeriod();
   const strength = useStrength(period);
   const entries = useBodyEntries();
@@ -180,22 +192,101 @@ function MeNumbers() {
     body.weight.deltaKg != null
       ? displayWeight(Math.abs(body.weight.deltaKg), unit) * Math.sign(body.weight.deltaKg)
       : null;
+  const weightArea: Area =
+    weightDelta == null || Math.abs(weightDelta) < 0.05
+      ? 'neutral'
+      : goal === 'build_muscle'
+        ? weightDelta > 0
+          ? 'better'
+          : 'worse'
+        : goal === 'lose_fat'
+          ? weightDelta < 0
+            ? 'better'
+            : 'worse'
+          : 'neutral';
+  const fatDelta = body.bodyFat.deltaPts;
+  const fatArea: Area =
+    fatDelta == null || fatDelta === 0 ? 'neutral' : fatDelta < 0 ? 'better' : 'worse';
+  const weightLine = body.weight.buckets.filter((v): v is number => v != null);
+  const fatLine = body.bodyFat.buckets.filter((v): v is number => v != null);
 
   return (
     <>
+      <Card
+        onPress={() => router.push('/progress/body')}
+        accessibilityLabel={t('progress.tabWeight')}
+        gap={12}
+      >
+        <CardHead label={t('progress.tabWeight')} icon="scale" />
+        <View
+          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+            <Text variant="displayL" numeric>
+              {weightValue ?? '—'}
+            </Text>
+            <Text muted>{unit}</Text>
+          </View>
+          {weightDelta != null ? (
+            <StatusChip
+              area={weightArea}
+              icon={weightDelta < 0 ? 'arrowDown' : weightDelta > 0 ? 'arrowUp' : undefined}
+              label={`${signed(weightDelta)} ${unit}`}
+            />
+          ) : null}
+        </View>
+        {weightLine.length > 1 ? (
+          <Sparkline
+            values={weightLine}
+            height={96}
+            accessibilityLabel={t('progress.weightLine')}
+          />
+        ) : null}
+      </Card>
+
+      <Card
+        onPress={() => router.push('/progress/body')}
+        accessibilityLabel={t('progress.tabFat')}
+        gap={10}
+      >
+        <CardHead label={t('progress.tabFat')} icon="heart" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+            <Text variant="displayM" numeric>
+              {body.bodyFat.latestPct ?? '—'}
+            </Text>
+            <Text variant="bodyS" muted>
+              {'%'}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            {fatLine.length > 1 ? (
+              <Sparkline values={fatLine} height={44} accessibilityLabel={t('progress.fatLine')} />
+            ) : null}
+          </View>
+        </View>
+        {fatDelta != null ? (
+          <StatusChip
+            area={fatArea}
+            icon={fatDelta < 0 ? 'arrowDown' : fatDelta > 0 ? 'arrowUp' : undefined}
+            label={t('progress.pts', { delta: signed(fatDelta) })}
+          />
+        ) : null}
+      </Card>
+
       <Card
         onPress={() => router.push('/progress/strength')}
         accessibilityLabel={t('progress.strength')}
         gap={12}
       >
-        <CardHead label={t('progress.strength')} />
+        <CardHead label={t('progress.strength')} icon="dumbbell" area="training" />
         {strength.overall != null ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
               <Text
                 variant="displayL"
                 numeric
-                style={{ color: strength.overall >= 0 ? colors.successText : colors.warningText }}
+                style={{ color: strength.overall >= 0 ? colors.successText : colors.danger }}
               >{`${signed(strength.overall)}%`}</Text>
               <Text variant="bodyS" muted style={{ flex: 1 }}>
                 {t('progress.avgChange')}
@@ -205,12 +296,34 @@ function MeNumbers() {
               values={chartValues(strength.series)}
               rows={8}
               stretch
+              color={colors.trainingSoft}
+              lastColor={colors.training}
               accessibilityLabel={t('progress.strengthChart', { pct: signed(strength.overall) })}
             />
             {top.length > 0 ? (
-              <Text variant="bodyS" muted>
-                {`${t('progress.top')} · ${top.map((g) => `${t(`progress.group.${g.group}`)} ${signed(g.pctChange, 0)}%`).join(' · ')}`}
-              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {top.map((g) => (
+                  <View
+                    key={g.group}
+                    style={{
+                      flex: 1,
+                      borderRadius: 14,
+                      backgroundColor: colors.surfaceAlt,
+                      padding: 10,
+                      gap: 2,
+                    }}
+                  >
+                    <Text variant="label" muted>
+                      {t(`progress.group.${g.group}`)}
+                    </Text>
+                    <Text
+                      variant="displayS"
+                      numeric
+                      style={{ color: g.pctChange >= 0 ? colors.successText : colors.danger }}
+                    >{`${signed(g.pctChange, 0)}%`}</Text>
+                  </View>
+                ))}
+              </View>
             ) : null}
           </>
         ) : (
@@ -220,78 +333,7 @@ function MeNumbers() {
         )}
       </Card>
 
-      <Card
-        onPress={() => router.push('/progress/body')}
-        accessibilityLabel={t('progress.bodyTitle')}
-        gap={12}
-      >
-        <CardHead label={t('progress.bodyTitle')} />
-        <View style={{ flexDirection: 'row', gap: 16 }}>
-          <View style={{ flex: 1, gap: 8 }}>
-            <Text variant="bodyS" muted>
-              {t('progress.tabWeight')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <Text variant="displayM" numeric>
-                {weightValue ?? '—'}
-              </Text>
-              <Text variant="bodyS" muted>
-                {unit}
-              </Text>
-            </View>
-            {body.weight.buckets.some((v) => v != null) ? (
-              <DotColumnChart
-                values={chartValues(body.weight.buckets)}
-                rows={5}
-                dotSize={6}
-                columnGap={3}
-                stretch
-                accessibilityLabel={t('progress.weightChart')}
-              />
-            ) : null}
-            {weightDelta != null ? (
-              <Text variant="bodyS" muted>
-                {`${signed(weightDelta)} ${unit}`}
-              </Text>
-            ) : null}
-          </View>
-          <View
-            style={{
-              width: 1,
-              alignSelf: 'stretch',
-              backgroundColor: colors.borderDecorative,
-            }}
-          />
-          <View style={{ flex: 1, gap: 8 }}>
-            <Text variant="bodyS" muted>
-              {t('progress.tabFat')}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-              <Text variant="displayM" numeric>
-                {body.bodyFat.latestPct ?? '—'}
-              </Text>
-              <Text variant="bodyS" muted>
-                {'%'}
-              </Text>
-            </View>
-            {body.bodyFat.buckets.some((v) => v != null) ? (
-              <DotColumnChart
-                values={chartValues(body.bodyFat.buckets)}
-                rows={5}
-                dotSize={6}
-                columnGap={3}
-                stretch
-                accessibilityLabel={t('progress.bodyFatChart')}
-              />
-            ) : null}
-            {body.bodyFat.deltaPts != null ? (
-              <Text variant="bodyS" muted>
-                {t('progress.pts', { delta: signed(body.bodyFat.deltaPts) })}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </Card>
+      {records}
 
       <Card
         onPress={() => router.push('/progress/photos')}
@@ -331,12 +373,21 @@ function MeNumbers() {
   );
 }
 
-/** Label of a card that opens a detail page; the chevron says it is tappable. */
-function CardHead({ label }: { label: string }) {
+/** Label of a card that opens a detail page, with its area's tile; the chevron says it opens. */
+function CardHead({
+  label,
+  icon,
+  area = 'neutral',
+}: {
+  label: string;
+  icon?: IconName;
+  area?: Area;
+}) {
   const { colors } = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Text variant="bodyS" muted style={{ flex: 1 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      {icon ? <IconTile icon={icon} area={area} size={36} /> : null}
+      <Text semibold style={{ flex: 1 }}>
         {label}
       </Text>
       <Icon name="chevronRight" size={16} color={colors.textMuted} />

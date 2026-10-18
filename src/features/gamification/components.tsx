@@ -33,7 +33,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={badge.earned ? colors.dotOn : locked ? colors.borderControl : colors.dotOff}
+          stroke={badge.earned ? colors.streak : locked ? colors.borderControl : colors.streakSoft}
           strokeWidth={stroke}
           strokeDasharray={locked ? '4 5' : undefined}
         />
@@ -43,7 +43,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
             cy={size / 2}
             r={r}
             fill="none"
-            stroke={colors.dotOn}
+            stroke={colors.streak}
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${c * badge.share} ${c}`}
@@ -59,7 +59,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
           width: inner,
           height: inner,
           borderRadius: inner / 2,
-          backgroundColor: badge.earned ? colors.dotOn : colors.surfaceAlt,
+          backgroundColor: badge.earned ? colors.streak : locked ? colors.surfaceAlt : colors.streakSoft,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -67,7 +67,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
         <Icon
           name={locked ? 'lock' : badge.glyph}
           size={Math.round(inner * 0.48)}
-          color={badge.earned ? colors.surface : locked ? colors.textPlaceholderIcon : colors.text}
+          color={badge.earned ? colors.surface : locked ? colors.textPlaceholderIcon : colors.streakInk}
         />
       </View>
     </View>
@@ -90,7 +90,7 @@ export function BadgeDisc({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: colors.dotOn,
+        backgroundColor: colors.streak,
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -120,6 +120,7 @@ export const badgeHow = (t: unknown, id: string): string => (t as LooseT)(`badge
 /** Level + XP bar ("Level 7 · 1,240 / 1,500 XP"). */
 export function LevelBar({ level }: { level: LevelInfo }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <View
@@ -131,6 +132,8 @@ export function LevelBar({ level }: { level: LevelInfo }) {
         </Text>
       </View>
       <DotBar
+        color={colors.streak}
+        track={colors.streakSoft}
         total={level.nextLevelXp - level.levelStartXp}
         on={level.xp - level.levelStartXp}
         accessibilityLabel={t('game.levelA11y', {
@@ -166,9 +169,9 @@ export function WeekDayMark({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor:
-          state === 'done' ? colors.dotOn : state === 'missed' ? colors.surfaceAlt : colors.surface,
+          state === 'done' ? colors.streak : state === 'missed' ? colors.surfaceAlt : colors.surface,
         borderWidth: state === 'today' ? 2 : state === 'future' ? 1 : 0,
-        borderColor: state === 'today' ? colors.borderSelected : colors.borderDecorative,
+        borderColor: state === 'today' ? colors.streak : colors.borderDecorative,
       }}
     >
       {withIcon && state === 'done' ? (

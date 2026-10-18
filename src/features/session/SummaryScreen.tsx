@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { IconTile } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -77,9 +78,7 @@ export function SummaryScreen() {
       <Screen scroll bottomBarHeight={barHeight + 100} gap={16}>
         <View style={{ gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <View
-              style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
-            />
+            <IconTile icon="trophy" area="streak" size={28} />
             <Text variant="bodyS" muted>
               {`${session.dayName} · ${shortDateLabel(day)}`}
             </Text>
@@ -124,9 +123,7 @@ export function SummaryScreen() {
                   paddingVertical: 6,
                 }}
               >
-                <View
-                  style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }}
-                />
+                <IconTile icon="trophy" area="streak" size={36} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text variant="bodyS">{r.name}</Text>
                   <Text variant="bodyS" muted>

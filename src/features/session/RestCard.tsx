@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import * as Speech from 'expo-speech';
 import { Card } from '@/components/ui/Card';
 import { Gauge } from '@/components/ui/Gauge';
+import { IconTile } from '@/components/ui/IconTile';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useAppearanceStore } from '@/design/appearance-store';
@@ -99,7 +100,7 @@ export function RestCard() {
     <Card gap={10}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }} />
+          <IconTile icon="clock" area="training" size={28} />
           <Text variant="label" muted>
             {t('session.rest', { time: formatClock(rest.totalS) })}
           </Text>
@@ -127,6 +128,8 @@ export function RestCard() {
           value={rest.totalS > 0 ? remaining / rest.totalS : 0}
           size={180}
           stroke={12}
+          color={colors.training}
+          track={colors.trainingSoft}
           accessibilityLabel={t('session.restProgress')}
         >
           <Text

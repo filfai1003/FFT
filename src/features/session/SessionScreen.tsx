@@ -366,9 +366,9 @@ export function SessionScreen() {
                   // The exercises on screen (a whole superset) are lit: the page indicator.
                   backgroundColor:
                     i === index || group.includes(i)
-                      ? colors.accent
+                      ? colors.training
                       : exerciseState(e) === 'done'
-                        ? colors.dotOn
+                        ? colors.success
                         : colors.dotOff,
                 }}
               />
