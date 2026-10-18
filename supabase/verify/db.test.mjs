@@ -723,6 +723,9 @@ describe('server settings (admin panel)', () => {
   it('the AI model setting is hidden from users and only one known key can exist', async () => {
     await admin();
     await db.exec(`insert into public.app_settings (key, value) values ('ai_model', 'x/y')`);
+    await db.exec(
+      `insert into public.app_settings (key, value) values ('ai_providers', 'nebius, deepinfra')`,
+    );
     await rejects(`insert into public.app_settings (key, value) values ('other', 'x')`, '23514');
     await as(A);
     await rejects(`select * from public.app_settings`, '42501');

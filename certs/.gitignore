@@ -1,0 +1,3 @@
+# The public certificate installed apps use to check signed updates (DECISIONS 87). The root
+# .gitignore ignores *.pem; the exception lives here so the root file (part of the fingerprint) stays.
+!certificate.pem

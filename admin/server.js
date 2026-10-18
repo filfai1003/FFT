@@ -48,6 +48,8 @@ const quote = (id) => `"${String(id).replace(/"/g, '""')}"`;
 const SCHEMAS = ['public', 'auth', 'storage'];
 // Same as DEFAULT_MODEL in supabase/functions/ai/index.ts (used when no model is set here).
 const AI_DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
+// Same list as DEFAULT_PROVIDERS in supabase/functions/ai/upstream.ts (DECISIONS 88).
+const AI_DEFAULT_PROVIDERS = 'nebius, deepinfra, together, fireworks';
 
 const TABLES_SQL = `
   select n.nspname as schema, c.relname as name, c.relkind as kind, greatest(c.reltuples, 0)::bigint as estimate,
@@ -423,6 +425,9 @@ async function api(req, res, url) {
     const setting = await db.run(
       `select value, updated_at from public.app_settings where key = 'ai_model' and deleted_at is null`,
     );
+    const providers = await db.run(
+      `select value, updated_at from public.app_settings where key = 'ai_providers' and deleted_at is null`,
+    );
     const usage = await db.run(
       `select model, count(*) as requests, count(distinct user_id) as users,
               sum(prompt_tokens + completion_tokens) as tokens,
@@ -434,8 +439,43 @@ async function api(req, res, url) {
       model: setting.rows[0]?.[0] ?? null,
       updatedAt: setting.rows[0]?.[1] ?? null,
       defaultModel: AI_DEFAULT_MODEL,
+      providers: providers.rows[0]?.[0] ?? null,
+      providersUpdatedAt: providers.rows[0]?.[1] ?? null,
+      defaultProviders: AI_DEFAULT_PROVIDERS,
       usage,
     });
+  }
+
+  if (route === 'POST /api/ai-providers') {
+    // OpenRouter provider slugs, comma separated, tried in this order and no other (DECISIONS 88);
+    // empty = back to the default list. The privacy policy names the providers: update it too.
+    needSudo();
+    const slugs = String((await readBody(req)).providers ?? '')
+      .split(/[\s,]+/)
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    if (slugs.some((s) => !/^[a-z0-9][a-z0-9._-]*(\/[a-z0-9._-]+)*$/.test(s)))
+      throw new HttpError(400, 'Use OpenRouter provider slugs, like nebius, deepinfra');
+    const value = [...new Set(slugs)].join(', ');
+    if (value.length > 200) throw new HttpError(400, 'Too many providers');
+    const out = value
+      ? await db.run(
+          `insert into public.app_settings (key, value) values ('ai_providers', $1)
+           on conflict (key) do update set value = excluded.value, deleted_at = null
+           returning value`,
+          {
+            sudo: true,
+            commit: true,
+            params: [value],
+            audit: { action: 'ai.providers', detail: { providers: value } },
+          },
+        )
+      : await db.run(`delete from public.app_settings where key = 'ai_providers' returning key`, {
+          sudo: true,
+          commit: true,
+          audit: { action: 'ai.providers', detail: { providers: null } },
+        });
+    return send(res, 200, out);
   }
 
   if (route === 'POST /api/ai-model') {
