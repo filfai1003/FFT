@@ -228,10 +228,12 @@
             <tr>
               <td>Error reports</td>
               <td>
-                When the app crashes or something fails: the error message, the technical stack
-                trace, the kind of error and a small technical context, platform, app version and
-                update id, and your account id if you are signed in. They are designed to contain no
-                data you entered.
+                When the app crashes or something fails: the kind of error and its code (for example
+                a database error code), the technical stack trace without the error message, the
+                name of the table or function involved, the screen (without ids), platform, app
+                version and update id, and your account id if you are signed in. Error messages are
+                not sent, because they can repeat what you typed; our server also removes quoted
+                text, email addresses and long numbers from what it receives.
               </td>
               <td>To find and fix bugs.</td>
             </tr>
@@ -306,7 +308,9 @@
           protected by the phone's own encryption (Android encrypts app storage by default) and
           screen lock; the app does not add an encryption layer of its own, except for your sign-in
           and your own AI key, which it stores encrypted with the phone's secure storage. You can
-          also blur progress photos and lock them behind Face ID, fingerprint or passcode.
+          also blur progress photos and lock them behind Face ID, fingerprint or passcode, lock the
+          whole app (asked when it opens and after a few minutes away), and keep it out of
+          screenshots and the recent-apps preview (on by default for the progress photo screens).
         </li>
         <li>
           <strong>On our server</strong>, for accounts that keep a copy there (optional, section 2):
@@ -323,9 +327,10 @@
           (AES-256-GCM, with a key kept apart from the copies), into a storage bucket of our hosting
           in the same EU region. They are kept for at most 6 months: daily copies for 30 days, then one copy a month for 6 months.
           If we ever restore one, the accounts deleted after it was made are deleted again (we keep a
-          list of deleted account ids, nothing else, for that).
-          For accounts with end-to-end encryption on, the backups hold only the encrypted copy:
-          we cannot read it there either.
+          list of deleted account ids, nothing else, for that), and so are the entries and photos
+          deleted for good after it was made (from the markers described in section 7).
+          For accounts with end-to-end encryption on, the backups hold only the encrypted copy,
+          photos included: we cannot read it there either.
         </li>
       </ul>
       <p>
@@ -420,8 +425,8 @@
           delete in the app (an entry, a workout, a photo, including a photo replaced by a new one)
           is first marked as deleted, so it can be undone and your other devices learn about it,
           and is deleted for good, with its photo files, after 7 days: on the server and on your
-          devices. Only a marker (table and row id, no content) stays for 90 days so devices that
-          were offline delete it too. An own exercise still used in a past workout stays (hidden)
+          devices. Only a marker (table and row id, no content) stays for 190 days, so devices that
+          were offline delete it too and a restored backup deletes it again. An own exercise still used in a past workout stays (hidden)
           until that workout is deleted. Deleted data may remain in the backups until they expire.
           All of it goes when you delete your account.
         </li>
@@ -524,13 +529,16 @@
 
       <h2 id="age">11. Age</h2>
       <p>
-        FFT is for people aged 18 or over. The app does not let younger people complete the setup.
+        FFT is for people aged 18 or over. The app does not let younger people complete the setup,
+        and our server refuses to store a birth date under 18.
       </p>
 
       <h2 id="changes">12. Changes to this policy</h2>
       <p>
         If we change this policy, we update the date at the top. If a change affects how we use your
-        health data, we tell you in the app and ask for your consent again when needed.
+        health data, we tell you in the app and ask for your consent again when needed. Each consent is
+        stored with the version of the text it was given for; the version of 18 October 2026 (which
+        says who can reach your data) is asked once of everyone who agreed to an earlier one.
       </p>
 
       <footer>

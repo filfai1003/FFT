@@ -45,6 +45,8 @@ Only what the case needs:
 | GitHub Actions or a CI dependency compromised | No database or storage key is in GitHub any more (only `EXPO_TOKEN` and `APK_UPLOAD_TOKEN`): rotate both, check the recent EAS builds and updates (expo.dev) and the APK on the install page |
 | Database password leaked | Change it on the Postgres service and update `DATABASE_URL` in the services that use it |
 | API tokens misused | Admin panel → All data → `api_tokens`: revoke (deleted_at) the tokens involved |
+| Suspicious AI app connection (a user reports a "New AI app connected" notice they did not expect) | The user disconnects it in API & MCP and changes the password; if they cannot, revoke it in the admin panel (`api_tokens`, the row with a `client_id`). The app points out every new connection at the next start (DECISIONS 99) |
+| Phone lost or stolen | The data on the phone is protected by the phone's lock and encryption, and by the app lock if the user turned it on (DECISIONS 95); FFT does not encrypt its local database again. What is on the phone stays there; for the server copy the user changes the password from another device (or asks us to), and can delete the account |
 | `OPENROUTER_API_KEY` leaked | Revoke it on openrouter.ai and put a new one on the `api` service |
 | Bug that shows other people's data | If possible turn the feature off (roll back the deploy on Railway → Deployments → Rollback), then fix it |
 | Railway or GitHub account breached | Change the password, turn on / check 2FA, close open sessions, check the recent deploys |
@@ -103,7 +105,11 @@ taken (and why you notified or not), measures. Then the fix in the code or in th
 with a test if possible.
 
 ## Where to look to notice it
-- Admin panel → Overview (last backup) and **Problems** (errors, failed backups).
+- Admin panel → Overview (last backup) and **Problems** (errors, failed backups). The admin log
+  (`admin_audit`) cannot be changed or deleted from the panel (DECISIONS 97): if entries are
+  missing, someone used the database owner directly (the `DATABASE_URL` password).
+- `public.files_to_delete` (DECISIONS 98): files of purged rows waiting for removal; a queue that
+  keeps growing means deleted photos are still in storage.
 - Emails from Railway, GitHub, OpenRouter.
 - Railway → Logs (services `api`, `auth`, `backend`, `admin`).
 - User reports to filfai1003@gmail.com.

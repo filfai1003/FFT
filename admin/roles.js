@@ -37,6 +37,9 @@ export function panelRoleSetup(password) {
         end;
       end loop;
     end $$`,
+    // Tables the owner creates later (migrations) get the same rights without a restart.
+    `alter default privileges grant select, insert, update, delete on tables to ${PANEL_ROLE}`,
+    `alter default privileges grant usage, select, update on sequences to ${PANEL_ROLE}`,
     `revoke update, delete, truncate on public.admin_audit from ${PANEL_ROLE}`,
   ];
 }
