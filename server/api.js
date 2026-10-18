@@ -4,6 +4,7 @@
 // security decides what can be read or written, exactly as for the app. Writes reach the user's
 // phones with the next sync. Docs: docs/API.md.
 import { createHash } from 'node:crypto';
+import { boundedMap } from './bounded-map.js';
 import { COACH_TOOLS, ToolError } from './coach.js';
 import {
   CATEGORY_LABELS,
@@ -606,13 +607,12 @@ const ROUTES = [
  * `db.asUser(userId, fn)` runs fn(q) in one transaction as that user (q(sql, params) → rows).
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
-  const hits = new Map();
+  const hits = boundedMap(10000, (h) => h.minute !== Math.floor(Date.now() / 60000));
   /** Counts `cost` requests (an MCP batch counts each of its messages) and says if over the limit. */
   const limited = (userId, cost = 1) => {
     const minute = Math.floor(Date.now() / 60000);
     const h = hits.get(userId);
     if (!h || h.minute !== minute) {
-      if (hits.size > 10000) hits.clear();
       hits.set(userId, { minute, n: cost });
       return cost > perMinute;
     }

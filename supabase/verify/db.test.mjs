@@ -12,6 +12,7 @@ import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
 import { clientIp, createOAuth } from '../../server/oauth.js';
 import { createApkPublisher } from '../../server/apk.js';
+import { boundedMap } from '../../server/bounded-map.js';
 import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { createHash, randomUUID } from 'node:crypto';
@@ -3243,5 +3244,24 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
       await count(`select count(*) as n from public.account_consent where user_id = '${Z}'`),
       0,
     );
+  });
+});
+
+describe('in-memory limits forget old entries one at a time (server/bounded-map.js, DECISIONS 97)', () => {
+  it('drops stale entries first, then the least recently used, never all at once', () => {
+    const m = boundedMap(3, (v) => v.stale);
+    m.set('victim', { stale: false });
+    m.set('old', { stale: true });
+    m.set('b', { stale: false });
+    m.set('c', { stale: false });
+    assert.equal(m.size, 3);
+    assert.equal(m.get('old'), undefined, 'the stale entry went first');
+    assert.ok(m.get('victim'), 'a live entry stays');
+    // Flooding with new keys pushes out only the least recently used ones.
+    m.get('victim');
+    m.set('d', { stale: false });
+    m.set('e', { stale: false });
+    assert.ok(m.get('victim'), 'the recently used entry survives a flood');
+    assert.equal(m.size, 3);
   });
 });

@@ -7,7 +7,7 @@ FROM node:24-slim
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
-COPY server/index.js server/migrate.js server/api.js server/apk.js server/coach.js server/oauth.js server/ts-resolve.mjs ./
+COPY server/index.js server/migrate.js server/api.js server/apk.js server/bounded-map.js server/coach.js server/oauth.js server/ts-resolve.mjs ./
 COPY src/domain /app/src/domain
 RUN echo '{"type":"module"}' > /app/src/package.json
 COPY supabase/functions ./fn

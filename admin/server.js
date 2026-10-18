@@ -146,8 +146,10 @@ async function logReadOnce(session, action, detail, what) {
   const at = lastReads.get(key);
   if (at && Date.now() - at < READ_REPEAT_MS) return;
   await logRead(action, detail);
-  if (lastReads.size > 5000) lastReads.clear();
+  // Oldest entries go first (Map keeps insertion order), never all at once (DECISIONS 97).
+  lastReads.delete(key);
   lastReads.set(key, Date.now());
+  while (lastReads.size > 5000) lastReads.delete(lastReads.keys().next().value);
 }
 
 async function api(req, res, url) {
