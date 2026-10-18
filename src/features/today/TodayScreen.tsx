@@ -286,8 +286,10 @@ export function TodayScreen() {
         bottomBarHeight={editing ? EDIT_BAR_HEIGHT + 16 : aiDock ? AI_DOCK_CLEARANCE : 24}
         gap={14}
         onScroll={(e) => {
-          const y = e.nativeEvent.contentOffset.y;
-          const next = dockHiddenAfterScroll(lastY.current, y, dockHidden);
+          const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+          const y = contentOffset.y;
+          const toEnd = contentSize.height - layoutMeasurement.height - y;
+          const next = dockHiddenAfterScroll(lastY.current, y, dockHidden, toEnd);
           lastY.current = y;
           if (next !== dockHidden) setDockHidden(next);
         }}

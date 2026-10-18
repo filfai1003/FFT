@@ -14,7 +14,7 @@ import { useChatDraft } from './chat-draft';
 /** Room the floating bar takes (bar + margins), so screens can leave space under their content. */
 export const AI_DOCK_HEIGHT = 72;
 /** Space a page leaves under its last card when the bar is shown: the bar, its shadow and air. */
-export const AI_DOCK_CLEARANCE = AI_DOCK_HEIGHT + 28;
+export const AI_DOCK_CLEARANCE = AI_DOCK_HEIGHT + 16;
 const SLIDE_MS = 200;
 
 /**

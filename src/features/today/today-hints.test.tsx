@@ -16,6 +16,11 @@ function Harness() {
 }
 
 describe('Home coach bar while scrolling', () => {
+  it('shows again at the end of the page, where its room would otherwise be an empty gap', () => {
+    expect(dockHiddenAfterScroll(800, 900, true, 20)).toBe(false);
+    expect(dockHiddenAfterScroll(800, 900, false, 400)).toBe(true);
+  });
+
   it('hides while scrolling down, comes back on the way up and near the top', () => {
     expect(dockHiddenAfterScroll(100, 140, false)).toBe(true);
     expect(dockHiddenAfterScroll(140, 120, true)).toBe(false);
