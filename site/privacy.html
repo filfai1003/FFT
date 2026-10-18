@@ -378,7 +378,11 @@
         <li>
           <strong>OpenRouter</strong> (OpenRouter, Inc., USA)
           <strong>and the provider it routes to that runs the AI model</strong> (the model is now
-          DeepSeek V4.1; OpenRouter only picks providers that keep no data and do not train on it): only when you use the AI coach included with Premium, and only after you have
+          DeepSeek V4.1; our server allows only these providers, tried in this order and never
+          another one: <strong>Nebius</strong> (Nebius B.V., Netherlands), then
+          <strong>DeepInfra</strong> (DeepInfra, Inc., USA), <strong>Together AI</strong> (Together
+          Computer, Inc., USA) and <strong>Fireworks AI</strong> (Fireworks AI, Inc., USA); if we
+          change this list, we update this page first): only when you use the AI coach included with Premium, and only after you have
           agreed to it in the app. What you write and the files or photos you attach are always sent
           (you choose them). Your stored data is sent only for the kinds you allow the coach to see,
           all off until you turn them on (AI coach settings): <strong>profile and body</strong> (age
@@ -390,13 +394,15 @@
           <strong>The requests are anonymised</strong>: they carry no name, email, account or user
           id, device id or birth date, and no field that would let OpenRouter tell who you are (our
           server uses your account only to check your plan and charge your AI credit, and does not
-          pass it on). Our server asks OpenRouter to use only providers that do not store or train
-          on the data and only <strong>zero data retention</strong> endpoints, which keep nothing
-          after answering. Our server does not keep the content either. OpenRouter is a US company
-          and handles the data in the US; these transfers are covered by the European Commission's
-          standard contractual clauses, which are part of OpenRouter's data processing agreement.
-          The model providers it routes to may also process data outside the EU, under their own
-          terms.
+          pass it on). Our server asks OpenRouter to use only the providers listed above, and of
+          those only endpoints that do not store or train on the data and have <strong>zero data
+          retention</strong>, which keep nothing after answering; if none of them is available, the
+          coach does not answer rather than use another provider. Our server does not keep the
+          content either. OpenRouter is a US company and handles the data in the US; these transfers
+          are covered by the European Commission's standard contractual clauses, which are part of
+          OpenRouter's data processing agreement. Nebius is tried first because it is based in the
+          EU; the three others are in the US, and each provider may run the model in data centres
+          in other countries, under its own terms.
         </li>
         <li>
           <strong>Your own AI provider</strong>: if you add your own AI key (Anthropic, or a server

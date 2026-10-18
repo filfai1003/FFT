@@ -1,7 +1,8 @@
 // Decrypts a file made by backup.mjs (a database dump or a photo copy).
 //   BACKUP_KEY=<64 hex> node backup/restore.mjs <file.enc> <output>
-// A database dump comes out as plain SQL (it is also un-gzipped): load it into an EMPTY database
-// with psql, as described in docs/DEPLOY.md ("Restore a backup"). Files are downloaded from the
+// A database dump comes out as plain SQL (it is also un-gzipped): load it into a new database of
+// the production image as described in docs/DEPLOY.md ("Restore a backup"; older dumps go through
+// data-only.mjs). Files are downloaded from the
 // Railway bucket `backups` (any S3 client, or the Railway dashboard).
 import { createDecipheriv } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';

@@ -1,10 +1,12 @@
 // The AI coach included with Premium: the app sends an OpenAI-style chat request (messages and
 // tools); this checks the plan and the credit, forwards it to OpenRouter with the server's key
 // (never in the app), charges the real cost to the user's AI credit and returns the reply.
-// Variables: OPENROUTER_API_KEY, optional AI_MODEL (default below) and EUR_PER_USD (cost rate).
-// The model set in the admin panel (public.app_settings, key ai_model) wins over AI_MODEL.
+// Variables: OPENROUTER_API_KEY, optional AI_MODEL (default below), AI_PROVIDERS (OpenRouter
+// provider slugs, comma separated; default DEFAULT_PROVIDERS in upstream.ts) and EUR_PER_USD (cost
+// rate). The model and providers set in the admin panel (public.app_settings, keys ai_model and
+// ai_providers) win over the variables.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { upstreamBody } from './upstream.ts';
+import { DEFAULT_PROVIDERS, parseProviders, upstreamBody } from './upstream.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -61,15 +63,20 @@ Deno.serve(async (req) => {
   if (!Array.isArray(body.messages) || body.messages.length === 0)
     return json({ error: 'bad request' }, 400);
 
-  // Set in the admin panel (AI tab); otherwise the AI_MODEL variable, otherwise the default.
-  const setting = await admin
+  // Set in the admin panel (AI tab); otherwise the AI_MODEL / AI_PROVIDERS variables, otherwise
+  // the defaults. The providers never fall back to "any provider" (DECISIONS 88).
+  const settings = await admin
     .from('app_settings')
-    .select('value')
-    .eq('key', 'ai_model')
-    .is('deleted_at', null)
-    .maybeSingle();
-  const model =
-    (setting.data?.value as string | undefined) || Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
+    .select('key, value')
+    .in('key', ['ai_model', 'ai_providers'])
+    .is('deleted_at', null);
+  const setting = (k: string) =>
+    ((settings.data ?? []) as { key: string; value: string }[]).find((r) => r.key === k)?.value;
+  const model = setting('ai_model') || Deno.env.get('AI_MODEL') || DEFAULT_MODEL;
+  const providers =
+    parseProviders(setting('ai_providers')) ??
+    parseProviders(Deno.env.get('AI_PROVIDERS')) ??
+    DEFAULT_PROVIDERS;
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -78,17 +85,17 @@ Deno.serve(async (req) => {
       'X-Title': 'FFT',
     },
     // Health data: no identifier, and only providers that keep nothing (see upstreamBody).
-    body: JSON.stringify(upstreamBody(model, body.messages, body.tools)),
+    body: JSON.stringify(upstreamBody(model, body.messages, body.tools, providers)),
   });
   const reply = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = String(reply?.error?.message ?? `AI error ${res.status}`);
-    // No provider of this model promises not to keep the data: the model must change (admin panel).
-    if (/data policy|no endpoints found/i.test(message))
+    // None of the allowed providers serves this model while keeping nothing: the model or the
+    // provider list must change (admin panel).
+    if (/data policy|no endpoints found|no allowed providers/i.test(message))
       return json(
         {
-          error:
-            'The AI coach model has no provider that keeps your data private. The admin must choose another model.',
+          error: `The AI coach model has no allowed provider that keeps your data private (${providers.join(', ')}). The admin must choose another model or other providers.`,
         },
         502,
       );

@@ -1090,6 +1090,25 @@ async function aiPage() {
     toast('AI model changed');
     route();
   };
+  const providersInput = h('input', {
+    placeholder: r.defaultProviders ?? 'nebius, deepinfra',
+    value: r.providers ?? '',
+    'aria-label': 'Providers',
+    style: 'min-width:min(360px,100%)',
+  });
+  const saveProviders = async () => {
+    if (!(await needEditing())) return;
+    const providers = providersInput.value.trim();
+    const ok = await confirmDialog(
+      providers ? `Allow only ${providers}?` : 'Go back to the default providers?',
+      'Every AI coach message from now on goes only to these providers. If none of them serves the model with zero data retention, the coach stops answering. The privacy policy must name them.',
+      { confirm: 'Use them' },
+    );
+    if (!ok) return;
+    await api('/api/ai-providers', { providers });
+    toast('AI providers changed');
+    route();
+  };
   return [
     h(
       'section',
@@ -1130,6 +1149,38 @@ async function aiPage() {
         'p',
         { class: 'help' },
         'Model names are on openrouter.ai/models (like deepseek/deepseek-v4.1-flash). Leave it empty for the default.',
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card' },
+      h('h3', {}, 'Providers allowed'),
+      h(
+        'p',
+        {},
+        h('strong', {}, r.providers ?? `${r.defaultProviders} (default)`),
+        r.providersUpdatedAt
+          ? h('span', { class: 'muted' }, ` · since ${dateTime(r.providersUpdatedAt)}`)
+          : null,
+      ),
+      h(
+        'div',
+        { class: 'row' },
+        providersInput,
+        h(
+          'button',
+          {
+            class: 'btn primary',
+            type: 'button',
+            onclick: () => void saveProviders().catch((e) => toast(e.message)),
+          },
+          'Save',
+        ),
+      ),
+      h(
+        'p',
+        { class: 'help' },
+        'OpenRouter provider slugs, tried in this order and no other (only those with zero data retention for the model). Check them on openrouter.ai/<model>/providers. The privacy policy names them: update it before changing. Leave it empty for the default.',
       ),
     ),
     h(
