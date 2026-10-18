@@ -105,12 +105,16 @@ the repository; nothing here changes Railway by itself):
   `config.js` (version, size, build). nginx (`site/nginx.conf`) serves both from the page's own
   address (`/fft.apk`, `/config.js`), reading the backend address from the service variable
   `BACKEND_URL` on the `site` service, so no hosted address is stored in the repository.
-- **Publishing a new APK** (DECISIONS 76): the `Publish APK` workflow (every 3 hours) finds the
-  newest finished EAS build and calls `POST https://fft-api.up.railway.app/internal/apk` with the
-  build id, its EAS artifact address and the app version; the `api` service checks the token,
-  downloads the APK from EAS (only `https://expo.dev/artifacts/eas/<id>.apk` addresses) and uploads
-  it and `config.js` to `downloads` with its own service-role key. GitHub never holds a key to the
-  database or the storage. One-time setup (the owner):
+- **Publishing a new APK** (DECISIONS 76, 86): the `Publish APK` workflow (every 3 hours) has two
+  jobs. `find` installs the app's packages (`npm ci`, eas reads `app.config.js`) and, with
+  `EXPO_TOKEN` only, finds the newest finished EAS build. `publish` (no checkout, no packages, only
+  `APK_UPLOAD_TOKEN`) calls `POST https://fft-api.up.railway.app/internal/apk` with the build id,
+  its EAS artifact address and the app version. The `api` service checks the token, accepts only
+  an address that is exactly `https://expo.dev/artifacts/eas/<id>.apk` (no other host, port, query
+  or fragment), downloads it (https redirects only), checks that it is an APK (a zip with an
+  `AndroidManifest.xml`, at most 300 MB) and uploads it and `config.js` to `downloads` with its own
+  service-role key. GitHub never holds a key to the database or the storage. One-time setup (the
+  owner):
   1. Make a token: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
   2. GitHub → Settings → Secrets → Actions: add `APK_UPLOAD_TOKEN` = the token. Remove the old
      secrets `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` from GitHub (and rotate the
@@ -118,7 +122,10 @@ the repository; nothing here changes Railway by itself):
   3. Railway → `api` → Variables: `APK_UPLOAD_TOKEN_SHA256` = the token's SHA-256 in hex
      (`node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" <token>`).
      Not the token itself. Without this variable the endpoint answers 404 (publishing off).
-  The token can do only this: publish an EAS build as the install page's APK. By hand, without
+  The token can do only this: publish an EAS build as the install page's APK. The server cannot
+  check that the build belongs to our EAS project (the artifact address does not say), so whoever
+  holds the token is trusted: a leaked token lets someone publish their own EAS build as our APK
+  (docs/BREACH.md). By hand, without
   the workflow: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
   from your computer (key from `.secrets/`).
 - The workflows pin their actions (commit SHAs) and `eas-cli` (exact version); update them by hand.

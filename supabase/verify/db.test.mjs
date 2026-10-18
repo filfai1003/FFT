@@ -1940,7 +1940,21 @@ describe('publishing the APK with its own token (server/apk.js, DECISIONS 76)', 
   const TOKEN = 'apk_' + 'k'.repeat(60);
   const BUILD = '0f3c2a1b-1234-4abc-8def-0123456789ab';
   const URL_OK = 'https://expo.dev/artifacts/eas/abcDEF123456.apk';
-  const apk = Buffer.concat([Buffer.from('PK\x03\x04', 'binary'), Buffer.alloc(2048)]);
+  // Enough of a zip for the checks: local header, an AndroidManifest.xml entry name, end record.
+  const apk = Buffer.concat([
+    Buffer.from('PK\x03\x04', 'binary'),
+    Buffer.alloc(2048),
+    Buffer.from('PK\x01\x02AndroidManifest.xml', 'binary'),
+    Buffer.from('PK\x05\x06', 'binary'),
+    Buffer.alloc(18),
+  ]);
+  const URL_ZIP = 'https://expo.dev/artifacts/eas/notAnApk0000.apk';
+  const zip = Buffer.concat([
+    Buffer.from('PK\x03\x04', 'binary'),
+    Buffer.alloc(64),
+    Buffer.from('PK\x05\x06', 'binary'),
+    Buffer.alloc(18),
+  ]);
   /** A fake network: EAS, and a storage that remembers what was uploaded. */
   const network = () => {
     const stored = {};
@@ -1948,6 +1962,7 @@ describe('publishing the APK with its own token (server/apk.js, DECISIONS 76)', 
     const fetch = async (url, init = {}) => {
       calls.push({ url, init });
       if (url === URL_OK) return new Response(apk, { status: 200 });
+      if (url === URL_ZIP) return new Response(zip, { status: 200 });
       if (url.endsWith('/object/public/downloads/config.js'))
         return stored['config.js']
           ? new Response(stored['config.js'])
@@ -1992,6 +2007,13 @@ describe('publishing the APK with its own token (server/apk.js, DECISIONS 76)', 
       'https://expo.dev.evil.test/artifacts/eas/abcDEF123456.apk',
       'http://expo.dev/artifacts/eas/abcDEF123456.apk',
       'https://expo.dev/artifacts/eas/../../x.apk',
+      'https://expo.dev/artifacts/eas/abcDEF123456.apk?x=1',
+      'https://expo.dev/artifacts/eas/abcDEF123456.apk#x',
+      'https://expo.dev:8443/artifacts/eas/abcDEF123456.apk',
+      'https://user@expo.dev/artifacts/eas/abcDEF123456.apk',
+      'https://EXPO.dev/artifacts/eas/abcDEF123456.apk',
+      'https://expo.dev/artifacts/eas/abcDEF123456.apk ',
+      'https://expo.dev/artifacts/eas/abcDEF123456.zip',
     ])
       assert.equal(
         (await pub({ headers: auth, body: { ...body, build_url } })).status,
@@ -2000,6 +2022,10 @@ describe('publishing the APK with its own token (server/apk.js, DECISIONS 76)', 
       );
     assert.equal((await pub({ headers: auth, body: { ...body, build_id: 'x' } })).status, 400);
     assert.equal(net.calls.length, 0);
+    // A zip without an Android manifest is not published.
+    const r = await pub({ headers: auth, body: { ...body, build_url: URL_ZIP } });
+    assert.equal(r.status, 422);
+    assert.equal(net.stored['fft.apk'], undefined);
   });
 
   it('publishes the APK and its description once', async () => {
@@ -2013,6 +2039,146 @@ describe('publishing the APK with its own token (server/apk.js, DECISIONS 76)', 
     assert.match(net.stored['config.js'], /"url":"\/fft\.apk"/);
     const again = await pub({ headers: auth, body });
     assert.equal(again.body.published, false);
+  });
+});
+
+describe('admin log entries about an account are matched exactly (DECISIONS 86)', () => {
+  const X = '86000000-0000-0000-0000-000000000001';
+  const MAX = '86000000-0000-0000-0000-000000000002';
+  const IP = '203.0.113.86';
+  const entries = [
+    ['password.temporary', { email: 'max@gmail.com' }],
+    ['password.temporary', { email: 'x@gmail.com' }],
+    ['plan.set', { userId: MAX, plan: 'premium' }],
+    ['plan.set', { userId: X, plan: 'premium' }],
+    ['read.user', { id: X, ip: IP }],
+    ['read.users', { q: 'max@gmail.com', ip: IP }],
+    ['row.update', { schema: 'public', table: 'profiles', pk: { id: MAX }, set: { name: 'M' } }],
+    ['sql', { sql: `select * from auth.users where email = 'max@gmail.com'` }],
+    ['sql', { sql: `select * from auth.users where email = 'x@gmail.com'` }],
+  ];
+  const ids = [];
+
+  it('the export of x@gmail.com has no entry about max@gmail.com, no IP and no SQL', async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${X}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x@gmail.com'),
+        ('${MAX}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'max@gmail.com');
+    `);
+    for (const [action, detail] of entries)
+      ids.push(
+        (
+          await one(
+            `insert into public.admin_audit (action, detail) values ($1, $2) returning id`,
+            [action, JSON.stringify(detail)],
+          )
+        ).id,
+      );
+    await as(X);
+    const out = (await one('select public.export_my_account() as out')).out;
+    const text = JSON.stringify(out.admin_log_entries);
+    assert.ok(!text.includes('max@gmail.com'), text);
+    assert.ok(!text.includes(MAX), text);
+    assert.ok(!text.includes(IP), text);
+    assert.ok(!/select \*/.test(text), text);
+    // Its own: the password, the plan, the look at its page and the query naming it.
+    assert.deepEqual(out.admin_log_entries.map((e) => e.action).sort(), [
+      'password.temporary',
+      'plan.set',
+      'read.user',
+      'sql',
+    ]);
+  });
+
+  it("deleting x@gmail.com leaves max@gmail.com's entries as they are", async () => {
+    await admin();
+    await db.query('delete from auth.users where id = $1', [X]);
+    const about = async (where) =>
+      count(`select count(*) as n from public.admin_audit where ${where}`);
+    assert.equal(await about(`detail ->> 'email' = 'max@gmail.com'`), 1);
+    assert.equal(await about(`detail ->> 'userId' = '${MAX}'`), 1);
+    assert.equal(await about(`detail ->> 'q' = 'max@gmail.com'`), 1);
+    assert.equal(await about(`detail -> 'pk' ->> 'id' = '${MAX}'`), 1);
+    assert.equal(await about(`detail ->> 'sql' like '%''max@gmail.com''%'`), 1);
+    // X's own are anonymised, the query naming it included.
+    assert.equal(await about(`detail ->> 'email' = 'x@gmail.com'`), 0);
+    assert.equal(await about(`detail::text like '%${X}%'`), 0);
+    assert.equal(await about(`detail ->> 'sql' like '%''x@gmail.com''%'`), 0);
+    // Leave nothing behind for the tests that count log entries.
+    await db.query('delete from auth.users where id = $1', [MAX]);
+    await db.query('delete from public.admin_audit where id = any($1::uuid[])', [ids]);
+  });
+});
+
+describe('revoked API tokens: a short undo, then gone after a week (DECISIONS 86)', () => {
+  const T = {
+    mine: '86100000-0000-0000-0000-000000000001',
+    ended: '86100000-0000-0000-0000-000000000002',
+    late: '86100000-0000-0000-0000-000000000003',
+    over: '86100000-0000-0000-0000-000000000004',
+  };
+  const live = async (id) =>
+    (await count(
+      `select count(*) as n from public.api_tokens where id = '${id}' and deleted_at is null`,
+    )) === 1;
+
+  it('Undo brings back only a token the user revoked a moment ago', async () => {
+    await admin();
+    await db.exec(`
+      insert into public.api_tokens (id, user_id, name, prefix, token_hash, client_id, ends_at) values
+        ('${T.mine}', '${A}', 'Mine', 'fft_', 'hash-86-1', null, null),
+        ('${T.ended}', '${A}', 'Ended', 'fft_', 'hash-86-2', null, null),
+        ('${T.late}', '${A}', 'Late', 'fft_', 'hash-86-3', null, null),
+        ('${T.over}', '${A}', 'Over', 'fft_', 'hash-86-4', null, now() + interval '1 hour');
+    `);
+    await as(A);
+    await db.query('select public.set_api_token_revoked($1, true)', [T.mine]);
+    assert.equal(await live(T.mine), false);
+    await db.query('select public.set_api_token_revoked($1, false)', [T.mine]);
+    assert.equal(await live(T.mine), true);
+    // Ended by the server (refresh token reused, replaced, past its days): no undo.
+    await admin();
+    await db.exec(`update public.api_tokens set deleted_at = now() where id = '${T.ended}'`);
+    await as(A);
+    await rejects(`select public.set_api_token_revoked('${T.ended}', false)`, '55000');
+    // Revoked by the user more than a minute ago: no undo.
+    await db.query('select public.set_api_token_revoked($1, true)', [T.late]);
+    await admin();
+    await db.exec(
+      `update public.api_tokens set deleted_at = now() - interval '2 minutes', user_revoked_at = now() - interval '2 minutes' where id = '${T.late}'`,
+    );
+    await as(A);
+    await rejects(`select public.set_api_token_revoked('${T.late}', false)`, '55000');
+    // A connection past its end: no undo either.
+    await db.query('select public.set_api_token_revoked($1, true)', [T.over]);
+    await admin();
+    await db.exec(
+      `update public.api_tokens set ends_at = now() - interval '1 second' where id = '${T.over}'`,
+    );
+    await as(A);
+    await rejects(`select public.set_api_token_revoked('${T.over}', false)`, '55000');
+    // Another user's token: untouched.
+    await as(B);
+    await db.query('select public.set_api_token_revoked($1, true)', [T.mine]);
+    await admin();
+    assert.equal(await live(T.mine), true);
+    assert.equal(await live(T.ended), false);
+  });
+
+  it('purge_deleted removes tokens revoked or ended more than 7 days ago', async () => {
+    await admin();
+    await db.exec(`
+      update public.api_tokens set deleted_at = now() - interval '8 days' where id = '${T.late}';
+      update public.api_tokens set deleted_at = now() - interval '1 day' where id = '${T.ended}';
+    `);
+    await db.query('select public.purge_deleted(7)');
+    const exists = async (id) =>
+      (await count(`select count(*) as n from public.api_tokens where id = '${id}'`)) === 1;
+    assert.equal(await exists(T.late), false);
+    assert.equal(await exists(T.ended), true);
+    assert.equal(await exists(T.mine), true);
+    await db.exec(`delete from public.api_tokens where id in ('${Object.values(T).join("', '")}')`);
   });
 });
 
@@ -2151,6 +2317,31 @@ describe('error reporting (report_error)', () => {
     assert.equal(Number(groups.rows[0].n), 2);
     assert.equal(Number(groups.rows[0].users), 2);
     assert.equal(Number(groups.rows[1].users), 0);
+  });
+
+  it('a report sent with the session of a deleted account is kept without its id (DECISIONS 86)', async () => {
+    const GONE = '86000000-0000-0000-0000-000000000003';
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email)
+        values ('${GONE}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gone86@example.com');
+      delete from auth.users where id = '${GONE}';
+    `);
+    // A phone that was offline still has the old session.
+    await as(GONE);
+    await db.query(`select public.report_error('crash', 'after the deletion', null)`);
+    await admin();
+    assert.equal(
+      await count(`select count(*) as n from public.app_errors where user_id = '${GONE}'`),
+      0,
+    );
+    assert.equal(
+      await count(
+        `select count(*) as n from public.app_errors where message = 'after the deletion' and user_id is null`,
+      ),
+      1,
+    );
+    await db.exec(`delete from public.app_errors where message = 'after the deletion'`);
   });
 });
 
