@@ -69,6 +69,21 @@ Package name: `com.filfai1003.fft`.
   account** (never to another address written in the note: anyone can send a request). Requests
   are deleted 30 days after they were sent, and with the account (DECISIONS 82).
 
+## Rotating the keys (JWT secret, anon and service-role keys)
+When a key may have leaked (the service-role key was a GitHub secret until 2026-10-18). Users stay
+signed in: their refresh tokens live in the database and the app gets a new access token by itself;
+only apps still on the old anon key cannot reach the server until they take the update (a few minutes).
+1. `node supabase/scripts/rotate-jwt.mjs` → `.secrets/rotation-<day>.txt` (git-ignored; prints nothing).
+2. Railway → `backend` → Variables: open `KONG_DECLARATIVE_CONFIG_STRING` and check whether the keys
+   are written out in it or referenced as `${{ANON_KEY}}` / `${{SERVICE_ROLE_KEY}}`.
+3. Paste the new values in every variable the file lists (auth, rest, storage, backend, api, web).
+   Railway shows "Apply changes" / deploys each service: let them all redeploy.
+4. EAS: `npx eas-cli env:update --variable-name EXPO_PUBLIC_SUPABASE_ANON_KEY --variable-environment preview`
+   (and `production`) with the new anon key, then run the `App deploy` workflow by hand so phones get it.
+5. `.secrets/railway-supabase.txt`: replace the old values; delete `rotation-<day>.txt`.
+6. Check: sign in on the web app, open the app (it updates, then syncs), `Publish APK` workflow by hand
+   (answers "already published"), the nightly backup log the next morning.
+
 ## Logs (personal data in Railway's logs, DECISIONS 82)
 What each service writes to Railway's logs, and what the owner should set on Railway (not set from
 the repository; nothing here changes Railway by itself):
