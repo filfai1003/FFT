@@ -12,5 +12,5 @@ RUN apt-get update \
 WORKDIR /app
 COPY backup/package.json backup/package-lock.json ./
 RUN npm ci --omit=dev
-COPY backup/backup.mjs backup/restore.mjs ./
+COPY backup/backup.mjs backup/restore.mjs backup/retention.mjs backup/reapply-deletions.mjs ./
 CMD ["node", "backup.mjs"]

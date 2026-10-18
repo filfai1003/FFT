@@ -441,6 +441,45 @@ export const relations: Record<string, Record<string, Relation>> = {
   },
 };
 
+/**
+ * The server's foreign keys between the user's tables, with what a delete of the parent does
+ * (same as the migrations). The device's purge of deleted rows follows them (DECISIONS 78): a
+ * parent still used by a `restrict` child stays, `cascade` children go with it, `set null`
+ * children keep their row.
+ */
+export type ForeignKey = {
+  table: string;
+  column: string;
+  parent: string;
+  onDelete: 'cascade' | 'restrict' | 'set null';
+};
+export const foreignKeys: ForeignKey[] = [
+  { table: 'plan_days', column: 'plan_id', parent: 'workout_plans', onDelete: 'cascade' },
+  { table: 'plan_exercises', column: 'plan_day_id', parent: 'plan_days', onDelete: 'cascade' },
+  { table: 'plan_exercises', column: 'exercise_id', parent: 'exercises', onDelete: 'restrict' },
+  { table: 'workout_sessions', column: 'plan_id', parent: 'workout_plans', onDelete: 'set null' },
+  { table: 'workout_sessions', column: 'plan_day_id', parent: 'plan_days', onDelete: 'set null' },
+  {
+    table: 'session_exercises',
+    column: 'session_id',
+    parent: 'workout_sessions',
+    onDelete: 'cascade',
+  },
+  { table: 'session_exercises', column: 'exercise_id', parent: 'exercises', onDelete: 'restrict' },
+  { table: 'session_sets', column: 'session_id', parent: 'workout_sessions', onDelete: 'cascade' },
+  { table: 'session_sets', column: 'exercise_id', parent: 'exercises', onDelete: 'restrict' },
+  { table: 'food_servings', column: 'food_id', parent: 'foods', onDelete: 'cascade' },
+  { table: 'food_logs', column: 'food_id', parent: 'foods', onDelete: 'set null' },
+  { table: 'fixed_meals', column: 'plan_id', parent: 'fixed_meal_plans', onDelete: 'cascade' },
+  {
+    table: 'fixed_meal_checks',
+    column: 'fixed_meal_id',
+    parent: 'fixed_meals',
+    onDelete: 'restrict',
+  },
+  { table: 'supplement_logs', column: 'supplement_id', parent: 'supplements', onDelete: 'cascade' },
+];
+
 export type DbError = { message: string; code: string; details?: string };
 
 const num = (v: unknown) => (v == null ? null : Number(v));

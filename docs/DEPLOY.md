@@ -114,8 +114,9 @@ Package name: `com.filfai1003.fft`.
   Everything is encrypted with AES-256-GCM using the service variable `BACKUP_KEY` (64 hex
   characters). **Keep a copy of `BACKUP_KEY` somewhere safe outside Railway: without it the backups
   cannot be read.**
-- Kept: every nightly dump for 30 days, then the first dump of each month for 12 months. Photo
-  copies whose original was deleted go 30 days later.
+- Kept: every nightly dump for 30 days, then the first dump of each month for 6 months
+  (`backup/retention.mjs`, DECISIONS 79). Photo copies whose original was deleted go 30 days later.
+  Also every night: `deletions/latest.json.enc`, the deletion log (ids of deleted accounts).
 - The admin panel shows the last run (Overview > Last backup); a failed run appears under Problems
   ("Nightly backup"). The panel itself cannot download a dump any more (DECISIONS 74): these
   encrypted backups are the only copies. Do not keep decrypted dumps around after a restore.
@@ -126,3 +127,13 @@ Package name: `com.filfai1003.fft`.
   3. Load it into an EMPTY Postgres 17 database: `psql "$DATABASE_URL" -f dump.sql`.
   4. Photos: download `photos/<bucket>/<path>.enc`, decrypt each with `restore.mjs`, and upload
      them back to the same bucket and path in storage.
+  5. **Delete again the accounts deleted since the dump** (never skip this: a restore must not
+     bring a deleted account back). Download `deletions/latest.json.enc` and decrypt it
+     (`restore.mjs … deletions.json`); if the old database can still be read, also save its list
+     (`psql "$OLD_DATABASE_URL" -At -c "select user_id from public.deleted_accounts" > ids.txt`).
+     Then, against the restored database and storage:
+     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt]`
+     (deletes those accounts with everything they own, and their files in the three buckets).
+  6. Delete the decrypted files (dump.sql, deletions.json, photos) from your computer.
+- Deleted data (DECISIONS 78): the api service deletes for good, every day, rows deleted more than
+  7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.

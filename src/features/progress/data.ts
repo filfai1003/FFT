@@ -335,6 +335,26 @@ export function usePhotos() {
   });
 }
 
+/**
+ * Deletes one progress photo (or brings it back, for UNDO). The row is marked now; the photo
+ * itself (file, row, copies on the server) goes for good a week later (DECISIONS 78).
+ */
+export async function setPhotoDeleted(id: string, deleted: boolean) {
+  const { error } = await getSupabase()
+    .from('progress_photos')
+    .update({ deleted_at: deleted ? new Date().toISOString() : null })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export function useDeletePhoto() {
+  const invalidate = useInvalidateBody();
+  return useMutation({
+    mutationFn: ({ id, deleted }: { id: string; deleted: boolean }) => setPhotoDeleted(id, deleted),
+    onSuccess: invalidate,
+  });
+}
+
 /** Photos are private: shown through short-lived signed URLs. */
 export function usePhotoUrl(path: string | null | undefined) {
   return useQuery({

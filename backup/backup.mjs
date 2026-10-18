@@ -2,9 +2,11 @@
 // encrypted, into the Railway bucket `backups` in the EU (Amsterdam).
 //   db/<time>.sql.gz.enc          the whole database (pg_dump of public, auth, storage), gzip, AES-256-GCM
 //   photos/<bucket>/<path>.enc    each user photo, AES-256-GCM, copied once (photos never change)
-// Kept: every daily dump for 30 days, the first dump of each month for 12 months; photo copies whose
-// original is gone are removed 30 days later. A failure is reported to the admin panel (Problems).
-// Restore: backup/restore.mjs (and docs/DEPLOY.md).
+//   deletions/latest.json.enc     the deletion log (ids of deleted accounts, DECISIONS 79)
+// Kept: every daily dump for 30 days, the first dump of each month for 6 months (retention.mjs);
+// photo copies whose original is gone are removed 30 days later. A failure is reported to the
+// admin panel (Problems).
+// Restore: backup/restore.mjs, then backup/reapply-deletions.mjs (docs/DEPLOY.md).
 import { spawn } from 'node:child_process';
 import { createCipheriv, createHash, randomBytes } from 'node:crypto';
 import { createReadStream, createWriteStream, statSync, unlinkSync } from 'node:fs';
@@ -18,6 +20,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import pg from 'pg';
+import { dumpsToDelete } from './retention.mjs';
 
 const env = (name) => {
   const v = process.env[name];
@@ -125,33 +128,25 @@ async function backupDatabase(stamp) {
   return size;
 }
 
-/** 30 daily dumps, then the first dump of each month for 12 months. */
-export function dumpsToDelete(keys, now = new Date()) {
-  const dayMs = 86_400_000;
-  const parsed = keys
-    .map((k) => {
-      const m = k.match(/^db\/(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/);
-      return m ? { key: k, at: new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`) } : null;
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.at - b.at);
-  const firstOfMonth = new Set();
-  const seenMonth = new Set();
-  for (const p of parsed) {
-    const month = p.at.toISOString().slice(0, 7);
-    if (!seenMonth.has(month)) {
-      seenMonth.add(month);
-      firstOfMonth.add(p.key);
-    }
-  }
-  return parsed
-    .filter((p) => {
-      const age = (now - p.at) / dayMs;
-      if (age <= 30) return false;
-      if (firstOfMonth.has(p.key) && age <= 366) return false;
-      return true;
-    })
-    .map((p) => p.key);
+/**
+ * The deletion log (DECISIONS 79), apart from the dumps: the ids of the deleted accounts, so a
+ * restore can delete again the accounts deleted after the dump it loads. Overwritten every night.
+ */
+async function backupDeletions(db) {
+  const { rows } = await db.query(
+    'select user_id, deleted_at from public.deleted_accounts order by deleted_at',
+  );
+  const body = encryptBuffer(Buffer.from(JSON.stringify(rows)));
+  await s3.send(
+    new PutObjectCommand({
+      Bucket,
+      Key: 'deletions/latest.json.enc',
+      Body: body,
+      ContentLength: body.length,
+      ContentType: 'application/octet-stream',
+    }),
+  );
+  return rows.length;
 }
 
 // ---------------------------------------------------------------- photos
@@ -241,6 +236,11 @@ async function main() {
     .replace(/:/g, '-');
   try {
     const size = await backupDatabase(stamp);
+    // Reported, but the dump and the photos still go on if it fails.
+    await backupDeletions(db).catch(async (e) => {
+      console.error('deletion log failed:', e);
+      await report(db, `Backup of the deletion log failed: ${e?.message ?? e}`);
+    });
     const old = dumpsToDelete((await listAll('db/')).map((o) => o.Key));
     if (old.length) await deleteKeys(old);
     const photos = await backupPhotos();

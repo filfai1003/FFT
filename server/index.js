@@ -185,10 +185,12 @@ async function cleanup() {
     // AI app sign-in (DECISIONS 73): one-time codes live 5 minutes; an app that registered but
     // never got a connection in 30 days is forgotten (it registers again if it comes back).
     `delete from public.oauth_codes where expires_at < now() - interval '1 day'`,
+    // Deletion log (DECISIONS 79): needed only while a backup older than the deletion exists (6 months).
+    `delete from public.deleted_accounts where deleted_at < now() - interval '7 months'`,
     // Connections past their 30 idle / 90 days end, so the app no longer lists them.
     `update public.api_tokens set deleted_at = now()
        where client_id is not null and deleted_at is null
-         and (refresh_expires_at < now() or created_at < now() - interval '90 days')`,
+         and (refresh_expires_at < now() or ends_at < now())`,
     `delete from public.oauth_clients c where c.created_at < now() - interval '30 days'
        and not exists (select 1 from public.api_tokens t where t.client_id = c.id)`,
   ];
@@ -199,6 +201,33 @@ async function cleanup() {
       console.error('cleanup failed:', e.message);
     }
   }
+  await purgeDeleted().catch((e) => console.error('purge failed:', e.message));
+}
+
+/**
+ * Rows deleted more than 7 days ago go for good, with their files (DECISIONS 78). The database
+ * deletes the rows and lists the files; they are removed through the storage API (removing them
+ * from storage.objects alone would leave the bytes on the disk).
+ */
+async function purgeDeleted() {
+  const { rows } = await pool.query('select public.purge_deleted(7) as out');
+  const files = rows[0]?.out?.files ?? [];
+  const byBucket = new Map();
+  for (const f of files) byBucket.set(f.bucket, [...(byBucket.get(f.bucket) ?? []), f.path]);
+  for (const [bucket, paths] of byBucket)
+    for (let i = 0; i < paths.length; i += 100) {
+      const res = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`, {
+        method: 'DELETE',
+        headers: {
+          authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ prefixes: paths.slice(i, i + 100) }),
+      });
+      if (!res.ok) console.error(`purge: removing files from ${bucket} failed: ${res.status}`);
+    }
+  if (rows[0]?.out?.removed) console.log(`purge: ${rows[0].out.removed} deleted rows removed`);
 }
 
 migrate('./migrations')

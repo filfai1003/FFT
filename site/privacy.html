@@ -314,7 +314,9 @@
         <li>
           <strong>Backups</strong>: every night the database and the photos are copied, encrypted
           (AES-256-GCM, with a key kept apart from the copies), into a storage bucket of our hosting
-          in the same EU region. They are kept for at most 12 months: daily copies for 30 days, then one copy a month for 12 months.
+          in the same EU region. They are kept for at most 6 months: daily copies for 30 days, then one copy a month for 6 months.
+          If we ever restore one, the accounts deleted after it was made are deleted again (we keep a
+          list of deleted account ids, nothing else, for that).
           For accounts with end-to-end encryption on, the backups hold only the encrypted copy:
           we cannot read it there either.
         </li>
@@ -401,11 +403,14 @@
           <strong>Your account and app data</strong>: the copy on the server is kept until you turn
           it off or delete your account (then it is deleted at once; it may remain in the backups
           until they expire). Messages between your paired phones (section 2) are kept until the
-          phone they are for receives them, at most 30 days. Most things you
-          delete in the app are deleted from the server too, leaving only a marker (table and row
-          id) so your other devices delete them as well; a few (for example replaced meals or plan
-          items) are kept marked as deleted so your history stays correct. All of it goes when you
-          delete your account.
+          phone they are for receives them, at most 30 days. What you
+          delete in the app (an entry, a workout, a photo, including a photo replaced by a new one)
+          is first marked as deleted, so it can be undone and your other devices learn about it,
+          and is deleted for good, with its photo files, after 7 days: on the server and on your
+          devices. Only a marker (table and row id, no content) stays for 90 days so devices that
+          were offline delete it too. An own exercise still used in a past workout stays (hidden)
+          until that workout is deleted. Deleted data may remain in the backups until they expire.
+          All of it goes when you delete your account.
         </li>
         <li><strong>Consent history</strong>: until you delete your account.</li>
         <li><strong>AI usage records</strong>: until you delete your account.</li>
@@ -432,7 +437,7 @@
         In the app: Profile &gt; Privacy &amp; data &gt; Delete account. This deletes, right away,
         your account on the server with all its data and photos, and all the data on that device,
         including your AI conversations there. Your data may remain in the server backups until they
-        expire (at most 12 months: daily copies for 30 days, then one copy a month for 12 months), then it is gone.
+        expire (at most 6 months: daily copies for 30 days, then one copy a month for 6 months), then it is gone.
         On other devices where you used FFT, remove the app (or clear the browser's site data) to
         remove the copy there. On a phone you can instead choose
         <strong>Delete the account, keep my data on this phone</strong>: the account and its server

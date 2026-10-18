@@ -12,6 +12,7 @@ import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
 import { clientIp, createOAuth } from '../../server/oauth.js';
 import { createApkPublisher } from '../../server/apk.js';
+import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { createHash } from 'node:crypto';
 
@@ -1566,6 +1567,158 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       const [after] = (await live()).rows;
       assert.ok(after.refresh_expires_at && after.ends_at);
     });
+  });
+});
+
+describe('deleted rows are purged after a week (purge_deleted, DECISIONS 78)', () => {
+  const ids = {
+    used: '78000000-0000-0000-0000-000000000001',
+    unused: '78000000-0000-0000-0000-000000000002',
+    session: '78000000-0000-0000-0000-000000000003',
+    oldWater: '78000000-0000-0000-0000-000000000004',
+    newWater: '78000000-0000-0000-0000-000000000005',
+    photo: '78000000-0000-0000-0000-000000000006',
+    catalogue: '78000000-0000-0000-0000-000000000007',
+    deadSession: '78000000-0000-0000-0000-000000000008',
+  };
+
+  it('users cannot run it', async () => {
+    await as(B);
+    await rejects('select public.purge_deleted(7)', '42501');
+  });
+
+  it('removes rows deleted 7+ days ago with their files; keeps used, recent and catalogue rows', async () => {
+    await admin();
+    await db.exec(`
+      insert into public.exercises (id, name, primary_muscle, equipment, owner_id, deleted_at) values
+        ('${ids.used}', 'Used move', 'back', 'cables', '${B}', now() - interval '30 days'),
+        ('${ids.unused}', 'Unused move', 'back', 'cables', '${B}', now() - interval '30 days'),
+        ('${ids.catalogue}', 'Old catalogue move', 'back', 'cables', null, now() - interval '30 days');
+      insert into public.workout_sessions (id, user_id, started_at, status, deleted_at) values
+        ('${ids.session}', '${B}', now() - interval '40 days', 'done', null),
+        ('${ids.deadSession}', '${B}', now() - interval '40 days', 'done', now() - interval '9 days');
+      insert into public.session_sets (user_id, session_id, exercise_id, set_index, weight_kg, reps, completed_at) values
+        ('${B}', '${ids.session}', '${ids.used}', 0, 50, 5, now()),
+        ('${B}', '${ids.deadSession}', '${ids.used}', 0, 50, 5, now());
+      insert into public.water_logs (id, user_id, day, ml, deleted_at) values
+        ('${ids.oldWater}', '${B}', '2026-09-01', 250, now() - interval '8 days'),
+        ('${ids.newWater}', '${B}', '2026-10-01', 250, now() - interval '1 day');
+      insert into public.progress_photos (id, user_id, day, pose, storage_path, deleted_at) values
+        ('${ids.photo}', '${B}', '2026-09-01', 'front', '${B}/gone.jpg', now() - interval '10 days');
+    `);
+    const out = (await one('select public.purge_deleted(7) as out')).out;
+    const exists = async (table, id) =>
+      (await count(`select count(*) as n from public.${table} where id = '${id}'`)) === 1;
+    assert.equal(await exists('water_logs', ids.oldWater), false);
+    assert.equal(await exists('water_logs', ids.newWater), true);
+    assert.equal(await exists('progress_photos', ids.photo), false);
+    assert.equal(await exists('exercises', ids.unused), false);
+    // Still in a live workout: kept (counted as kept, no error).
+    assert.equal(await exists('exercises', ids.used), true);
+    assert.ok(out.kept >= 1);
+    assert.equal(await exists('exercises', ids.catalogue), true);
+    // The deleted workout goes with its sets (cascade).
+    assert.equal(await exists('workout_sessions', ids.deadSession), false);
+    assert.equal(
+      await count(
+        `select count(*) as n from public.session_sets where session_id = '${ids.deadSession}'`,
+      ),
+      0,
+    );
+    assert.deepEqual(
+      out.files.filter((f) => f.path.startsWith(B)),
+      [{ bucket: 'progress-photos', path: `${B}/gone.jpg` }],
+    );
+    // The other devices learn it from a tombstone (id only).
+    assert.equal(
+      await count(
+        `select count(*) as n from public.sync_tombstones where table_name = 'water_logs' and row_id = '${ids.oldWater}'`,
+      ),
+      1,
+    );
+  });
+
+  it('tombstones and sealed deletions go after 90 days', async () => {
+    await admin();
+    await db.exec(`
+      insert into public.sync_tombstones (user_id, table_name, row_id, server_at) values
+        ('${B}', 'water_logs', 'old-one', now() - interval '91 days'),
+        ('${B}', 'water_logs', 'new-one', now() - interval '10 days');
+    `);
+    await db.query('select public.purge_deleted(7)');
+    const left = (
+      await db.query(
+        `select row_id from public.sync_tombstones where row_id in ('old-one', 'new-one')`,
+      )
+    ).rows.map((r) => r.row_id);
+    assert.deepEqual(left, ['new-one']);
+  });
+});
+
+describe('the deletion log survives a restore (deleted_accounts, DECISIONS 79)', () => {
+  const GONE = '79000000-0000-0000-0000-000000000001';
+
+  it('every deleted account is logged (id and time only), closed to users', async () => {
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email)
+        values ('${GONE}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gone@test.dev');
+      insert into public.water_logs (user_id, day, ml) values ('${GONE}', '2026-10-01', 250);
+      delete from auth.users where id = '${GONE}';
+    `);
+    assert.equal(
+      await count(`select count(*) as n from public.deleted_accounts where user_id = '${GONE}'`),
+      1,
+    );
+    await as(A);
+    await rejects('select * from public.deleted_accounts', '42501');
+    await rejects(`select public.reapply_deletions(array['${GONE}'::uuid])`, '42501');
+  });
+
+  it('after a restore, the accounts deleted since the dump are deleted again', async () => {
+    await admin();
+    // The restored dump still has the account and its data.
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email)
+        values ('${GONE}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'gone@test.dev');
+      insert into public.water_logs (user_id, day, ml) values ('${GONE}', '2026-10-01', 250);
+      delete from public.deleted_accounts where user_id = '${GONE}';
+    `);
+    const n = (
+      await one(
+        `select public.reapply_deletions(array['${GONE}'::uuid, '79000000-0000-0000-0000-000000000099'::uuid]) as n`,
+      )
+    ).n;
+    // One of the two was back in the restored dump.
+    assert.equal(n, 1);
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where user_id = '${GONE}'`),
+      0,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.deleted_accounts where user_id = '${GONE}'`),
+      1,
+    );
+  });
+
+  it('the deletion log file: ids from JSON rows, plain ids or lines; the rest is ignored', () => {
+    assert.deepEqual(idsOf(JSON.stringify([{ user_id: GONE }, { user_id: 'x' }])), [GONE]);
+    assert.deepEqual(idsOf(`${GONE}\nnot-an-id\n`), [GONE]);
+  });
+
+  it('backups: daily for 30 days, then one a month for 6 months', () => {
+    const now = new Date('2026-10-18T03:00:00Z');
+    const key = (d) => `db/${d}T03-00-00Z.sql.gz.enc`;
+    const keys = [
+      key('2026-10-01'), // daily, 17 days
+      key('2026-09-02'), // 46 days, first of its month in the list
+      key('2026-09-03'), // 45 days, not the first: goes
+      key('2026-04-01'), // 200 days: older than 6 months, goes
+    ];
+    assert.deepEqual(
+      dumpsToDelete(keys, now).sort(),
+      [key('2026-04-01'), key('2026-09-03')].sort(),
+    );
   });
 });
 
