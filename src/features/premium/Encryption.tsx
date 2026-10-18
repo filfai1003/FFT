@@ -28,7 +28,7 @@ import {
 import { useVaultKeys } from './vault-key';
 
 /**
- * End-to-end encryption of the copy on the server (DECISIONS 64): the switch in Privacy & data,
+ * End-to-end encryption of the copy on the server (DECISIONS 64): the switch in Data & sync,
  * turning it on (passphrase, then the recovery key shown once), off, a new passphrase, and the
  * passphrase asked on a device that does not have the key yet.
  */
@@ -470,7 +470,7 @@ export function VaultUnlockScreen({
   );
 }
 
-/** Privacy & data, inside the copy-on-the-server card: the encryption switch and its actions. */
+/** Data & sync, inside the copy-on-the-server card: the encryption switch and its actions. */
 export function EncryptionSection({ web }: { web: boolean }) {
   const { t } = useTranslation();
   const { colors } = useTheme();

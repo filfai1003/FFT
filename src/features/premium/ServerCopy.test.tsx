@@ -70,7 +70,7 @@ describe('keep a copy on the server', () => {
     expect(mockTurnOn).toHaveBeenCalledWith(U, ['body', 'training', 'photos']);
   });
 
-  it('a category turned off in Privacy & data asks first; on goes at once', async () => {
+  it('a category turned off in Data & sync asks first; on goes at once', async () => {
     mockSetCategories.mockClear();
     usePlanStore.setState({
       userId: U,

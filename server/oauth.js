@@ -56,9 +56,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 const SCOPES = ['read', 'write'];
 const chosenScope = (p) => (SCOPES.includes(p.access) ? p.access : 'read');
 const SYNC_OFF =
-  'Your FFT data is kept only on your phone, so there is nothing an AI app could use. To connect one, turn on Keep a copy on the server in the FFT app (Profile > Privacy & data), then sign in again.';
+  'Your FFT data is kept only on your phone, so there is nothing an AI app could use. To connect one, turn on Keep a copy on the server in the FFT app (Settings > Data & sync), then sign in again.';
 const ENCRYPTED =
-  'Your copy on the server is end-to-end encrypted: our server cannot read it, so an AI app cannot use it. To connect one, turn the encryption off in the FFT app (Profile > Privacy & data), then sign in again.';
+  'Your copy on the server is end-to-end encrypted: our server cannot read it, so an AI app cannot use it. To connect one, turn the encryption off in the FFT app (Settings > Data & sync), then sign in again.';
 const CONSENT_OFF =
   'You withdrew your consent to the processing of your health data, so an AI app cannot use it. To connect one, give it again in the FFT app, then sign in again.';
 

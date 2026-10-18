@@ -12,7 +12,6 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { authenticate, canAuthenticate, unlockApp } from '@/lib/biometrics';
@@ -28,14 +27,14 @@ import {
   useSetConsent,
 } from './account';
 import { deliverFile, exportFileNames, fullExportZip, workoutsCsv } from './export';
-import { importExport, pickExportFile } from './import';
-import { useSessionStore } from '@/features/auth/session-store';
-import { RelayCard } from '@/features/premium/RelayCard';
-import { ServerCopyCard } from '@/features/premium/ServerCopy';
-import { SyncCard } from '@/features/premium/SyncCard';
 import { LOCK_AFTER_OPTIONS, type LockAfter, usePrivacyStore } from './privacy-store';
+import { ActionRow, ToggleRows } from './settings-rows';
 
-/** Privacy & data: export, photo privacy, sharing, consent, delete account. */
+/**
+ * Privacy (DECISIONS 101): the everyday settings in plain words. App lock, screenshots, photos,
+ * what the AI coach sees, consents, export, policies and delete account. The technical part
+ * (server copy, encryption, other phones, import) is on Data & sync (`/profile/data`).
+ */
 export function PrivacyScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -45,8 +44,7 @@ export function PrivacyScreen() {
   const consents = useConsents();
   const setConsent = useSetConsent();
   const showToast = useToastStore((s) => s.show);
-  const [busy, setBusy] = useState<'full' | 'workouts' | 'import' | null>(null);
-  const userId = useSessionStore((st) => st.userId);
+  const [busy, setBusy] = useState<'full' | 'workouts' | null>(null);
   const [withdraw, setWithdraw] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [typed, setTyped] = useState('');
@@ -55,6 +53,7 @@ export function PrivacyScreen() {
   const confirmed = typed.trim().toUpperCase() === t('privacy.deleteWord');
   // Keeping the data means going on without an account: phones only (the web app needs one).
   const canKeep = getMode() === 'cloud' && Platform.OS !== 'web';
+  const chevron = <Icon name="chevronRight" size={18} color={colors.textMuted} />;
 
   const health = activeConsent(consents.data, 'health_data');
   const aiConsent = activeConsent(consents.data, 'ai_coach');
@@ -62,7 +61,6 @@ export function PrivacyScreen() {
     new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(
       new Date(iso),
     );
-  const grantedOn = health ? dateOf(health.grantedAt) : '';
 
   const runExport = async (kind: 'full' | 'workouts') => {
     setBusy(kind);
@@ -78,29 +76,6 @@ export function PrivacyScreen() {
         );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** An earlier export comes back: added to what is here, nothing is deleted. */
-  const runImport = async () => {
-    setError(null);
-    const zip = await pickExportFile().catch(() => null);
-    if (!zip || !userId) return;
-    setBusy('import');
-    try {
-      const r = await importExport(zip, userId);
-      await queryClient.invalidateQueries();
-      showToast({ message: t('privacy.imported', { count: r.rows, photos: r.photos }) });
-    } catch (e) {
-      setError(
-        e instanceof Error && e.message === 'not an FFT export'
-          ? t('privacy.notAnExport')
-          : e instanceof Error
-            ? e.message
-            : String(e),
-      );
     } finally {
       setBusy(null);
     }
@@ -124,161 +99,16 @@ export function PrivacyScreen() {
     if ((await unlockApp(t('appLock.reason'))) === 'passed') privacy.set('appLock', true);
   };
 
-  const rows = (
-    items: {
-      name: string;
-      detail: string;
-      value: boolean;
-      onChange: (v: boolean) => void;
-      disabled?: boolean;
-    }[],
-  ) =>
-    items.map((r, i) => (
-      <View
-        key={r.name}
-        style={{
-          minHeight: 56,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          borderTopWidth: i === 0 ? 0 : 1,
-          borderColor: colors.borderDecorative,
-          opacity: r.disabled ? 0.5 : 1,
-        }}
-      >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyS">{r.name}</Text>
-          <Text variant="bodyS" muted>
-            {r.detail}
-          </Text>
-        </View>
-        <Toggle value={r.value} onValueChange={r.onChange} accessibilityLabel={r.name} />
-      </View>
-    ));
-
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
         <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
-        <Text variant="screenTitle" style={{ fontSize: 28 }}>
+        <Text variant="screenTitle" accessibilityRole="header" style={{ fontSize: 28 }}>
           {t('privacy.title')}
         </Text>
-
-        <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.yourData')}
-          </Text>
-          <View
-            style={{
-              minHeight: 60,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.downloadAll')}</Text>
-              <Text variant="bodyS" muted>
-                {t('privacy.downloadAllDetail')}
-              </Text>
-            </View>
-            <Button
-              label={t('privacy.export')}
-              block={false}
-              variant="secondary"
-              disabled={busy != null}
-              onPress={() => runExport('full')}
-            />
-          </View>
-          <View
-            style={{
-              minHeight: 60,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.workoutsOnly')}</Text>
-              <Text variant="bodyS" muted>
-                {t('privacy.workoutsOnlyDetail')}
-              </Text>
-            </View>
-            <Button
-              label={t('privacy.export')}
-              block={false}
-              variant="secondary"
-              disabled={busy != null}
-              onPress={() => runExport('workouts')}
-            />
-          </View>
-          <View
-            style={{
-              minHeight: 60,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.importTitle')}</Text>
-              <Text variant="bodyS" muted>
-                {t('privacy.importDetail')}
-              </Text>
-            </View>
-            <Button
-              label={t('privacy.import')}
-              block={false}
-              variant="secondary"
-              disabled={busy != null}
-              onPress={() => void runImport()}
-            />
-          </View>
-          {busy ? (
-            <Text variant="bodyS" muted>
-              {t('privacy.preparing')}
-            </Text>
-          ) : null}
-          {error ? (
-            <Text variant="bodyS" danger accessibilityRole="alert">
-              {error}
-            </Text>
-          ) : null}
-        </Card>
-
-        {/* Keep a copy on the server (DECISIONS 62): accounts only. */}
-        {userId && getMode() === 'cloud' ? <ServerCopyCard /> : null}
-        {/* Sync with another phone without a copy on the server (DECISIONS 65). */}
-        {userId && getMode() === 'cloud' ? <RelayCard /> : null}
-        {userId ? <SyncCard userId={userId} /> : null}
-
-        <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.photos')}
-          </Text>
-          {rows([
-            {
-              name: t('privacy.blur'),
-              detail: t('privacy.blurDetail'),
-              value: privacy.blurPhotos,
-              onChange: (v) => privacy.set('blurPhotos', v),
-            },
-            {
-              name: t('privacy.lock'),
-              detail: t('privacy.lockDetail'),
-              value: privacy.lockPhotos,
-              onChange: toggleLock,
-            },
-          ])}
-        </Card>
+        <Text variant="bodyS" muted>
+          {t('privacy.intro')}
+        </Text>
 
         {/* Lock and screen protection of this phone (DECISIONS 95). */}
         {Platform.OS !== 'web' ? (
@@ -286,14 +116,16 @@ export function PrivacyScreen() {
             <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
               {t('privacy.device')}
             </Text>
-            {rows([
-              {
-                name: t('privacy.appLock'),
-                detail: t('privacy.appLockDetail'),
-                value: privacy.appLock,
-                onChange: (v) => void toggleAppLock(v),
-              },
-            ])}
+            <ToggleRows
+              items={[
+                {
+                  name: t('privacy.appLock'),
+                  detail: t('privacy.appLockDetail'),
+                  value: privacy.appLock,
+                  onChange: (v) => void toggleAppLock(v),
+                },
+              ]}
+            />
             {privacy.appLock ? (
               <View style={{ gap: 8, paddingVertical: 10 }}>
                 <Text variant="bodyS">{t('privacy.lockAfter')}</Text>
@@ -309,86 +141,125 @@ export function PrivacyScreen() {
               </View>
             ) : null}
             <View style={{ borderTopWidth: 1, borderColor: colors.borderDecorative }}>
-              {rows([
-                {
-                  name: t('privacy.protectPhotos'),
-                  detail: t('privacy.protectPhotosDetail'),
-                  value: privacy.protectPhotos,
-                  onChange: (v) => privacy.set('protectPhotos', v),
-                },
-                {
-                  name: t('privacy.hideContent'),
-                  detail: t('privacy.hideContentDetail'),
-                  value: privacy.hideContent,
-                  onChange: (v) => privacy.set('hideContent', v),
-                },
-              ])}
+              <ToggleRows
+                items={[
+                  {
+                    name: t('privacy.protectPhotos'),
+                    detail: t('privacy.protectPhotosDetail'),
+                    value: privacy.protectPhotos,
+                    onChange: (v) => privacy.set('protectPhotos', v),
+                  },
+                  {
+                    name: t('privacy.hideContent'),
+                    detail: t('privacy.hideContentDetail'),
+                    value: privacy.hideContent,
+                    onChange: (v) => privacy.set('hideContent', v),
+                  },
+                ]}
+              />
             </View>
-            <Text variant="bodyS" muted style={{ paddingTop: 8 }}>
-              {t('privacy.localNote')}
-            </Text>
           </Card>
         ) : null}
 
         <Card size="small" gap={0}>
-          <View
-            style={{
-              minHeight: 60,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.consent')}</Text>
-              <Text variant="bodyS" muted>
-                {health ? t('privacy.givenOn', { date: grantedOn }) : t('privacy.notGiven')}
-              </Text>
-            </View>
-            <Button
-              label={t('privacy.withdraw')}
-              block={false}
-              variant="secondary"
-              disabled={!health}
-              onPress={() => setWithdraw(true)}
-            />
-          </View>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.photos')}
+          </Text>
+          <ToggleRows
+            items={[
+              {
+                name: t('privacy.blur'),
+                detail: t('privacy.blurDetail'),
+                value: privacy.blurPhotos,
+                onChange: (v) => privacy.set('blurPhotos', v),
+              },
+              {
+                name: t('privacy.lock'),
+                detail: t('privacy.lockDetail'),
+                value: privacy.lockPhotos,
+                onChange: toggleLock,
+              },
+            ]}
+          />
+        </Card>
+
+        {/* What the coach may read lives with the coach settings (DECISIONS 66). */}
+        <Card size="small" gap={0}>
+          <ListRow
+            title={t('privacy.aiSees')}
+            info={t('privacy.aiSeesDetail')}
+            divider={false}
+            right={chevron}
+            onPress={() => router.push('/profile/ai')}
+          />
+        </Card>
+
+        <Card size="small" gap={0}>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.consents')}
+          </Text>
+          <ActionRow
+            name={t('privacy.consent')}
+            detail={
+              health
+                ? t('privacy.givenOn', { date: dateOf(health.grantedAt) })
+                : t('privacy.notGiven')
+            }
+            label={t('privacy.withdraw')}
+            disabled={!health}
+            onPress={() => setWithdraw(true)}
+          />
           {/* AI coach consent (DECISIONS 66): withdrawn, the coach asks again on next use. */}
-          <View
-            style={{
-              minHeight: 60,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
+          <ActionRow
+            divider
+            name={t('privacy.aiConsent')}
+            detail={
+              aiConsent
+                ? t('privacy.givenOn', { date: dateOf(aiConsent.grantedAt) })
+                : t('privacy.notGiven')
+            }
+            label={t('privacy.withdraw')}
+            disabled={!aiConsent || setConsent.isPending}
+            onPress={async () => {
+              await setConsent.mutateAsync({ type: 'ai_coach', granted: false });
+              showToast({
+                message: t('privacy.aiWithdrawn'),
+                actionLabel: t('common.undo'),
+                onAction: () => setConsent.mutate({ type: 'ai_coach', granted: true }),
+              });
             }}
-          >
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyS">{t('privacy.aiConsent')}</Text>
-              <Text variant="bodyS" muted>
-                {aiConsent
-                  ? t('privacy.givenOn', { date: dateOf(aiConsent.grantedAt) })
-                  : t('privacy.notGiven')}
-              </Text>
-            </View>
-            <Button
-              label={t('privacy.withdraw')}
-              block={false}
-              variant="secondary"
-              disabled={!aiConsent || setConsent.isPending}
-              onPress={async () => {
-                await setConsent.mutateAsync({ type: 'ai_coach', granted: false });
-                showToast({
-                  message: t('privacy.aiWithdrawn'),
-                  actionLabel: t('common.undo'),
-                  onAction: () => setConsent.mutate({ type: 'ai_coach', granted: true }),
-                });
-              }}
-            />
-          </View>
+          />
+        </Card>
+
+        <Card size="small" gap={0}>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
+            {t('privacy.yourData')}
+          </Text>
+          <ActionRow
+            name={t('privacy.downloadAll')}
+            detail={t('privacy.downloadAllDetail')}
+            label={t('privacy.export')}
+            disabled={busy != null}
+            onPress={() => void runExport('full')}
+          />
+          <ActionRow
+            divider
+            name={t('privacy.workoutsOnly')}
+            detail={t('privacy.workoutsOnlyDetail')}
+            label={t('privacy.export')}
+            disabled={busy != null}
+            onPress={() => void runExport('workouts')}
+          />
+          {busy ? (
+            <Text variant="bodyS" muted>
+              {t('privacy.preparing')}
+            </Text>
+          ) : null}
+          {error ? (
+            <Text variant="bodyS" danger accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
         </Card>
 
         <Card size="small" gap={0}>
@@ -400,10 +271,21 @@ export function PrivacyScreen() {
               key={page}
               title={t(`legal.${page}`)}
               divider={i > 0}
-              right={<Icon name="chevronRight" size={18} color={colors.textMuted} />}
+              right={chevron}
               onPress={() => openLegal(page)}
             />
           ))}
+        </Card>
+
+        {/* The technical part: copy on the server, encryption, other phones (DECISIONS 101). */}
+        <Card size="small" gap={0}>
+          <ListRow
+            title={t('privacy.technical')}
+            info={t('privacy.technicalDetail')}
+            divider={false}
+            right={chevron}
+            onPress={() => router.push('/profile/data')}
+          />
         </Card>
 
         <View style={{ gap: 8, paddingTop: 8 }}>
