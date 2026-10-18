@@ -4,7 +4,7 @@ import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
-import { AnimatedPressable, usePressScale } from './motion';
+import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
 
 /**
  * `outline` = round white button with a hairline border (headers of the main pages, cards);
@@ -45,7 +45,7 @@ export function IconButton({
   const kind = look ?? inherited;
   const plain = kind === 'plain';
   const soft = kind === 'soft';
-  const press = usePressScale(0.92);
+  const press = usePressScale(pressFeedback.icon);
   const box = Math.max(size, touch.minTarget);
   return (
     <AnimatedPressable
@@ -78,7 +78,7 @@ export function IconButton({
               : colors.surface,
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,
+          opacity: disabled ? 0.4 : press.opacity,
         },
         style,
         press.style,

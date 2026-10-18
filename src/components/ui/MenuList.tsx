@@ -1,8 +1,9 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
+import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
 import { Text } from './Text';
 
 export type MenuItem = {
@@ -34,57 +35,7 @@ export function MenuList({ items, title }: { items: readonly MenuItem[]; title?:
       }}
     >
       {items.map((r, j) => (
-        <Pressable
-          key={r.label}
-          accessibilityRole="button"
-          accessibilityLabel={[r.label, r.value, r.help].filter(Boolean).join(', ')}
-          onPress={() => {
-            tick();
-            r.onPress();
-          }}
-          style={({ pressed }) => ({
-            minHeight: Math.max(56, touch.listRowMin),
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingVertical: 6,
-            borderTopWidth: j === 0 ? 0 : 1,
-            borderColor: colors.divider,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: radius.tile,
-              backgroundColor: colors.surfaceAlt,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name={r.icon} size={18} color={colors.text} />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text medium>{r.label}</Text>
-            {r.help ? (
-              <Text variant="bodyS" muted>
-                {r.help}
-              </Text>
-            ) : null}
-          </View>
-          {r.value ? (
-            <Text
-              variant="bodyS"
-              muted
-              numberOfLines={1}
-              style={{ flexShrink: 1, maxWidth: '45%', textAlign: 'right' }}
-            >
-              {r.value}
-            </Text>
-          ) : null}
-          <Icon name="chevronRight" size={18} color={colors.textPlaceholderIcon} />
-        </Pressable>
+        <MenuRow key={r.label} item={r} first={j === 0} />
       ))}
     </View>
   );
@@ -94,6 +45,68 @@ export function MenuList({ items, title }: { items: readonly MenuItem[]; title?:
       <SectionLabel>{title}</SectionLabel>
       {card}
     </View>
+  );
+}
+
+function MenuRow({ item: r, first }: { item: MenuItem; first: boolean }) {
+  const { colors } = useTheme();
+  const press = usePressScale(pressFeedback.surface);
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={[r.label, r.value, r.help].filter(Boolean).join(', ')}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      onPress={() => {
+        tick();
+        r.onPress();
+      }}
+      style={[
+        {
+          minHeight: Math.max(56, touch.listRowMin),
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingVertical: 6,
+          borderTopWidth: first ? 0 : 1,
+          borderColor: colors.divider,
+          opacity: press.opacity,
+        },
+        press.style,
+      ]}
+    >
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: radius.tile,
+          backgroundColor: colors.surfaceAlt,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={r.icon} size={18} color={colors.text} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text medium>{r.label}</Text>
+        {r.help ? (
+          <Text variant="bodyS" muted>
+            {r.help}
+          </Text>
+        ) : null}
+      </View>
+      {r.value ? (
+        <Text
+          variant="bodyS"
+          muted
+          numberOfLines={1}
+          style={{ flexShrink: 1, maxWidth: '45%', textAlign: 'right' }}
+        >
+          {r.value}
+        </Text>
+      ) : null}
+      <Icon name="chevronRight" size={18} color={colors.textPlaceholderIcon} />
+    </AnimatedPressable>
   );
 }
 
