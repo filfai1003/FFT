@@ -209,6 +209,26 @@ function MeNumbers({ records }: { records: ReactNode }) {
     fatDelta == null || fatDelta === 0 ? 'neutral' : fatDelta < 0 ? 'better' : 'worse';
   const weightLine = body.weight.buckets.filter((v): v is number => v != null);
   const fatLine = body.bodyFat.buckets.filter((v): v is number => v != null);
+  // Waist: every value in the period, oldest first; smaller is better.
+  const waist = body.measures.waist;
+  const waistLine = (entries.data ?? [])
+    .filter((e) => e.day >= body.from && e.measures.waist != null)
+    .map((e) => e.measures.waist as number);
+  const waistArea: Area =
+    waist == null || waist.delta === 0 ? 'neutral' : waist.delta < 0 ? 'better' : 'worse';
+  const weightStart = body.weight.points[0]?.value;
+  // The line takes the colour of the change: green better, red worse, black otherwise.
+  const lineColor = (a: Area) =>
+    a === 'better' ? colors.success : a === 'worse' ? colors.danger : colors.text;
+  const lineFill = (a: Area) =>
+    a === 'better' ? colors.successSoft : a === 'worse' ? colors.dangerSoft : colors.surfaceAlt;
+  const weekKg =
+    body.weight.latestKg != null && body.weight.sevenDayKg != null && weightLine.length > 1
+      ? displayWeight(
+          Math.abs(body.weight.latestKg - (weightLine.at(-2) ?? body.weight.latestKg)),
+          unit,
+        ) * Math.sign(body.weight.latestKg - (weightLine.at(-2) ?? body.weight.latestKg))
+      : null;
 
   return (
     <>
@@ -222,35 +242,63 @@ function MeNumbers({ records }: { records: ReactNode }) {
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <Text variant="displayL" numeric>
+            <Text variant="displayL" numeric style={{ fontSize: 48, lineHeight: 50 }}>
               {weightValue ?? '—'}
             </Text>
             <Text muted>{unit}</Text>
           </View>
           {weightDelta != null ? (
-            <StatusChip
-              area={weightArea}
-              icon={weightDelta < 0 ? 'arrowDown' : weightDelta > 0 ? 'arrowUp' : undefined}
-              label={`${signed(weightDelta)} ${unit}`}
-            />
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <StatusChip
+                area={weightArea}
+                icon={weightDelta < 0 ? 'arrowDown' : weightDelta > 0 ? 'arrowUp' : undefined}
+                label={`${signed(Math.abs(weightDelta))} ${unit}`.replace(/^\+/, '')}
+              />
+              {weightStart != null ? (
+                <Text variant="label" muted numeric>
+                  {t('progress.fromValue', {
+                    value: displayWeight(weightStart, unit).toFixed(1),
+                    unit,
+                  })}
+                </Text>
+              ) : null}
+            </View>
           ) : null}
         </View>
         {weightLine.length > 1 ? (
-          <Sparkline
-            values={weightLine}
-            height={96}
-            accessibilityLabel={t('progress.weightLine')}
-          />
+          <>
+            <Sparkline
+              values={weightLine}
+              height={110}
+              color={lineColor(weightArea)}
+              fill={lineFill(weightArea)}
+              accessibilityLabel={t('progress.weightLine')}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="label" muted>
+                {dayMonth(body.from)}
+              </Text>
+              {weekKg != null ? (
+                <Text variant="label" muted numeric>
+                  {t('progress.thisWeek', { value: `${signed(weekKg)} ${unit}` })}
+                </Text>
+              ) : null}
+              <Text variant="label" muted>
+                {t('common.today')}
+              </Text>
+            </View>
+          </>
         ) : null}
       </Card>
 
-      <Card
-        onPress={() => router.push('/progress/body')}
-        accessibilityLabel={t('progress.tabFat')}
-        gap={10}
-      >
-        <CardHead label={t('progress.tabFat')} icon="heart" />
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Card
+          onPress={() => router.push('/progress/body')}
+          accessibilityLabel={t('progress.tabFat')}
+          gap={10}
+          style={{ flex: 1 }}
+        >
+          <CardHead label={t('progress.tabFat')} icon="heart" compact />
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
             <Text variant="displayM" numeric>
               {body.bodyFat.latestPct ?? '—'}
@@ -259,20 +307,56 @@ function MeNumbers({ records }: { records: ReactNode }) {
               {'%'}
             </Text>
           </View>
-          <View style={{ flex: 1 }}>
-            {fatLine.length > 1 ? (
-              <Sparkline values={fatLine} height={44} accessibilityLabel={t('progress.fatLine')} />
+          {fatLine.length > 1 ? (
+            <Sparkline
+              values={fatLine}
+              height={44}
+              color={lineColor(fatArea)}
+              accessibilityLabel={t('progress.fatLine')}
+            />
+          ) : null}
+          {fatDelta != null ? (
+            <StatusChip
+              area={fatArea}
+              icon={fatDelta < 0 ? 'arrowDown' : fatDelta > 0 ? 'arrowUp' : undefined}
+              label={t('progress.pts', { delta: signed(Math.abs(fatDelta)).replace(/^\+/, '') })}
+            />
+          ) : null}
+        </Card>
+        {waist ? (
+          <Card
+            onPress={() => router.push('/progress/body')}
+            accessibilityLabel={t('progress.waist')}
+            gap={10}
+            style={{ flex: 1 }}
+          >
+            <CardHead label={t('progress.waist')} icon="list" compact />
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+              <Text variant="displayM" numeric>
+                {String(waist.value)}
+              </Text>
+              <Text variant="bodyS" muted>
+                {'cm'}
+              </Text>
+            </View>
+            {waistLine.length > 1 ? (
+              <Sparkline
+                values={waistLine}
+                height={44}
+                color={lineColor(waistArea)}
+                accessibilityLabel={t('progress.waistLine')}
+              />
             ) : null}
-          </View>
-        </View>
-        {fatDelta != null ? (
-          <StatusChip
-            area={fatArea}
-            icon={fatDelta < 0 ? 'arrowDown' : fatDelta > 0 ? 'arrowUp' : undefined}
-            label={t('progress.pts', { delta: signed(fatDelta) })}
-          />
+            {waist.delta !== 0 ? (
+              <StatusChip
+                area={waistArea}
+                icon={waist.delta < 0 ? 'arrowDown' : 'arrowUp'}
+                label={`${Math.abs(waist.delta)} cm`}
+              />
+            ) : null}
+          </Card>
         ) : null}
-      </Card>
+      </View>
 
       <Card
         onPress={() => router.push('/progress/strength')}
@@ -378,19 +462,22 @@ function CardHead({
   label,
   icon,
   area = 'neutral',
+  compact = false,
 }: {
   label: string;
   icon?: IconName;
   area?: Area;
+  /** Half-width card: smaller tile, no chevron. */
+  compact?: boolean;
 }) {
   const { colors } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      {icon ? <IconTile icon={icon} area={area} size={36} /> : null}
-      <Text semibold style={{ flex: 1 }}>
+      {icon ? <IconTile icon={icon} area={area} size={compact ? 32 : 36} /> : null}
+      <Text semibold style={{ flex: 1 }} numberOfLines={1}>
         {label}
       </Text>
-      <Icon name="chevronRight" size={16} color={colors.textMuted} />
+      {compact ? null : <Icon name="chevronRight" size={16} color={colors.textMuted} />}
     </View>
   );
 }
