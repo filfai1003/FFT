@@ -59,6 +59,49 @@ const SYNC_OFF =
 const ENCRYPTED =
   'Your copy on the server is end-to-end encrypted: our server cannot read it, so an AI app cannot use it. To connect one, turn the encryption off in the FFT app (Profile > Privacy & data), then sign in again.';
 
+/**
+ * The caller's address behind Railway's proxy: the LAST X-Forwarded-For value, the one the proxy
+ * added itself (the first ones are whatever the caller sent, so anyone could pick a new one for
+ * each try). Same rule as the admin panel.
+ */
+export function clientIp(forwardedFor, remoteAddress = '') {
+  const hops = String(forwardedFor ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return hops.at(-1) ?? String(remoteAddress ?? '');
+}
+
+/**
+ * Failed sign-ins per account (email), whatever address they come from: after LOCK_AFTER wrong
+ * passwords within LOCK_MINUTES the email is locked for LOCK_MINUTES (the app's own sign-in is not
+ * affected; this page signs in through the server, so the auth service's limits per address do
+ * not see the caller).
+ */
+const LOCK_AFTER = 5;
+const LOCK_MINUTES = 15;
+function lockouts() {
+  const seen = new Map();
+  const now = () => Date.now();
+  return {
+    locked(key) {
+      const s = seen.get(key);
+      return Boolean(s && s.until > now());
+    },
+    fail(key) {
+      let s = seen.get(key);
+      if (!s || s.since < now() - LOCK_MINUTES * 60000) s = { since: now(), n: 0, until: 0 };
+      s.n += 1;
+      if (s.n >= LOCK_AFTER) s.until = now() + LOCK_MINUTES * 60000;
+      if (seen.size > 10000) seen.clear();
+      seen.set(key, s);
+    },
+    ok(key) {
+      seen.delete(key);
+    },
+  };
+}
+
 /** A counter per key and time window: true once the key went over `max` in the window. */
 function limiter(windowMs, max) {
   const seen = new Map();
@@ -85,6 +128,7 @@ export function createOAuth({ sql, signIn, base, extraRedirectHosts = [] }) {
   const hostOf = (u) => redirectHost(u, extraHosts);
   const tooMany = limiter(60000, LOGINS_PER_MINUTE);
   const tooManyRegistrations = limiter(3600000, REGISTRATIONS_PER_HOUR);
+  const accounts = lockouts();
 
   const json = (status, body, headers = {}) => ({
     status,
@@ -257,8 +301,22 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     if (error) return error;
     if (tooMany(ip))
       return page(p, client, host, 'Too many attempts. Wait a minute and try again.');
-    const userId = await signIn(String(p.email ?? '').trim(), String(p.password ?? ''));
-    if (!userId) return page(p, client, host, 'Wrong email or password.');
+    const email = String(p.email ?? '').trim();
+    const account = email.toLowerCase();
+    // Same answer whether the account exists or not.
+    if (accounts.locked(account))
+      return page(
+        p,
+        client,
+        host,
+        `Too many wrong passwords for this email. Wait ${LOCK_MINUTES} minutes and try again.`,
+      );
+    const userId = await signIn(email, String(p.password ?? ''));
+    if (!userId) {
+      accounts.fail(account);
+      return page(p, client, host, 'Wrong email or password.');
+    }
+    accounts.ok(account);
     // The AI app would read and write the copy on the server: none when the user keeps the data
     // on the phone only (DECISIONS 62).
     const [synced] = await sql(

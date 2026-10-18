@@ -17,6 +17,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Requests per user and minute. */
 const PER_MINUTE = 120;
+/** Messages in one MCP batch (each counts toward PER_MINUTE). */
+const MAX_BATCH = 20;
 const MCP_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 export class ApiError extends Error {
@@ -593,19 +595,20 @@ const ROUTES = [
  */
 export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
   const hits = new Map();
-  const limited = (userId) => {
+  /** Counts `cost` requests (an MCP batch counts each of its messages) and says if over the limit. */
+  const limited = (userId, cost = 1) => {
     const minute = Math.floor(Date.now() / 60000);
     const h = hits.get(userId);
     if (!h || h.minute !== minute) {
       if (hits.size > 10000) hits.clear();
-      hits.set(userId, { minute, n: 1 });
-      return false;
+      hits.set(userId, { minute, n: cost });
+      return cost > perMinute;
     }
-    h.n += 1;
+    h.n += cost;
     return h.n > perMinute;
   };
 
-  async function authed(headers) {
+  async function authed(headers, cost = 1) {
     const auth = String(headers.authorization ?? '');
     const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     if (!token.startsWith('fft_'))
@@ -617,7 +620,7 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
     if (found.sync !== true) throw new ApiError(403, SYNC_OFF);
     // End-to-end encrypted (DECISIONS 64): the server cannot read the data.
     if (found.encrypted === true) throw new ApiError(403, ENCRYPTED);
-    if (limited(found.userId))
+    if (limited(found.userId, cost))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
     return {
       userId: found.userId,
@@ -747,9 +750,24 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
   async function mcp(method, headers, body) {
     if (method !== 'POST')
       return { status: 405, body: { error: 'use POST' }, headers: { allow: 'POST' } };
-    const auth = await authed(headers);
+    // A batch counts as many requests as it has messages (DECISIONS 76), and is at most 20.
+    if (Array.isArray(body) && body.length > MAX_BATCH)
+      return {
+        status: 400,
+        body: {
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32600, message: `at most ${MAX_BATCH} messages in a batch` },
+        },
+      };
+    const auth = await authed(headers, Array.isArray(body) ? Math.max(1, body.length) : 1);
     if (Array.isArray(body)) {
-      const out = (await Promise.all(body.map((m) => mcpMessage(m, auth)))).filter(Boolean);
+      const out = [];
+      // One after the other: a batch does not open many transactions at once.
+      for (const m of body) {
+        const r = await mcpMessage(m, auth);
+        if (r) out.push(r);
+      }
       return out.length ? { status: 200, body: out } : { status: 202, body: null };
     }
     const out = await mcpMessage(body, auth);

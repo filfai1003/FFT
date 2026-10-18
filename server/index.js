@@ -7,7 +7,7 @@ import http from 'node:http';
 import pg from 'pg';
 import { createApi, pgDatabase } from './api.js';
 import { createApkPublisher } from './apk.js';
-import { createOAuth } from './oauth.js';
+import { clientIp, createOAuth } from './oauth.js';
 import { migrate } from './migrate.js';
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
@@ -80,9 +80,7 @@ async function serveOAuth(req, res, url, raw) {
     query: Object.fromEntries(url.searchParams),
     body,
     headers: req.headers,
-    ip: String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '')
-      .split(',')[0]
-      .trim(),
+    ip: clientIp(req.headers['x-forwarded-for'], req.socket.remoteAddress),
   });
   if (!out) return void res.writeHead(404).end('not found');
   res.writeHead(out.status, { ...cors, ...out.headers });

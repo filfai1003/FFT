@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
-import { createOAuth } from '../../server/oauth.js';
+import { clientIp, createOAuth } from '../../server/oauth.js';
 import { createApkPublisher } from '../../server/apk.js';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { createHash } from 'node:crypto';
@@ -1070,6 +1070,23 @@ describe('personal API and MCP (server/api.js)', () => {
       'Bearer resource_metadata="https://api.test/.well-known/oauth-protected-resource"',
     );
   });
+
+  it('an MCP batch counts each message toward the limit, and is at most 20 (DECISIONS 76)', async () => {
+    const small = createApi(testDb, { perMinute: 5 });
+    const batch = (n) =>
+      small({
+        method: 'POST',
+        path: '/mcp',
+        headers: { authorization: `Bearer ${token}` },
+        body: Array.from({ length: n }, (_, i) => ({ jsonrpc: '2.0', id: i + 1, method: 'ping' })),
+      });
+    assert.equal((await batch(21)).status, 400);
+    const four = await batch(4);
+    assert.equal(four.status, 200);
+    assert.equal(four.body.length, 4);
+    // 4 + 2 = 6 > 5: refused, although it is only the second request.
+    assert.equal((await batch(2)).status, 429);
+  });
 });
 
 describe('sign in with FFT for AI apps (server/oauth.js)', () => {
@@ -1549,6 +1566,65 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       const [after] = (await live()).rows;
       assert.ok(after.refresh_expires_at && after.ends_at);
     });
+  });
+});
+
+describe('sign-in limits of the AI app sign-in (DECISIONS 76)', () => {
+  it('the caller address is the last X-Forwarded-For hop (the one the proxy added)', () => {
+    assert.equal(clientIp('6.6.6.6, 1.2.3.4', '10.0.0.1'), '1.2.3.4');
+    assert.equal(clientIp('1.2.3.4'), '1.2.3.4');
+    assert.equal(clientIp(undefined, '10.0.0.1'), '10.0.0.1');
+    assert.equal(clientIp('', '10.0.0.1'), '10.0.0.1');
+  });
+
+  it('5 wrong passwords for one email lock it for 15 minutes, from any address', async () => {
+    let checks = 0;
+    const oauth = createOAuth({
+      sql: async (text, params) => {
+        await admin();
+        return (await db.query(text, params)).rows;
+      },
+      signIn: async (email, password) => {
+        checks += 1;
+        return password === 'right' && email === 'a@test.dev' ? A : null;
+      },
+      base: 'https://api.test',
+    });
+    const REDIRECT = 'https://claude.ai/api/mcp/auth_callback';
+    const reg = await oauth({
+      method: 'POST',
+      path: '/oauth/register',
+      body: { redirect_uris: [REDIRECT], client_name: 'Claude' },
+      query: {},
+      headers: {},
+      ip: '4.4.4.4',
+    });
+    const clientId = JSON.parse(reg.body).client_id;
+    let n = 0;
+    const attempt = (email, password) =>
+      oauth({
+        method: 'POST',
+        path: '/oauth/authorize',
+        body: {
+          client_id: clientId,
+          redirect_uri: REDIRECT,
+          code_challenge: 'c'.repeat(43),
+          email,
+          password,
+        },
+        query: {},
+        headers: {},
+        // A new address every time: the limit per address does not help here.
+        ip: `4.4.5.${(n += 1)}`,
+      });
+    for (let i = 0; i < 5; i += 1)
+      assert.match((await attempt('A@test.dev ', `guess${i}`)).body, /Wrong email or password/);
+    const locked = await attempt('a@test.dev', 'right');
+    assert.equal(locked.status, 400);
+    assert.match(locked.body, /Too many wrong passwords for this email/);
+    assert.equal(checks, 5, 'a locked email is not even checked');
+    // Another email is not affected; the same answer for an unknown one.
+    assert.match((await attempt('nobody@test.dev', 'x')).body, /Wrong email or password/);
   });
 });
 
