@@ -127,21 +127,31 @@ async function backupDatabase(stamp) {
 /**
  * The deletion log (DECISIONS 80), apart from the dumps: the ids of the deleted accounts, so a
  * restore can delete again the accounts deleted after the dump it loads. Overwritten every night.
+ * Also `deletions/rows.json.enc` (DECISIONS 98): the rows deleted for good in the last 190 days
+ * (tombstones: table and row id only), so a restore can delete them again too.
  */
 async function backupDeletions(db) {
   const { rows } = await db.query(
     'select user_id, deleted_at from public.deleted_accounts order by deleted_at',
   );
-  const body = encryptBuffer(Buffer.from(JSON.stringify(rows)));
-  await s3.send(
-    new PutObjectCommand({
-      Bucket,
-      Key: 'deletions/latest.json.enc',
-      Body: body,
-      ContentLength: body.length,
-      ContentType: 'application/octet-stream',
-    }),
+  const tomb = await db.query(
+    'select table_name as "table", row_id as id from public.sync_tombstones order by server_at',
   );
+  for (const [Key, list] of [
+    ['deletions/latest.json.enc', rows],
+    ['deletions/rows.json.enc', tomb.rows],
+  ]) {
+    const body = encryptBuffer(Buffer.from(JSON.stringify(list)));
+    await s3.send(
+      new PutObjectCommand({
+        Bucket,
+        Key,
+        Body: body,
+        ContentLength: body.length,
+        ContentType: 'application/octet-stream',
+      }),
+    );
+  }
   return rows.length;
 }
 

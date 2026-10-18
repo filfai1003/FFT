@@ -228,12 +228,26 @@ the repository; nothing here changes Railway by itself):
      (`restore.mjs … deletions.json`); if the old database can still be read, also save its list
      (`psql "$OLD_DATABASE_URL" -At -c "select user_id from public.deleted_accounts" > ids.txt`).
      Then, against the restored database and storage:
-     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt]`
+     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt] --rows rows.json`
      (deletes those accounts with everything they own, and their files in the three buckets).
-  6. Delete the decrypted files (dump.sql, data.sql, deletions.json, photos) from your computer.
+     **The purge too** (DECISIONS 98): a dump older than a purge has the purged rows again. Decrypt
+     `deletions/rows.json.enc` to `rows.json` (rows deleted for good in the last 190 days, from the
+     tombstones; if the old database can still be read, export them from there instead:
+     `psql "$OLD_DATABASE_URL" -At -c "select json_agg(json_build_object('table', table_name, 'id', row_id)) from public.sync_tombstones" > rows.json`)
+     and pass it with `--rows` as above: those rows are deleted again and their files queued in
+     `files_to_delete`, which the api service empties when it starts. Then start the api service
+     once more (or wait for its daily clean-up), which also purges the rows that were already marked
+     deleted in the dump. Limit: rows deleted in the app less than 7 days before the restore (still
+     only marked deleted, no tombstone yet) come back unless a phone sends the deletion again.
+  6. Delete the decrypted files (dump.sql, data.sql, deletions.json, rows.json, photos) from your
+     computer.
   7. Not in the backups (put back by hand): the files of the public buckets `exercise-images`
      (`npm run db:images`) and `downloads` (run the `Publish APK` workflow). The sealed files of
      `vault-files` are in the backups since 2026-10-18 (step 4, like the photos; still sealed by
      the phones, so only their owners can open them).
 - Deleted data (DECISIONS 79): the api service deletes for good, every day, rows deleted more than
-  7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.
+  7 days ago (`purge_deleted`) and their files, and tombstones after 190 days (as long as the
+  oldest backup, DECISIONS 98). Files are queued in `public.files_to_delete` together with the row
+  deletion and leave the queue only when storage confirmed the removal; a failed removal is tried
+  again at the next clean-up (`attempts` and `last_error` show it; a growing queue means storage
+  refuses the service key or is down).

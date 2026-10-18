@@ -1695,6 +1695,16 @@ describe('deleted rows are purged after a week (purge_deleted, DECISIONS 79)', (
       out.files.filter((f) => f.path.startsWith(B)),
       [{ bucket: 'progress-photos', path: `${B}/gone.jpg` }],
     );
+    // The file is queued with the row deletion and stays queued until storage removed it (98).
+    assert.equal(
+      await count(
+        `select count(*) as n from public.files_to_delete where bucket = 'progress-photos' and path = $1`,
+        [`${B}/gone.jpg`],
+      ),
+      1,
+    );
+    await rejects('set role authenticated; select * from public.files_to_delete', '42501');
+    await admin();
     // The other devices learn it from a tombstone (id only).
     assert.equal(
       await count(
@@ -1704,11 +1714,53 @@ describe('deleted rows are purged after a week (purge_deleted, DECISIONS 79)', (
     );
   });
 
-  it('tombstones and sealed deletions go after 90 days', async () => {
+  it('after a restore, rows deleted for good since the dump are deleted again (DECISIONS 98)', async () => {
+    await admin();
+    const back = randomUUID();
+    const photo = randomUUID();
+    const live = randomUUID();
+    // The restored database has them again, as if never deleted.
+    await db.exec(`
+      insert into public.water_logs (id, user_id, day, ml) values
+        ('${back}', '${B}', '2026-09-02', 250), ('${live}', '${B}', '2026-09-03', 250);
+      insert into public.progress_photos (id, user_id, day, pose, storage_path) values
+        ('${photo}', '${B}', '2026-09-02', 'side', '${B}/back-again.jpg');
+    `);
+    const n = (
+      await one('select public.reapply_row_deletions($1::jsonb) as n', [
+        JSON.stringify([
+          { table: 'water_logs', id: back },
+          { table: 'progress_photos', id: photo },
+          { table: 'not_a_table', id: live },
+          { table: 'water_logs', id: randomUUID() },
+        ]),
+      ])
+    ).n;
+    assert.equal(n, 2);
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where id = '${back}'`),
+      0,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where id = '${live}'`),
+      1,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.files_to_delete where path = $1`, [
+        `${B}/back-again.jpg`,
+      ]),
+      1,
+    );
+    await as(B);
+    await rejects(`select public.reapply_row_deletions('[]'::jsonb)`, '42501');
+    await admin();
+  });
+
+  it('tombstones go after 190 days (as long as the oldest backup, DECISIONS 98)', async () => {
     await admin();
     await db.exec(`
       insert into public.sync_tombstones (user_id, table_name, row_id, server_at) values
-        ('${B}', 'water_logs', 'old-one', now() - interval '91 days'),
+        ('${B}', 'water_logs', 'old-one', now() - interval '191 days'),
         ('${B}', 'water_logs', 'new-one', now() - interval '10 days');
     `);
     await db.query('select public.purge_deleted(7)');
@@ -3021,6 +3073,7 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     admin_audit: 'details naming the account are replaced',
     oauth_clients: 'an app used only by this account goes',
     food_servings: 'through its food (foods.owner_id, cascade)',
+    files_to_delete: 'queued paths in the account folder go (DECISIONS 98)',
   };
   /** Rows for Z where no other account's row can be copied (the table is empty by then). */
   const EXPLICIT = {
@@ -3192,6 +3245,10 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
       `insert into public.app_errors (user_id, fingerprint, kind, message, platform)
        values ($1, 'zed', 'crash', 'zed crashed', 'android')`,
       [Z],
+    );
+    await db.query(
+      `insert into public.files_to_delete (bucket, path) values ('progress-photos', $1)`,
+      [`${Z}/queued.jpg`],
     );
 
     // The real path: the delete-account function removes the files, then deletes the auth user.
