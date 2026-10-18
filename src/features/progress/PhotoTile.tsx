@@ -1,3 +1,4 @@
+import { usePhotoScreenPrivacy } from '@/features/profile/screen-privacy';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +39,8 @@ export function PhotoTile({
   const blur = usePrivacyStore((s) => s.blurPhotos);
   const lock = usePrivacyStore((s) => s.lockPhotos);
   const url = usePhotoUrl(photo?.path);
+  // A screen showing a photo stays out of screenshots and recent apps (DECISIONS 95).
+  usePhotoScreenPrivacy(photo != null);
   const [shown, setShown] = useState(false);
   const isShown = revealed || shown || !blur;
 

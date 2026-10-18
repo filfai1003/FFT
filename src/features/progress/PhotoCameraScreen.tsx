@@ -1,3 +1,4 @@
+import { usePhotoScreenPrivacy } from '@/features/profile/screen-privacy';
 import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +18,8 @@ import { usePhotoDraft } from './photo-draft';
 
 /** Camera for a check-in photo, with a faint outline of the last photo of the same pose. */
 export function PhotoCameraScreen() {
+  // Kept out of screenshots and recent apps (DECISIONS 95).
+  usePhotoScreenPrivacy();
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();

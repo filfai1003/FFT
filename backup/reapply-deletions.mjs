@@ -1,11 +1,14 @@
 // After restoring a backup (DECISIONS 80): deletes again the accounts deleted since the dump was
 // made, with their files, so a restore never brings a deleted account back.
 //   DATABASE_URL=<the restored database> SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… \
-//     node backup/reapply-deletions.mjs <deletions.json> [more.json | ids.txt …]
+//     node backup/reapply-deletions.mjs <deletions.json> [more.json | ids.txt …] [--rows rows.json]
 // Inputs: the deletion log from the backups bucket (deletions/latest.json.enc, decrypted with
 // restore.mjs), and, if the old database can still be read, its list too
 // (`psql -At -c "select user_id from public.deleted_accounts" > ids.txt`). JSON (rows with user_id,
 // or plain ids) or one id per line.
+// --rows: the rows deleted for good (deletions/rows.json.enc, decrypted; DECISIONS 98) are deleted
+// again too; their files are queued in files_to_delete and removed by the api service (it empties
+// the queue at start and every day).
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { idsOf } from './retention.mjs';
@@ -49,7 +52,10 @@ async function filesOf(bucket, prefix) {
 }
 
 async function main() {
-  const files = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const r = args.indexOf('--rows');
+  const rowsFile = r >= 0 ? args[r + 1] : null;
+  const files = r >= 0 ? args.filter((_, i) => i !== r && i !== r + 1) : args;
   if (!files.length) {
     console.error('usage: node backup/reapply-deletions.mjs <deletions.json> [more …]');
     process.exit(2);
@@ -62,6 +68,15 @@ async function main() {
     console.log(
       `${ids.length} deleted accounts in the log; ${rows[0].n} were back and are deleted again`,
     );
+    if (rowsFile) {
+      const list = JSON.parse(readFileSync(rowsFile, 'utf8'));
+      const res = await db.query('select public.reapply_row_deletions($1::jsonb) as n', [
+        JSON.stringify(list),
+      ]);
+      console.log(
+        `${list.length} rows deleted for good in the log; ${res.rows[0].n} were back and are deleted again`,
+      );
+    }
   } finally {
     await db.end();
   }

@@ -1,11 +1,15 @@
+import { randomBytes } from 'node:crypto';
 import pg from 'pg';
+import { PANEL_ROLE, panelRoleSetup } from './roles.js';
 
 /**
  * Two ways into the database:
  *  - `ro`: the role admin_ro, which can only read. Used all the time. It cannot write whatever the SQL
  *    says (not even with tricks like COMMIT or SET TRANSACTION READ WRITE), because the role itself
  *    has no right to.
- *  - `rw`: the database owner. Used only in sudo mode.
+ *  - `rw`: the role admin_panel (admin/roles.js), used only in sudo mode. It changes data like the
+ *    owner did but cannot change or delete the admin log and owns nothing (DECISIONS 97). The
+ *    database owner (`owner`) is used only at start, to set up both roles.
  */
 export function createDb({ databaseUrl, roPassword }) {
   if (!/^[A-Za-z0-9_-]{16,}$/.test(roPassword))
@@ -15,21 +19,28 @@ export function createDb({ databaseUrl, roPassword }) {
   roUrl.username = 'admin_ro';
   roUrl.password = roPassword;
 
-  const rw = new pg.Pool({ connectionString: rwUrl.toString(), max: 4 });
-  const ro = new pg.Pool({ connectionString: roUrl.toString(), max: 4 });
-  for (const p of [rw, ro]) p.on('error', (e) => console.error('pool error', e.message));
+  const panelPassword = randomBytes(24).toString('base64url');
+  const panelUrl = new URL(databaseUrl);
+  panelUrl.username = PANEL_ROLE;
+  panelUrl.password = panelPassword;
 
-  /** Creates the read-only role (or refreshes its password) at start. */
+  const owner = new pg.Pool({ connectionString: rwUrl.toString(), max: 1 });
+  const rw = new pg.Pool({ connectionString: panelUrl.toString(), max: 4 });
+  const ro = new pg.Pool({ connectionString: roUrl.toString(), max: 4 });
+  for (const p of [owner, rw, ro]) p.on('error', (e) => console.error('pool error', e.message));
+
+  /** Creates the two roles (or refreshes their passwords and rights) at start. */
   async function setup() {
-    await rw.query(`do $$ begin
+    for (const sql of panelRoleSetup(panelPassword)) await owner.query(sql);
+    await owner.query(`do $$ begin
       if not exists (select 1 from pg_roles where rolname = 'admin_ro') then create role admin_ro login; end if;
     end $$`);
-    await rw.query(`alter role admin_ro with login password '${roPassword}'`);
-    await rw.query('grant pg_read_all_data to admin_ro');
+    await owner.query(`alter role admin_ro with login password '${roPassword}'`);
+    await owner.query('grant pg_read_all_data to admin_ro');
     // Row level security protects users from each other; the admin has to see everything.
-    await rw.query('alter role admin_ro bypassrls');
-    await rw.query(`alter role admin_ro set default_transaction_read_only = on`);
-    await rw.query(`alter role admin_ro set statement_timeout = '15s'`);
+    await owner.query('alter role admin_ro bypassrls');
+    await owner.query(`alter role admin_ro set default_transaction_read_only = on`);
+    await owner.query(`alter role admin_ro set statement_timeout = '15s'`);
   }
 
   const jsonValue = (v) => {

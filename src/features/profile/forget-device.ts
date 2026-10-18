@@ -3,6 +3,7 @@ import { useAiAccessStore } from '@/features/ai/access';
 import { useConversations } from '@/features/ai/agent/conversations';
 import { useAiSettings } from '@/features/ai/settings-store';
 import { relayKeysOf } from '@/features/premium/relay';
+import { connectionsSeenKeyOf } from '@/features/premium/connections';
 import { syncKeysOf } from '@/features/premium/sync';
 import { forgetVaultKey } from '@/features/premium/vault-key';
 import { planKeyOf } from '@/lib/plan';
@@ -27,6 +28,7 @@ export async function forgetAccountOnDevice(
     ...relay.plain,
     planKeyOf(userId),
     consentKeyOf(userId),
+    connectionsSeenKeyOf(userId),
   ]).catch(() => undefined);
   for (const k of relay.secure) await authStorage.removeItem(k).catch(() => undefined);
   await forgetVaultKey(userId).catch(() => undefined);

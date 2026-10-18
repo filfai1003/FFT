@@ -146,8 +146,10 @@ async function logReadOnce(session, action, detail, what) {
   const at = lastReads.get(key);
   if (at && Date.now() - at < READ_REPEAT_MS) return;
   await logRead(action, detail);
-  if (lastReads.size > 5000) lastReads.clear();
+  // Oldest entries go first (Map keeps insertion order), never all at once (DECISIONS 97).
+  lastReads.delete(key);
   lastReads.set(key, Date.now());
+  while (lastReads.size > 5000) lastReads.delete(lastReads.keys().next().value);
 }
 
 async function api(req, res, url) {
@@ -583,7 +585,7 @@ async function api(req, res, url) {
     if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
     const temp = tempPassword();
     const out = await db.run(
-      `update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 10)),
+      `update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 12)),
                              updated_at = now()
        where id = $1 returning email`,
       {
@@ -663,7 +665,7 @@ async function api(req, res, url) {
     if (!found.rows[0][1]) throw new HttpError(404, 'No account with this email');
     const out = await db.run(
       `with u as (
-         update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 10)),
+         update auth.users set encrypted_password = extensions.crypt($2, extensions.gen_salt('bf', 12)),
                                updated_at = now()
          where lower(email) = $1 returning id),
        r as (update public.password_reset_requests set handled_at = now() where id = $3 returning id)
