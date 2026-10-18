@@ -11,7 +11,13 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { deviceTimeZone, localDay, shortDateLabel } from '@/domain/day';
+import { deviceTimeZone, localDay, localHour, shortDateLabel } from '@/domain/day';
+import { badgeCatalogue } from '@/domain/gamification';
+import { badgeName } from '@/features/gamification/components';
+import { useActivity, useTimeZone } from '@/features/gamification/data';
+import { NextBadgeCard } from '@/features/gamification/MeCards';
+import { useToday } from '@/features/profile/use-today';
+import { gameWithWorkout } from './summary-game';
 import { displayWeight } from '@/domain/units';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { formatClock, trimNumber } from './logic';
@@ -37,6 +43,9 @@ export function SummaryScreen() {
   const [feeling, setFeeling] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [showSets, setShowSets] = useState(false);
+  const activity = useActivity();
+  const today = useToday();
+  const tz = useTimeZone();
 
   if (!hydrated) return <Screen>{null}</Screen>;
   if (!finished) {
@@ -49,7 +58,24 @@ export function SummaryScreen() {
   }
 
   const { session, totals: sum, records } = finished;
-  const day = localDay(new Date(session.startedAt), deviceTimeZone());
+  const started = new Date(session.startedAt);
+  const day = localDay(started, deviceTimeZone());
+  // Streak and the next badge, this workout included (DECISIONS 89).
+  const game = activity.data
+    ? gameWithWorkout(
+        activity.data,
+        {
+          id: session.id,
+          day: localDay(started, tz),
+          hour: localHour(started, tz),
+          planId: session.planId,
+        },
+        today,
+      )
+    : null;
+  const streakBadge = badgeCatalogue.find(
+    (b) => b.metric === 'streak' && b.target === game?.nextStreak,
+  );
   const volume = displayWeight(sum.volumeKg, unit);
   const minutes = Math.max(1, Math.round(sum.durationS / 60));
 
@@ -76,20 +102,22 @@ export function SummaryScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={barHeight + 100} gap={16}>
-        <View style={{ gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <IconTile icon="trophy" area="streak" size={28} />
-            <Text variant="bodyS" muted>
-              {`${session.dayName} · ${shortDateLabel(day)}`}
-            </Text>
-          </View>
+        {/* Canvas "Workout summary": trophy, the day, "Workout done" and the records count. */}
+        <View style={{ gap: 6, alignItems: 'center' }}>
+          <IconTile icon="trophy" area="streak" size={80} />
+          <Text variant="bodyS" muted>
+            {`${session.dayName} · ${shortDateLabel(day)}`}
+          </Text>
           <Text
             variant="displayXL"
-            style={{ fontSize: 64, lineHeight: 64 }}
+            style={{ fontSize: 44, lineHeight: 48, textAlign: 'center' }}
             accessibilityRole="header"
           >
-            {t('summary.done')}
+            {t('summary.title')}
           </Text>
+          {records.length > 0 ? (
+            <Text semibold>{t('summary.recordsToday', { count: records.length })}</Text>
+          ) : null}
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -147,6 +175,30 @@ export function SummaryScreen() {
               </View>
             ))}
           </Card>
+        ) : null}
+
+        {game ? (
+          <>
+            <Card size="small" gap={4}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <IconTile icon="flame" area="streak" size={44} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text variant="displayS" numeric>
+                    {t('summary.streakDays', { count: game.streak })}
+                  </Text>
+                  <Text variant="bodyS" muted>
+                    {streakBadge && game.nextStreak
+                      ? t('game.moreDays', {
+                          count: game.nextStreak - game.streak,
+                          badge: badgeName(t, streakBadge.id),
+                        })
+                      : t('summary.streakKeep')}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+            <NextBadgeCard game={game} />
+          </>
         ) : null}
 
         <View
@@ -236,7 +288,7 @@ export function SummaryScreen() {
         </Text>
       </Screen>
       <BottomActionBar>
-        <Button size="large" label={t('summary.saveAndClose')} onPress={close} />
+        <Button size="large" label={t('summary.done')} onPress={close} />
       </BottomActionBar>
     </>
   );

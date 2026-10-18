@@ -562,6 +562,12 @@
   },
   "summary": {
     "done": "Done",
+    "title": "Workout done",
+    "recordsToday_one": "{{count}} new record today",
+    "recordsToday_other": "{{count}} new records today",
+    "streakDays_one": "{{count}} day streak",
+    "streakDays_other": "{{count}} day streak",
+    "streakKeep": "Keep logging every day to keep it going",
     "duration": "Duration",
     "min": "min",
     "volume": "Volume",
@@ -585,8 +591,7 @@
     "seeSets": "See all sets",
     "hideSets": "Hide sets",
     "minutes_one": "{{count}} minute of training",
-    "minutes_other": "{{count}} minutes of training",
-    "saveAndClose": "Save and close"
+    "minutes_other": "{{count}} minutes of training"
   },
   "history": {
     "title": "History",
