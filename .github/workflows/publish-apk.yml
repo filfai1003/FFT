@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  # To start App deploy after a new APK (see the last step).
+  actions: write
 
 concurrency:
   group: publish-apk
@@ -36,6 +38,7 @@ jobs:
           echo "id=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.id ?? ''")" >> "$GITHUB_OUTPUT"
           echo "url=$(node -p "JSON.parse(require('fs').readFileSync('build.json'))[0]?.artifacts?.buildUrl ?? ''")" >> "$GITHUB_OUTPUT"
       - name: Publish when it is new
+        id: publish
         if: steps.build.outputs.id != ''
         env:
           BUILD_ID: ${{ steps.build.outputs.id }}
@@ -46,3 +49,12 @@ jobs:
           if curl -fsSL "$SUPABASE_URL/storage/v1/object/public/downloads/config.js" | grep -q "$BUILD_ID"; then echo "Already published"; exit 0; fi
           curl -fsSL -o fft.apk "$BUILD_URL"
           APK_BUILD_ID="$BUILD_ID" node supabase/scripts/publish-apk.mjs fft.apk
+          echo "new=true" >> "$GITHUB_OUTPUT"
+      # An installed APK ignores updates older than its own build. Code pushed while the build ran
+      # (its update was published before the build finished) would never reach it: publish the
+      # latest code again, now newer than the APK.
+      - name: Publish the latest update again
+        if: steps.publish.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run app-deploy.yml --ref main
