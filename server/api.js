@@ -398,6 +398,8 @@ export const TOOLS = [
   {
     name: 'log_body',
     write: true,
+    // It overwrites the values already logged for that day (DECISIONS 97).
+    destructive: true,
     description:
       'Records weight, body fat or measurements for a day. A day has one entry: given values replace those of that day, the others stay.',
     inputSchema: {

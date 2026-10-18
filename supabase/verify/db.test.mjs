@@ -1098,7 +1098,7 @@ describe('personal API and MCP (server/api.js)', () => {
   it('MCP: tools that delete or replace say so; results are marked as data (DECISIONS 84)', async () => {
     const tools = (await mcp('tools/list')).result.tools;
     const hint = (n) => tools.find((t) => t.name === n)?.annotations.destructiveHint;
-    for (const n of ['remove_food_log', 'delete_food', 'propose_plans', 'update_food'])
+    for (const n of ['remove_food_log', 'delete_food', 'propose_plans', 'update_food', 'log_body'])
       assert.equal(hint(n), true, n);
     for (const n of ['log_water', 'log_food', 'get_day']) assert.equal(hint(n), false, n);
     const r = (await mcp('tools/call', { name: 'get_profile', arguments: {} })).result;
