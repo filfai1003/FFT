@@ -27,6 +27,8 @@ import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
+import { NewPlanSheet } from '@/features/train/NewPlanSheet';
+import { useAskCoach, useCoachReady } from '@/features/ai/use-coach-ready';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
@@ -380,6 +382,9 @@ export function WorkoutWidget({ size }: Props) {
   const { plan } = useActivePlan();
   const rotation = useRotation(plan);
   const { startDay } = useStartWorkout();
+  const [creating, setCreating] = useState(false);
+  const coachReady = useCoachReady();
+  const askCoach = useAskCoach();
   const tz = profile.data?.timezone ?? deviceTimeZone();
   const monthSessions = useMonthSessions(today.slice(0, 7));
   const doneToday = (monthSessions.data ?? []).filter(
@@ -512,22 +517,35 @@ export function WorkoutWidget({ size }: Props) {
       </>
     );
   } else {
+    // No plan: plan creation opens right here (and the coach can draft one when it is set up).
     body = (
       <View style={{ gap: 10 }}>
         <Text muted>{t('today.noPlan')}</Text>
         <Button
-          label={t('today.goTrain')}
+          label={t('train.createPlan')}
+          icon="plus"
           variant="secondary"
-          onPress={() => router.push('/train')}
+          onPress={() => setCreating(true)}
         />
+        {coachReady ? (
+          <Button
+            label={t('today.askCoachPlan')}
+            icon="chat"
+            variant="ghost"
+            onPress={() => askCoach(t('today.askCoachPlanPrompt'))}
+          />
+        ) : null}
       </View>
     );
   }
 
   return (
-    <Frame size={size} label={t('today.workout')} right={cycle}>
-      {body}
-    </Frame>
+    <>
+      <Frame size={size} label={t('today.workout')} right={cycle}>
+        {body}
+      </Frame>
+      <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />
+    </>
   );
 }
 
