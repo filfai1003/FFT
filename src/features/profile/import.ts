@@ -6,7 +6,7 @@ import { readUri } from '@/lib/read-uri';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Brings back an FFT export (the ZIP from Privacy & data → Export): data.json and the photos.
+ * Brings back an FFT export (the ZIP from Data & sync → Export): data.json and the photos.
  * Nothing on the device is deleted. A row of the file is added when it is not here, and replaces
  * the one here only when it was changed later (the most recent change wins, like the sync). The
  * rows become this account's, so an export of another account or device can be imported too.

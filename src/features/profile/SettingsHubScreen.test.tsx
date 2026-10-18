@@ -37,8 +37,29 @@ describe('Settings (the gear on your profile)', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/profile-edit');
     await fireEvent.press(screen.getByLabelText(/^Units, look and reminders/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/preferences');
-    await fireEvent.press(screen.getByLabelText(/^Privacy & data/));
+    await fireEvent.press(screen.getByLabelText(/^Privacy,/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/privacy');
+    await fireEvent.press(screen.getByLabelText(/^Data & sync,/));
+    expect(mockPush).toHaveBeenLastCalledWith('/profile/data');
+  });
+
+  it('the Data section: Privacy, then Data & sync, each with a help line, then API & MCP', async () => {
+    await renderUI(<SettingsHubScreen />);
+    expect(
+      screen.getByText('App lock, screenshots, consents, export, delete account'),
+    ).toBeTruthy();
+    expect(screen.getByText('Copy on the server, encryption, syncing your phones')).toBeTruthy();
+    const labels = screen
+      .getAllByRole('button')
+      .map((b) => b.props.accessibilityLabel as string | undefined)
+      .filter((l): l is string => !!l && /^(Privacy|Data & sync|API & MCP),/.test(l))
+      .map((l) => l.split(',')[0]);
+    expect(labels).toEqual(['Privacy', 'Data & sync', 'API & MCP']);
+  });
+
+  it('has no Help & feedback row (not built)', async () => {
+    await renderUI(<SettingsHubScreen />);
+    expect(screen.queryByText('Help & feedback')).toBeNull();
   });
 
   it('one Plans row (Free, Supporter and Premium) opens the plans page', async () => {

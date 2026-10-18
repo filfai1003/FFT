@@ -15,7 +15,7 @@ export function lockDue(backgroundAt: number | null, now: number, afterMin: numb
 }
 
 /**
- * Optional app lock (Settings › Privacy & data, DECISIONS 95): asks for fingerprint, face or the
+ * Optional app lock (Settings › Privacy, DECISIONS 95): asks for fingerprint, face or the
  * device code when the app starts and when it comes back after `lockAfterMin` minutes in the
  * background. The screens underneath stay mounted (a workout in progress keeps running) but are
  * covered and hidden from screen readers. Never a lock-out: a device without any lock left lets the

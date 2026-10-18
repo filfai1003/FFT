@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -23,7 +22,7 @@ import { useProfile } from './api';
 import { useToday } from './use-today';
 
 /**
- * Settings (the gear on your profile): every settings section, the plan, privacy, help and log
+ * Settings (the gear on your profile): every settings section, the plan, privacy, data and log
  * out. Your own page with your numbers is the profile (`/profile`).
  */
 export function SettingsHubScreen() {
@@ -34,7 +33,6 @@ export function SettingsHubScreen() {
   const prefs = usePreferencesStore();
   const profile = useProfile();
   const goal = useGoalForDay(useToday());
-  const [help, setHelp] = useState(false);
   const [unsynced, setUnsynced] = useState(false);
 
   const offline = getMode() === 'offline';
@@ -104,7 +102,6 @@ export function SettingsHubScreen() {
           label: t('profile.menu.accessibility'),
           onPress: () => router.push('/profile/accessibility'),
         },
-        { icon: 'info', label: t('profile.menu.help'), onPress: () => setHelp(true) },
       ],
     },
     {
@@ -113,7 +110,15 @@ export function SettingsHubScreen() {
         {
           icon: 'shield',
           label: t('profile.menu.privacy'),
+          help: t('settings.privacyHelp'),
           onPress: () => router.push('/profile/privacy'),
+        },
+        // The technical part of Privacy (DECISIONS 101): server copy, encryption, other phones.
+        {
+          icon: 'swap',
+          label: t('profile.menu.data'),
+          help: t('settings.dataHelp'),
+          onPress: () => router.push('/profile/data'),
         },
         ...(offline
           ? []
@@ -164,18 +169,6 @@ export function SettingsHubScreen() {
           onPress={doLogOut}
         />
       </Screen>
-
-      <Sheet
-        visible={help}
-        onClose={() => setHelp(false)}
-        title={t('profile.help')}
-        closeLabel={t('common.close')}
-      >
-        <Text muted>{t('profile.helpBody')}</Text>
-        <Text variant="bodyS" muted>
-          {t('profile.version', { version: Constants.expoConfig?.version ?? '1.0.0' })}
-        </Text>
-      </Sheet>
 
       <Sheet
         visible={unsynced}

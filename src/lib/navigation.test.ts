@@ -6,6 +6,7 @@ describe('parentPath', () => {
     expect(parentPath('/progress/history/abc')).toBe('/progress');
     expect(parentPath('/train/plan/abc')).toBe('/train');
     expect(parentPath('/profile/privacy')).toBe('/profile');
+    expect(parentPath('/profile/data')).toBe('/profile');
     expect(parentPath('/profile/settings')).toBe('/profile');
     expect(parentPath('/exercise-picker')).toBe('/(tabs)');
   });

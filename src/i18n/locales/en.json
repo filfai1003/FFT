@@ -209,7 +209,7 @@
     },
     "consent": {
       "title": "Your health data",
-      "body": "Weight, food, workouts and photos are health data. We use them only to run the app: on this phone and, if you keep a copy on our server (in the EU), there too. Other users cannot see them. Our team can technically reach the server copy and its backups; we look only when needed to fix a problem, and every look is logged. With end-to-end encryption on, nobody but you can read it. You can export or delete everything at any time in Privacy & data.",
+      "body": "Weight, food, workouts and photos are health data. We use them only to run the app: on this phone and, if you keep a copy on our server (in the EU), there too. Other users cannot see them. Our team can technically reach the server copy and its backups; we look only when needed to fix a problem, and every look is logged. With end-to-end encryption on, nobody but you can read it. You can export or delete everything at any time in Settings > Privacy.",
       "health": "I agree to the processing of my health data",
       "healthDetail": "Required: FFT cannot work without storing these data. If you do not agree, you cannot set up a profile, and nothing is stored. You can withdraw it later: the app pauses (you can still export or delete your data) and our server stops using it."
     },
@@ -953,15 +953,11 @@
       "ai": "AI coach",
       "premium": "Plans",
       "api": "API & MCP",
-      "privacy": "Privacy & data",
-      "help": "Help & feedback",
+      "privacy": "Privacy",
+      "data": "Data & sync",
       "password": "Password"
     },
     "accessibility": "Accessibility",
-    "privacy": "Privacy & data",
-    "help": "Help & feedback",
-    "helpBody": "Coming soon.",
-    "version": "Version {{version}}",
     "logOut": "Log out",
     "logOutAnyway": "Log out anyway",
     "stay": "Stay logged in",
@@ -1023,6 +1019,8 @@
     },
     "premiumHelp": "Free, Supporter and Premium",
     "apiHelp": "Connect AI apps and your own tools",
+    "privacyHelp": "App lock, screenshots, consents, export, delete account",
+    "dataHelp": "Copy on the server, encryption, syncing your phones",
     "units": "Units",
     "weight": "Weight",
     "length": "Length",
@@ -1142,7 +1140,13 @@
     "import": "Import",
     "imported": "Imported {{count}} items and {{photos}} photos.",
     "notAnExport": "This file is not an FFT export. Choose the .zip made by Export.",
-    "title": "Privacy & data",
+    "title": "Privacy",
+    "intro": "Who can see your data, on this phone and beyond. Your data is always saved on this phone.",
+    "consents": "What you agreed to",
+    "aiSees": "What the AI coach can see",
+    "aiSeesDetail": "Choose which of your data the coach may read",
+    "technical": "Technical data settings",
+    "technicalDetail": "Copy on the server, encryption, syncing your phones, import",
     "yourData": "Your data",
     "downloadAll": "Download everything",
     "workoutsOnly": "Workouts only",
@@ -1197,6 +1201,13 @@
     "hideContent": "Hide the whole app from screenshots",
     "hideContentDetail": "No screenshots, and a blank preview in recent apps",
     "localNote": "Data on this phone is protected by your phone's own lock and encryption; FFT does not encrypt it again."
+  },
+  "dataSync": {
+    "title": "Data & sync",
+    "intro": "Where your data is kept and how it moves between your devices. Everything is always saved on this phone first.",
+    "onPhone": "On this phone",
+    "privacy": "Privacy",
+    "privacyDetail": "App lock, screenshots, consents, export, delete account"
   },
   "appLock": {
     "title": "FFT is locked",
@@ -1484,11 +1495,11 @@
       "health": "This can include health data, such as your weight, what you eat or your workouts.",
       "anonymous": "It is sent without your name, email, account or device, and without your birth date (only your age, if you share your profile).",
       "noTraining": "With the included AI, only providers that do not keep it and do not use it to train models are used.",
-      "later": "You can change what the coach sees in the AI coach settings, and withdraw this consent in Privacy & data.",
+      "later": "You can change what the coach sees in the AI coach settings, and withdraw this consent in Settings > Privacy.",
       "agree": "I agree, use the coach",
       "decline": "No, not now",
       "declined": "Nothing was sent. You can agree later in the AI coach settings.",
-      "given": "You agreed on {{date}}. Withdraw it in Privacy & data."
+      "given": "You agreed on {{date}}. Withdraw it in Settings > Privacy."
     },
     "access": {
       "title": "What the coach can see",
@@ -1758,7 +1769,7 @@
     "offDetail": "Off: your data is only on this phone.",
     "webNote": "To turn it off, use the FFT app on your phone: the copy on the server is then deleted.",
     "chooseTitle": "Keep a copy of your data on our server?",
-    "chooseIntro": "Your data is always saved on this phone. You can also keep a copy on our server. Choose one; you can change it any time in Profile > Privacy & data.",
+    "chooseIntro": "Your data is always saved on this phone. You can also keep a copy on our server. Choose one; you can change it any time in Settings > Data & sync.",
     "givesTitle": "A copy on the server lets you",
     "gives": {
       "devices": "Use FFT in the web app and on another phone, kept in sync",
@@ -1786,7 +1797,7 @@
     "neededTitle": "AI apps need the copy on the server",
     "neededBody": "Claude, ChatGPT and your own tools read your data from our server, and right now it is only on this phone. Keep a copy on the server to connect them.",
     "webTitle": "Your data is only on your phone",
-    "webBody": "This account keeps its data on the phone only, so there is nothing to show here. To use FFT in the browser, keep a copy on the server: here, or in the app on your phone under Profile > Privacy & data.",
+    "webBody": "This account keeps its data on the phone only, so there is nothing to show here. To use FFT in the browser, keep a copy on the server: here, or in the app on your phone under Settings > Data & sync.",
     "categoriesTitle": "What is kept on the server",
     "category": {
       "body": "Body",
@@ -1862,7 +1873,7 @@
     "later": "Not now",
     "failed": "That did not work, nothing was changed. Check your connection and try again.",
     "apiOffTitle": "API and AI apps are off",
-    "apiOffBody": "Your copy on the server is end-to-end encrypted, so our server cannot read it for Claude, ChatGPT or your own tools. Turn encryption off in Privacy & data to use them."
+    "apiOffBody": "Your copy on the server is end-to-end encrypted, so our server cannot read it for Claude, ChatGPT or your own tools. Turn encryption off in Settings > Data & sync to use them."
   },
   "relay": {
     "title": "Sync with another phone",
@@ -1872,7 +1883,7 @@
     "showCode": "Show a pairing code",
     "scanCode": "Scan a code",
     "codeTitle": "Pair another phone",
-    "codeBody": "On the other phone, signed in to the same account: Profile > Privacy & data > Sync with another phone > Scan a code. Or type the code below.",
+    "codeBody": "On the other phone, signed in to the same account: Settings > Data & sync > Sync with another phone > Scan a code. Or type the code below.",
     "codeLabel": "Pairing code, {{code}}",
     "codeWarning": "Anyone with this code and your account could read your data: show it only to your own phones.",
     "scanTitle": "Scan the pairing code",
@@ -1902,7 +1913,7 @@
     "alwaysSent": "Always exchanged: your profile, your settings and your consents. Everything is end-to-end encrypted.",
     "failed": "That did not work. Check your connection and try again.",
     "joinTitle": "Sync with your other phone?",
-    "joinBody": "This account keeps its data only on your phones. Scan the code shown on your other phone (Profile > Privacy & data > Sync with another phone) to bring your data here.",
+    "joinBody": "This account keeps its data only on your phones. Scan the code shown on your other phone (Settings > Data & sync > Sync with another phone) to bring your data here.",
     "waiting": "Paired. Waiting for your other phone: keep FFT open on it.",
     "continueNow": "Continue without waiting",
     "startFresh": "Start fresh on this phone",
