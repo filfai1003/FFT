@@ -6,12 +6,17 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
+import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
-import { sortedConversations, useConversations } from './agent/conversations';
+import {
+  sortedConversations,
+  useConversations,
+  useConversationsHydrated,
+} from './agent/conversations';
 
 /** The saved conversations with the AI coach: open one, start a new one, delete (with UNDO). */
 export function AiChatsScreen() {
@@ -21,6 +26,7 @@ export function AiChatsScreen() {
   const userId = useSessionStore((s) => s.userId);
   const conversations = useConversations((s) => s.conversations);
   const showToast = useToastStore((s) => s.show);
+  const hydrated = useConversationsHydrated();
   const list = sortedConversations(conversations).filter((c) => c.userId === userId);
 
   const remove = (id: string) => {
@@ -44,7 +50,13 @@ export function AiChatsScreen() {
         label={t('ai.newChat')}
         onPress={() => router.replace({ pathname: '/ai-chat', params: { fresh: '1' } })}
       />
-      {list.length === 0 ? (
+      {!hydrated ? (
+        <SkeletonGroup accessibilityLabel={t('common.loading')} gap={12}>
+          <SkeletonCard tile={false} lines={0} />
+          <SkeletonCard tile={false} lines={0} />
+          <SkeletonCard tile={false} lines={0} />
+        </SkeletonGroup>
+      ) : list.length === 0 ? (
         <EmptyState icon="chat" title={t('ai.noChats')} body={t('empty.chatsBody')} />
       ) : null}
       {list.map((c) => (

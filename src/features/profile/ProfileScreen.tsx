@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Gauge } from '@/components/ui/Gauge';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
@@ -263,15 +264,27 @@ export function ProfileScreen() {
             </View>
           ) : null}
         </View>
-        <Text
-          variant="screenTitle"
-          accessibilityRole="header"
-          numberOfLines={2}
-          style={{ textAlign: 'center', marginTop: 4 }}
-        >
-          {name}
-        </Text>
-        {subtitle ? (
+        {profile.isPending ? (
+          // The name is read from the phone: placeholders rather than "You" turning into it.
+          <SkeletonGroup
+            accessibilityLabel={t('common.loading')}
+            gap={8}
+            style={{ alignItems: 'center', alignSelf: 'stretch', marginTop: 8 }}
+          >
+            <Skeleton width={180} height={26} />
+            <Skeleton width={140} height={12} />
+          </SkeletonGroup>
+        ) : (
+          <Text
+            variant="screenTitle"
+            accessibilityRole="header"
+            numberOfLines={2}
+            style={{ textAlign: 'center', marginTop: 4 }}
+          >
+            {name}
+          </Text>
+        )}
+        {subtitle && !profile.isPending ? (
           <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
             {subtitle}
           </Text>

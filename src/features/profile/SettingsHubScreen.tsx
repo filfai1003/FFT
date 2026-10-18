@@ -52,6 +52,7 @@ export function SettingsHubScreen() {
           icon: 'user',
           label: t('profile.personalInfo'),
           value: profile.data?.name?.trim() || undefined,
+          valueLoading: profile.isPending,
           onPress: () => router.push('/profile-edit'),
         },
         {

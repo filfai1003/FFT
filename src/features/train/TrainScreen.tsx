@@ -11,6 +11,7 @@ import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { IconTile } from '@/components/ui/IconTile';
 import { Section } from '@/components/ui/Section';
+import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -87,6 +88,14 @@ export function TrainScreen() {
         </View>
 
         <ActiveSessionBanner />
+
+        {isPending ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <SkeletonCard lines={1} height={52} />
+            <SkeletonCard lines={0} />
+            <SkeletonCard lines={0} />
+          </SkeletonGroup>
+        ) : null}
 
         {!isPending && !plan ? (
           <EmptyState

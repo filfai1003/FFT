@@ -10,6 +10,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
+import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
@@ -217,7 +218,11 @@ export function ExerciseDetailScreen({
         )}
 
         <Section title={t('exerciseDetail.recent')}>
-          {sessions.data?.length ? (
+          {sessions.isPending ? (
+            <SkeletonGroup accessibilityLabel={t('common.loading')}>
+              <SkeletonRows count={3} leading={false} />
+            </SkeletonGroup>
+          ) : sessions.data?.length ? (
             sessions.data.map((s) => (
               <ListRow
                 key={s.id}

@@ -14,6 +14,7 @@ import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
+import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
@@ -231,6 +232,22 @@ function MeNumbers({ records }: { records: ReactNode }) {
           unit,
         ) * Math.sign(body.weight.latestKg - (weightLine.at(-2) ?? body.weight.latestKg))
       : null;
+
+  if (entries.isPending || strength.isPending || photos.isPending)
+    return (
+      <SkeletonGroup accessibilityLabel={t('common.loading')}>
+        <SkeletonCard lines={0} height={110} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <SkeletonCard lines={1} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <SkeletonCard lines={1} />
+          </View>
+        </View>
+        <SkeletonCard lines={0} height={90} />
+      </SkeletonGroup>
+    );
 
   return (
     <>

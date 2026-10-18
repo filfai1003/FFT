@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
+import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -164,7 +165,11 @@ export function HistoryScreen({
       </Card>
 
       <Section title={t('history.sessions')}>
-        {inMonth.length === 0 ? (
+        {sessions.isPending ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <SkeletonRows count={3} leading={false} />
+          </SkeletonGroup>
+        ) : inMonth.length === 0 ? (
           <EmptyState
             compact
             icon="clock"

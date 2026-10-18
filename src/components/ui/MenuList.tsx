@@ -4,6 +4,7 @@ import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
 import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
+import { Skeleton } from './Skeleton';
 import { Text } from './Text';
 
 export type MenuItem = {
@@ -13,6 +14,8 @@ export type MenuItem = {
   help?: string;
   /** Current value on the right ("kg · cm", "Light"). */
   value?: string;
+  /** The value is still being read: a grey placeholder stands in its place. */
+  valueLoading?: boolean;
   onPress: () => void;
 };
 
@@ -54,7 +57,9 @@ function MenuRow({ item: r, first }: { item: MenuItem; first: boolean }) {
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={[r.label, r.value, r.help].filter(Boolean).join(', ')}
+      accessibilityLabel={[r.label, r.valueLoading ? undefined : r.value, r.help]
+        .filter(Boolean)
+        .join(', ')}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       onPress={() => {
@@ -95,7 +100,9 @@ function MenuRow({ item: r, first }: { item: MenuItem; first: boolean }) {
           </Text>
         ) : null}
       </View>
-      {r.value ? (
+      {r.valueLoading ? (
+        <Skeleton width={64} height={12} />
+      ) : r.value ? (
         <Text
           variant="bodyS"
           muted

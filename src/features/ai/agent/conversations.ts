@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -116,3 +117,12 @@ export const useConversations = create<State>()(
 /** Newest first. */
 export const sortedConversations = (conversations: Record<string, Conversation>) =>
   Object.values(conversations).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+/** True once the saved conversations have been read back from the phone's storage. */
+export function useConversationsHydrated(): boolean {
+  return useSyncExternalStore(
+    (notify) => useConversations.persist.onFinishHydration(notify),
+    () => useConversations.persist.hasHydrated(),
+    () => false,
+  );
+}

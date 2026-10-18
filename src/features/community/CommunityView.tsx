@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Segmented } from '@/components/ui/Segmented';
@@ -109,7 +110,13 @@ export function CommunityView() {
         />
       </Card>
     );
-  if (me.isPending) return null;
+  if (me.isPending)
+    return (
+      <SkeletonGroup accessibilityLabel={t('common.loading')}>
+        <SkeletonCard lines={2} height={120} />
+        <SkeletonCard lines={1} />
+      </SkeletonGroup>
+    );
   return me.data ? <BoardView name={me.data.name} /> : <JoinView />;
 }
 
@@ -507,7 +514,11 @@ function BoardView({ name }: { name: string }) {
           <Text variant="bodyS" muted>
             {t('community.error')}
           </Text>
-        ) : podium.length === 0 && !board.isPending ? (
+        ) : board.isPending ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <Skeleton height={140} style={{ borderRadius: 12 }} />
+          </SkeletonGroup>
+        ) : podium.length === 0 ? (
           <EmptyState
             card={false}
             compact

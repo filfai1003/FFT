@@ -9,9 +9,15 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   useLocalSearchParams: () => ({}),
 }));
+let mockHydrated = true;
+jest.mock('./agent/conversations', () => ({
+  ...jest.requireActual('./agent/conversations'),
+  useConversationsHydrated: () => mockHydrated,
+}));
 
 describe('AI chats list', () => {
   beforeEach(async () => {
+    mockHydrated = true;
     await act(async () => {
       useSessionStore.setState({ userId: 'u1' });
       useConversations.setState({ conversations: {} });
@@ -23,6 +29,13 @@ describe('AI chats list', () => {
     expect(screen.getByRole('header', { name: 'No conversations yet' })).toBeTruthy();
     expect(screen.getByText(/Ask the coach about your training/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'New chat' })).toBeTruthy();
+  });
+
+  it('while the saved chats are read back: placeholders, not "No conversations yet"', async () => {
+    mockHydrated = false;
+    await renderUI(<AiChatsScreen />);
+    expect(screen.getByLabelText('Loading')).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'No conversations yet' })).toBeNull();
   });
 
   it('lists the saved conversations instead', async () => {
