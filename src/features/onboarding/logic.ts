@@ -29,7 +29,12 @@ export type OnboardingMeal = {
   description: string;
   isMain: boolean;
 };
-export const POLICY_VERSION = 'v1-2026-10';
+/**
+ * Version of the privacy policy and consent text a consent was given for (stored with it). A new
+ * version whose consent text changed materially asks people who agreed to an older one to confirm
+ * once (DECISIONS 99). v2: the consent text says who can reach the data (DECISIONS 81).
+ */
+export const POLICY_VERSION = 'v2-2026-10-18';
 
 export type OnboardingDraft = {
   goal: Goal | null;

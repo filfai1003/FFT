@@ -20,7 +20,7 @@ import { useRelay } from '@/features/premium/use-relay';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
-import { activeConsent, useConsents } from '@/features/profile/account';
+import { activeConsent, consentOutdated, useConsents } from '@/features/profile/account';
 import { useHealthConsentOnServer } from '@/features/profile/consent-server';
 import { removeExportFiles } from '@/features/profile/export';
 import { usePendingSync } from '@/features/session/use-pending-sync';
@@ -142,6 +142,10 @@ function AppRoutes() {
   // Health data consent withdrawn: the app cannot run, but the user can still export or delete.
   const consentWithdrawn =
     signedIn && onboarded && consents.isSuccess && !activeConsent(consents.data, 'health_data');
+  // Given for an older consent text: asked once to confirm (DECISIONS 99). Continuing always works.
+  const [reconfirmDone, setReconfirmDone] = useState(false);
+  const reconfirm =
+    signedIn && onboarded && consents.isSuccess && consentOutdated(consents.data) && !reconfirmDone;
   // A copy on the server (DECISIONS 62): the device's changes go to the server in the background,
   // other devices' come back. Paused while the consent is withdrawn: nothing is sent then.
   const userId = useSessionStore((st) => st.userId);
@@ -181,6 +185,7 @@ function AppRoutes() {
   }
 
   if (consentWithdrawn) return <ConsentGate />;
+  if (reconfirm) return <ConsentGate reconfirm onContinue={() => setReconfirmDone(true)} />;
 
   return (
     <>

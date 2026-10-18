@@ -1182,7 +1182,10 @@
   "gate": {
     "title": "Consent withdrawn",
     "body": "You withdrew your consent to process health data, so the app is paused, and the API and AI apps connected to your account cannot use your data. You can give it again, download your data, or delete your account.",
-    "give": "Give consent again"
+    "give": "Give consent again",
+    "updatedTitle": "Please confirm your consent",
+    "updatedBody": "We updated the privacy policy and this consent text: it now says more clearly who can reach your health data. Read it and confirm to continue.",
+    "agree": "I agree, continue"
   },
   "calendar": {
     "title": "Calendar",
