@@ -489,6 +489,9 @@ export const SYNC_OFF =
 /** The account's copy is end-to-end encrypted (DECISIONS 64): the server cannot read it. */
 export const ENCRYPTED =
   'The copy on the server of this FFT account is end-to-end encrypted: the server cannot read it, so the API and AI apps cannot work while the encryption is on. It can be turned off in the FFT app (Profile > Privacy & data).';
+/** The user withdrew the health data consent (DECISIONS 80): the data is not used at all. */
+export const CONSENT_OFF =
+  'The health data consent of this FFT account is withdrawn, so its data cannot be used by the API or AI apps. It can be given again in the FFT app.';
 
 /**
  * The category of data each tool reads or changes (DECISIONS 63). A category the user does not
@@ -620,6 +623,8 @@ export function createApi(db, { perMinute = PER_MINUTE, base = '' } = {}) {
     if (found.sync !== true) throw new ApiError(403, SYNC_OFF);
     // End-to-end encrypted (DECISIONS 64): the server cannot read the data.
     if (found.encrypted === true) throw new ApiError(403, ENCRYPTED);
+    // Health data consent withdrawn (DECISIONS 80): nothing is read or written for anyone.
+    if (found.consent === false) throw new ApiError(403, CONSENT_OFF);
     if (limited(found.userId, cost))
       throw new ApiError(429, `too many requests (at most ${perMinute} a minute)`);
     return {
@@ -805,7 +810,8 @@ export function pgDatabase(pool) {
       const r = await pool.query(
         `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
                 public.sync_categories_of(a.user_id) as categories,
-                public.vault_on_of(a.user_id) as encrypted
+                public.vault_on_of(a.user_id) as encrypted,
+                public.health_consent_of(a.user_id) as consent
          from public.api_token_access($1) a`,
         [hash],
       );
@@ -817,6 +823,7 @@ export function pgDatabase(pool) {
             sync: row.sync === true,
             categories: row.categories,
             encrypted: row.encrypted === true,
+            consent: row.consent !== false,
           }
         : null;
     },

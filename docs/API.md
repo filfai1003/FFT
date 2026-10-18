@@ -32,6 +32,7 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
   and MCP), `create_api_token` refuses (SQLSTATE 55000) and the sign-in for AI apps shows why.
   Tokens stay listed and work again once encryption is off. The api service reads it with
   `vault_on_of(user)`.
+- 403 when the account withdrew its health data consent in the app (until it is given again).
 - Limit: 120 requests a minute per account; an MCP batch counts one per message and holds at most
   20 messages. Bodies are JSON (at most 64 KB).
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units

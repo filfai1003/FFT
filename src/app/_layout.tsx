@@ -21,6 +21,7 @@ import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
 import { activeConsent, useConsents } from '@/features/profile/account';
+import { useHealthConsentOnServer } from '@/features/profile/consent-server';
 import { usePendingSync } from '@/features/session/use-pending-sync';
 import { useNotificationGuard } from '@/features/settings/use-notification-guard';
 import { useSettingsSync } from '@/features/settings/use-settings-sync';
@@ -140,6 +141,13 @@ function AppRoutes() {
   // A copy on the server (DECISIONS 62): the device's changes go to the server in the background,
   // other devices' come back. Paused while the consent is withdrawn: nothing is sent then.
   const userId = useSessionStore((st) => st.userId);
+  // The server learns the consent directly (the sync is paused while it is withdrawn): the API,
+  // MCP and AI apps stop too (DECISIONS 80).
+  useHealthConsentOnServer(
+    userId,
+    signedIn && getMode() === 'cloud' && onboarded && consents.isSuccess,
+    consentWithdrawn,
+  );
   const syncing = usePlanStore(
     (p) => p.home === 'online' && p.sync === 'on' && p.userId === userId,
   );

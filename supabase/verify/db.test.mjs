@@ -47,7 +47,8 @@ async function tokenFor(hash) {
     await db.query(
       `select a.user_id, a.scope, public.sync_enabled_of(a.user_id) as sync,
               public.sync_categories_of(a.user_id) as categories,
-              public.vault_on_of(a.user_id) as encrypted
+              public.vault_on_of(a.user_id) as encrypted,
+              public.health_consent_of(a.user_id) as consent
        from public.api_token_access($1) a`,
       [hash],
     )
@@ -59,6 +60,7 @@ async function tokenFor(hash) {
         sync: r.sync === true,
         categories: r.categories,
         encrypted: r.encrypted === true,
+        consent: r.consent !== false,
       }
     : null;
 }
@@ -1088,6 +1090,29 @@ describe('personal API and MCP (server/api.js)', () => {
     // 4 + 2 = 6 > 5: refused, although it is only the second request.
     assert.equal((await batch(2)).status, 429);
   });
+
+  it('health data consent withdrawn: the API and MCP refuse, until it is given again (DECISIONS 80)', async () => {
+    await as(A);
+    assert.equal((await call('GET', '/v1/me')).status, 200);
+    await as(A);
+    await db.exec('select public.set_health_consent(false)');
+    const refused = await call('GET', '/v1/me');
+    assert.equal(refused.status, 403);
+    assert.match(refused.body.error, /consent/);
+    assert.equal(
+      (await call('POST', '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' })).status,
+      403,
+    );
+    // The owner can see the state; nobody can write it directly.
+    await as(A);
+    assert.ok(
+      (await one('select health_withdrawn_at from public.account_consent')).health_withdrawn_at,
+    );
+    await rejects(`update public.account_consent set health_withdrawn_at = null`, '42501');
+    await rejects(`select public.health_consent_of('${A}')`, '42501');
+    await db.exec('select public.set_health_consent(true)');
+    assert.equal((await call('GET', '/v1/me')).status, 200);
+  });
 });
 
 describe('sign in with FFT for AI apps (server/oauth.js)', () => {
@@ -1778,6 +1803,49 @@ describe('sign-in limits of the AI app sign-in (DECISIONS 76)', () => {
     assert.equal(checks, 5, 'a locked email is not even checked');
     // Another email is not affected; the same answer for an unknown one.
     assert.match((await attempt('nobody@test.dev', 'x')).body, /Wrong email or password/);
+  });
+
+  it('health data consent withdrawn: an AI app gets no code (DECISIONS 80)', async () => {
+    const oauth = createOAuth({
+      sql: async (text, params) => {
+        await admin();
+        return (await db.query(text, params)).rows;
+      },
+      signIn: async (email, password) => (password === 'right' ? B : null),
+      base: 'https://api.test',
+    });
+    const REDIRECT = 'https://chatgpt.com/connector_platform_oauth_redirect';
+    const reg = await oauth({
+      method: 'POST',
+      path: '/oauth/register',
+      body: { redirect_uris: [REDIRECT], client_name: 'ChatGPT' },
+      query: {},
+      headers: {},
+      ip: '4.4.6.1',
+    });
+    const attempt = () =>
+      oauth({
+        method: 'POST',
+        path: '/oauth/authorize',
+        body: {
+          client_id: JSON.parse(reg.body).client_id,
+          redirect_uri: REDIRECT,
+          code_challenge: 'c'.repeat(43),
+          email: 'b@test.dev',
+          password: 'right',
+        },
+        query: {},
+        headers: {},
+        ip: '4.4.6.2',
+      });
+    await as(B);
+    await db.exec('select public.set_health_consent(false)');
+    const refused = await attempt();
+    assert.equal(refused.status, 400);
+    assert.match(refused.body, /withdrew your consent/);
+    await as(B);
+    await db.exec('select public.set_health_consent(true)');
+    assert.equal((await attempt()).status, 302);
   });
 });
 

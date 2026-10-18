@@ -32,6 +32,11 @@ Deno.serve(async (req) => {
   const user = auth.user;
   if (!user) return json({ error: 'unauthorized' }, 401);
 
+  // Health data consent withdrawn (DECISIONS 80): nothing goes to the AI provider. An error
+  // here (the function not deployed yet) does not block: the app gates it too.
+  const consent = await admin.rpc('health_consent_of', { p_user: user.id });
+  if (consent.data === false) return json({ error: 'Your health data consent is withdrawn.' }, 403);
+
   const plan = await admin.rpc('plan_of', { p_user: user.id });
   if (plan.data !== 'premium') return json({ error: 'The included AI is part of Premium.' }, 403);
   const credit = await admin.rpc('ai_refresh_credit', { p_user: user.id });

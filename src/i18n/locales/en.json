@@ -208,9 +208,9 @@
     },
     "consent": {
       "title": "Your health data",
-      "body": "Weight, food, workouts and photos are health data. We keep them only to run the app: on this phone and, with an account, on our server, where only you can reach them. You can export or delete everything at any time in Privacy & data.",
+      "body": "Weight, food, workouts and photos are health data. We use them only to run the app: on this phone and, if you keep a copy on our server (in the EU), there too. Other users cannot see them. Our team can technically reach the server copy and its backups; we look only when needed to fix a problem, and every look is logged. With end-to-end encryption on, nobody but you can read it. You can export or delete everything at any time in Privacy & data.",
       "health": "I agree to the processing of my health data",
-      "healthDetail": "Required to use the app. You can withdraw it later."
+      "healthDetail": "Required: FFT cannot work without storing these data. If you do not agree, you cannot set up a profile, and nothing is stored. You can withdraw it later: the app pauses (you can still export or delete your data) and our server stops using it."
     },
     "ai": {
       "title": "Use FFT with your AI",
@@ -896,7 +896,7 @@
   },
   "photos": {
     "title": "Photos",
-    "private": "Private · only you can see them",
+    "private": "Private · in your account only, never shared",
     "add": "Add photos",
     "all": "All",
     "pose": {
@@ -1139,7 +1139,7 @@
   },
   "gate": {
     "title": "Consent withdrawn",
-    "body": "You withdrew your consent to process health data, so the app is paused. You can give it again, download your data, or delete your account.",
+    "body": "You withdrew your consent to process health data, so the app is paused, and the API and AI apps connected to your account cannot use your data. You can give it again, download your data, or delete your account.",
     "give": "Give consent again"
   },
   "calendar": {

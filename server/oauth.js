@@ -58,6 +58,8 @@ const SYNC_OFF =
   'Your FFT data is kept only on your phone, so there is nothing an AI app could use. To connect one, turn on Keep a copy on the server in the FFT app (Profile > Privacy & data), then sign in again.';
 const ENCRYPTED =
   'Your copy on the server is end-to-end encrypted: our server cannot read it, so an AI app cannot use it. To connect one, turn the encryption off in the FFT app (Profile > Privacy & data), then sign in again.';
+const CONSENT_OFF =
+  'You withdrew your consent to the processing of your health data, so an AI app cannot use it. To connect one, give it again in the FFT app, then sign in again.';
 
 /**
  * The caller's address behind Railway's proxy: the LAST X-Forwarded-For value, the one the proxy
@@ -320,12 +322,15 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     // The AI app would read and write the copy on the server: none when the user keeps the data
     // on the phone only (DECISIONS 62).
     const [synced] = await sql(
-      'select public.sync_enabled_of($1) as on, public.vault_on_of($1) as encrypted',
+      `select public.sync_enabled_of($1) as on, public.vault_on_of($1) as encrypted,
+              public.health_consent_of($1) as consent`,
       [userId],
     );
     if (synced?.on !== true) return page(p, client, host, SYNC_OFF);
     // End-to-end encrypted (DECISIONS 64): the server cannot read the data for the AI app.
     if (synced?.encrypted === true) return page(p, client, host, ENCRYPTED);
+    // Health data consent withdrawn (DECISIONS 80): no new connection.
+    if (synced?.consent === false) return page(p, client, host, CONSENT_OFF);
     const code = secret('fftac_');
     await sql(
       `insert into public.oauth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at, scope)
