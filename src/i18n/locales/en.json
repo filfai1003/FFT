@@ -76,7 +76,8 @@
       "water": "Water",
       "ai": "AI coach bar",
       "weight": "Weight",
-      "supplements": "Supplements"
+      "supplements": "Supplements",
+      "streak": "Streak and badges"
     },
     "focus": {
       "train": "Train now",
@@ -877,7 +878,13 @@
     "compare": "Compare two photo dates",
     "bodyTitle": "Body",
     "tabWeight": "Weight",
-    "tabFat": "Body fat"
+    "tabFat": "Body fat",
+    "view": "Progress view",
+    "me": "Me",
+    "community": "Community",
+    "periodA11y": "Period: {{period}}. Change",
+    "yourNumbers": "Your numbers",
+    "periodTitle": "Period"
   },
   "checkIn": {
     "title": "Check-in",
@@ -992,7 +999,8 @@
       "daysLoggedA11y": "{{n}} of {{total}} days this month with something logged",
       "trainingDays": "Days trained",
       "trainingDaysA11y": "Trained on {{n}} of {{total}} days this month",
-      "none": "–"
+      "none": "–",
+      "badges": "Badges"
     },
     "links": {
       "progress": "Progress",
@@ -1869,5 +1877,138 @@
     "continueNow": "Continue without waiting",
     "startFresh": "Start fresh on this phone",
     "endsRelay": "Your phones now sync through the encrypted relay. Keeping a copy on the server replaces it: the relay stops (each phone keeps its data)."
+  },
+  "game": {
+    "dayStreak": "day streak",
+    "streakA11y": "{{count}} day logging streak, {{count}} of {{target}} days to the next streak badge",
+    "streakA11yNoTarget": "{{count}} day logging streak",
+    "onARoll": "You are on a roll",
+    "startStreak": "Start a streak",
+    "keepGoing": "Keep it going",
+    "moreDays_one": "{{count}} more day for the {{badge}} badge.",
+    "moreDays_other": "{{count}} more days for the {{badge}} badge.",
+    "firstDay": "Log food, a workout or a check-in today to start one.",
+    "best_one": "Best: {{count}} day.",
+    "best_other": "Best: {{count}} days.",
+    "level": "Level {{level}}",
+    "levelShort": "Lv {{level}}",
+    "xpOf": "{{xp}} / {{next}} XP",
+    "levelA11y": "Level {{level}}, {{xp}} of {{next}} XP",
+    "levelRingA11y": "Level {{level}}, {{pct}}% of the way to level {{next}}",
+    "xpToNext": "{{xp}} XP to level {{next}}",
+    "week": {
+      "done": "{{day}}, logged",
+      "missed": "{{day}}, not logged",
+      "today": "{{day}}, today, not logged yet",
+      "future": "{{day}}, still to come"
+    },
+    "weekSummary": "{{count}} of {{total}} days logged this week",
+    "todayToLog": "today still to log",
+    "weekA11y": "This week: {{count}} of {{total}} days logged",
+    "weekA11yToday": "This week: {{count}} of {{total}} days logged, today not logged yet",
+    "nextBadge": "Next badge",
+    "toGo_one": "{{count}} to go",
+    "toGo_other": "{{count}} to go",
+    "ofCount": "{{current}} of {{target}}",
+    "progressA11y": "{{name}}: {{current}} of {{target}}",
+    "nextBadgeA11y": "Next badge, {{name}}: {{current}} of {{target}}",
+    "allEarned": "Every badge earned",
+    "allEarnedInfo": "You have earned all {{count}} badges.",
+    "newRecords": "New records",
+    "seeAll": "See all",
+    "noRecords": "No new records in the last 30 days. Beat your best weight in any exercise to set one.",
+    "gain": "+{{delta}} {{unit}} · +{{pct}}%",
+    "gainShort": "+{{pct}}%",
+    "est1rm": "Est. 1RM",
+    "recordA11y": "{{name}}: new record {{value}} {{unit}}, up {{delta}} {{unit}}, {{pct}} percent, {{date}}",
+    "badges": "Badges",
+    "earnedOf": "{{count}} of {{total}} earned",
+    "earned": "Earned",
+    "badgeEarnedA11y": "{{name}}: earned {{date}}",
+    "badgeLockedA11y": "{{name}}: locked. {{how}}",
+    "streakWord_one": "{{count}}-day streak",
+    "streakWord_other": "{{count}}-day streak",
+    "logToday": "Log today to keep it going",
+    "loggedToday": "Today is logged",
+    "records": "Records",
+    "badgesSeeAll": "{{count}} of {{total}} · See all",
+    "unlocked": {
+      "title": "Badge earned",
+      "dialog": "Badge earned: {{name}}",
+      "xp": "+{{xp}} XP",
+      "xpA11y": "Level {{level}}, {{xp}} of {{next}} XP, {{added}} just added",
+      "next": "Next: {{name}}",
+      "nextA11y": "{{current}} of {{target}}",
+      "more_one": "You also earned {{count}} more badge.",
+      "more_other": "You also earned {{count}} more badges.",
+      "seeBadges": "See badges",
+      "nice": "Nice"
+    }
+  },
+  "badges": {
+    "first_workout": {
+      "name": "First workout",
+      "how": "Finish a workout"
+    },
+    "workouts_10": {
+      "name": "10 workouts",
+      "how": "Finish 10 workouts"
+    },
+    "workouts_25": {
+      "name": "25 workouts",
+      "how": "Finish 25 workouts"
+    },
+    "workouts_50": {
+      "name": "50 workouts",
+      "how": "Finish 50 workouts"
+    },
+    "workouts_100": {
+      "name": "100 workouts",
+      "how": "Finish 100 workouts"
+    },
+    "streak_7": {
+      "name": "7-day streak",
+      "how": "Log something 7 days in a row"
+    },
+    "streak_14": {
+      "name": "2-week streak",
+      "how": "Log something 14 days in a row"
+    },
+    "streak_30": {
+      "name": "30-day streak",
+      "how": "Log something 30 days in a row"
+    },
+    "streak_100": {
+      "name": "100-day streak",
+      "how": "Log something 100 days in a row"
+    },
+    "first_record": {
+      "name": "First record",
+      "how": "Beat your best weight in an exercise"
+    },
+    "records_10": {
+      "name": "10 records",
+      "how": "Set 10 personal records"
+    },
+    "records_50": {
+      "name": "50 records",
+      "how": "Set 50 personal records"
+    },
+    "diet_7": {
+      "name": "On target week",
+      "how": "7 days within 10% of your calorie target"
+    },
+    "diet_30": {
+      "name": "On target month",
+      "how": "30 days within 10% of your calorie target"
+    },
+    "checkins_10": {
+      "name": "10 check-ins",
+      "how": "Log your body on 10 days"
+    },
+    "early_bird": {
+      "name": "Early bird",
+      "how": "Start 5 workouts before 8:00"
+    }
   }
 }

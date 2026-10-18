@@ -28,6 +28,7 @@ import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
 import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
+import { StreakWidget } from '@/features/gamification/StreakWidget';
 import type { WidgetId, WidgetSize } from './layout-store';
 
 type Props = { size: WidgetSize };
@@ -584,5 +585,6 @@ export const widgetComponents: Record<WidgetId, (p: Props) => ReactNode> = {
   workout: WorkoutWidget,
   water: WaterWidget,
   weight: WeightWidget,
+  streak: StreakWidget,
   supplements: SupplementsWidget,
 };
