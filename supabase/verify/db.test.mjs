@@ -1232,6 +1232,10 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     // The page says where the access goes (the host, which the app cannot pick freely).
     assert.match(pageRes.body, /access to your data goes to <b>claude\.ai<\/b>/);
     assert.match(
+      pageRes.body,
+      /Only continue if you just clicked Connect in your own Claude or ChatGPT/,
+    );
+    assert.match(
       pageRes.headers['content-security-policy'],
       /form-action 'self' https:\/\/claude\.ai;/,
     );

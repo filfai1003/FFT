@@ -17,6 +17,7 @@ import { VaultUnlockScreen } from '@/features/premium/Encryption';
 import { RelayJoinScreen } from '@/features/premium/RelayCard';
 import { askPairLater, askUnlockLater, usePlanGate } from '@/features/premium/use-plan-gate';
 import { useRelay } from '@/features/premium/use-relay';
+import { useConnectionNotice } from '@/features/premium/use-connection-notice';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
@@ -166,6 +167,8 @@ function AppRoutes() {
   useSync(userId, signedIn && getMode() === 'cloud' && syncing, { paused: consentWithdrawn });
   // No copy on the server: paired phones exchange changes through the encrypted relay
   // (DECISIONS 65). Paused like the sync while the consent is withdrawn.
+  // AI apps connected since the last start are pointed out once (DECISIONS 99).
+  useConnectionNotice(userId, signedIn && getMode() === 'cloud' && onboarded && !consentWithdrawn);
   const copyOff = usePlanStore((p) => p.sync === 'off' && p.userId === userId);
   useRelay(
     userId,

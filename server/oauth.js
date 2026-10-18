@@ -252,6 +252,7 @@ fieldset{border:0;margin:18px 0 0;padding:0}legend{font-size:13px;color:var(--mu
 <h1>FFT</h1>
 <p><b>${esc(client.name)}</b> wants to use your FFT data: training, diet, body and supplements.</p>
 <p class="host">If you allow, access to your data goes to ${where}. Continue only if that is where you started connecting FFT.</p>
+<p><b>Only continue if you just clicked Connect in your own Claude or ChatGPT.</b> If someone sent you this link, close this page: continuing would give their AI app your data.</p>
 <form method="post" action="/oauth/authorize">${hidden}
 <fieldset><legend>What it can do</legend>
 ${choice('read', 'Read only', 'Read your data. It cannot change anything.')}
