@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BackHandler, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,8 @@ import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { dayOfMonth, shortDateLabel, weekOf, weekdayLetter } from '@/domain/day';
-import { AI_DOCK_HEIGHT, AiDock } from '@/features/ai/AiDock';
+import { AI_DOCK_CLEARANCE, AiDock } from '@/features/ai/AiDock';
+import { Card } from '@/components/ui/Card';
 import { useCalendarData } from '@/features/progress/CalendarGrid';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
@@ -32,7 +33,10 @@ import {
   useTodayEdit,
 } from './edit-store';
 import { useHomeLayout, type WidgetItem } from './layout-store';
+import { dockHiddenAfterScroll } from './dock-scroll';
+import { useHint, useHintsStore } from './hints-store';
 import { TodayGrid } from './TodayGrid';
+import { weekDotShape, type WeekDotShape } from './week-dots';
 import { widgetComponents } from './Widgets';
 
 const EDIT_BAR_PADDING = 12;
@@ -47,8 +51,11 @@ export function initials(name: string | null | undefined): string {
     .join('');
 }
 
-/** This week at a glance: a dot under each day says if the diet was on target. Opens the calendar. */
-function WeekStrip() {
+/**
+ * This week at a glance: a mark under each day says if the diet was on target. Opens the calendar;
+ * a long press shows what the marks mean.
+ */
+function WeekStrip({ onLongPress }: { onLongPress: () => void }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
@@ -61,24 +68,20 @@ function WeekStrip() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t('calendar.open')}
+      accessibilityHint={t('today.weekHint')}
       onPress={() => {
         tick();
         router.push('/calendar');
+      }}
+      onLongPress={() => {
+        tick();
+        onLongPress();
       }}
       style={{ flexDirection: 'row', gap: 4 }}
     >
       {days.map((d) => {
         const isToday = d === today;
-        const status = d <= today ? data.statusOf(d) : 'none';
-        const dot =
-          status === 'onTarget'
-            ? colors.success
-            : status === 'off'
-              ? // Today is not over: not judged yet.
-                isToday
-                ? colors.surface
-                : colors.danger
-              : 'transparent';
+        const shape = weekDotShape(d <= today ? data.statusOf(d) : 'none', isToday);
         return (
           <View
             key={d}
@@ -101,18 +104,103 @@ function WeekStrip() {
             >
               {dayOfMonth(d)}
             </Text>
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: isToday && dot === 'transparent' ? colors.bg : dot,
-              }}
-            />
+            <WeekDot shape={shape} testID={`week-dot-${d}`} />
           </View>
         );
       })}
     </Pressable>
+  );
+}
+
+/**
+ * The diet mark of a day: filled dot = on target, empty ring = off target, small neutral dot on
+ * today (not judged yet). Shape first, colour second.
+ */
+function WeekDot({ shape, testID }: { shape: WeekDotShape; testID?: string }) {
+  const { colors } = useTheme();
+  const size = 7;
+  return (
+    <View
+      testID={testID ? `${testID}-${shape}` : undefined}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor:
+          shape === 'full' ? colors.success : shape === 'today' ? colors.bg : 'transparent',
+        borderWidth: shape === 'ring' ? 1.5 : 0,
+        borderColor: colors.danger,
+      }}
+    />
+  );
+}
+
+/** What the week strip's marks mean (one-time tips, and a long press on the strip). */
+function WeekLegend() {
+  const { t } = useTranslation();
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${t('today.legendOn')}. ${t('today.legendOff')}.`}
+      style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 }}
+    >
+      {(['full', 'ring'] as const).map((shape) => (
+        <View key={shape} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <WeekDot shape={shape} />
+          <Text variant="bodyS" muted>
+            {shape === 'full' ? t('today.legendOn') : t('today.legendOff')}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Shown once per device until "Got it": what the two header icons do and what the week strip's
+ * marks mean, so the header itself stays clean.
+ */
+function TodayTips({ onDismiss }: { onDismiss: () => void }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const row = (icon: 'sliders' | 'sparkle', label: string) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: colors.borderDecorative,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={icon} size={16} color={colors.text} />
+      </View>
+      <Text variant="bodyS" style={{ flex: 1 }}>
+        {label}
+      </Text>
+    </View>
+  );
+  return (
+    <Card gap={10} style={{ padding: 14 }}>
+      <Text semibold accessibilityRole="header">
+        {t('today.tipsTitle')}
+      </Text>
+      {row('sliders', t('today.tipEdit'))}
+      {row('sparkle', t('today.tipCoach'))}
+      <Text variant="bodyS">{t('today.tipWeek')}</Text>
+      <WeekLegend />
+      <Button
+        label={t('today.tipsDone')}
+        variant="secondary"
+        size="small"
+        block={false}
+        onPress={onDismiss}
+        style={{ alignSelf: 'flex-start' }}
+      />
+    </Card>
   );
 }
 
@@ -132,6 +220,13 @@ export function TodayScreen() {
   const userId = useSessionStore((s) => s.userId);
   const queryClient = useQueryClient();
   const showToast = useToastStore((s) => s.show);
+  const tips = useHint('todayTips');
+  const dismissHint = useHintsStore((s) => s.dismiss);
+  // The week strip's legend, opened by a long press on the strip.
+  const [legend, setLegend] = useState(false);
+  // The coach bar steps aside while scrolling down, comes back on the way up.
+  const [dockHidden, setDockHidden] = useState(false);
+  const lastY = useRef(0);
 
   const enterEdit = () => {
     tick();
@@ -187,8 +282,15 @@ export function TodayScreen() {
       <Screen
         scroll
         keyboardAware={false}
-        bottomBarHeight={editing ? EDIT_BAR_HEIGHT + 16 : aiDock ? AI_DOCK_HEIGHT + 8 : 24}
+        // The coach bar floats over the page: the last card scrolls clear of it (and its shadow).
+        bottomBarHeight={editing ? EDIT_BAR_HEIGHT + 16 : aiDock ? AI_DOCK_CLEARANCE : 24}
         gap={14}
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          const next = dockHiddenAfterScroll(lastY.current, y, dockHidden);
+          lastY.current = y;
+          if (next !== dockHidden) setDockHidden(next);
+        }}
       >
         {editing ? (
           <View style={{ gap: 2, minHeight: 44, justifyContent: 'center' }}>
@@ -247,7 +349,9 @@ export function TodayScreen() {
           </View>
         )}
 
-        {editing ? null : <WeekStrip />}
+        {editing ? null : <WeekStrip onLongPress={() => setLegend((v) => !v)} />}
+        {!editing && legend && !tips ? <WeekLegend /> : null}
+        {!editing && tips ? <TodayTips onDismiss={() => dismissHint('todayTips')} /> : null}
         {editing ? null : <ActiveSessionBanner />}
 
         <TodayGrid
@@ -285,7 +389,7 @@ export function TodayScreen() {
           <Button label={t('today.done')} size="large" icon="check" onPress={done} />
         </View>
       ) : aiDock ? (
-        <AiDock />
+        <AiDock hidden={dockHidden} />
       ) : null}
     </>
   );

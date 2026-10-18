@@ -47,7 +47,8 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
     </Gauge>
   );
   const title = (
-    <Text variant="displayS" numberOfLines={1}>
+    // Half width: "12 days" wraps next to the ring rather than being cut.
+    <Text variant="displayS" numberOfLines={size === 'small' ? 2 : 1}>
       {t('game.streakWord', { count: streak })}
     </Text>
   );

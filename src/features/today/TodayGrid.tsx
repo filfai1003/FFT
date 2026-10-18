@@ -397,24 +397,24 @@ function TodayCard({
             else if (action === 'hide') onHide();
           }}
         >
-          <View
-            pointerEvents={editing ? 'none' : 'auto'}
-            aria-hidden={editing}
-            style={{ flexGrow: 1 }}
-          >
-            {children}
-          </View>
+          {/* Edit controls sit in their own row above the card: they never cover its content. */}
           {editing ? (
-            <>
+            <View
+              testID={`edit-toolbar-${id}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 6,
+                minHeight: control,
+                marginBottom: 2,
+              }}
+            >
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('today.hide', { name })}
                 onPress={onHide}
-                hitSlop={4}
                 style={{
-                  position: 'absolute',
-                  left: -8,
-                  top: -8,
                   width: control,
                   height: control,
                   alignItems: 'center',
@@ -446,11 +446,8 @@ function TodayCard({
                   onResize();
                 }}
                 style={{
-                  position: 'absolute',
-                  right: 6,
-                  bottom: 6,
                   minHeight: control,
-                  paddingHorizontal: 12,
+                  flexShrink: 1,
                   justifyContent: 'center',
                 }}
               >
@@ -464,13 +461,20 @@ function TodayCard({
                     backgroundColor: colors.surface,
                   }}
                 >
-                  <Text variant="label" medium>
+                  <Text variant="label" medium numberOfLines={1}>
                     {item.size === 'large' ? t('today.sizeSmall') : t('today.sizeLarge')}
                   </Text>
                 </View>
               </Pressable>
-            </>
+            </View>
           ) : null}
+          <View
+            pointerEvents={editing ? 'none' : 'auto'}
+            aria-hidden={editing}
+            style={{ flexGrow: 1 }}
+          >
+            {children}
+          </View>
         </Animated.View>
       </GestureDetector>
     </Animated.View>

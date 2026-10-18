@@ -40,6 +40,22 @@ describe('onboarding: only the name and 18+ are required (DECISIONS 103)', () =>
     expect(disabled('Continue')).toBe(true);
   });
 
+  it('a disabled "Continue" says why under it, and reads it as its hint', async () => {
+    const reason = (text: string) => screen.queryByText(text, { includeHiddenElements: true });
+    await renderUI(<OnboardingFlow />);
+    expect(reason('Enter your name to continue.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue' }).props.accessibilityHint).toBe(
+      'Enter your name to continue.',
+    );
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Alex');
+    expect(reason('Confirm you are 18 or older to continue.')).toBeTruthy();
+    await fireEvent(screen.getByRole('switch', { name: 'I am 18 or older' }), 'valueChange', true);
+    expect(reason('Confirm you are 18 or older to continue.')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Continue' }).props.accessibilityHint,
+    ).toBeUndefined();
+  });
+
   it('"Skip setup" goes to the health data consent, which cannot be skipped', async () => {
     useOnboardingStore.getState().patch({ name: 'Alex', adultConfirmed: true });
     await renderUI(<OnboardingFlow />);

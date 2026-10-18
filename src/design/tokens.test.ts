@@ -28,6 +28,8 @@ describe('tokens match docs/design/tokens.json', () => {
       'chartDotOff',
       'danger',
       'accentDefault',
+      'disabledSurface',
+      'disabledText',
       'overlay',
     ] as const;
     for (const key of keys) expect(color[key]).toBe(json.color[key]);
@@ -89,6 +91,21 @@ describe('theme', () => {
       expect(contrast(high.textMuted, normal.surface)).toBeGreaterThan(
         contrast(normal.textMuted, normal.surface),
       );
+    },
+  );
+
+  it.each(['light', 'dark'] as const)(
+    '%s: a disabled button is neutral and its label stays readable (>= 4.5:1)',
+    (mode) => {
+      for (const highContrast of [false, true]) {
+        const th = buildTheme({ accent: 'red', highContrast, mode });
+        expect(contrast(th.disabledText, th.disabledSurface)).toBeGreaterThanOrEqual(4.5);
+        // The disabled label is also readable on the page and card (ghost / outlined buttons).
+        expect(contrast(th.disabledText, th.bg)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(th.disabledText, th.surface)).toBeGreaterThanOrEqual(4.5);
+        // Never a faded accent: the fill is the neutral grey, not the accent.
+        expect(th.disabledSurface).not.toBe(th.accent);
+      }
     },
   );
 

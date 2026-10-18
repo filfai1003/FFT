@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TextInput, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { KeyboardStickyView } from '@/components/ui/keyboard';
@@ -12,16 +13,30 @@ import { useChatDraft } from './chat-draft';
 
 /** Room the floating bar takes (bar + margins), so screens can leave space under their content. */
 export const AI_DOCK_HEIGHT = 72;
+/** Space a page leaves under its last card when the bar is shown: the bar, its shadow and air. */
+export const AI_DOCK_CLEARANCE = AI_DOCK_HEIGHT + 28;
+const SLIDE_MS = 200;
 
-/** The AI coach as a floating pill above the tab bar: type, send, the chat opens and answers. */
-export function AiDock() {
+/**
+ * The AI coach as a floating pill above the tab bar: type, send, the chat opens and answers.
+ * `hidden` slides it down out of the way (Home hides it while scrolling down, shows it again on
+ * the way up); never while it is being typed in. Reduce motion: it just disappears and comes back.
+ */
+export function AiDock({ hidden = false }: { hidden?: boolean }) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const router = useRouter();
   const setDraft = useChatDraft((s) => s.set);
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
   const tabBar = useTabBarHeight();
+  const away = hidden && !focused && text === '';
+  const offset = useSharedValue(0);
+  useEffect(() => {
+    const to = away ? AI_DOCK_HEIGHT + 16 : 0;
+    offset.set(reduceMotion ? to : withTiming(to, { duration: SLIDE_MS }));
+  }, [away, reduceMotion, offset]);
+  const slide = useAnimatedStyle(() => ({ transform: [{ translateY: offset.get() }] }));
 
   const open = () => {
     setDraft(text.trim());
@@ -36,13 +51,11 @@ export function AiDock() {
       style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
       pointerEvents="box-none"
     >
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 10,
-        }}
-        pointerEvents="box-none"
+      <Animated.View
+        testID="ai-dock"
+        style={[{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 }, slide]}
+        pointerEvents={away ? 'none' : 'box-none'}
+        aria-hidden={away}
       >
         <View
           style={{
@@ -88,7 +101,7 @@ export function AiDock() {
           />
           <IconButton icon="arrowUp" accessibilityLabel={t('ai.send')} onPress={open} />
         </View>
-      </View>
+      </Animated.View>
     </KeyboardStickyView>
   );
 }

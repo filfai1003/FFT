@@ -111,7 +111,16 @@
     "weightOn": "Logged {{day}}",
     "noWeight": "No weight yet. Tap to log it.",
     "supplements": "Supplements",
-    "supplementsAdd": "Add a supplement"
+    "supplementsAdd": "Add a supplement",
+    "legendOn": "Diet on target",
+    "legendOff": "Diet off target",
+    "weekHint": "Hold to see what the marks under the days mean.",
+    "tipsTitle": "Getting around Today",
+    "tipEdit": "Edit Today: move, resize, hide and add cards. You can also hold any card.",
+    "tipCoach": "Open your AI coach.",
+    "tipWeek": "The marks under the days show your diet:",
+    "tipsDone": "Got it",
+    "weightChangeShort": "{{kg}} kg in 7 days"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -158,6 +167,15 @@
     "skipSetup": "Skip setup",
     "skipSetupDetail": "Start now with the defaults. You can add the rest later in Profile and Goals.",
     "skipSetupNeeds": "Enter your name and confirm you are 18 or older first.",
+    "reason": {
+      "name": "Enter your name to continue.",
+      "adult": "Confirm you are 18 or older to continue.",
+      "fields": "Fix the details marked above, or clear them.",
+      "goal": "Choose a goal, or tap Skip.",
+      "mode": "Choose how you track food, or tap Skip.",
+      "meals": "Give every meal a name.",
+      "consent": "Agree to the processing of your health data to continue."
+    },
     "goal": {
       "title": "Your goal",
       "loseFat": "Lose fat",

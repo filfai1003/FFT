@@ -67,6 +67,9 @@ const light = {
   streakSoft: '#FBEBD3',
   streakInk: '#9A5800',
   dangerSoft: '#FBE4E2',
+  /** A disabled filled button: neutral fill (never a faded accent) and its label (>= 4.5:1). */
+  disabledSurface: '#E9E7E2',
+  disabledText: '#5E5A54',
   overlay: 'rgba(25,25,23,0.45)',
 } as const;
 
@@ -118,6 +121,8 @@ const dark: Palette = {
   streakSoft: '#2B2114',
   streakInk: '#F0B45C',
   dangerSoft: '#3A1A18',
+  disabledSurface: '#2A2926',
+  disabledText: '#A8A49D',
   overlay: 'rgba(0,0,0,0.6)',
 };
 

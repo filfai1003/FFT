@@ -11,7 +11,13 @@ import { signOut } from '@/features/auth/api';
 import { useSessionStore } from '@/features/auth/session-store';
 import { profileKey } from '@/features/profile/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { canContinue, skipDefaults, useOnboardingStore, stepsFor } from './draft-store';
+import {
+  canContinue,
+  continueReason,
+  skipDefaults,
+  useOnboardingStore,
+  stepsFor,
+} from './draft-store';
 import { bodyProblems } from './logic';
 import {
   BodyStep,
@@ -39,6 +45,8 @@ export function OnboardingFlow() {
   const steps = stepsFor(draft, undefined, skipped);
   const id = steps[Math.min(step, steps.length - 1)];
   const last = step >= steps.length - 1;
+  // Shown under the disabled main button: what is missing (never while saving).
+  const reason = busy ? null : continueReason(id, draft, today);
 
   const finish = async () => {
     if (!userId) return;
@@ -63,7 +71,8 @@ export function OnboardingFlow() {
 
   return (
     <>
-      <Screen scroll bottomBarHeight={barHeight + 24} gap={20}>
+      {/* The reason line under the button makes the bar taller: room for it too. */}
+      <Screen scroll bottomBarHeight={barHeight + 24 + (reason ? 32 : 0)} gap={20}>
         <FormHeader
           left={
             step === 0
@@ -135,6 +144,7 @@ export function OnboardingFlow() {
           size="large"
           label={last ? t('onboarding.finish') : t('common.continue')}
           disabled={busy || !canContinue(id, draft, today)}
+          disabledReason={reason ? t(`onboarding.reason.${reason}`) : undefined}
           onPress={last ? finish : next}
         />
       </BottomActionBar>
