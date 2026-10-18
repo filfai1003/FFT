@@ -14,4 +14,5 @@ RUN npx expo export -p web --output-dir dist
 
 FROM nginx:1.27-alpine
 COPY web/nginx.conf /etc/nginx/templates/default.conf.template
+COPY web/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html

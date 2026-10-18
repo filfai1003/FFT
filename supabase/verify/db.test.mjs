@@ -1628,6 +1628,57 @@ describe('sign-in limits of the AI app sign-in (DECISIONS 76)', () => {
   });
 });
 
+describe('security headers of the web app and the site (nginx, DECISIONS 77)', () => {
+  const root = path.join(supabaseDir, '..');
+  for (const dir of ['web', 'site']) {
+    it(`${dir}: every location keeps the security headers`, () => {
+      const conf = fs.readFileSync(path.join(root, dir, 'nginx.conf'), 'utf8');
+      const snippet = fs.readFileSync(path.join(root, dir, 'security-headers.conf'), 'utf8');
+      for (const h of [
+        'Content-Security-Policy',
+        "frame-ancestors 'none'",
+        'X-Frame-Options DENY',
+        'X-Content-Type-Options nosniff',
+        'Referrer-Policy',
+        'Strict-Transport-Security',
+      ])
+        assert.ok(snippet.includes(h), `${dir}: ${h}`);
+      assert.match(conf, /^\s{2}include \/etc\/nginx\/snippets\/security-headers\.conf;/m);
+      // A location with its own add_header drops the server's: it must include the snippet too.
+      const locations = conf.split(/\n\s*location /).slice(1);
+      assert.ok(locations.length > 0);
+      for (const block of locations) {
+        const body = block.slice(0, block.indexOf('}') + 1);
+        if (/add_header/.test(body))
+          assert.ok(
+            body.includes('security-headers.conf'),
+            `${dir}: location ${body.split('{')[0]}`,
+          );
+      }
+      const docker = fs.readFileSync(path.join(root, dir, 'Dockerfile'), 'utf8');
+      assert.match(docker, /security-headers\.conf \/etc\/nginx\/snippets\/security-headers\.conf/);
+    });
+  }
+
+  it('web: the only inline script of the Expo export is allowed by its hash', () => {
+    const snippet = fs.readFileSync(path.join(root, 'web', 'security-headers.conf'), 'utf8');
+    const hash = createHash('sha256')
+      .update('globalThis.__EXPO_ROUTER_HYDRATE__=true;')
+      .digest('base64');
+    assert.ok(snippet.includes(`'sha256-${hash}'`));
+    assert.ok(!/unsafe-eval/.test(snippet));
+  });
+
+  it('site: no inline script (its CSP allows scripts from the site only)', () => {
+    for (const f of fs.readdirSync(path.join(root, 'site')).filter((x) => x.endsWith('.html'))) {
+      const html = fs.readFileSync(path.join(root, 'site', f), 'utf8');
+      for (const tag of html.match(/<script[^>]*>/g) ?? [])
+        assert.match(tag, /\ssrc=/, `${f}: ${tag}`);
+      assert.ok(!/\son[a-z]+="/i.test(html), `${f}: inline event handler`);
+    }
+  });
+});
+
 describe('publishing the APK with its own token (server/apk.js, DECISIONS 75)', () => {
   const TOKEN = 'apk_' + 'k'.repeat(60);
   const BUILD = '0f3c2a1b-1234-4abc-8def-0123456789ab';

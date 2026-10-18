@@ -312,7 +312,8 @@
             <span class="num">1</span><span>Tap Download and open the file on your phone.</span>
           </li>
           <li class="card">
-            <span class="num">2</span><span>If Android asks, allow installs from this browser.</span>
+            <span class="num">2</span
+            ><span>If Android asks, allow installs from this browser.</span>
           </li>
           <li class="card">
             <span class="num">3</span
@@ -325,23 +326,48 @@
         <h2 id="inside">What's inside</h2>
         <div class="shots">
           <figure>
-            <img class="frame" src="screens/train.jpg" alt="Train: next workout and the cycle" loading="lazy" />
+            <img
+              class="frame"
+              src="screens/train.jpg"
+              alt="Train: next workout and the cycle"
+              loading="lazy"
+            />
             <figcaption>Train<span>Your plan, day by day</span></figcaption>
           </figure>
           <figure>
-            <img class="frame" src="screens/workout.jpg" alt="A workout: sets, weights and the rest timer" loading="lazy" />
+            <img
+              class="frame"
+              src="screens/workout.jpg"
+              alt="A workout: sets, weights and the rest timer"
+              loading="lazy"
+            />
             <figcaption>Workout<span>Log sets, rest timer</span></figcaption>
           </figure>
           <figure>
-            <img class="frame" src="screens/diet.jpg" alt="Diet: meals, calories and macros" loading="lazy" />
+            <img
+              class="frame"
+              src="screens/diet.jpg"
+              alt="Diet: meals, calories and macros"
+              loading="lazy"
+            />
             <figcaption>Diet<span>Meals and macros</span></figcaption>
           </figure>
           <figure>
-            <img class="frame" src="screens/progress.jpg" alt="Progress: strength, weight and body fat" loading="lazy" />
+            <img
+              class="frame"
+              src="screens/progress.jpg"
+              alt="Progress: strength, weight and body fat"
+              loading="lazy"
+            />
             <figcaption>Progress<span>Strength, weight, body fat</span></figcaption>
           </figure>
           <figure>
-            <img class="frame" src="screens/library.jpg" alt="Library: exercises with pictures" loading="lazy" />
+            <img
+              class="frame"
+              src="screens/library.jpg"
+              alt="Library: exercises with pictures"
+              loading="lazy"
+            />
             <figcaption>Library<span>72 exercises</span></figcaption>
           </figure>
         </div>
@@ -368,16 +394,6 @@
     </main>
 
     <script src="config.js"></script>
-    <script>
-      // Download link and version come from config.js (updated when a new APK is published).
-      (function () {
-        var cfg = window.FFT_APK || {};
-        var a = document.getElementById('download');
-        if (cfg.url) a.href = cfg.url;
-        if (cfg.version)
-          document.getElementById('version').textContent =
-            'Android · APK · v' + cfg.version + (cfg.size ? ' · ' + cfg.size : '');
-      })();
-    </script>
+    <script src="install.js"></script>
   </body>
 </html>
