@@ -35,10 +35,15 @@ export function useSettingsSync() {
       if (!loaded) return;
       clearTimeout(timer);
       timer = setTimeout(() => {
+        // A query only runs when it is awaited or then()-ed: `void query` alone never saved.
         void getSupabase()
           .from('user_settings')
           .update(stateToRow(currentAppearance(), currentPreferences()))
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .then(
+            () => undefined,
+            () => undefined,
+          );
       }, SAVE_DELAY_MS);
     };
 
