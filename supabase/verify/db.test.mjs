@@ -1384,7 +1384,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     const live = async () => {
       await admin();
       return db.query(
-        `select id, redirect_host, refresh_expires_at, created_at from public.api_tokens
+        `select id, redirect_host, refresh_expires_at, ends_at, created_at from public.api_tokens
          where user_id = $1 and client_id = $2 and deleted_at is null`,
         [A, clientId],
       );
@@ -1431,25 +1431,40 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
 
       t = await connect();
       [row] = (await live()).rows;
-      // Used every week, but signed in 91 days ago.
+      // 90 days after the sign-in.
+      assert.ok(
+        Math.abs((new Date(row.ends_at) - new Date(row.created_at)) / 86400000 - 90) < 0.01,
+      );
+      // Used every week, but the 90 days are over.
       await db.query(
-        `update public.api_tokens set created_at = now() - interval '91 days' where id = $1`,
+        `update public.api_tokens set ends_at = now() - interval '1 minute' where id = $1`,
         [row.id],
       );
       assert.equal(JSON.parse((await renew(t.refresh_token)).body).error, 'invalid_grant');
 
-      // 85 days in: the new tokens stop at day 90, not 7 or 30 days later.
+      // 5 days before the end: the new tokens stop then, not 7 or 30 days later.
       t = await connect();
       [row] = (await live()).rows;
       await db.query(
-        `update public.api_tokens set created_at = now() - interval '85 days' where id = $1`,
+        `update public.api_tokens set ends_at = now() + interval '5 days' where id = $1`,
         [row.id],
       );
       const r = JSON.parse((await renew(t.refresh_token)).body);
       assert.ok(r.expires_in <= 5 * 86400 + 5 && r.expires_in > 4 * 86400, String(r.expires_in));
       const [after] = (await live()).rows;
-      const days = (new Date(after.refresh_expires_at) - new Date(after.created_at)) / 86400000;
-      assert.ok(Math.abs(days - 90) < 0.01, String(days));
+      assert.equal(new Date(after.refresh_expires_at).getTime(), new Date(after.ends_at).getTime());
+    });
+
+    it('a connection made by the previous server (no dates) keeps working and gets its dates', async () => {
+      const t = await connect();
+      const [row] = (await live()).rows;
+      await db.query(
+        `update public.api_tokens set refresh_expires_at = null, ends_at = null where id = $1`,
+        [row.id],
+      );
+      assert.equal((await renew(t.refresh_token)).status, 200);
+      const [after] = (await live()).rows;
+      assert.ok(after.refresh_expires_at && after.ends_at);
     });
   });
 });

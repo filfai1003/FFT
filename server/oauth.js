@@ -324,8 +324,9 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
     const refresh = secret('fftr_');
     const [done] = await sql(
       `update public.api_tokens set token_hash = $2, refresh_hash = $3, prefix = $4,
-         expires_at = least(now() + make_interval(days => $5), created_at + make_interval(days => $7)),
-         refresh_expires_at = least(now() + make_interval(days => $6), created_at + make_interval(days => $7)),
+         ends_at = coalesce(ends_at, now() + make_interval(days => $7)),
+         expires_at = least(now() + make_interval(days => $5), coalesce(ends_at, now() + make_interval(days => $7))),
+         refresh_expires_at = least(now() + make_interval(days => $6), coalesce(ends_at, now() + make_interval(days => $7))),
          prev_refresh_hash = coalesce($8::text, prev_refresh_hash)
        where id = $1 and ($8::text is null or refresh_hash = $8::text)
        returning greatest(0, extract(epoch from expires_at - now()))::int as expires_in`,
@@ -390,11 +391,11 @@ ${message ? `<p class="err" role="alert">${esc(message)}</p>` : ''}
       const [row] = await sql(
         // The connection keeps the permission chosen at sign-in.
         `select id, scope, refresh_hash = $1 as current,
-                coalesce(refresh_expires_at > now(), false)
-                  and created_at > now() - make_interval(days => $3) as live
+                -- No dates yet (made by the previous server during a deploy): live, dated now.
+                coalesce(refresh_expires_at > now(), true) and coalesce(ends_at > now(), true) as live
          from public.api_tokens
          where (refresh_hash = $1 or prev_refresh_hash = $1) and client_id = $2 and deleted_at is null`,
-        [given, client.id, CONNECTION_MAX_DAYS],
+        [given, client.id],
       );
       if (!row) return oauthError('invalid_grant', 'the refresh token was revoked or is wrong');
       if (!row.current || !row.live) {
