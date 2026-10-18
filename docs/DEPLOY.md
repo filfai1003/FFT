@@ -101,7 +101,8 @@ Package name: `com.filfai1003.fft`.
 - Kept: every nightly dump for 30 days, then the first dump of each month for 12 months. Photo
   copies whose original was deleted go 30 days later.
 - The admin panel shows the last run (Overview > Last backup); a failed run appears under Problems
-  ("Nightly backup").
+  ("Nightly backup"). The panel itself cannot download a dump any more (DECISIONS 74): these
+  encrypted backups are the only copies. Do not keep decrypted dumps around after a restore.
 - Restore a backup:
   1. Download the file from the bucket (`db/<time>.sql.gz.enc`), with any S3 client using the
      bucket's credentials from Railway.

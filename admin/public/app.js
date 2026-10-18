@@ -1343,7 +1343,10 @@ async function renderTable(box) {
   const loaded = await api(`/api/table?${params}`);
   const t = loaded.table;
   const info = infoOf(t);
+  // Hidden values come as null with their column names in `masked` (DECISIONS 74).
   const rows = asObjects(loaded);
+  const maskedOf = new Map(rows.map((r, i) => [r, loaded.masked?.[i] ?? []]));
+  const anyMasked = [...maskedOf.values()].some((m) => m.length > 0);
   const canEdit = editing() && t.kind === 'r' && t.pk.length > 0;
   let timer;
   const search = h('input', {
@@ -1394,6 +1397,13 @@ async function renderTable(box) {
             'This table has no key, so its rows can only be changed with SQL.',
           )
         : null,
+      anyMasked
+        ? h(
+            'p',
+            { class: 'help' },
+            "People's own content and secrets (password hashes, tokens) are hidden. Open a row and reveal it to see them: it needs editing unlocked and is written in the log.",
+          )
+        : null,
     ),
     h(
       'section',
@@ -1410,8 +1420,19 @@ async function renderTable(box) {
           };
           void renderTable(box);
         },
-        onRow: (row) => void rowDialog(t, row, canEdit, box),
-        columns: loaded.columns.map((key) => ({ key })),
+        onRow: (row) => void rowDialog(t, row, canEdit, box, maskedOf.get(row) ?? []),
+        columns: loaded.columns.map((key) =>
+          anyMasked
+            ? {
+                key,
+                render: (row) =>
+                  maskedOf.get(row)?.includes(key)
+                    ? h('span', { class: 'muted' }, 'hidden')
+                    : (PERSON_COLUMNS.has(key) && personLink(row[key])) ||
+                      (row[key] === null || row[key] === undefined ? '—' : pretty(row[key], key)),
+              }
+            : { key },
+        ),
       }),
       h(
         'div',
@@ -1453,7 +1474,24 @@ const editable = (v) =>
   v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
 
 /** One row whole; with editing unlocked its fields can be changed, or the row deleted. */
-async function rowDialog(t, row, canEdit, box) {
+async function rowDialog(t, row, canEdit, box, masked = []) {
+  const pk = Object.fromEntries(t.pk.map((c) => [c, row[c]]));
+  /** The whole row, hidden values included (editing unlocked; the server logs it). */
+  const reveal = async () => {
+    const r = await api('/api/row/reveal', { schema: t.schema, table: t.name, pk });
+    return r.row;
+  };
+  if (masked.length && t.pk.length) {
+    // Editing a row needs its real values: with editing unlocked, it is revealed (and logged).
+    if (canEdit) {
+      try {
+        row = await reveal();
+        masked = [];
+      } catch (e) {
+        return toast(e.message);
+      }
+    }
+  }
   const fields = Object.keys(row);
   const inputs = {};
   const result = await openDialog(
@@ -1465,12 +1503,20 @@ async function rowDialog(t, row, canEdit, box) {
             { class: 'help' },
             'Change a field and save. Leave a field empty to clear it. The key fields cannot be changed.',
           )
-        : h('p', { class: 'help' }, 'Unlock editing to change this row.'),
+        : h(
+            'p',
+            { class: 'help' },
+            masked.length
+              ? 'Some values are hidden. Reveal them only when you need to: it needs editing unlocked and is written in the log.'
+              : 'Unlock editing to change this row.',
+          ),
       h(
         'dl',
         { class: 'kv' },
         fields.flatMap((f) => {
           const locked = !canEdit || t.pk.includes(f);
+          if (masked.includes(f))
+            return [h('dt', { title: f }, label(f)), h('dd', { class: 'muted' }, 'hidden')];
           if (locked)
             return [
               h('dt', { title: f }, label(f)),
@@ -1494,6 +1540,13 @@ async function rowDialog(t, row, canEdit, box) {
               'Delete this row',
             )
           : null,
+        masked.length && t.pk.length
+          ? h(
+              'button',
+              { class: 'btn', type: 'button', onclick: () => close('reveal') },
+              'Reveal hidden values…',
+            )
+          : null,
         h('span', { class: 'spacer' }),
         h(
           'button',
@@ -1511,8 +1564,12 @@ async function rowDialog(t, row, canEdit, box) {
     ],
     { wide: true },
   );
-  const pk = Object.fromEntries(t.pk.map((c) => [c, row[c]]));
   try {
+    if (result === 'reveal') {
+      if (!(await needEditing())) return;
+      // Opened again whole (editing is now unlocked, so its fields can be changed too).
+      return void (await rowDialog(t, await reveal(), t.kind === 'r', box, []));
+    }
     if (result === 'save') {
       const set = {};
       for (const [f, input] of Object.entries(inputs))
@@ -1703,7 +1760,7 @@ async function askPage(questionId) {
   await loadPeople();
   header(
     'Ask the database',
-    'Pick a ready-made question to see the answer. It only reads, nothing can break. If you know SQL, write your own question under "Write SQL".',
+    'Pick a ready-made question to see the answer, or write your own under "Write SQL". SQL can read everything, so it needs editing unlocked, and every run is written in the log.',
     'Advanced',
   );
   const results = h('div', { class: 'page' });
@@ -1729,6 +1786,7 @@ async function askPage(questionId) {
 
   const run = async (sql, commit, title) => {
     if (!sql.trim()) return;
+    if (!(await needEditing())) return;
     if (
       commit &&
       !(await confirmDialog(
@@ -1802,8 +1860,8 @@ async function askPage(questionId) {
       'p',
       { class: 'help' },
       editing()
-        ? 'Editing is unlocked: "Try it" runs and then undoes everything, "Run and keep" changes the real data (and is written in the change log).'
-        : 'Viewing only: whatever you write, nothing can be changed. Ctrl+Enter runs it.',
+        ? 'Editing is unlocked: "Try it" runs and then undoes everything, "Run and keep" changes the real data. Both are written in the log.'
+        : 'SQL needs editing unlocked (you will be asked). Ctrl+Enter runs it.',
     ),
     editor,
     h(
@@ -1832,7 +1890,25 @@ async function askPage(questionId) {
       history,
     ),
   );
-  if (chosen) await run(chosen.sql, false, chosen.title);
+  // A ready-made question runs right away only with editing unlocked; otherwise on a click.
+  if (chosen && editing()) await run(chosen.sql, false, chosen.title);
+  else if (chosen)
+    results.replaceChildren(
+      h(
+        'section',
+        { class: 'card' },
+        h('p', { class: 'muted' }, 'Questions run SQL, so they need editing unlocked.'),
+        h(
+          'button',
+          {
+            class: 'btn primary',
+            type: 'button',
+            onclick: () => void run(chosen.sql, false, chosen.title),
+          },
+          'Unlock and answer',
+        ),
+      ),
+    );
   return [
     h('div', { class: 'questions' }, cards),
     h('div', { class: 'row' }, status),
@@ -1855,9 +1931,23 @@ const ACTIONS = {
   'row.delete': 'Deleted a row',
   'backup.download': 'Downloaded a backup',
   'db.reset': 'Reset the database',
+  'row.reveal': 'Revealed hidden values',
+  'read.sql': 'Ran SQL (nothing kept)',
 };
+/** "read.table" -> "Looked at: table" (every look at the data is logged, DECISIONS 74). */
+const actionName = (a) =>
+  ACTIONS[a] ?? (a.startsWith('read.') ? `Looked at: ${a.slice(5).replace(/[-/]/g, ' ')}` : a);
 function describe(action, d) {
   if (!d || typeof d !== 'object') return '';
+  if (action === 'read.sql')
+    return String(d.sql ?? '')
+      .replace(/\s+/g, ' ')
+      .slice(0, 120);
+  if (action === 'row.reveal')
+    return `${infoOf({ schema: d.schema, name: d.table })?.[1] ?? d.table} · ${(d.columns ?? []).join(', ')}`;
+  if (action === 'read.table')
+    return `${d.schema ?? ''}.${d.name ?? ''}${d.q ? ` · "${d.q}"` : ''}`;
+  if (action === 'read.user') return d.id ? `${String(d.id).slice(0, 8)}…` : '';
   if (action === 'plan.set')
     return `${d.plan === 'premium' ? 'Premium' : 'Free'}${d.userId ? ` · ${d.userId.slice(0, 8)}…` : ''}`;
   if (action === 'password.temporary')
@@ -1872,41 +1962,68 @@ function describe(action, d) {
   if (action === 'sudo.enter') return d.ip ? `from ${d.ip}` : '';
   return '';
 }
-async function logPage() {
+async function logPage(kind) {
+  const views = kind === 'views';
   header(
     'Change log',
-    'Everything changed with editing unlocked, newest first. Nothing here can be edited or removed.',
+    views
+      ? 'Every look at the data (pages opened, SQL run, hidden values revealed), newest first. Nothing here can be edited or removed.'
+      : 'Everything changed with editing unlocked, newest first. Nothing here can be edited or removed.',
     'Advanced',
   );
-  const rows = asObjects(await api('/api/audit'));
-  return h(
-    'section',
-    { class: 'card flat' },
-    table(rows, {
-      empty: 'No changes yet.',
-      onRow: (r) =>
-        openDialog((close) => [
-          h('h2', {}, ACTIONS[r.action] ?? r.action),
-          h('p', { class: 'muted' }, dateTime(r.created_at)),
-          h('pre', {}, JSON.stringify(r.detail, null, 2)),
-          h(
-            'div',
-            { class: 'row end' },
-            h('button', { class: 'btn', type: 'button', onclick: () => close() }, 'Close'),
-          ),
-        ]),
-      columns: [
-        { key: 'created_at', label: 'When', render: (r) => dateTime(r.created_at) },
-        { key: 'action', label: 'What', render: (r) => ACTIONS[r.action] ?? r.action },
-        { key: 'detail', label: 'Details', render: (r) => describe(r.action, r.detail) },
-      ],
-    }),
+  const rows = asObjects(await api(`/api/audit${views ? '?views=1' : ''}`));
+  const tabs = h(
+    'div',
+    { class: 'row' },
+    h(
+      'button',
+      { class: `btn small${views ? ' ghost' : ''}`, type: 'button', onclick: () => go('log') },
+      'Changes',
+    ),
+    h(
+      'button',
+      {
+        class: `btn small${views ? '' : ' ghost'}`,
+        type: 'button',
+        onclick: () => go('log', 'views'),
+      },
+      'Views',
+    ),
   );
+  return [
+    tabs,
+    h(
+      'section',
+      { class: 'card flat' },
+      logTable(rows, views ? 'No views yet.' : 'No changes yet.'),
+    ),
+  ];
+}
+function logTable(rows, empty) {
+  return table(rows, {
+    empty,
+    onRow: (r) =>
+      openDialog((close) => [
+        h('h2', {}, actionName(r.action)),
+        h('p', { class: 'muted' }, dateTime(r.created_at)),
+        h('pre', {}, JSON.stringify(r.detail, null, 2)),
+        h(
+          'div',
+          { class: 'row end' },
+          h('button', { class: 'btn', type: 'button', onclick: () => close() }, 'Close'),
+        ),
+      ]),
+    columns: [
+      { key: 'created_at', label: 'When', render: (r) => dateTime(r.created_at) },
+      { key: 'action', label: 'What', render: (r) => actionName(r.action) },
+      { key: 'detail', label: 'Details', render: (r) => describe(r.action, r.detail) },
+    ],
+  });
 }
 
 // ---------------------------------------------------------------- backup and reset
 async function backupPage() {
-  header('Backup and reset', 'Keep a copy of everything, or start over.', 'Advanced');
+  header('Backup and reset', 'Where the copies of the data are, or start over.', 'Advanced');
   const reset = async () => {
     if (!(await needEditing())) return;
     const word = h('input', { autocomplete: 'off', 'aria-label': 'Type RESET' });
@@ -1921,8 +2038,7 @@ async function backupPage() {
       h(
         'p',
         {},
-        'This deletes every account and everything that belongs to it. It cannot be undone. ',
-        h('a', { href: '/api/backup', download: true }, 'Download a backup first.'),
+        'This deletes every account and everything that belongs to it. It cannot be undone. Check first that last night’s encrypted backup ran (Overview > Last backup).',
       ),
       h('label', { class: 'field' }, h('span', {}, 'Type RESET'), word),
       h('label', { class: 'field' }, h('span', {}, 'Admin password again'), password),
@@ -1962,12 +2078,7 @@ async function backupPage() {
       h(
         'p',
         { class: 'muted' },
-        'A copy of all the data (accounts, profiles, plans, catalogue, everything) in one compressed file. It contains private data, including password fingerprints: keep it somewhere safe. A developer can load it back into an empty database.',
-      ),
-      h(
-        'div',
-        { class: 'row' },
-        h('a', { class: 'btn primary', href: '/api/backup', download: true }, 'Download a backup'),
+        'The panel no longer downloads copies of the data: a plain file on a laptop escapes encryption, retention and account deletion. The copies are the nightly backups, encrypted with BACKUP_KEY in the EU bucket, kept 30 days (monthly ones longer). To restore one, follow docs/DEPLOY.md (Backups).',
       ),
     ),
     h(

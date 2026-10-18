@@ -11,6 +11,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
 import { createOAuth } from '../../server/oauth.js';
+import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { createHash } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -407,6 +408,87 @@ describe('vip users and admin audit', () => {
     await as(A);
     assert.equal(await count('select count(*) as n from public.admin_audit'), 0);
     await rejects(`insert into public.admin_audit (action) values ('forged')`, '42501');
+  });
+});
+
+describe('admin data browser hides content and secrets (admin/privacy.js, DECISIONS 74)', () => {
+  const columnsOf = async (schema, table) =>
+    (
+      await db.query(
+        `select column_name as name from information_schema.columns
+         where table_schema = $1 and table_name = $2 order by ordinal_position`,
+        [schema, table],
+      )
+    ).rows.map((r) => r.name);
+  const META = new Set([
+    ...['id', 'user_id', 'owner_id', 'created_at', 'updated_at', 'deleted_at', 'server_at'],
+  ]);
+
+  it('every table holding a person’s own data shows only keys and times', async () => {
+    await admin();
+    const tables = (
+      await db.query(
+        `select distinct c.table_name as name from information_schema.columns c
+         join information_schema.tables t using (table_schema, table_name)
+         where c.table_schema = 'public' and t.table_type = 'BASE TABLE' and c.column_name = 'user_id'`,
+      )
+    ).rows.map((r) => r.name);
+    // Health, diet and training tables must be among them, fully hidden.
+    for (const table of ['body_metrics', 'food_logs', 'workout_sessions', 'consents', 'vault_rows'])
+      assert.ok(tables.includes(table), table);
+    // Tables about the account itself (plans, credit, tokens, sync…) keep their columns visible
+    // (secrets aside); every other table with a user_id is a person's own data.
+    const accountTables = new Set([
+      ...['user_plans', 'vip_users', 'ai_credit', 'ai_usage', 'api_tokens', 'account_sync'],
+      ...['app_errors', 'oauth_codes', 'relay_devices', 'password_reset_requests', 'admin_audit'],
+    ]);
+    for (const table of [...tables, 'profiles']) {
+      if (accountTables.has(table)) continue;
+      const cols = await columnsOf('public', table);
+      const mask = maskOf('public', table, cols);
+      for (const c of cols)
+        if (!META.has(c) && !c.endsWith('_id') && c !== 'server_at')
+          assert.ok(mask.always.has(c), `${table}.${c} is shown in the admin data browser`);
+    }
+    const profile = maskOf('public', 'profiles', await columnsOf('public', 'profiles'));
+    for (const c of await columnsOf('public', 'profiles'))
+      if (!META.has(c)) assert.ok(profile.always.has(c), `profiles.${c} must be hidden`);
+    const body = maskOf('public', 'body_metrics', await columnsOf('public', 'body_metrics'));
+    assert.ok(body.always.has('day') && !body.always.has('user_id'));
+  });
+
+  it('password hashes and tokens are hidden everywhere, emails stay', async () => {
+    // The stub of auth.users here has few columns: the real table's (GoTrue) password hash column.
+    const users = maskOf('auth', 'users', [
+      ...(await columnsOf('auth', 'users')),
+      'encrypted_password',
+      'confirmation_token',
+      'recovery_token',
+    ]);
+    assert.ok(users.always.has('confirmation_token') && users.always.has('recovery_token'));
+    assert.ok(users.always.has('encrypted_password'));
+    assert.ok(!users.always.has('email'));
+    const tokens = maskOf('public', 'api_tokens', await columnsOf('public', 'api_tokens'));
+    assert.ok(tokens.always.has('token_hash') && tokens.always.has('refresh_hash'));
+    assert.ok(!tokens.always.has('name') && !tokens.always.has('last_used_at'));
+  });
+
+  it('catalogue rows stay readable, the ones a person made are hidden; search skips hidden', async () => {
+    const cols = await columnsOf('public', 'foods');
+    const mask = maskOf('public', 'foods', cols);
+    const columns = ['id', 'owner_id', 'name'];
+    const { rows, masked } = maskRows(mask, columns, [
+      ['f1', null, 'Apple'],
+      ['f2', A, 'My secret shake'],
+    ]);
+    assert.deepEqual(rows[0], ['f1', null, 'Apple']);
+    assert.deepEqual(rows[1], ['f2', A, null]);
+    assert.deepEqual(masked, [[], ['name']]);
+    const profileCols = await columnsOf('public', 'profiles');
+    assert.deepEqual(
+      searchableColumns(maskOf('public', 'profiles', profileCols), profileCols).sort(),
+      [...profileCols.filter((c) => META.has(c))].sort(),
+    );
   });
 });
 

@@ -1,13 +1,14 @@
 // FFT admin panel: browse the data, run SQL, edit in sudo mode, set the accounts' plans.
-import { spawn } from 'node:child_process';
+// Every look at the data is written to admin_audit (`read.*`), and people's own content is hidden
+// until a row is revealed with editing unlocked (DECISIONS 74).
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
-import { createGzip } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createAuth, createLimiter, createTotp, SUDO_MS } from './auth.js';
 import { createDb } from './db.js';
+import { hiddenIn, maskOf, maskRows, searchableColumns } from './privacy.js';
 
 const { DATABASE_URL, ADMIN_RO_PASSWORD, PORT = '3000' } = process.env;
 const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD ?? '').trim();
@@ -120,6 +121,33 @@ const pkWhere = (info, pk, start) => {
 
 const columnNames = (info) => new Set(info.columns.map((c) => c.name));
 
+/**
+ * Writes a look at the data to the log (the read-only role cannot write, so through the owner,
+ * outside any transaction of the request). A failed log entry stops the request: no silent reads.
+ */
+async function logRead(action, detail) {
+  await db.rw.query('insert into public.admin_audit (action, detail) values ($1, $2)', [
+    action,
+    JSON.stringify(detail),
+  ]);
+}
+
+/**
+ * The same look (same page, same parameters) by the same session within 10 minutes is logged once:
+ * the badges refresh every minute, and a second identical read tells nothing new.
+ */
+const READ_REPEAT_MS = 10 * 60 * 1000;
+const lastReads = new Map();
+async function logReadOnce(session, action, detail, what) {
+  // Sessions are signed cookies: the expiry time made at sign-in tells one session from another.
+  const key = `${session.exp}|${what}`;
+  const at = lastReads.get(key);
+  if (at && Date.now() - at < READ_REPEAT_MS) return;
+  await logRead(action, detail);
+  if (lastReads.size > 5000) lastReads.clear();
+  lastReads.set(key, Date.now());
+}
+
 async function api(req, res, url) {
   const route = `${req.method} ${url.pathname}`;
 
@@ -154,9 +182,17 @@ async function api(req, res, url) {
   // A page of another site cannot add this header (it would need permission first).
   if (req.method !== 'GET' && req.headers['x-admin'] !== '1') throw new HttpError(403, 'Forbidden');
   const sudo = session.sudoUntil > Date.now();
-  const needSudo = () => {
-    if (!sudo) throw new HttpError(403, 'Sudo mode is needed to change data');
+  const needSudo = (what = 'change data') => {
+    if (!sudo) throw new HttpError(403, `Sudo mode is needed to ${what}`);
   };
+  // Every read is logged with what was asked (the change log shows them under "Views").
+  if (req.method === 'GET')
+    await logReadOnce(
+      session,
+      `read.${url.pathname.replace(/^\/api\//, '')}`,
+      { ...Object.fromEntries(url.searchParams), ip: clientIp(req) },
+      `${url.pathname}?${url.searchParams}`,
+    );
 
   if (route === 'POST /api/logout') {
     auth.setCookie(res, req, null);
@@ -203,9 +239,19 @@ async function api(req, res, url) {
     const dir = url.searchParams.get('dir') === 'desc' ? 'desc' : 'asc';
     const q = (url.searchParams.get('q') ?? '').trim();
     const from = `${quote(info.schema)}.${quote(info.name)} as t`;
-    const where = q ? 'where t::text ilike $1' : '';
+    const mask = maskOf(info.schema, info.name, info.columns);
+    const names = info.columns.map((c) => c.name);
+    // The search never looks into hidden values (it would tell them one guess at a time); in a
+    // catalogue table it still looks at the whole catalogue rows (owner_id null).
+    const visible = searchableColumns(mask, names);
+    const visibleText = visible.length
+      ? `concat_ws(' ', ${visible.map((c) => `t.${quote(c)}::text`).join(', ')})`
+      : `''`;
+    const catalogue = mask.owned.size ? 'or (t.owner_id is null and t::text ilike $1)' : '';
+    const where = q ? `where (${visibleText} ilike $1 ${catalogue})` : '';
     const values = q ? [`%${q.replace(/[\\%_]/g, '\\$&')}%`] : [];
-    const order = sort && columnNames(info).has(sort) ? `order by ${quote(sort)} ${dir}` : '';
+    const sortable = sort && columnNames(info).has(sort) && !mask.always.has(sort);
+    const order = sortable ? `order by ${quote(sort)} ${dir}` : '';
     const countRes = await db.run(`select count(*) as n from ${from} ${where}`, { params: values });
     const data = await db.run(
       `select * from ${from} ${where} ${order} limit ${limit} offset ${offset}`,
@@ -213,6 +259,7 @@ async function api(req, res, url) {
         params: values,
       },
     );
+    const { rows, masked } = maskRows(mask, data.columns, data.rows);
     return send(res, 200, {
       table: {
         schema: info.schema,
@@ -222,20 +269,41 @@ async function api(req, res, url) {
         columns: info.columns,
       },
       columns: data.columns,
-      rows: data.rows,
+      rows,
+      // Per row: the columns whose value is hidden (reveal the row to see them).
+      masked,
       total: Number(countRes.rows[0]?.[0] ?? 0),
       ms: data.ms,
     });
   }
 
+  if (route === 'POST /api/row/reveal') {
+    // One row whole, hidden values included: editing unlocked, and logged with the row's key.
+    needSudo('see hidden values');
+    const { schema, table, pk } = await readBody(req);
+    const info = await tableInfo(schema, table);
+    const where = pkWhere(info, pk ?? {}, 1);
+    const out = await db.run(
+      `select * from ${quote(info.schema)}.${quote(info.name)} where ${where.sql}`,
+      { params: where.values },
+    );
+    if (!out.rows[0]) throw new HttpError(404, 'No such row');
+    const row = Object.fromEntries(out.columns.map((c, i) => [c, out.rows[0][i]]));
+    const hidden = hiddenIn(maskOf(info.schema, info.name, info.columns), row);
+    await logRead('row.reveal', { schema, table, pk, columns: hidden, ip: clientIp(req) });
+    return send(res, 200, { row });
+  }
+
   if (route === 'POST /api/sql') {
+    // SQL can read anything: editing unlocked for every run, and every run is logged.
+    needSudo('run SQL');
     const { sql, commit } = await readBody(req);
     if (typeof sql !== 'string' || !sql.trim()) throw new HttpError(400, 'Write some SQL first');
-    if (commit) needSudo();
+    if (!commit) await logRead('read.sql', { sql: sql.slice(0, 4000), ip: clientIp(req) });
     const out = await db.run(sql, {
       sudo,
       commit: Boolean(commit),
-      audit: sudo && commit ? { action: 'sql', detail: { sql: sql.slice(0, 4000) } } : null,
+      audit: commit ? { action: 'sql', detail: { sql: sql.slice(0, 4000) } } : null,
     });
     return send(res, 200, out);
   }
@@ -587,60 +655,6 @@ async function api(req, res, url) {
     return send(res, 200, out);
   }
 
-  if (route === 'GET /api/backup') {
-    // A full copy of the data (public, auth, storage) as compressed SQL, made with the read-only role.
-    const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
-    const child = spawn(
-      'pg_dump',
-      [
-        '--no-owner',
-        '--no-privileges',
-        '--schema=public',
-        '--schema=auth',
-        '--schema=storage',
-        db.roUrl,
-      ],
-      { stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    let stderr = '';
-    child.stderr.on('data', (d) => (stderr += d));
-    await new Promise((resolve) => {
-      let started = false;
-      const gzip = createGzip();
-      child.stdout.on('data', (chunk) => {
-        if (!started) {
-          started = true;
-          res.writeHead(200, {
-            'Content-Type': 'application/gzip',
-            'Content-Disposition': `attachment; filename="fft-backup-${stamp}.sql.gz"`,
-            'Cache-Control': 'no-store',
-          });
-          gzip.pipe(res);
-        }
-        gzip.write(chunk);
-      });
-      child.on('error', (e) => {
-        if (!started) send(res, 500, { error: `pg_dump is not available: ${e.message}` });
-        resolve();
-      });
-      child.on('close', (code) => {
-        if (code !== 0) {
-          if (started) res.destroy();
-          else send(res, 500, { error: `Backup failed: ${stderr.slice(0, 300)}` });
-        } else gzip.end();
-        resolve();
-      });
-    });
-    await db
-      .run('select 1', {
-        sudo: true,
-        commit: true,
-        audit: { action: 'backup.download', detail: { ip: clientIp(req) } },
-      })
-      .catch(() => undefined);
-    return;
-  }
-
   if (route === 'POST /api/reset') {
     // Deletes every account and, through the cascades, everything that belongs to them. Keeps the tables
     // and the catalogue (exercises, foods). Needs sudo mode, the password again and the word RESET.
@@ -664,8 +678,13 @@ async function api(req, res, url) {
   }
 
   if (route === 'GET /api/audit') {
+    // Changes by default; views=1: the looks at the data (read.*, row.reveal) instead.
+    const views = url.searchParams.get('views') === '1';
     const out = await db.run(
-      'select created_at, action, detail from public.admin_audit order by created_at desc limit 200',
+      `select created_at, action, detail from public.admin_audit
+       where (action like 'read.%' or action = 'row.reveal') = $1
+       order by created_at desc limit 200`,
+      { params: [views] },
     );
     return send(res, 200, out);
   }

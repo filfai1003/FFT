@@ -46,24 +46,44 @@ check(
 check('sign in works', (await call('/api/login', { password, code: code() })).status === 200);
 check('tables list', (await call('/api/tables')).data.tables?.length > 5);
 
-const select = await call('/api/sql', { sql: 'select count(*) as n from public.profiles' });
-check(
-  'read-only select works',
-  select.status === 200 && select.data.columns[0] === 'n',
-  JSON.stringify(select.data),
-);
-
+// SQL can read anything: it needs editing unlocked, even to read (DECISIONS 74).
 for (const sql of [
+  'select count(*) as n from public.profiles',
   "update public.profiles set name = 'x'",
-  'delete from public.profiles',
-  'drop table public.vip_users',
   'commit; update public.profiles set name = $$x$$',
-  'set transaction read write; delete from public.profiles',
-  'create table public.sneaky (a int)',
 ]) {
   const r = await call('/api/sql', { sql });
-  check(`read-only cannot: ${sql.slice(0, 40)}`, r.status !== 200, JSON.stringify(r.data));
+  check(`SQL refused without sudo: ${sql.slice(0, 40)}`, r.status === 403, JSON.stringify(r.data));
 }
+check('no backup download', (await call('/api/backup')).status === 404);
+const profiles = await call('/api/table?schema=public&name=profiles');
+check(
+  'profiles: content hidden in the browser',
+  profiles.status === 200 &&
+    profiles.data.rows.every((row, i) =>
+      (profiles.data.masked[i] ?? []).every((c) => row[profiles.data.columns.indexOf(c)] === null),
+    ),
+  JSON.stringify(profiles.data.masked?.slice(0, 2)),
+);
+const authUsers = await call('/api/table?schema=auth&name=users');
+check(
+  'auth.users: password hashes hidden',
+  authUsers.status === 200 &&
+    authUsers.data.rows.every(
+      (row) => row[authUsers.data.columns.indexOf('encrypted_password')] == null,
+    ),
+);
+check(
+  'reveal refused without sudo',
+  (await call('/api/row/reveal', { schema: 'public', table: 'profiles', pk: { id: 'x' } }))
+    .status === 403,
+);
+const views = await call('/api/audit?views=1');
+check(
+  'reads are logged',
+  views.status === 200 && views.data.rows.some((r) => r[1] === 'read.table'),
+  JSON.stringify(views.data.rows?.slice(0, 3)),
+);
 
 check(
   'commit refused without sudo',
@@ -126,6 +146,12 @@ check(
   (await call('/api/reset', { confirm: 'RESET', password })).status === 403,
 );
 check('sudo works', (await call('/api/sudo', { password })).status === 200);
+const select = await call('/api/sql', { sql: 'select count(*) as n from public.profiles' });
+check(
+  'with sudo: select works',
+  select.status === 200 && select.data.columns[0] === 'n',
+  JSON.stringify(select.data),
+);
 const rollback = await call('/api/sql', {
   sql: 'create table public.zz_test (a int); insert into public.zz_test values (1); select * from public.zz_test',
 });
