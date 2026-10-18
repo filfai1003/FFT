@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Full spec: `docs/PROJECT.md`. Design source of truth: `docs/design/tokens.json` and the 2026-10 redesign canvas (Artifact "FFT redesign"); the older screens in `docs/design/screens` show content and flows, not the look. Read them before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
+Full spec: `docs/PROJECT.md`. Design source of truth: the canvas Artifact "FFT app (current)" (https://claude.ai/artifact/CPEW41ox5JiCvhGVcWAEVu, drawn from the app as built; keep it in sync when screens change) and `docs/design/tokens.json`. The older canvas "FFT redesign" and the screens in `docs/design/screens` are abandoned: do not use them. Read the current canvas before working on any screen. Choices made where the design was ambiguous: `docs/DECISIONS.md`.
 
 ## Stack
 Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/app`, alias `@/*` → `src/*`) · Supabase (Postgres, Auth, Storage, RLS) · TanStack Query (server state) · Zustand (UI state) · i18next · offline-first active session · Open Food Facts.

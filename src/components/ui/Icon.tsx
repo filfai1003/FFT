@@ -4,7 +4,7 @@ type Shape = string | readonly [cx: number, cy: number, r: number];
 
 /**
  * Stroke icons on a 24px grid, 1.8 stroke: the same shapes as the canvas Icon component
- * ("FFT redesign"). Add shapes as screens need them, copied from there.
+ * ("FFT app (current)"). Add shapes as screens need them, copied from there.
  */
 const shapes = {
   plus: ['M12 5v14M5 12h14'],
