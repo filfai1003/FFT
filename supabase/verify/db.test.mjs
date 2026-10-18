@@ -14,7 +14,7 @@ import { clientIp, createOAuth } from '../../server/oauth.js';
 import { createApkPublisher } from '../../server/apk.js';
 import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const supabaseDir = path.join(here, '..');
@@ -2807,5 +2807,247 @@ describe('encrypted relay between phones (DECISIONS 65)', () => {
     assert.equal(await count('select count(*) as n from public.relay_messages'), 0);
     assert.equal(await count('select count(*) as n from public.relay_devices'), 0);
     await rejects(`select public.relay_register('${P1}', 'Pixel')`, '42501');
+  });
+});
+
+// Last on purpose: by now every table holds rows of the test accounts, which this copies.
+describe('deleting an account leaves nothing (DECISIONS 84)', () => {
+  const Z = '84000000-0000-0000-0000-00000000000f';
+  const MAIL = 'zed@test.dev';
+  /** Tables with no user column that hold no one's data (or keep the id on purpose). */
+  const NOT_USER_DATA = {
+    app_settings: 'server settings',
+    deleted_accounts: 'the deletion log keeps the id on purpose (DECISIONS 79)',
+  };
+  /** Tables reached otherwise than by a user column; how is checked below. */
+  const BY_OTHER_MEANS = {
+    password_reset_requests: 'by email',
+    admin_audit: 'details naming the account are replaced',
+    oauth_clients: 'an app used only by this account goes',
+    food_servings: 'through its food (foods.owner_id, cascade)',
+  };
+  /** Rows for Z where no other account's row can be copied (the table is empty by then). */
+  const EXPLICIT = {
+    body_goals: `insert into public.body_goals (user_id, valid_from, target_weight_kg) values ($1, '2026-10-01', 70)`,
+    relay_devices: `insert into public.relay_devices (user_id, device_id, name) values ($1, gen_random_uuid()::text, 'Zed phone')`,
+    relay_messages: `insert into public.relay_messages (user_id, to_device, from_device, payload) values ($1, 'a', 'b', 'sealed')`,
+    user_plans: `insert into public.user_plans (user_id, plan) values ($1, 'premium')`,
+    vault_keys: `insert into public.vault_keys (user_id, kdf, salt, wrapped_by_passphrase, wrapped_by_recovery, key_check) values ($1, '{}', 's', 'w', 'r', 'k')`,
+    vault_rows: `insert into public.vault_rows (user_id, tbl, row_id, updated_at, ciphertext) values ($1, 'water_logs', 'r1', now(), 'sealed')`,
+    // Run after the copies: it needs Z's workout.
+    session_exercises: `insert into public.session_exercises (user_id, session_id, exercise_id, position)
+      select $1, s.id, (select e.id from public.exercises e where e.owner_id is null limit 1), 0
+      from public.workout_sessions s where s.user_id = $1 limit 1`,
+  };
+  /** The columns that point to an account, per table (profiles: its id). */
+  let userColumns = {};
+
+  const tablesOf = async () => {
+    await admin();
+    return (
+      await db.query(
+        `select c.table_name as t, array_agg(c.column_name::text order by c.ordinal_position) as cols
+         from information_schema.columns c
+         join information_schema.tables x using (table_schema, table_name)
+         where c.table_schema = 'public' and x.table_type = 'BASE TABLE'
+         group by c.table_name order by 1`,
+      )
+    ).rows;
+  };
+
+  it('every table is either reached by deletion or holds no one’s data (guard)', async () => {
+    const tables = await tablesOf();
+    userColumns = {};
+    for (const { t, cols } of tables) {
+      if (t in NOT_USER_DATA) continue;
+      const user = cols.filter((c) => c === 'user_id' || c === 'owner_id');
+      if (t === 'profiles') user.push('id');
+      if (user.length) userColumns[t] = user;
+      else
+        assert.ok(
+          t in NOT_USER_DATA || t in BY_OTHER_MEANS,
+          `public.${t} has no user column: say how deleting an account reaches it (NOT_USER_DATA / BY_OTHER_MEANS here, and the deletion trigger)`,
+        );
+    }
+    // A user column without a foreign key to auth.users must be handled by the deletion trigger.
+    const fks = (
+      await db.query(
+        `select cl.relname as t, a.attname as col
+         from pg_constraint k
+         join pg_class cl on cl.oid = k.conrelid
+         join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
+         join pg_attribute a on a.attrelid = k.conrelid and a.attnum = any (k.conkey)
+         where k.contype = 'f' and k.confrelid = 'auth.users'::regclass and k.confdeltype = 'c'`,
+      )
+    ).rows.map((r) => `${r.t}.${r.col}`);
+    const handledWithoutKey = ['app_errors.user_id', 'exercises.owner_id', 'foods.owner_id'];
+    for (const [t, cols] of Object.entries(userColumns))
+      for (const c of cols)
+        if (!(t === 'profiles' && c === 'id'))
+          assert.ok(
+            fks.includes(`${t}.${c}`) || handledWithoutKey.includes(`${t}.${c}`),
+            `public.${t}.${c}: no ON DELETE CASCADE to auth.users and not handled by the deletion trigger`,
+          );
+  });
+
+  it('every storage bucket holding users’ files is emptied by Delete account (guard)', async () => {
+    await admin();
+    const buckets = (await db.query('select id from storage.buckets')).rows.map((r) => r.id);
+    const fn = fs.readFileSync(
+      path.join(supabaseDir, 'functions', 'delete-account', 'index.ts'),
+      'utf8',
+    );
+    const listed = JSON.parse(/const BUCKETS = (\[[^\]]*\])/.exec(fn)[1].replace(/'/g, '"'));
+    const restore = fs.readFileSync(
+      path.join(supabaseDir, '..', 'backup', 'reapply-deletions.mjs'),
+      'utf8',
+    );
+    // Public buckets with no one's files: the exercise catalogue images, the APK.
+    const shared = ['exercise-images', 'downloads'];
+    for (const b of buckets) {
+      if (shared.includes(b)) continue;
+      assert.ok(listed.includes(b), `bucket ${b} is not emptied by delete-account`);
+      assert.ok(restore.includes(`'${b}'`), `bucket ${b} is not emptied after a restore`);
+    }
+  });
+
+  it('an account with data everywhere is deleted with all of it; a phone offline syncs nothing back', async () => {
+    await admin();
+    await db.query(
+      `insert into auth.users (id, instance_id, aud, role, email)
+       values ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', $2)`,
+      [Z, MAIL],
+    );
+    // A copy of some existing row of every table with a user column, now Z's (unique keys new).
+    const uniques = (
+      await db.query(
+        `select cl.relname as t, a.attname as col, format_type(a.atttypid, a.atttypmod) as type
+         from pg_index i
+         join pg_class cl on cl.oid = i.indrelid
+         join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
+         join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any (i.indkey)
+         where i.indisunique and i.indnatts = 1`,
+      )
+    ).rows;
+    const empty = [];
+    const later = [];
+    for (const [t, cols] of Object.entries(userColumns)) {
+      const [src] = (
+        await db.query(
+          `select to_jsonb(x) as r from public.${t} x
+           where ${cols.map((c) => `x.${c} is not null`).join(' and ')} limit 1`,
+        )
+      ).rows;
+      if (!src) {
+        if (EXPLICIT[t]) later.push(EXPLICIT[t]);
+        else empty.push(t);
+        continue;
+      }
+      const row = { ...src.r };
+      for (const c of cols) row[c] = Z;
+      // Files live in the owner's folder (<account id>/…): the copy's file is in Z's.
+      for (const [k, v] of Object.entries(row))
+        if (typeof v === 'string' && /^[0-9a-f-]{36}\//.test(v)) row[k] = `${Z}/${v.slice(37)}`;
+      for (const u of uniques.filter((x) => x.t === t && !cols.includes(x.col))) {
+        if (u.type === 'uuid') row[u.col] = randomUUID();
+        else if (u.type === 'text') row[u.col] = `z-${randomUUID()}`;
+      }
+      // A token copied from another account must not keep that account's AI app.
+      if (t === 'api_tokens') row.client_id = null;
+      await db.query(
+        `insert into public.${t} select * from jsonb_populate_record(null::public.${t}, $1)
+         on conflict do nothing`,
+        [row],
+      );
+    }
+    for (const sql of later) await db.query(sql, [Z]);
+    assert.deepEqual(empty, [], 'tables with no row to copy: give Z a row there (EXPLICIT)');
+    // Z really has data in every one of them before the deletion.
+    for (const [t, cols] of Object.entries(userColumns))
+      assert.ok(
+        (await count(
+          `select count(*) as n from public.${t} where ${cols.map((c) => `${c} = '${Z}'`).join(' or ')}`,
+        )) > 0,
+        `no row of Z in public.${t}`,
+      );
+    const [zFood] = (await db.query(`select id from public.foods where owner_id = $1 limit 1`, [Z]))
+      .rows;
+    await db.query(
+      `insert into public.food_servings (food_id, label, grams) values ($1, 'zed portion', 30)`,
+      [zFood.id],
+    );
+    // The ones without a user column, and an AI app only Z used.
+    await db.query(
+      `insert into public.password_reset_requests (email, note) values ($1, 'locked out')`,
+      [MAIL],
+    );
+    await db.query(`insert into public.admin_audit (action, detail) values ('plan.set', $1)`, [
+      JSON.stringify({ userId: Z, email: MAIL, plan: 'premium' }),
+    ]);
+    await db.query(
+      `insert into public.oauth_clients (id, name, redirect_uris) values ('fftc_zed', 'Zed AI', '{https://claude.ai/cb}')`,
+    );
+    await db.query(
+      `insert into public.api_tokens (user_id, name, prefix, token_hash, client_id)
+       values ($1, 'Zed AI', 'fft_', 'zed-hash', 'fftc_zed')`,
+      [Z],
+    );
+    await db.query(
+      `insert into public.app_errors (user_id, fingerprint, kind, message, platform)
+       values ($1, 'zed', 'crash', 'zed crashed', 'android')`,
+      [Z],
+    );
+
+    // The real path: the delete-account function removes the files, then deletes the auth user.
+    await db.query('delete from auth.users where id = $1', [Z]);
+
+    for (const { t, cols } of await tablesOf()) {
+      if (t === 'deleted_accounts') continue;
+      const textCols = cols.map((c) => `coalesce(x.${c}::text, '')`).join(` || ' ' || `);
+      const n = Number(
+        (
+          await db.query(
+            `select count(*) as n from public.${t} x
+             where (${textCols}) like '%' || $1 || '%' or lower(${textCols}) like '%' || $2 || '%'`,
+            [Z, MAIL],
+          )
+        ).rows[0].n,
+      );
+      assert.equal(n, 0, `public.${t} still names the deleted account`);
+    }
+    assert.equal(
+      await count(`select count(*) as n from public.oauth_clients where id = 'fftc_zed'`),
+      0,
+    );
+    assert.equal(
+      await count(
+        `select count(*) as n from public.admin_audit where action = 'plan.set' and detail = '{"account": "deleted"}'::jsonb`,
+      ),
+      1,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.deleted_accounts where user_id = '${Z}'`),
+      1,
+    );
+
+    // A phone that was offline still has Z's session and pushes its outbox: nothing comes back.
+    await as(Z);
+    await assert.rejects(() =>
+      db.query(`select public.sync_push('water_logs', $1::jsonb, '[]'::jsonb)`, [
+        JSON.stringify([
+          { id: randomUUID(), user_id: Z, day: '2026-10-18', ml: 250, updated_at: new Date() },
+        ]),
+      ]),
+    );
+    await assert.rejects(() => db.query(`select public.set_health_consent(false)`));
+    await admin();
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where user_id = '${Z}'`),
+      0,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.account_consent where user_id = '${Z}'`),
+      0,
+    );
   });
 });
