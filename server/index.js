@@ -169,13 +169,14 @@ http
   .listen(Number(process.env.PORT ?? 3000), '::', () => console.log('functions listening'));
 
 /**
- * What the privacy policy promises about retention: handled password requests 30 days, the admin
+ * What the privacy policy promises about retention: password requests 30 days, the admin
  * change log and the sign-in log 12 months, error reports 60 days. Runs at start and every day.
  * Clean-up of the AI app sign-in too.
  */
 async function cleanup() {
   const rules = [
-    `delete from public.password_reset_requests where handled_at < now() - interval '30 days'`,
+    // Password requests: 30 days after they were sent, handled or not (DECISIONS 81).
+    `delete from public.password_reset_requests where created_at < now() - interval '30 days'`,
     `delete from public.admin_audit where created_at < now() - interval '12 months'`,
     `delete from auth.audit_log_entries where created_at < now() - interval '12 months'`,
     `delete from public.app_errors where created_at < now() - interval '60 days'`,

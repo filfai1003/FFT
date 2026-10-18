@@ -2045,6 +2045,26 @@ describe('forgot password (request_password_reset)', () => {
     assert.equal(r.email, 'lost@example.com');
     assert.equal(r.note, 'hi');
   });
+
+  it('the requests for an account’s email go when the account is deleted (DECISIONS 81)', async () => {
+    const GONE = '81000000-0000-0000-0000-000000000001';
+    await admin();
+    await db.exec('set role anon');
+    await db.query(`select public.request_password_reset('Leaving@Example.com', 'my note')`);
+    await db.query(`select public.request_password_reset('staying@example.com')`);
+    await admin();
+    await db.exec(`
+      insert into auth.users (id, instance_id, aud, role, email)
+        values ('${GONE}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'leaving@example.com');
+      delete from auth.users where id = '${GONE}';
+    `);
+    const left = (
+      await db.query(
+        `select email from public.password_reset_requests where email in ('leaving@example.com', 'staying@example.com')`,
+      )
+    ).rows.map((r) => r.email);
+    assert.deepEqual(left, ['staying@example.com']);
+  });
 });
 
 describe('error reporting (report_error)', () => {

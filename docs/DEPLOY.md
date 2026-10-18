@@ -65,7 +65,27 @@ Package name: `com.filfai1003.fft`.
   is all it allows: they only ever see their own data). Stronger app-only checks (Play Integrity)
   and email verification (needs an SMTP service) are possible later.
 - Forgot password: requests appear in the admin panel (Password resets); set a temporary password
-  there in sudo mode and email it by hand (DECISIONS 45).
+  there in sudo mode and email it by hand (DECISIONS 45) **only to the email address of the
+  account** (never to another address written in the note: anyone can send a request). Requests
+  are deleted 30 days after they were sent, and with the account (DECISIONS 81).
+
+## Logs (personal data in Railway's logs, DECISIONS 81)
+What each service writes to Railway's logs, and what the owner should set on Railway (not set from
+the repository; nothing here changes Railway by itself):
+- `auth` (GoTrue): at the default level every sign-in and token refresh logs the email
+  (`actor_username`), the user id, the caller's IP address and browser. Set **`GOTRUE_LOG_LEVEL=warn`**
+  (or `error`) on the `auth` service so that only problems are logged. The sign-in history the
+  admin panel and the policy refer to (`auth.audit_log_entries`, 12 months) is in the database,
+  not in these logs.
+- `backend` (Kong): its access log has the IP address, browser and the path with the query of every
+  call. Set **`KONG_PROXY_ACCESS_LOG=off`** (and leave `KONG_PROXY_ERROR_LOG` as it is) on the
+  `backend` service.
+- `web`, `site` (nginx): access logs are off in `web/nginx.conf` and `site/nginx.conf`; errors only.
+- `api`, `admin`, `backup`: no request logs; errors and counts only (no emails, no data).
+- Retention: Railway keeps logs for a time that depends on the plan (check Railway's current
+  documentation for the plan in use and write it in the privacy policy if it changes). Logs cannot
+  be deleted per account: they expire by themselves. The privacy policy and the delete-account page
+  say so.
 
 ## What happens on a push to `main`
 - `server/`, `supabase/migrations/`, `supabase/functions/`: Railway rebuilds `api`, which applies new migrations.
