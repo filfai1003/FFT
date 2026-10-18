@@ -636,6 +636,8 @@ export const COACH_TOOLS = [
   {
     name: 'update_food',
     write: true,
+    // Deletes or replaces data (MCP destructiveHint, DECISIONS 83).
+    destructive: true,
     description:
       'Change a food the user created (only their own). Send food_id and only the fields to change. If you send portions they replace the old ones.',
     inputSchema: {
@@ -671,6 +673,8 @@ export const COACH_TOOLS = [
   {
     name: 'delete_food',
     write: true,
+    // Deletes or replaces data (MCP destructiveHint, DECISIONS 83).
+    destructive: true,
     description:
       'Delete a food the user created. Entries already in the food log keep their values.',
     inputSchema: {
@@ -817,6 +821,8 @@ export const COACH_TOOLS = [
   {
     name: 'propose_plans',
     write: true,
+    // Deletes or replaces data (MCP destructiveHint, DECISIONS 83).
+    destructive: true,
     description:
       'Create or change workout plans and/or the whole diet, in the plan format (call get_workout_plans and list_exercises first; to change a plan send it back with its "id" and ALL its days). A changed plan keeps a backup copy.',
     inputSchema: {
