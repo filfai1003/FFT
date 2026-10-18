@@ -52,6 +52,11 @@ export type OnboardingDraft = {
   activity: ActivityLevel | null;
   experience: 'beginner' | 'intermediate' | 'advanced' | null;
   location: 'gym' | 'home' | 'bodyweight' | null;
+  /**
+   * A calorie target, or none (DECISIONS 104): calories are then tracked without a target. Skip
+   * on the target step and "Skip setup" mean none.
+   */
+  target: 'set' | 'none';
   /** The calorie target the user settled on; null = still the suggestion. */
   targetKcal: number | null;
   /** Macro split as % of the calories; null = the suggested split. */
@@ -78,6 +83,7 @@ export const emptyDraft: OnboardingDraft = {
   activity: null,
   experience: null,
   location: null,
+  target: 'set',
   targetKcal: null,
   macroSplit: null,
   dietMode: null,

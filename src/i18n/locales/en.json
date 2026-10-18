@@ -90,6 +90,8 @@
     },
     "calories": "Calories",
     "kcalLeftShort": "kcal left",
+    "kcalEatenShort": "kcal eaten",
+    "setTarget": "Set a target",
     "eaten": "Eaten",
     "target": "Target",
     "litres": "{{l}} L",
@@ -204,7 +206,8 @@
       "suggestedSame": "Suggested: {{kcal}} · same as maintenance",
       "noSuggestion": "Add your details in Profile to get a suggested target.",
       "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional.",
-      "notMedical": "FFT is not medical advice: if you have a health condition, ask your doctor first."
+      "notMedical": "FFT is not medical advice: if you have a health condition, ask your doctor first.",
+      "noTargetDetail": "You will see what you eat, without a calorie target or calories left. You can set a target any time in Diet goals."
     },
     "mode": {
       "title": "How you track food",
@@ -683,6 +686,8 @@
     "nutrition": "Nutrition",
     "perGrams": "Per {{g}} g",
     "leftToday": "Left today",
+    "eatenDay": "Eaten",
+    "setTarget": "Set a target",
     "eatenOfTarget": "{{eaten}} of {{target}} kcal eaten",
     "ofGrams": "of {{g}} g",
     "nothingYet": "Nothing yet",
@@ -763,11 +768,17 @@
       "below_minimum": "Targets below 1,500 kcal are blocked.",
       "deficit_too_large": "A deficit over 25% of maintenance is blocked."
     },
-    "mealsTitle": "Your meals"
+    "mealsTitle": "Your meals",
+    "target": "Calorie target",
+    "setTarget": "Set a target",
+    "noTarget": "No target",
+    "noTargetDetail": "You see what you eat, without a target or calories left. You can set one any time.",
+    "targetRemoved": "Target removed"
   },
   "fixed": {
     "planName": "Plan name",
     "matches": "Matches your daily target",
+    "dayTotal": "Your day adds up to",
     "differs": "Differs from your daily target by {{kcal}} kcal",
     "sumLine": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
     "autoSplit": "Auto-split",
@@ -1016,6 +1027,7 @@
       "personal": "Personal info"
     },
     "goalKcal": "{{kcal}} kcal",
+    "noTarget": "No target",
     "privateLine": "Only you see: {{line}}"
   },
   "settings": {
@@ -1247,6 +1259,7 @@
     "workoutInfo": "{{sets}} sets",
     "diet": "Nutrition",
     "dietLine": "{{eaten}} of {{target}} kcal",
+    "dietLineNoTarget": "{{eaten}} kcal eaten",
     "future": "Nothing yet.",
     "view": "View",
     "week": "Week",
@@ -1399,6 +1412,7 @@
     "currentDiet": "Now",
     "newDiet": "New diet",
     "currentLine": "{{mode}} · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}} · {{meals}} meals",
+    "currentNoTarget": "{{mode}} · no calorie target · {{meals}} meals",
     "noCurrentDiet": "No diet set yet.",
     "dockPlaceholder": "Ask your AI coach…",
     "chats": "Chats",
@@ -1682,6 +1696,7 @@
     "calories": "Calories",
     "kcal": "{{kcal}} kcal",
     "kcalLeft": "{{kcal}} kcal left",
+    "kcalEaten": "{{kcal}} kcal eaten",
     "kcalOver": "{{kcal}} kcal over",
     "ofTarget": "{{eaten}} of {{target}} kcal",
     "eaten": "Eaten today",

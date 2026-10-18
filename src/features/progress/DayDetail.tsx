@@ -31,8 +31,8 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
 
   const goals = useGoals();
   const totals = useDayTotals(day);
-  const goal = goalForDay(goals.data ?? [], day);
-  const target = goal ? targetForDay(goal, sessions.length > 0) : null;
+  // Null without a target that day (DECISIONS 104): just what was eaten, no on/off target.
+  const target = targetForDay(goalForDay(goals.data ?? [], day), sessions.length > 0);
   const eaten = totals.data;
   const status = target && eaten ? dietDayStatus(eaten.kcal, target.kcal) : 'none';
 
@@ -137,10 +137,12 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
           {eaten && eaten.kcal > 0 ? (
             <>
               <Text variant="body">
-                {t('calendar.dietLine', {
-                  eaten: Math.round(eaten.kcal),
-                  target: Math.round(target?.kcal ?? 0),
-                })}
+                {target
+                  ? t('calendar.dietLine', {
+                      eaten: Math.round(eaten.kcal),
+                      target: Math.round(target.kcal),
+                    })
+                  : t('calendar.dietLineNoTarget', { eaten: Math.round(eaten.kcal) })}
               </Text>
               <Text variant="bodyS" muted>
                 {`${t('diet.mealLine', {
@@ -148,7 +150,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
                   p: Math.round(eaten.protein),
                   c: Math.round(eaten.carbs),
                   f: Math.round(eaten.fat),
-                })} · ${status === 'onTarget' ? t('calendar.dietOnTarget') : t('calendar.dietOff')}`}
+                })}${target ? ` · ${status === 'onTarget' ? t('calendar.dietOnTarget') : t('calendar.dietOff')}` : ''}`}
               </Text>
             </>
           ) : null}

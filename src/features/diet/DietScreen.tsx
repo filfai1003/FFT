@@ -85,13 +85,12 @@ function FoodLog() {
 
         <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
 
-        {target ? (
-          <DaySummaryCard
-            eaten={eaten}
-            target={target}
-            caption={t('diet.targetLine', { kcal: formatInt(target.kcal) })}
-          />
-        ) : null}
+        <DaySummaryCard
+          eaten={eaten}
+          target={target}
+          caption={target ? t('diet.targetLine', { kcal: formatInt(target.kcal) }) : undefined}
+          onSetTarget={() => router.push('/diet-goals')}
+        />
 
         <View style={{ gap: 10 }}>
           {meals.map((meal) => (

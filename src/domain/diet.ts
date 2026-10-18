@@ -53,15 +53,36 @@ export function mealForHour(hour: number): Meal {
   return 'dinner';
 }
 
+/**
+ * A goal row: calorie/macro target and water goal, from  on. kcal (and the macros) null
+ * = "no target" from that day on (DECISIONS 104): calories are tracked without a target.
+ */
+/**
+ * A goal row: calorie/macro target and water goal, in force from `validFrom` on. kcal (and the
+ * macros) null = "no target" from that day on (DECISIONS 104): food is tracked without a target.
+ */
 export type Goal = {
   validFrom: string;
+  kcal: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  trainingDayBonusKcal: number;
+  waterMl: number;
+};
+
+/** A goal that has a calorie/macro target. */
+export type TargetGoal<T extends Goal = Goal> = T & {
   kcal: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
-  trainingDayBonusKcal: number;
-  waterMl: number;
 };
+
+/** The goal has a calorie target (false for none at all or a "no target" row). */
+export function hasTarget<T extends Goal>(goal: T | null | undefined): goal is TargetGoal<T> {
+  return goal != null && goal.kcal != null;
+}
 
 export type DietDayStatus = 'none' | 'off' | 'onTarget';
 
@@ -89,7 +110,8 @@ export function goalForDay<T extends { validFrom: string }>(
  * Target of a day: with "Higher target on training days" the bonus calories are added (as carbs)
  * when a workout was logged that day.
  */
-export function targetForDay(goal: Goal, trained: boolean): Macros {
+export function targetForDay(goal: Goal | null | undefined, trained: boolean): Macros | null {
+  if (!hasTarget(goal)) return null;
   const bonus = trained ? goal.trainingDayBonusKcal : 0;
   return {
     kcal: goal.kcal + bonus,

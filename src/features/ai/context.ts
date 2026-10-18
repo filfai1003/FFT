@@ -34,7 +34,11 @@ export function exportDiet(goal: Goal | null, plan: FixedPlan | null, mode: stri
   const workoutAfter = plan?.meals.find((m) => m.id === plan.workoutAfterMealId)?.name;
   return {
     mode: mode === 'tracking' ? 'tracking' : 'fixed_meals',
-    daily: { kcal: goal.kcal, protein_g: goal.proteinG, carbs_g: goal.carbsG, fat_g: goal.fatG },
+    // null = no calorie target set (DECISIONS 104).
+    daily:
+      goal.kcal != null
+        ? { kcal: goal.kcal, protein_g: goal.proteinG, carbs_g: goal.carbsG, fat_g: goal.fatG }
+        : null,
     meals: (plan?.meals ?? []).map((m) => ({
       name: m.name,
       main: m.isMain,
@@ -59,6 +63,8 @@ export type ProfileFacts = {
   location?: string | null;
   targetKcal?: number | null;
   maintenanceKcal?: number | null;
+  /** The user chose to have no calorie target (DECISIONS 104). */
+  noTarget?: boolean;
 };
 
 /**
@@ -83,6 +89,7 @@ export function profileLine(
     body && f.experience ? `training experience ${f.experience}` : null,
     body && f.location ? `trains at: ${f.location}` : null,
     diet && f.targetKcal ? `current target ${f.targetKcal} kcal` : null,
+    diet && !f.targetKcal && f.noTarget ? 'no calorie target set' : null,
     diet && f.maintenanceKcal ? `maintenance ${f.maintenanceKcal} kcal` : null,
   ].filter(Boolean);
   if (parts.length) return parts.join(', ');
@@ -115,6 +122,7 @@ export function useAiContext() {
     location: p?.training_location,
     targetKcal: goal?.kcal,
     maintenanceKcal: goal?.maintenanceKcal,
+    noTarget: goal != null && goal.kcal == null,
   };
 
   const workoutPlans = (plans.data ?? [])

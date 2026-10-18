@@ -101,6 +101,25 @@ describe('gamification data (read from the device)', () => {
     const earned = g.badges.filter((b) => b.earned).map((b) => b.id);
     expect(earned).toEqual(['first_workout', 'first_record']);
   });
+
+  it('days without a target never count as on target (DECISIONS 104)', async () => {
+    await mockClient.from('nutrition_goals').insert({
+      id: id(2),
+      valid_from: '2026-10-13',
+      kcal: null,
+      protein_g: null,
+      carbs_g: null,
+      fat_g: null,
+      water_ml: 2500,
+    });
+    await mockClient
+      .from('food_logs')
+      .insert({ id: id(22), day: '2026-10-14', meal: 'lunch', name: 'Rice', kcal: 2000 });
+    const a = await fetchActivity('UTC');
+    // The 12th was on its target and stays; the 14th would be "on target" but has none.
+    expect([...a.dietOnTargetDays]).toEqual(['2026-10-12']);
+    expect(a.loggedDays.has('2026-10-14')).toBe(true);
+  });
 });
 
 describe('badge sheet: which badge to celebrate', () => {

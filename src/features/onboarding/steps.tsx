@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
+import { Segmented } from '@/components/ui/Segmented';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
@@ -227,8 +228,28 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           pct: `${deltaPct > 0 ? '+' : '−'}${Math.abs(deltaPct)}%`,
         });
   })();
+  // "No target" (DECISIONS 104): calories are tracked without a target; one can be set later.
+  const choice = (
+    <Segmented
+      accessibilityLabel={t('goals.target')}
+      value={draft.target}
+      onChange={(target) => patch({ target, meals: null })}
+      options={[
+        { value: 'set', label: t('goals.setTarget') },
+        { value: 'none', label: t('goals.noTarget') },
+      ]}
+    />
+  );
+  if (draft.target === 'none')
+    return (
+      <View style={{ gap: 20 }}>
+        {choice}
+        <Text muted>{t('onboarding.target.noTargetDetail')}</Text>
+      </View>
+    );
   return (
     <View style={{ gap: 20 }}>
+      {choice}
       <Card gap={14}>
         <Text variant="bodyS" semibold muted>
           {t('onboarding.target.daily')}
@@ -302,7 +323,7 @@ export function MealsStep({ draft, patch, today }: StepProps & { today: Date }) 
     <MealPlanEditor
       meals={meals}
       onMealsChange={(next) => patch({ meals: next })}
-      goal={goal}
+      goal={draft.target === 'set' ? goal : null}
       workoutAfter={workoutAfter}
       onWorkoutAfterChange={(workoutAfterId) => patch({ workoutAfterId })}
     />

@@ -38,7 +38,8 @@ export const ABOUT: Record<string, string> = {
   body_metrics: 'Check-ins by day: weight, body fat (and how measured), measurements, notes.',
   body_goals: 'Body goals from a day on: target weight and/or target body fat.',
   progress_photos: 'Progress photos taken (day and pose only; the pictures are not readable).',
-  nutrition_goals: 'Daily calorie/macro/water targets, each valid from a day on.',
+  nutrition_goals:
+    'Daily calorie/macro/water targets, each valid from a day on; kcal empty = the user chose no calorie target from that day.',
   food_logs: 'Foods eaten (tracking mode): day, meal, name, grams, kcal and macros.',
   daily_nutrition_totals: 'Calories and macros eaten per day (food logs + done fixed meals).',
   water_logs: 'Water drunk: day and ml (several entries a day).',

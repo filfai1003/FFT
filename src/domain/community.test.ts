@@ -63,6 +63,20 @@ describe('community scores (what is sent)', () => {
     expect(pick(s2, 'month', 'diet')).toBe(21.4);
   });
 
+  it('diet without a target (DECISIONS 104): those days do not count; none at all, no score', () => {
+    const none = communityScores(input({ dietTarget: () => false }));
+    expect(pick(none, 'week', 'diet')).toBeUndefined();
+    expect(pick(none, 'month', 'diet')).toBeUndefined();
+    // Target removed on the 13th: only the 12th counts this week (on target = 100%).
+    const s = communityScores(
+      input({
+        dietOnTargetDays: new Set(['2026-10-12']),
+        dietTarget: (d) => d < '2026-10-13',
+      }),
+    );
+    expect(pick(s, 'week', 'diet')).toBe(100);
+  });
+
   it('training: plan workouts against the plan days per week; none without a plan', () => {
     expect(pick(communityScores(input()), 'week', 'training')).toBeUndefined();
     const s = communityScores(

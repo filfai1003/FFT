@@ -545,14 +545,14 @@ export type Database = {
       };
       nutrition_goals: {
         Row: {
-          carbs_g: number;
+          carbs_g: number | null;
           created_at: string;
           deleted_at: string | null;
-          fat_g: number;
+          fat_g: number | null;
           id: string;
-          kcal: number;
+          kcal: number | null;
           maintenance_kcal: number | null;
-          protein_g: number;
+          protein_g: number | null;
           training_day_bonus_kcal: number;
           updated_at: string;
           user_id: string;
@@ -561,14 +561,14 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
-          carbs_g: number;
+          carbs_g?: number | null;
           created_at?: string;
           deleted_at?: string | null;
-          fat_g: number;
+          fat_g?: number | null;
           id?: string;
-          kcal: number;
+          kcal?: number | null;
           maintenance_kcal?: number | null;
-          protein_g: number;
+          protein_g?: number | null;
           training_day_bonus_kcal?: number;
           updated_at?: string;
           user_id?: string;
@@ -576,14 +576,14 @@ export type Database = {
           water_ml?: number;
         };
         Update: {
-          carbs_g?: number;
+          carbs_g?: number | null;
           created_at?: string;
           deleted_at?: string | null;
-          fat_g?: number;
+          fat_g?: number | null;
           id?: string;
-          kcal?: number;
+          kcal?: number | null;
           maintenance_kcal?: number | null;
-          protein_g?: number;
+          protein_g?: number | null;
           training_day_bonus_kcal?: number;
           updated_at?: string;
           user_id?: string;

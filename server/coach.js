@@ -537,16 +537,21 @@ export const COACH_TOOLS = [
         q(`select diet_mode from public.profiles where id = $1`, [ctx.userId]),
       ]);
       const after = plan?.meals.find((m) => m.id === plan.workoutAfterMealId)?.name;
+      // kcal null = the user chose to have no calorie target (DECISIONS 104).
+      const noTarget = !goal || goal.kcal == null;
       return {
+        ...(noTarget ? { calorie_target: 'no target set' } : {}),
         diet_plan: goal
           ? {
               mode: profile?.diet_mode === 'tracking' ? 'tracking' : 'fixed_meals',
-              daily: {
-                kcal: goal.kcal,
-                protein_g: goal.proteinG,
-                carbs_g: goal.carbsG,
-                fat_g: goal.fatG,
-              },
+              daily: noTarget
+                ? null
+                : {
+                    kcal: goal.kcal,
+                    protein_g: goal.proteinG,
+                    carbs_g: goal.carbsG,
+                    fat_g: goal.fatG,
+                  },
               meals: (plan?.meals ?? []).map((m) => ({
                 name: m.name,
                 main: m.isMain,

@@ -2,6 +2,7 @@ import {
   checkAsPlanned,
   eatenFromChecks,
   goalForDay,
+  hasTarget,
   kcalLeft,
   mealForHour,
   mealForPosition,
@@ -97,6 +98,25 @@ describe('goals', () => {
       carbs: 310,
       fat: 75,
     });
+  });
+
+  it('no target (DECISIONS 104): a row without calories, or no row at all, gives no target', () => {
+    const none: Goal = {
+      validFrom: '2026-10-01',
+      kcal: null,
+      proteinG: null,
+      carbsG: null,
+      fatG: null,
+      trainingDayBonusKcal: 0,
+      waterMl: 2500,
+    };
+    const goals = [goal('2026-09-01', 2350), none];
+    expect(hasTarget(goalForDay(goals, '2026-09-15'))).toBe(true);
+    expect(goalForDay(goals, '2026-10-08')).toBe(none);
+    expect(hasTarget(none)).toBe(false);
+    expect(hasTarget(null)).toBe(false);
+    expect(targetForDay(none, true)).toBeNull();
+    expect(targetForDay(null, false)).toBeNull();
   });
 });
 

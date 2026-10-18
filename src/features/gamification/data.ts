@@ -73,13 +73,13 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     if (r.status === 'done' || r.status === 'adjusted') loggedDays.add(r.day);
   for (const w of workouts) loggedDays.add(w.day);
 
-  // Diet on target: within 10 % of that day's target (training-day bonus included).
+  // Diet on target: within 10 % of that day's target (training-day bonus included). Days without
+  // a target (DECISIONS 104) never count.
   const trained = new Set(workouts.map((w) => w.day));
   const dietOnTargetDays = new Set<string>();
   for (const t of rowsOf<{ day: string; kcal: number | string }>(totals as Rows)) {
-    const goal = goalForDay(goals, t.day);
-    if (!goal) continue;
-    const target = targetForDay(goal, trained.has(t.day));
+    const target = targetForDay(goalForDay(goals, t.day), trained.has(t.day));
+    if (!target) continue;
     if (dietDayStatus(Number(t.kcal), target.kcal) === 'onTarget') dietOnTargetDays.add(t.day);
   }
 

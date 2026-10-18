@@ -32,7 +32,7 @@ describe('finishing the onboarding with only the required inputs (DECISIONS 103)
     ).toBe('NAME_AND_AGE_REQUIRED');
   });
 
-  it('a skipped setup leaves the details empty, keeps a safe default target, no weight row', async () => {
+  it('without details: empty profile fields, a safe default target, no weight row', async () => {
     const error = await completeOnboarding(
       { ...emptyDraft, name: ' Alex ', adultConfirmed: true, consentHealth: true },
       LOCAL_USER_ID,
@@ -62,5 +62,28 @@ describe('finishing the onboarding with only the required inputs (DECISIONS 103)
       .from('nutrition_goals')
       .select('kcal, maintenance_kcal, protein_g');
     expect(goals).toEqual([{ kcal: 2000, maintenance_kcal: null, protein_g: 125 }]);
+  });
+
+  it('no target (DECISIONS 104): a goal row without calories or macros, water kept', async () => {
+    const error = await completeOnboarding(
+      { ...emptyDraft, name: 'Alex', adultConfirmed: true, consentHealth: true, target: 'none' },
+      LOCAL_USER_ID,
+      'My meals',
+      now,
+    );
+    expect(error).toBeNull();
+    const { data: goals } = await mockClient
+      .from('nutrition_goals')
+      .select('kcal, protein_g, carbs_g, fat_g, maintenance_kcal, water_ml');
+    expect(goals).toEqual([
+      {
+        kcal: null,
+        protein_g: null,
+        carbs_g: null,
+        fat_g: null,
+        maintenance_kcal: null,
+        water_ml: 2000,
+      },
+    ]);
   });
 });

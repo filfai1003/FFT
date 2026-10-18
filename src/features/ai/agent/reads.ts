@@ -1,6 +1,6 @@
 import { addDays, localDay } from '@/domain/day';
 import { rankFoods, type Food } from '@/features/diet/foods';
-import { dietDayStatus, goalForDay, targetForDay } from '@/domain/diet';
+import { dietDayStatus, goalForDay, hasTarget, targetForDay } from '@/domain/diet';
 import { fetchFixedPlan } from '@/features/diet/fixed';
 import { fetchGoals } from '@/features/diet/log';
 import { fetchPlans } from '@/features/train/plans';
@@ -56,6 +56,9 @@ const macroText = (r: Row) => ({
   fat_g: round(n(r.fat_g)),
 });
 
+/** What the AI is told when the user has no calorie target (DECISIONS 104). */
+const NO_TARGET = 'no target set';
+
 /** One day in detail: target, what was eaten, meals followed, water and workouts. */
 export async function readDay(ctx: ReadContext, day: string) {
   const supabase = getSupabase();
@@ -87,7 +90,7 @@ export async function readDay(ctx: ReadContext, day: string) {
     sessionsBetween(ctx, day, day),
   ]);
   const goal = goalForDay(goals, day);
-  const target = goal ? targetForDay(goal, sessions.length > 0) : null;
+  const target = targetForDay(goal, sessions.length > 0);
   const totals = totalsRows[0] ? macroText(totalsRows[0]) : macroText({});
   const checkByMeal = new Map(checks.map((c) => [String(c.fixed_meal_id), c]));
   return {
@@ -101,7 +104,7 @@ export async function readDay(ctx: ReadContext, day: string) {
           fat_g: target.fat,
           water_ml: goal?.waterMl ?? null,
         }
-      : null,
+      : NO_TARGET,
     eaten: totals,
     diet_status: target ? dietDayStatus(totals.kcal, target.kcal) : 'none',
     food_log: logs.map((l) => ({
@@ -157,8 +160,7 @@ export async function readHistory(ctx: ReadContext, days: number) {
   const list = [];
   for (let i = 0; i < days; i++) {
     const day = addDays(from, i);
-    const goal = goalForDay(goals, day);
-    const target = goal ? targetForDay(goal, trainedDays.has(day)) : null;
+    const target = targetForDay(goalForDay(goals, day), trainedDays.has(day));
     const eaten = eatenByDay.get(day);
     const kcal = eaten ? round(n(eaten.kcal), 0) : 0;
     list.push({
@@ -166,7 +168,8 @@ export async function readHistory(ctx: ReadContext, days: number) {
       eaten_kcal: kcal,
       protein_g: eaten ? round(n(eaten.protein_g)) : 0,
       target_kcal: target?.kcal ?? null,
-      diet: target ? dietDayStatus(kcal, target.kcal) : 'none',
+      // Food logged on a day without a target (DECISIONS 104): neither on nor off target.
+      diet: target ? dietDayStatus(kcal, target.kcal) : kcal > 0 ? 'no_target' : 'none',
       trained: trainedDays.has(day),
       water_ml: waterByDay.get(day) ?? 0,
     });
@@ -370,6 +373,7 @@ export async function readDiet(ctx: ReadContext) {
   const [goals, plan] = await Promise.all([fetchGoals(), fetchFixedPlan()]);
   const goal = goalForDay(goals, ctx.today);
   return {
+    ...(hasTarget(goal) ? {} : { calorie_target: NO_TARGET }),
     diet_plan: exportDiet(goal, plan, ctx.dietMode),
     maintenance_kcal: goal?.maintenanceKcal ?? null,
     training_day_bonus_kcal: goal?.trainingDayBonusKcal ?? 0,

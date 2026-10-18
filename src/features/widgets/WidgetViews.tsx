@@ -248,11 +248,12 @@ type ViewProps = {
   now: number;
 };
 
+/** "1360 kcal left" / "200 kcal over"; without a target (DECISIONS 104) "850 kcal eaten". */
 function kcalLine(s: WidgetSnapshot) {
   const { eaten, target } = s.calories;
   const left = target != null ? target - eaten : null;
   return left == null
-    ? t('widgets.kcal', { kcal: fmt(eaten) })
+    ? t('widgets.kcalEaten', { kcal: fmt(eaten) })
     : left >= 0
       ? t('widgets.kcalLeft', { kcal: fmt(left) })
       : t('widgets.kcalOver', { kcal: fmt(-left) });
@@ -295,10 +296,12 @@ function FixedMealsView({ s, st, look }: ViewProps) {
               ? [t('widgets.kcal', { kcal: fmt(next.kcal) }), next.description]
                   .filter(Boolean)
                   .join(' · ')
-              : t('widgets.ofTarget', {
-                  eaten: fmt(s.calories.eaten),
-                  target: fmt(s.calories.target ?? 0),
-                }))
+              : s.calories.target != null
+                ? t('widgets.ofTarget', {
+                    eaten: fmt(s.calories.eaten),
+                    target: fmt(s.calories.target),
+                  })
+                : t('widgets.kcalEaten', { kcal: fmt(s.calories.eaten) }))
           }
         />
       </FlexWidget>
@@ -358,10 +361,12 @@ function CaloriesView(props: ViewProps) {
       label={`${t('widgets.calories')}: ${kcalLine(s)}`}
     >
       <Row>
-        <SvgWidget
-          svg={arcSvg(target ? eaten / target : 0, look.c.accent, look.c.dotOff)}
-          style={{ width: 44, height: 44 }}
-        />
+        {target != null ? (
+          <SvgWidget
+            svg={arcSvg(eaten / target, look.c.accent, look.c.dotOff)}
+            style={{ width: 44, height: 44 }}
+          />
+        ) : null}
         <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
           <Txt look={look} strong size={18} text={kcalLine(s)} />
           <Txt

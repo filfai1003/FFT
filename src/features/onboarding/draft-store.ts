@@ -28,7 +28,8 @@ export function stepsFor(
 export const skipDefaults: Partial<Record<StepId, Partial<OnboardingDraft>>> = {
   goal: { goal: null },
   lifestyle: { activity: null, experience: null, location: null },
-  target: { targetKcal: null, macroSplit: null, meals: null },
+  // Skip on the target step = no target (DECISIONS 104).
+  target: { target: 'none', targetKcal: null, macroSplit: null, meals: null },
   mode: { dietMode: null, meals: null, workoutAfterId: null },
   meals: { meals: null, workoutAfterId: null },
 };
@@ -43,7 +44,7 @@ type State = {
   back: () => void;
   /** "Skip" on one step: clears its choices and moves on. */
   skipStep: (id: StepId) => void;
-  /** "Skip setup": straight to the consent, then finish with what was entered so far. */
+  /** "Skip setup": straight to the consent, then finish with what was entered so far (no target). */
   skipSetup: () => void;
   reset: () => void;
 };
@@ -68,7 +69,11 @@ export const useOnboardingStore = create<State>((set, get) => ({
     set({ draft, step: Math.min(get().step + 1, count({ draft, skipped: false }) - 1) });
   },
   skipSetup: () =>
-    set({ skipped: true, step: stepsFor(get().draft, undefined, true).indexOf('consent') }),
+    set({
+      draft: { ...get().draft, target: 'none' },
+      skipped: true,
+      step: stepsFor(get().draft, undefined, true).indexOf('consent'),
+    }),
   reset: () => set({ draft: emptyDraft, step: 0, skipped: false }),
 }));
 
