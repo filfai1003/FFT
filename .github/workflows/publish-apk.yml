@@ -32,7 +32,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
-      # No npm ci: nothing from npm runs here except the pinned eas-cli.
+          cache: npm
+      # eas reads the project config (app.config.js), which needs the app's packages. From the lock
+      # file only; no secret is in the environment of these steps (the upload token is in the last).
+      - run: npm ci
       - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e # v8
         with:
           eas-version: 25.1.1
