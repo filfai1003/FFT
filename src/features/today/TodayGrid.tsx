@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -65,6 +65,14 @@ export function TodayGrid({
   const { t } = useTranslation();
   const [width, setWidth] = useState(0);
   const rects = useSharedValue<CardRect[]>([]);
+  // Every card's place, kept here and sent whole to the gesture: each card writing its own copy
+  // of the shared list (read, then set) lost the others when they were measured together, so a
+  // dragged card found no card to land on and went back.
+  const placed = useRef(new Map<string, CardRect>());
+  const place = (rect: CardRect) => {
+    placed.current.set(rect.id, rect);
+    rects.set([...placed.current.values()]);
+  };
   const hover = useSharedValue('');
   const shown = widgets.filter((w) => w.visible);
   const hidden = widgets.filter((w) => !w.visible);
@@ -92,6 +100,7 @@ export function TodayGrid({
             width={item.size === 'large' ? '100%' : half}
             editing={editing}
             rects={rects}
+            onPlace={place}
             hover={hover}
             onEnterEdit={onEnterEdit}
             onDrop={drop}
@@ -137,6 +146,7 @@ function TodayCard({
   rects,
   hover,
   onEnterEdit,
+  onPlace,
   onDrop,
   onMove,
   onResize,
@@ -151,6 +161,7 @@ function TodayCard({
   rects: SharedValue<CardRect[]>;
   hover: SharedValue<string>;
   onEnterEdit: () => void;
+  onPlace: (rect: CardRect) => void;
   onDrop: (id: WidgetId, targetId: string) => void;
   onMove: (delta: -1 | 1) => void;
   onResize: () => void;
@@ -259,7 +270,7 @@ function TodayCard({
       layout={reduceMotion ? undefined : LinearTransition.duration(220)}
       onLayout={(e) => {
         const { x, y, width: w, height: h } = e.nativeEvent.layout;
-        rects.set([...rects.get().filter((r) => r.id !== id), { id, x, y, w, h }]);
+        onPlace({ id, x, y, w, h });
       }}
       style={[{ width, flexDirection: 'column' }, outer]}
     >
