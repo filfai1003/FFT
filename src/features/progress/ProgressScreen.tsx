@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Sparkline } from '@/components/ui/Sparkline';
@@ -185,6 +186,7 @@ function MeNumbers({ records }: { records: ReactNode }) {
   const lastPhotoDay = photos.data?.[0]?.day ?? null;
   const lastSet = photos.data?.filter((p) => p.day === lastPhotoDay) ?? [];
   const top = strength.groups.slice(0, 3);
+  const noWeight = entries.isSuccess && !entries.data.some((e) => e.weightKg != null);
 
   const weightValue =
     body.weight.latestKg != null ? displayWeight(body.weight.latestKg, unit) : null;
@@ -238,33 +240,47 @@ function MeNumbers({ records }: { records: ReactNode }) {
         gap={12}
       >
         <CardHead label={t('progress.tabWeight')} icon="scale" />
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-            <Text variant="displayL" numeric style={{ fontSize: 48, lineHeight: 50 }}>
-              {weightValue ?? '—'}
-            </Text>
-            <Text muted>{unit}</Text>
-          </View>
-          {weightDelta != null ? (
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <StatusChip
-                area={weightArea}
-                icon={weightDelta < 0 ? 'arrowDown' : weightDelta > 0 ? 'arrowUp' : undefined}
-                label={`${signed(Math.abs(weightDelta))} ${unit}`.replace(/^\+/, '')}
-              />
-              {weightStart != null ? (
-                <Text variant="label" muted numeric>
-                  {t('progress.fromValue', {
-                    value: displayWeight(weightStart, unit).toFixed(1),
-                    unit,
-                  })}
-                </Text>
-              ) : null}
+        {noWeight ? (
+          <EmptyState
+            card={false}
+            compact
+            icon="scale"
+            title={t('empty.weightTitle')}
+            body={t('empty.weightBody')}
+          />
+        ) : (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+              <Text variant="displayL" numeric style={{ fontSize: 48, lineHeight: 50 }}>
+                {weightValue ?? '—'}
+              </Text>
+              <Text muted>{unit}</Text>
             </View>
-          ) : null}
-        </View>
+            {weightDelta != null ? (
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <StatusChip
+                  area={weightArea}
+                  icon={weightDelta < 0 ? 'arrowDown' : weightDelta > 0 ? 'arrowUp' : undefined}
+                  label={`${signed(Math.abs(weightDelta))} ${unit}`.replace(/^\+/, '')}
+                />
+                {weightStart != null ? (
+                  <Text variant="label" muted numeric>
+                    {t('progress.fromValue', {
+                      value: displayWeight(weightStart, unit).toFixed(1),
+                      unit,
+                    })}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        )}
         {weightLine.length > 1 ? (
           <>
             <Sparkline
@@ -411,9 +427,14 @@ function MeNumbers({ records }: { records: ReactNode }) {
             ) : null}
           </>
         ) : (
-          <Text variant="displayL" numeric muted>
-            {'—'}
-          </Text>
+          <EmptyState
+            card={false}
+            compact
+            icon="chart"
+            area="training"
+            title={t('empty.strengthTitle')}
+            body={t('empty.strengthBody')}
+          />
         )}
       </Card>
 
@@ -430,21 +451,31 @@ function MeNumbers({ records }: { records: ReactNode }) {
               ? t('progress.photosLast', {
                   date: shortDateLabel(lastPhotoDay).split(' ').slice(1).join(' '),
                 })
-              : t('progress.photosNone')
+              : t('progress.photos')
           }
         />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {poses.map((pose) => (
-            <View key={pose} style={{ flex: 1 }}>
-              <PhotoTile
-                photo={lastSet.find((p) => p.pose === pose)}
-                pose={pose}
-                height={72}
-                interactive={false}
-              />
-            </View>
-          ))}
-        </View>
+        {photos.isSuccess && photos.data.length === 0 ? (
+          <EmptyState
+            card={false}
+            compact
+            icon="camera"
+            title={t('empty.photosTitle')}
+            body={t('empty.photosShort')}
+          />
+        ) : (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {poses.map((pose) => (
+              <View key={pose} style={{ flex: 1 }}>
+                <PhotoTile
+                  photo={lastSet.find((p) => p.pose === pose)}
+                  pose={pose}
+                  height={72}
+                  interactive={false}
+                />
+              </View>
+            ))}
+          </View>
+        )}
       </Card>
       <Button
         label={t('progress.compare')}

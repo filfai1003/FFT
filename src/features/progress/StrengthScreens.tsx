@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { DotBar } from '@/components/ui/DotBar';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { ListRow } from '@/components/ui/ListRow';
@@ -80,9 +81,14 @@ export function StrengthScreen() {
             />
           </>
         ) : (
-          <Text variant="displayL" numeric muted>
-            {'—'}
-          </Text>
+          <EmptyState
+            card={false}
+            compact
+            icon="chart"
+            area="training"
+            title={t('empty.strengthTitle')}
+            body={t('empty.strengthBody')}
+          />
         )}
       </Card>
 

@@ -18,7 +18,33 @@
     "yesterday": "Yesterday",
     "daysAgo_one": "{{count}} day ago",
     "daysAgo_other": "{{count}} days ago",
-    "clear": "Clear"
+    "clear": "Clear",
+    "loading": "Loading"
+  },
+  "empty": {
+    "trainBody": "A plan tells you what to train next and keeps each cycle on track.",
+    "planDaysTitle": "No days in this plan yet",
+    "planDaysBody": "Add the days you train, like push, pull and legs.",
+    "historyTitle": "No workouts this month",
+    "historyBody": "Finished workouts show up here, with their sets and time.",
+    "exerciseTitle": "No sessions yet",
+    "exerciseBody": "Do this exercise in a workout to see your sets and progress here.",
+    "dietToday": "Nothing logged today",
+    "dietDay": "Nothing logged on this day",
+    "dietBody": "Tap + on a meal to add what you ate.",
+    "weightTitle": "No weight yet",
+    "weightBody": "Log it at your next check-in to see where you are heading.",
+    "strengthTitle": "No strength change yet",
+    "strengthBody": "Do the same exercise on two different days to see how much stronger you get.",
+    "photosTitle": "No photos yet",
+    "photosBody": "Front, side and back photos at each check-in show changes the scale misses. They stay private.",
+    "photosShort": "Add them at your next check-in.",
+    "recordsTitle": "No new records yet",
+    "chatsBody": "Ask the coach about your training, your meals or your progress.",
+    "friendsTitle": "No friends yet",
+    "friendsBody": "Share your code, or add someone's, to compare with people you know.",
+    "boardTitle": "No scores yet",
+    "boardBody": "Scores update when members open Progress, at most every 10 minutes."
   },
   "nav": {
     "today": "Home",
@@ -302,7 +328,6 @@
     "thisCycle": "Cycle {{n}}",
     "explore": "Explore",
     "yourPlans": "Your plans",
-    "noDays": "This plan has no days yet.",
     "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done"
   },
   "plan": {
@@ -459,7 +484,6 @@
     "chartLabel": "Rising from {{from}} to {{to}} {{unit}}",
     "best": "Best",
     "recent": "Recent sessions",
-    "noSessions": "Not logged yet.",
     "edit": "Edit exercise",
     "delete": "Delete exercise",
     "deleteTitle": "Delete this exercise?",
@@ -619,7 +643,6 @@
     "workouts_other": "{{count}} workouts",
     "trained": "trained",
     "sessions": "Sessions",
-    "none": "No workouts this month.",
     "outOfOrder": "Out of order",
     "info": "{{min}} min · {{tonnes}} {{unit}} · {{sets}} sets"
   },
@@ -878,7 +901,6 @@
     "pts": "{{delta}} pts",
     "photos": "Photos",
     "photosLast": "Photos · last check-in {{date}}",
-    "photosNone": "Photos · none yet",
     "today": "Today is {{date}}",
     "strengthTitle": "Strength",
     "groupBy": "Group by",
@@ -1467,7 +1489,7 @@
     "noCurrentDiet": "No diet set yet.",
     "dockPlaceholder": "Ask your AI coach…",
     "chats": "Chats",
-    "noChats": "No conversations yet.",
+    "noChats": "No conversations yet",
     "untitledChat": "New conversation",
     "messageCount_one": "{{count}} message",
     "messageCount_other": "{{count}} messages",
@@ -2224,7 +2246,6 @@
         "training": "Share of each person's own planned workouts done since {{date}}.",
         "strength": "Estimated 1RM change since {{date}}. Measured against where each person started, so anyone can win."
       },
-      "empty": "No scores here yet. Scores update when members open Progress, at most every 10 minutes.",
       "podiumA11y": "{{place}}: {{name}}, {{value}}",
       "rowA11y": "{{place}}. {{name}}, {{value}}, {{move}}"
     },

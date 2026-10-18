@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconTile } from '@/components/ui/IconTile';
@@ -92,6 +93,16 @@ function FoodLog() {
           caption={target ? t('diet.targetLine', { kcal: formatInt(target.kcal) }) : undefined}
           onSetTarget={() => router.push('/diet-goals')}
         />
+
+        {log.isSuccess && entries.length === 0 ? (
+          <EmptyState
+            compact
+            icon="bowl"
+            area="nutrition"
+            title={day === today ? t('empty.dietToday') : t('empty.dietDay')}
+            body={t('empty.dietBody')}
+          />
+        ) : null}
 
         <View style={{ gap: 10 }}>
           {meals.map((meal) => (

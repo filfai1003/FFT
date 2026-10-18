@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { IconButton } from '@/components/ui/IconButton';
 import { ListRow } from '@/components/ui/ListRow';
@@ -226,9 +227,13 @@ export function ExerciseDetailScreen({
               />
             ))
           ) : (
-            <Text variant="bodyS" muted>
-              {t('exerciseDetail.noSessions')}
-            </Text>
+            <EmptyState
+              compact
+              icon="dumbbell"
+              area="training"
+              title={t('empty.exerciseTitle')}
+              body={t('empty.exerciseBody')}
+            />
           )}
         </Section>
       </Screen>

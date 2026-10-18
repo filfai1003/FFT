@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -43,7 +44,9 @@ export function AiChatsScreen() {
         label={t('ai.newChat')}
         onPress={() => router.replace({ pathname: '/ai-chat', params: { fresh: '1' } })}
       />
-      {list.length === 0 ? <Text muted>{t('ai.noChats')}</Text> : null}
+      {list.length === 0 ? (
+        <EmptyState icon="chat" title={t('ai.noChats')} body={t('empty.chatsBody')} />
+      ) : null}
       {list.map((c) => (
         <Card key={c.id} size="small">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

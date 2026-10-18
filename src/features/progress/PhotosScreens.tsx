@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Chip } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
@@ -116,6 +117,16 @@ export function PhotosScreen() {
           />
         ))}
       </View>
+
+      {photos.isSuccess && days.length === 0 ? (
+        <EmptyState
+          icon="camera"
+          title={t('empty.photosTitle')}
+          body={t('empty.photosBody')}
+          action={{ label: t('photos.add'), icon: 'plus', onPress: () => router.push('/check-in') }}
+          actionVariant="primary"
+        />
+      ) : null}
 
       <View style={{ gap: 14 }}>
         {days.map((day) => {

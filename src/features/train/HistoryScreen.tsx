@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
@@ -164,9 +165,13 @@ export function HistoryScreen({
 
       <Section title={t('history.sessions')}>
         {inMonth.length === 0 ? (
-          <Text variant="bodyS" muted style={{ paddingVertical: 8 }}>
-            {t('history.none')}
-          </Text>
+          <EmptyState
+            compact
+            icon="clock"
+            area="training"
+            title={t('empty.historyTitle')}
+            body={t('empty.historyBody')}
+          />
         ) : (
           inMonth.map((s) => (
             <SessionRow

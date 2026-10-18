@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Gauge } from '@/components/ui/Gauge';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
@@ -393,11 +394,13 @@ export function ProfileScreen() {
           })}
         </Card>
       ) : (
-        <Card>
-          <Text variant="bodyS" muted>
-            {t('game.noRecords')}
-          </Text>
-        </Card>
+        <EmptyState
+          compact
+          icon="trophy"
+          area="streak"
+          title={t('empty.recordsTitle')}
+          body={t('game.noRecords')}
+        />
       )}
 
       <SectionHead
