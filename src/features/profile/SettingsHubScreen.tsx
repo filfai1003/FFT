@@ -92,22 +92,12 @@ export function SettingsHubScreen() {
       title: t('settings.group.app'),
       items: [
         { icon: 'sparkle', label: t('profile.menu.ai'), onPress: () => router.push('/profile/ai') },
+        // Canvas: units, look and reminders on one page (the single pages stay for old links).
         {
-          icon: 'scale',
-          label: t('profile.menu.units'),
-          value: `${prefs.weightUnit} · ${prefs.lengthUnit === 'cm' ? 'cm' : 'ft·in'}`,
-          onPress: () => router.push('/profile/units'),
-        },
-        {
-          icon: 'palette',
-          label: t('profile.menu.look'),
-          value: themeName,
-          onPress: () => router.push('/profile/look'),
-        },
-        {
-          icon: 'bell',
-          label: t('profile.menu.notifications'),
-          onPress: () => router.push('/profile/notifications'),
+          icon: 'sliders',
+          label: t('settings.preferences'),
+          value: `${prefs.weightUnit} · ${themeName}`,
+          onPress: () => router.push('/profile/preferences'),
         },
         {
           icon: 'eye',

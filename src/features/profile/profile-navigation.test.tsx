@@ -43,7 +43,7 @@ const routes = {
   'profile/_layout': () => <Stack screenOptions={{ headerShown: false, animation: 'none' }} />,
   'profile/index': ProfileScreen,
   'profile/settings': SettingsHubScreen,
-  'profile/units': page('units'),
+  'profile/preferences': page('preferences'),
   'train/history': page('history'),
 };
 
@@ -58,13 +58,13 @@ describe('Profile and Settings', () => {
     expect(screen.queryByText('Units')).toBeNull();
 
     await act(() => fireEvent.press(screen.getByLabelText('Settings')));
-    expect(screen.getByText('Units')).toBeTruthy();
+    expect(screen.getByText('Units, look and reminders')).toBeTruthy();
     expect(screen.getByText('Accessibility')).toBeTruthy();
   });
 
   it('settings rows still open the /profile/... pages', async () => {
     await renderRouter(routes, { initialUrl: '/profile/settings' });
-    await act(() => fireEvent.press(screen.getByLabelText(/^Units/)));
-    expect(screen.getByText('page-units')).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByLabelText(/^Units, look and reminders/)));
+    expect(screen.getByText('page-preferences')).toBeTruthy();
   });
 });

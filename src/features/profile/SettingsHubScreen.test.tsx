@@ -35,8 +35,8 @@ describe('Settings (the gear on your profile)', () => {
     }
     await fireEvent.press(screen.getByLabelText('Personal info, Filippo'));
     expect(mockPush).toHaveBeenLastCalledWith('/profile-edit');
-    await fireEvent.press(screen.getByLabelText(/^Units/));
-    expect(mockPush).toHaveBeenLastCalledWith('/profile/units');
+    await fireEvent.press(screen.getByLabelText(/^Units, look and reminders/));
+    expect(mockPush).toHaveBeenLastCalledWith('/profile/preferences');
     await fireEvent.press(screen.getByLabelText(/^Privacy & data/));
     expect(mockPush).toHaveBeenLastCalledWith('/profile/privacy');
   });

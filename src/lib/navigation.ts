@@ -15,6 +15,7 @@ const PAGES = new Set([
   '/progress/photos',
   '/profile',
   '/profile/settings',
+  '/profile/preferences',
   '/profile/units',
   '/profile/look',
   '/profile/notifications',

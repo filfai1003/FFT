@@ -1000,6 +1000,8 @@
   },
   "settings": {
     "title": "Settings",
+    "preferences": "Units, look and reminders",
+    "reminders": "Reminders",
     "group": {
       "account": "Account",
       "plans": "Plans",
