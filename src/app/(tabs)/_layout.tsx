@@ -7,8 +7,8 @@ import type { IconName } from '@/components/ui/Icon';
 
 const tabs = [
   { name: 'index', icon: 'home', label: 'nav.today' },
-  { name: 'diet', icon: 'bowl', label: 'nav.diet' },
   { name: 'train', icon: 'dumbbell', label: 'nav.train' },
+  { name: 'diet', icon: 'bowl', label: 'nav.diet' },
   { name: 'progress', icon: 'chart', label: 'nav.progress' },
 ] as const satisfies readonly { name: string; icon: IconName; label: string }[];
 
@@ -53,7 +53,7 @@ function AppTabBar({ state, navigation, position }: SwipeTabBarProps) {
   );
 }
 
-/** Today, Diet, Train and Progress side by side: tap a tab or swipe between them (DECISIONS 70). */
+/** Today, Train, Diet and Progress side by side: tap a tab or swipe between them (DECISIONS 70). */
 export default function TabsLayout() {
   const { colors } = useTheme();
   return (
