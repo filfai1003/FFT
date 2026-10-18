@@ -707,6 +707,7 @@ export type Database = {
       profiles: {
         Row: {
           activity_level: string | null;
+          adult_confirmed_at: string | null;
           birth_date: string | null;
           created_at: string;
           deleted_at: string | null;
@@ -725,6 +726,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           activity_level?: string | null;
+          adult_confirmed_at?: string | null;
           birth_date?: string | null;
           created_at?: string;
           deleted_at?: string | null;
@@ -742,6 +744,7 @@ export type Database = {
         };
         Update: {
           activity_level?: string | null;
+          adult_confirmed_at?: string | null;
           birth_date?: string | null;
           created_at?: string;
           deleted_at?: string | null;

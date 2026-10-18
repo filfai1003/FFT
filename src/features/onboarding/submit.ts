@@ -2,7 +2,7 @@ import { deviceTimeZone, localDay } from '@/domain/day';
 import { getSupabase } from '@/lib/supabase';
 import { stableId } from '@/lib/uuid';
 import {
-  parseBirthDate,
+  bodyDetails,
   POLICY_VERSION,
   starterMeals,
   targetsFor,
@@ -23,12 +23,16 @@ export async function completeOnboarding(
   planName: string,
   now = new Date(),
 ): Promise<string | null> {
+  // The two required inputs; the screens never get here without them.
+  if (draft.name.trim() === '' || !draft.adultConfirmed) return 'NAME_AND_AGE_REQUIRED';
   const supabase = getSupabase();
   const timezone = deviceTimeZone();
   const day = localDay(now, timezone);
   const t = targetsFor(draft, now);
   const goal = { kcal: t.kcal, ...t.macros };
-  const birth = parseBirthDate(draft.birthDay, draft.birthMonth, draft.birthYear)!;
+  // Everything but the name and the 18+ confirmation is optional (DECISIONS 103): what is missing
+  // stays null (no weight row without a weight).
+  const details = bodyDetails(draft, now);
 
   const id = (purpose: string) => stableId(userId, purpose);
   const ids = {
@@ -39,27 +43,31 @@ export async function completeOnboarding(
     analytics: await id('consent-analytics'),
   };
 
-  const steps: (() => PromiseLike<{ error: { message: string } | null }>)[] = [
-    () =>
+  const steps: (() => PromiseLike<{ error: { message: string } | null }>)[] = [];
+  if (t.weightKg != null) {
+    const weightKg = t.weightKg;
+    steps.push(() =>
       supabase.from('body_metrics').upsert({
         id: ids.weight,
         user_id: userId,
         day,
-        weight_kg: t.weightKg,
+        weight_kg: weightKg,
       }),
-    () =>
-      supabase.from('nutrition_goals').upsert({
-        id: ids.goal,
-        user_id: userId,
-        valid_from: day,
-        kcal: t.kcal,
-        protein_g: t.macros.proteinG,
-        carbs_g: t.macros.carbsG,
-        fat_g: t.macros.fatG,
-        maintenance_kcal: t.maintenance,
-        water_ml: DEFAULT_WATER_ML,
-      }),
-  ];
+    );
+  }
+  steps.push(() =>
+    supabase.from('nutrition_goals').upsert({
+      id: ids.goal,
+      user_id: userId,
+      valid_from: day,
+      kcal: t.kcal,
+      protein_g: t.macros.proteinG,
+      carbs_g: t.macros.carbsG,
+      fat_g: t.macros.fatG,
+      maintenance_kcal: t.maintenance,
+      water_ml: DEFAULT_WATER_ML,
+    }),
+  );
 
   if (draft.dietMode === 'fixed_meals') {
     const planId = ids.plan;
@@ -115,9 +123,10 @@ export async function completeOnboarding(
       .from('profiles')
       .update({
         name: draft.name.trim(),
-        birth_date: toIsoDate(birth),
+        adult_confirmed_at: draft.adultConfirmed ? now.toISOString() : null,
+        birth_date: details.birth ? toIsoDate(details.birth) : null,
         sex: draft.sex,
-        height_cm: Number(draft.heightCm.replace(',', '.')),
+        height_cm: details.heightCm,
         activity_level: draft.activity,
         experience: draft.experience,
         training_location: draft.location,

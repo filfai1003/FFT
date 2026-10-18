@@ -1,0 +1,60 @@
+import '@/i18n';
+import { fireEvent, screen } from '@testing-library/react-native';
+import { renderUI } from '@/test/render';
+import { useOnboardingStore } from './draft-store';
+import { OnboardingFlow } from './OnboardingFlow';
+
+jest.mock('@/lib/mode', () => ({ getMode: () => 'local' }));
+jest.mock('@/features/auth/api', () => ({ signOut: jest.fn() }));
+jest.mock('@/features/premium/ConnectAiButtons', () => ({ ConnectAiButtons: () => null }));
+jest.mock('@/features/premium/ServerCopy', () => ({ SyncNeededCard: () => null }));
+jest.mock('@/lib/plan', () => ({ useSyncChoice: () => 'off' }));
+jest.mock('@/features/legal/LegalLinks', () => ({ LegalLinks: () => null }));
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+}));
+
+const disabled = (name: string) =>
+  screen.getByRole('button', { name }).props.accessibilityState?.disabled === true;
+
+describe('onboarding: only the name and 18+ are required (DECISIONS 103)', () => {
+  beforeEach(() => useOnboardingStore.getState().reset());
+
+  it('"About you" first: the other details are optional, "Skip setup" needs name and 18+', async () => {
+    await renderUI(<OnboardingFlow />);
+    expect(screen.getByText('About you')).toBeTruthy();
+    expect(screen.getByText('Birth date (optional)')).toBeTruthy();
+    expect(disabled('Continue')).toBe(true);
+    expect(disabled('Skip setup')).toBe(true);
+
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Alex');
+    expect(disabled('Continue')).toBe(true);
+    await fireEvent(screen.getByRole('switch', { name: 'I am 18 or older' }), 'valueChange', true);
+    expect(disabled('Continue')).toBe(false);
+    expect(disabled('Skip setup')).toBe(false);
+
+    // A birth date typed must still be 18+.
+    await fireEvent.changeText(screen.getByLabelText('Year of birth'), '2015');
+    await fireEvent.changeText(screen.getByLabelText('Day of birth'), '01');
+    await fireEvent.changeText(screen.getByLabelText('Month of birth'), '01');
+    expect(disabled('Continue')).toBe(true);
+  });
+
+  it('"Skip setup" goes to the health data consent, which cannot be skipped', async () => {
+    useOnboardingStore.getState().patch({ name: 'Alex', adultConfirmed: true });
+    await renderUI(<OnboardingFlow />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Skip setup' }));
+    expect(screen.getByText('Your health data')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Skip this step' })).toBeNull();
+    expect(disabled('Start using the app')).toBe(true);
+  });
+
+  it('later steps have "Skip"', async () => {
+    useOnboardingStore.getState().patch({ name: 'Alex', adultConfirmed: true });
+    await renderUI(<OnboardingFlow />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Your goal')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Skip this step' }));
+    expect(screen.getByText('Your routine')).toBeTruthy();
+  });
+});

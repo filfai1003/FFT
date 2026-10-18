@@ -189,7 +189,9 @@ export const TOOLS = [
          from public.profiles where id = $1`,
         [ctx.userId],
       );
-      return { ...numbers(p ?? {}), plan: ctx.plan, today: ctx.today };
+      // Every fact but the name is optional (DECISIONS 103): the ones not given are left out.
+      const facts = Object.entries(numbers(p ?? {})).filter(([, v]) => v != null);
+      return { ...Object.fromEntries(facts), plan: ctx.plan, today: ctx.today };
     },
   },
   {

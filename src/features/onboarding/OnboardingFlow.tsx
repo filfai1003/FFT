@@ -11,8 +11,8 @@ import { signOut } from '@/features/auth/api';
 import { useSessionStore } from '@/features/auth/session-store';
 import { profileKey } from '@/features/profile/api';
 import { useQueryClient } from '@tanstack/react-query';
-import { useOnboardingStore, stepsFor, type StepId } from './draft-store';
-import { bodyProblems, type OnboardingDraft } from './logic';
+import { canContinue, skipDefaults, useOnboardingStore, stepsFor } from './draft-store';
+import { bodyProblems } from './logic';
 import {
   BodyStep,
   ConsentStep,
@@ -25,36 +25,18 @@ import {
 } from './steps';
 import { completeOnboarding } from './submit';
 
-function canContinue(step: StepId, d: OnboardingDraft, today: Date): boolean {
-  switch (step) {
-    case 'goal':
-      return d.goal != null;
-    case 'body':
-      return bodyProblems(d, today).length === 0;
-    case 'lifestyle':
-      return d.activity != null && d.experience != null && d.location != null;
-    case 'mode':
-      return d.dietMode != null;
-    case 'meals':
-      return d.meals == null || d.meals.every((m) => m.name.trim() !== '');
-    case 'consent':
-      return d.consentHealth;
-    default:
-      return true;
-  }
-}
-
 export function OnboardingFlow() {
   const { t } = useTranslation();
   const barHeight = useActionBarHeight();
   const queryClient = useQueryClient();
   const userId = useSessionStore((s) => s.userId);
-  const { draft, step, patch, next, back, reset } = useOnboardingStore();
+  const { draft, step, skipped, patch, next, back, skipStep, skipSetup, reset } =
+    useOnboardingStore();
   const [today] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const steps = stepsFor(draft);
+  const steps = stepsFor(draft, undefined, skipped);
   const id = steps[Math.min(step, steps.length - 1)];
   const last = step >= steps.length - 1;
 
@@ -88,6 +70,18 @@ export function OnboardingFlow() {
               ? { label: t('onboarding.signOut'), onPress: () => void signOut() }
               : { label: t('common.back'), onPress: back, icon: 'chevronLeft' }
           }
+          right={
+            skipDefaults[id] ? (
+              <Button
+                variant="ghost"
+                size="small"
+                block={false}
+                label={t('onboarding.skip')}
+                accessibilityLabel={t('onboarding.skipStep')}
+                onPress={() => skipStep(id)}
+              />
+            ) : undefined
+          }
         />
         <DotBar
           shape="segment"
@@ -112,6 +106,22 @@ export function OnboardingFlow() {
         {id === 'meals' ? <MealsStep draft={draft} patch={patch} today={today} /> : null}
         {id === 'consent' ? <ConsentStep draft={draft} patch={patch} /> : null}
         {id === 'ai' ? <AiStep bottomOffset={barHeight} /> : null}
+
+        {!skipped && id !== 'consent' && id !== 'ai' ? (
+          <View style={{ gap: 4 }}>
+            <Button
+              variant="ghost"
+              label={t('onboarding.skipSetup')}
+              disabled={busy || bodyProblems(draft, today).length > 0}
+              onPress={skipSetup}
+            />
+            <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
+              {id === 'body' && bodyProblems(draft, today).length > 0
+                ? t('onboarding.skipSetupNeeds')
+                : t('onboarding.skipSetupDetail')}
+            </Text>
+          </View>
+        ) : null}
 
         {error ? (
           <Text variant="bodyS" danger accessibilityRole="alert">

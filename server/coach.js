@@ -296,7 +296,7 @@ async function supplementByName(q, i) {
 async function applyDiet(q, userId, today, diet, result) {
   const goal = await goalForToday(q, today);
   const maintenance = goal?.maintenanceKcal ?? null;
-  const problem = maintenance ? targetProblem(diet.kcal, maintenance) : null;
+  const problem = targetProblem(diet.kcal, maintenance);
   if (problem === 'below_minimum') throw bad('The calorie target is below the 1500 kcal minimum.');
   if (problem === 'deficit_too_large')
     throw bad('The calorie target is more than 25% under your maintenance calories.');

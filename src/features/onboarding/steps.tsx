@@ -10,11 +10,11 @@ import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
 import { MacroSplitCard } from '@/features/diet/MacroSplitCard';
 import { MealPlanEditor } from '@/features/diet/MealPlanEditor';
 import { LegalLinks } from '@/features/legal/LegalLinks';
+import { ConsentRow, SexChips } from './fields';
 import { bodyProblems, starterMeals, targetsFor, type OnboardingDraft } from './logic';
 
 type StepProps = { draft: OnboardingDraft; patch: (p: Partial<OnboardingDraft>) => void };
@@ -52,7 +52,6 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
   const monthRef = useRef<TextInput>(null);
   const yearRef = useRef<TextInput>(null);
   const heightRef = useRef<TextInput>(null);
-  const touched = (field: string) => (field === 'name' ? draft.name !== '' : true);
   const birthEntered =
     draft.birthDay !== '' && draft.birthMonth !== '' && draft.birthYear.length === 4;
   return (
@@ -64,9 +63,20 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
         autoComplete="given-name"
         autoCapitalize="words"
       />
+      <Card gap={0}>
+        <ConsentRow
+          title={t('onboarding.body.adult')}
+          detail={t('onboarding.body.adultDetail')}
+          value={draft.adultConfirmed}
+          onValueChange={(adultConfirmed) => patch({ adultConfirmed })}
+        />
+      </Card>
+      <Text variant="bodyS" muted>
+        {t('onboarding.body.optionalIntro')}
+      </Text>
       <View style={{ gap: 6 }}>
         <Text variant="bodyS" semibold muted>
-          {t('onboarding.body.birthDate')}
+          {t('onboarding.body.birthDateOptional')}
         </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
@@ -125,25 +135,17 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
           </Text>
         ) : null}
       </View>
-      <ChipGroup
-        legend={t('onboarding.body.sex')}
-        value={draft.sex}
-        onChange={(sex) => patch({ sex })}
-        options={[
-          { value: 'male', label: t('onboarding.body.male') },
-          { value: 'female', label: t('onboarding.body.female') },
-        ]}
-      />
+      <SexChips value={draft.sex} onChange={(sex) => patch({ sex })} />
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Input
             ref={heightRef}
-            label={t('onboarding.body.height')}
+            label={t('onboarding.body.heightOptional')}
             value={draft.heightCm}
             onChangeText={(heightCm) => patch({ heightCm })}
             keyboardType="decimal-pad"
             error={
-              touched('height') && draft.heightCm !== '' && problems.includes('height')
+              draft.heightCm.trim() !== '' && problems.includes('height')
                 ? t('onboarding.body.errorHeight')
                 : undefined
             }
@@ -151,12 +153,12 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
         </View>
         <View style={{ flex: 1 }}>
           <Input
-            label={t('onboarding.body.weight')}
+            label={t('onboarding.body.weightOptional')}
             value={draft.weightKg}
             onChangeText={(weightKg) => patch({ weightKg })}
             keyboardType="decimal-pad"
             error={
-              draft.weightKg !== '' && problems.includes('weight')
+              draft.weightKg.trim() !== '' && problems.includes('weight')
                 ? t('onboarding.body.errorWeight')
                 : undefined
             }
@@ -209,15 +211,22 @@ export function LifestyleStep({ draft, patch }: StepProps) {
 export function TargetStep({ draft, patch, today }: StepProps & { today: Date }) {
   const { t } = useTranslation();
   const target = targetsFor(draft, today);
-  const deltaPct = Math.round(((target.suggested - target.maintenance) / target.maintenance) * 100);
-  const suggestion =
-    deltaPct === 0
+  // Without sex, birth date, height or weight there is no suggestion: the user picks the target
+  // (starting at a default, never under 1500 kcal) and can add the details later (DECISIONS 103).
+  const suggestion = (() => {
+    if (target.suggested == null || target.maintenance == null)
+      return t('onboarding.target.noSuggestion');
+    const deltaPct = Math.round(
+      ((target.suggested - target.maintenance) / target.maintenance) * 100,
+    );
+    return deltaPct === 0
       ? t('onboarding.target.suggestedSame', { kcal: target.suggested })
       : t('onboarding.target.suggested', {
           kcal: target.suggested,
           maintenance: target.maintenance,
           pct: `${deltaPct > 0 ? '+' : '−'}${Math.abs(deltaPct)}%`,
         });
+  })();
   return (
     <View style={{ gap: 20 }}>
       <Card gap={14}>
@@ -338,38 +347,6 @@ export function ConsentStep({ draft, patch }: StepProps) {
           onValueChange={(consentHealth) => patch({ consentHealth })}
         />
       </Card>
-    </View>
-  );
-}
-
-function ConsentRow(props: {
-  title: string;
-  detail: string;
-  value: boolean;
-  onValueChange: (v: boolean) => void;
-}) {
-  return (
-    <View
-      style={{
-        minHeight: 64,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        paddingVertical: 8,
-      }}
-    >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text>{props.title}</Text>
-        <Text variant="bodyS" semibold muted>
-          {props.detail}
-        </Text>
-      </View>
-      <Toggle
-        value={props.value}
-        onValueChange={props.onValueChange}
-        accessibilityLabel={props.title}
-      />
     </View>
   );
 }
