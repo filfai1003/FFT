@@ -25,6 +25,8 @@ export type IconButtonProps = {
   /** Visual size, never below the 44px touch target. */
   size?: number;
   look?: IconButtonLook;
+  /** A toggle that is on: 2px border in the text colour and announced as selected. */
+  selected?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -35,6 +37,7 @@ export function IconButton({
   disabled = false,
   size = touch.minTarget,
   look,
+  selected,
   style,
 }: IconButtonProps) {
   const { colors } = useTheme();
@@ -48,8 +51,9 @@ export function IconButton({
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
+      accessibilityState={selected === undefined ? { disabled } : { disabled, selected }}
       aria-disabled={disabled}
+      aria-selected={selected}
       disabled={disabled}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -62,8 +66,8 @@ export function IconButton({
           width: box,
           height: box,
           borderRadius: box / 2,
-          borderWidth: plain || soft ? 0 : 1,
-          borderColor: colors.borderDecorative,
+          borderWidth: selected ? 2 : plain || soft ? 0 : 1,
+          borderColor: selected ? colors.text : colors.borderDecorative,
           backgroundColor: plain
             ? press.pressed
               ? colors.surfaceAlt

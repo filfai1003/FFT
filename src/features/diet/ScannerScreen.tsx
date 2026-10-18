@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { useTheme } from '@/design/use-theme';
+import { DarkThemeScope, useTheme } from '@/design/use-theme';
 import { confirm } from '@/lib/haptics';
 import type { Food } from './foods';
 import { useLabelReader } from './CreateFoodScreen';
@@ -22,8 +22,19 @@ type State =
   | { kind: 'found'; code: string; food: Food }
   | { kind: 'missing'; code: string };
 
-/** Point the camera at a barcode (or type it): our database first, then Open Food Facts. */
+/**
+ * Point the camera at a barcode (or type it): our database first, then Open Food Facts.
+ * Drawn on the dark palette whatever the app theme, so the text keeps its contrast on black.
+ */
 export function ScannerScreen() {
+  return (
+    <DarkThemeScope>
+      <Scanner />
+    </DarkThemeScope>
+  );
+}
+
+function Scanner() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
@@ -57,7 +68,7 @@ export function ScannerScreen() {
 
   return (
     <>
-      <Screen gap={20} style={{ backgroundColor: '#050505' }}>
+      <Screen gap={20}>
         <View
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
@@ -66,11 +77,13 @@ export function ScannerScreen() {
             accessibilityLabel={t('scanner.close')}
             onPress={() => goBack(router)}
           />
-          <Text variant="label" style={{ color: colors.textMuted }}>
+          <Text variant="label" muted accessibilityRole="header">
             {t('scanner.title')}
           </Text>
+          {/* On/off reads from the glyph (crossed out when off) and the selected border too. */}
           <IconButton
-            icon="info"
+            icon={torch ? 'flashlight' : 'flashlightOff'}
+            selected={torch}
             accessibilityLabel={torch ? t('scanner.torchOff') : t('scanner.torchOn')}
             onPress={() => setTorch((v) => !v)}
           />
@@ -86,7 +99,7 @@ export function ScannerScreen() {
             overflow: 'hidden',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#0a0a0a',
+            backgroundColor: colors.surfaceAlt,
           }}
         >
           {permission?.granted ? (
@@ -111,7 +124,7 @@ export function ScannerScreen() {
               />
             </View>
           )}
-          {permission?.granted ? <Frame /> : null}
+          {permission?.granted ? <Frame color={colors.text} /> : null}
         </View>
 
         <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
@@ -234,8 +247,8 @@ export function ScannerScreen() {
   );
 }
 
-function Frame() {
-  const corner = { position: 'absolute' as const, width: 28, height: 28, borderColor: '#FFFFFF' };
+function Frame({ color }: { color: string }) {
+  const corner = { position: 'absolute' as const, width: 28, height: 28, borderColor: color };
   return (
     <View style={{ width: 270, height: 160 }} pointerEvents="none">
       <View style={{ ...corner, top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 }} />

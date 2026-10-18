@@ -5,8 +5,8 @@ import { useAppearanceStore } from './appearance-store';
 import { useOsReduceMotion, watchOsReduceMotion } from './os-motion';
 import { buildTheme, resolveMode, textScaleFor } from './theme';
 
-/** Which theme setting a part of the app follows: the app's, or the workout's. */
-export type ThemeScope = 'app' | 'workout';
+/** Which theme setting a part of the app follows: the app's, the workout's, or always dark. */
+export type ThemeScope = 'app' | 'workout' | 'dark';
 const ScopeContext = createContext<ThemeScope>('app');
 
 /** Everything inside follows the workout theme (the workout in progress). */
@@ -14,11 +14,17 @@ export function WorkoutThemeScope({ children }: { children: ReactNode }) {
   return createElement(ScopeContext.Provider, { value: 'workout' }, children);
 }
 
+/** Everything inside is dark whatever the settings (camera screens drawn on black). */
+export function DarkThemeScope({ children }: { children: ReactNode }) {
+  return createElement(ScopeContext.Provider, { value: 'dark' }, children);
+}
+
 /** Light or dark for the current scope ('system' follows the phone). */
 export function useThemeMode() {
   const scope = useContext(ScopeContext);
   const setting = usePreferencesStore((s) => (scope === 'workout' ? s.workoutTheme : s.theme));
   const scheme = useColorScheme();
+  if (scope === 'dark') return 'dark';
   return resolveMode(setting, scheme === 'dark' || scheme === 'light' ? scheme : null);
 }
 

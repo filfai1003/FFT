@@ -115,7 +115,9 @@ export function FixedMealsLog() {
         >
           <View style={{ gap: 4 }}>
             <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
-            <Text variant="screenTitle">{t('diet.title')}</Text>
+            <Text variant="screenTitle" accessibilityRole="header">
+              {t('nav.diet')}
+            </Text>
           </View>
           <IconButton
             icon="more"
