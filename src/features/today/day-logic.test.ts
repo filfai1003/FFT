@@ -25,6 +25,7 @@ describe('greeting', () => {
   it('uses the first name only, nothing without a name', () => {
     expect(firstName('Filippo Faiella')).toBe('Filippo');
     expect(firstName('  Ana  ')).toBe('Ana');
+    expect(firstName('filippo')).toBe('Filippo');
     expect(firstName('')).toBeNull();
     expect(firstName(null)).toBeNull();
   });

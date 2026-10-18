@@ -81,15 +81,35 @@ function Frame({
   onPress?: () => void;
   children: ReactNode;
 }) {
-  const head = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 }}>
-      <IconTile icon={icon} area={area} size={HEAD_TILE} />
-      <Text semibold accessibilityRole="header" numberOfLines={2} style={{ flex: 1 }}>
-        {label}
-      </Text>
-      {right}
-    </View>
+  const title = (
+    <Text semibold accessibilityRole="header" numberOfLines={2} style={{ flex: 1 }}>
+      {label}
+    </Text>
   );
+  // Half width: the title goes under the tile, so a long word ("Supplements") never splits.
+  const head =
+    size === 'large' ? (
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 }}>
+        <IconTile icon={icon} area={area} size={HEAD_TILE} />
+        {title}
+        {right}
+      </View>
+    ) : (
+      <View style={{ gap: 8 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            minHeight: 36,
+          }}
+        >
+          <IconTile icon={icon} area={area} size={HEAD_TILE} />
+          {right}
+        </View>
+        {title}
+      </View>
+    );
   if (size === 'large') {
     return (
       <Card

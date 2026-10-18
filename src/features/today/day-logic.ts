@@ -12,7 +12,8 @@ export function dayPart(hour: number): DayPart {
 
 /** The first word of the profile name ("Filippo Faiella" -> "Filippo"), or null. */
 export function firstName(name: string | null | undefined): string | null {
-  return (name ?? '').trim().split(/\s+/)[0] || null;
+  const first = (name ?? '').trim().split(/\s+/)[0];
+  return first ? first.charAt(0).toLocaleUpperCase() + first.slice(1) : null;
 }
 
 /** Below this the weight has not moved (scale noise, one decimal shown). */
