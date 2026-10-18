@@ -1,6 +1,6 @@
 import '@/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { KeyboardProvider } from '@/components/ui/keyboard';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -35,7 +35,7 @@ import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 import { WidgetBridge } from '@/features/widgets/WidgetBridge';
 import { Platform } from 'react-native';
-import { installErrorReporting, reportError } from '@/lib/error-report';
+import { installErrorReporting, reportError, setErrorScreen } from '@/lib/error-report';
 import type { ErrorBoundaryProps } from 'expo-router';
 
 void SplashScreen.preventAutoHideAsync();
@@ -61,6 +61,9 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
   const [queryClient] = useState(createQueryClient);
   const ready = fontsLoaded || fontError != null;
+  // Error reports say on which screen they happened (route only, ids removed: DECISIONS 96).
+  const pathname = usePathname();
+  useEffect(() => setErrorScreen(pathname), [pathname]);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();

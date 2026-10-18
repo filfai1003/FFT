@@ -2400,6 +2400,31 @@ describe('error reporting (report_error)', () => {
     );
     await db.exec(`delete from public.app_errors where message = 'after the deletion'`);
   });
+
+  it('what a user typed does not survive in a report, even from an older app (DECISIONS 96)', async () => {
+    await as(A);
+    await db.query(`select public.report_error('sync', $1, $2, $3::jsonb)`, [
+      `Error: refused food_logs: invalid input "Mum's lasagne 2024" for anna.rossi@mail.it, Key (name)=(Pizza) id 123456 'food_logs'`,
+      `Error: refused food_logs: invalid input "Mum's lasagne"\n    at push (index.android.bundle:1:2345)\nmore message text\nflush@index.bundle:3:4`,
+      JSON.stringify({
+        table: 'food_logs',
+        note: 'my secret note',
+        code: '23505',
+        what: 'free text!',
+      }),
+    ]);
+    await admin();
+    const r = await one(
+      `select message, stack, context from public.app_errors where kind = 'sync' order by created_at desc limit 1`,
+    );
+    for (const secret of ['lasagne', 'anna.rossi', 'Pizza', '123456', 'secret', 'more message'])
+      assert.ok(!JSON.stringify(r).includes(secret), `"${secret}" kept in ${JSON.stringify(r)}`);
+    assert.match(r.message, /^Error: refused food_logs: invalid input "\?"/);
+    assert.match(r.message, /'food_logs'/);
+    assert.equal(r.stack, 'at push (index.android.bundle:1:#)\nflush@index.bundle:3:4');
+    assert.deepEqual(r.context, { table: 'food_logs', code: '23505' });
+    await db.exec(`delete from public.app_errors where kind = 'sync'`);
+  });
 });
 
 describe('drop sets (drop_index)', () => {
