@@ -4,6 +4,7 @@
 // the user to our sign-in page (FFT email and password), and receives a token. A connection is an
 // api_tokens row: it shows in the app's list of connected apps and is revoked there like any token.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { boundedMap } from './bounded-map.js';
 
 const ACCESS_DAYS = 7;
 /** A refresh token dies after this many days without use (each use renews it). */
@@ -83,8 +84,9 @@ export function clientIp(forwardedFor, remoteAddress = '') {
 const LOCK_AFTER = 5;
 const LOCK_MINUTES = 15;
 function lockouts() {
-  const seen = new Map();
   const now = () => Date.now();
+  // Quiet entries past their window go first; a lockout still running is kept as long as possible.
+  const seen = boundedMap(10000, (s) => s.until <= now() && s.since < now() - LOCK_MINUTES * 60000);
   return {
     locked(key) {
       const s = seen.get(key);
@@ -95,7 +97,6 @@ function lockouts() {
       if (!s || s.since < now() - LOCK_MINUTES * 60000) s = { since: now(), n: 0, until: 0 };
       s.n += 1;
       if (s.n >= LOCK_AFTER) s.until = now() + LOCK_MINUTES * 60000;
-      if (seen.size > 10000) seen.clear();
       seen.set(key, s);
     },
     ok(key) {
@@ -106,12 +107,11 @@ function lockouts() {
 
 /** A counter per key and time window: true once the key went over `max` in the window. */
 function limiter(windowMs, max) {
-  const seen = new Map();
+  const seen = boundedMap(10000, (a) => a.slot !== Math.floor(Date.now() / windowMs));
   return (key) => {
     const slot = Math.floor(Date.now() / windowMs);
     const a = seen.get(key);
     if (!a || a.slot !== slot) {
-      if (seen.size > 10000) seen.clear();
       seen.set(key, { slot, n: 1 });
       return false;
     }
@@ -252,6 +252,7 @@ fieldset{border:0;margin:18px 0 0;padding:0}legend{font-size:13px;color:var(--mu
 <h1>FFT</h1>
 <p><b>${esc(client.name)}</b> wants to use your FFT data: training, diet, body and supplements.</p>
 <p class="host">If you allow, access to your data goes to ${where}. Continue only if that is where you started connecting FFT.</p>
+<p><b>Only continue if you just clicked Connect in your own Claude or ChatGPT.</b> If someone sent you this link, close this page: continuing would give their AI app your data.</p>
 <form method="post" action="/oauth/authorize">${hidden}
 <fieldset><legend>What it can do</legend>
 ${choice('read', 'Read only', 'Read your data. It cannot change anything.')}

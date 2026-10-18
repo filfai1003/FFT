@@ -28,7 +28,7 @@ import {
 } from '@/lib/plan';
 import { hiddenName, openFile, openRow, sealFile, sealRow } from '@/lib/vault-crypto';
 import { forgetVaultKey, vaultKey } from './vault-key';
-import { reportError } from '@/lib/error-report';
+import { ReportCode, reportError } from '@/lib/error-report';
 import { getAuthClient } from '@/lib/supabase';
 
 /**
@@ -324,7 +324,13 @@ async function sendOutbox(userId: string, sender: Sender): Promise<number> {
         // Left out for good: say so (a row lost without a trace is how a breakfast went missing).
         if (e) refusedLastPush += 1;
         if (e) console.warn(`sync: the server refused ${table} ${r.p.key}: ${e.message}`);
-        if (e) reportError(new Error(`refused ${table}: ${e.message}`), 'sync', { table });
+        // Reported with the table and the code only: the message can repeat what the user typed.
+        if (e)
+          reportError(new ReportCode('sync refused a row'), 'sync', {
+            table,
+            code: e.code ?? '',
+            what: /^[A-Z][A-Z0-9_]{2,30}:/.exec(e.message)?.[0].slice(0, -1) ?? '',
+          });
         sent.push(r.p);
       }
     }
@@ -454,7 +460,7 @@ async function pullSealed(
     }
   }
   if (unreadable > 0)
-    reportError(new Error(`${unreadable} sealed items could not be opened`), 'sync');
+    reportError(new ReportCode('sealed items could not be opened'), 'sync', { count: unreadable });
 
   let changed = false;
   const categories = sharedCategories(userId);
@@ -485,7 +491,7 @@ async function pullSealed(
         await writeLocalFile(`${f.bucket}/${f.path}`, bytes, 'image/jpeg');
         changed = true;
       } catch {
-        reportError(new Error('a sealed file could not be opened'), 'sync');
+        reportError(new ReportCode('a sealed file could not be opened'), 'sync');
       }
     }
   }

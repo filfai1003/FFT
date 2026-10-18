@@ -5,7 +5,7 @@ import * as Device from 'expo-device';
 import { create } from 'zustand';
 import { tableShared } from '@/domain/data-categories';
 import { base64ToBytes, bytesToBase64 } from '@/lib/base64';
-import { reportError } from '@/lib/error-report';
+import { ReportCode, reportError } from '@/lib/error-report';
 import {
   getLocalDb,
   pkOf,
@@ -290,7 +290,9 @@ async function send(key: Uint8Array, from: string, to: string[], messages: Relay
     // The gateway refuses request bodies over 1 MB (docs/DEPLOY.md): a message that big would fail
     // at every sync and hold back everything after it, so it is left out and reported instead.
     if (m.payload.length > MAX_REQUEST_PAYLOAD) {
-      reportError(new Error(`relay message too big (${m.payload.length} bytes), not sent`));
+      reportError(new ReportCode('relay message too big, not sent'), 'sync', {
+        bytes: m.payload.length,
+      });
       continue;
     }
     if (batch.length >= 20 || size + m.payload.length > MAX_REQUEST_PAYLOAD) await flush();

@@ -21,6 +21,7 @@ export type Consent = {
   type: ConsentType;
   grantedAt: string;
   withdrawnAt: string | null;
+  policyVersion: string | null;
 };
 
 export const consentKeys = { all: ['consents'] as const };
@@ -33,7 +34,7 @@ export function useConsents() {
     queryFn: async () => {
       const { data, error } = await getSupabase()
         .from('consents')
-        .select('id, type, granted_at, withdrawn_at')
+        .select('id, type, granted_at, withdrawn_at, policy_version')
         .order('granted_at', { ascending: false });
       if (error) throw error;
       return data.map<Consent>((c) => ({
@@ -41,6 +42,7 @@ export function useConsents() {
         type: c.type as ConsentType,
         grantedAt: c.granted_at,
         withdrawnAt: c.withdrawn_at,
+        policyVersion: c.policy_version ?? null,
       }));
     },
   });
@@ -52,6 +54,16 @@ export function activeConsent(
   type: ConsentType,
 ): Consent | null {
   return consents?.find((c) => c.type === type && c.withdrawnAt == null) ?? null;
+}
+
+/**
+ * The health data consent in force was given for an older policy version: the app asks once to
+ * confirm the current text (DECISIONS 99). Never true without a consent in force (that is the
+ * withdrawn case, ConsentGate).
+ */
+export function consentOutdated(consents: readonly Consent[] | undefined): boolean {
+  const health = activeConsent(consents, 'health_data');
+  return health != null && health.policyVersion !== POLICY_VERSION;
 }
 
 export function useSetConsent() {

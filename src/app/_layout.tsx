@@ -1,6 +1,6 @@
 import '@/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { KeyboardProvider } from '@/components/ui/keyboard';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -12,15 +12,18 @@ import { Text } from '@/components/ui/Text';
 import { startAuthListener, useSessionStore } from '@/features/auth/session-store';
 import { isOnboarded, useProfile } from '@/features/profile/api';
 import { ConsentGate } from '@/features/profile/ConsentGate';
+import { AppLockGate } from '@/features/profile/AppLock';
+import { useAppScreenPrivacy } from '@/features/profile/screen-privacy';
 import { SyncChoiceScreen, WebSyncOffScreen } from '@/features/premium/ServerCopy';
 import { VaultUnlockScreen } from '@/features/premium/Encryption';
 import { RelayJoinScreen } from '@/features/premium/RelayCard';
 import { askPairLater, askUnlockLater, usePlanGate } from '@/features/premium/use-plan-gate';
 import { useRelay } from '@/features/premium/use-relay';
+import { useConnectionNotice } from '@/features/premium/use-connection-notice';
 import { useSync } from '@/features/premium/use-sync';
 import { getMode } from '@/lib/mode';
 import { usePlanStore } from '@/lib/plan';
-import { activeConsent, useConsents } from '@/features/profile/account';
+import { activeConsent, consentOutdated, useConsents } from '@/features/profile/account';
 import { useHealthConsentOnServer } from '@/features/profile/consent-server';
 import { removeExportFiles } from '@/features/profile/export';
 import { usePendingSync } from '@/features/session/use-pending-sync';
@@ -35,7 +38,7 @@ import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 import { WidgetBridge } from '@/features/widgets/WidgetBridge';
 import { Platform } from 'react-native';
-import { installErrorReporting, reportError } from '@/lib/error-report';
+import { installErrorReporting, reportError, setErrorScreen } from '@/lib/error-report';
 import type { ErrorBoundaryProps } from 'expo-router';
 
 void SplashScreen.preventAutoHideAsync();
@@ -61,6 +64,11 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
   const [queryClient] = useState(createQueryClient);
   const ready = fontsLoaded || fontError != null;
+  // Error reports say on which screen they happened (route only, ids removed: DECISIONS 96).
+  const pathname = usePathname();
+  useEffect(() => setErrorScreen(pathname), [pathname]);
+  // "Hide the whole app from screenshots" (DECISIONS 95).
+  useAppScreenPrivacy();
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
@@ -79,8 +87,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <QueryClientProvider client={queryClient}>
-          <AppNavigator />
-          <ToastHost />
+          {/* Optional app lock (DECISIONS 95): covers everything, the screens stay mounted. */}
+          <AppLockGate>
+            <AppNavigator />
+            <ToastHost />
+          </AppLockGate>
         </QueryClientProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
@@ -139,6 +150,10 @@ function AppRoutes() {
   // Health data consent withdrawn: the app cannot run, but the user can still export or delete.
   const consentWithdrawn =
     signedIn && onboarded && consents.isSuccess && !activeConsent(consents.data, 'health_data');
+  // Given for an older consent text: asked once to confirm (DECISIONS 99). Continuing always works.
+  const [reconfirmDone, setReconfirmDone] = useState(false);
+  const reconfirm =
+    signedIn && onboarded && consents.isSuccess && consentOutdated(consents.data) && !reconfirmDone;
   // A copy on the server (DECISIONS 62): the device's changes go to the server in the background,
   // other devices' come back. Paused while the consent is withdrawn: nothing is sent then.
   const userId = useSessionStore((st) => st.userId);
@@ -159,6 +174,8 @@ function AppRoutes() {
   useSync(userId, signedIn && getMode() === 'cloud' && syncing, { paused: consentWithdrawn });
   // No copy on the server: paired phones exchange changes through the encrypted relay
   // (DECISIONS 65). Paused like the sync while the consent is withdrawn.
+  // AI apps connected since the last start are pointed out once (DECISIONS 99).
+  useConnectionNotice(userId, signedIn && getMode() === 'cloud' && onboarded && !consentWithdrawn);
   const copyOff = usePlanStore((p) => p.sync === 'off' && p.userId === userId);
   useRelay(
     userId,
@@ -178,6 +195,7 @@ function AppRoutes() {
   }
 
   if (consentWithdrawn) return <ConsentGate />;
+  if (reconfirm) return <ConsentGate reconfirm onContinue={() => setReconfirmDone(true)} />;
 
   return (
     <>

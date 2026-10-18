@@ -12,8 +12,10 @@ import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { createApi, hashToken } from '../../server/api.js';
 import { clientIp, createOAuth } from '../../server/oauth.js';
 import { createApkPublisher } from '../../server/apk.js';
+import { boundedMap } from '../../server/bounded-map.js';
 import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
+import { panelRoleSetup } from '../../admin/roles.js';
 import { createHash, randomUUID } from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -1097,7 +1099,7 @@ describe('personal API and MCP (server/api.js)', () => {
   it('MCP: tools that delete or replace say so; results are marked as data (DECISIONS 84)', async () => {
     const tools = (await mcp('tools/list')).result.tools;
     const hint = (n) => tools.find((t) => t.name === n)?.annotations.destructiveHint;
-    for (const n of ['remove_food_log', 'delete_food', 'propose_plans', 'update_food'])
+    for (const n of ['remove_food_log', 'delete_food', 'propose_plans', 'update_food', 'log_body'])
       assert.equal(hint(n), true, n);
     for (const n of ['log_water', 'log_food', 'get_day']) assert.equal(hint(n), false, n);
     const r = (await mcp('tools/call', { name: 'get_profile', arguments: {} })).result;
@@ -1229,6 +1231,10 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     assert.match(pageRes.body, /<b>Claude<\/b> wants to use your FFT data/);
     // The page says where the access goes (the host, which the app cannot pick freely).
     assert.match(pageRes.body, /access to your data goes to <b>claude\.ai<\/b>/);
+    assert.match(
+      pageRes.body,
+      /Only continue if you just clicked Connect in your own Claude or ChatGPT/,
+    );
     assert.match(
       pageRes.headers['content-security-policy'],
       /form-action 'self' https:\/\/claude\.ai;/,
@@ -1693,6 +1699,16 @@ describe('deleted rows are purged after a week (purge_deleted, DECISIONS 79)', (
       out.files.filter((f) => f.path.startsWith(B)),
       [{ bucket: 'progress-photos', path: `${B}/gone.jpg` }],
     );
+    // The file is queued with the row deletion and stays queued until storage removed it (98).
+    assert.equal(
+      await count(
+        `select count(*) as n from public.files_to_delete where bucket = 'progress-photos' and path = $1`,
+        [`${B}/gone.jpg`],
+      ),
+      1,
+    );
+    await rejects('set role authenticated; select * from public.files_to_delete', '42501');
+    await admin();
     // The other devices learn it from a tombstone (id only).
     assert.equal(
       await count(
@@ -1702,11 +1718,53 @@ describe('deleted rows are purged after a week (purge_deleted, DECISIONS 79)', (
     );
   });
 
-  it('tombstones and sealed deletions go after 90 days', async () => {
+  it('after a restore, rows deleted for good since the dump are deleted again (DECISIONS 98)', async () => {
+    await admin();
+    const back = randomUUID();
+    const photo = randomUUID();
+    const live = randomUUID();
+    // The restored database has them again, as if never deleted.
+    await db.exec(`
+      insert into public.water_logs (id, user_id, day, ml) values
+        ('${back}', '${B}', '2026-09-02', 250), ('${live}', '${B}', '2026-09-03', 250);
+      insert into public.progress_photos (id, user_id, day, pose, storage_path) values
+        ('${photo}', '${B}', '2026-09-02', 'side', '${B}/back-again.jpg');
+    `);
+    const n = (
+      await one('select public.reapply_row_deletions($1::jsonb) as n', [
+        JSON.stringify([
+          { table: 'water_logs', id: back },
+          { table: 'progress_photos', id: photo },
+          { table: 'not_a_table', id: live },
+          { table: 'water_logs', id: randomUUID() },
+        ]),
+      ])
+    ).n;
+    assert.equal(n, 2);
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where id = '${back}'`),
+      0,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.water_logs where id = '${live}'`),
+      1,
+    );
+    assert.equal(
+      await count(`select count(*) as n from public.files_to_delete where path = $1`, [
+        `${B}/back-again.jpg`,
+      ]),
+      1,
+    );
+    await as(B);
+    await rejects(`select public.reapply_row_deletions('[]'::jsonb)`, '42501');
+    await admin();
+  });
+
+  it('tombstones go after 190 days (as long as the oldest backup, DECISIONS 98)', async () => {
     await admin();
     await db.exec(`
       insert into public.sync_tombstones (user_id, table_name, row_id, server_at) values
-        ('${B}', 'water_logs', 'old-one', now() - interval '91 days'),
+        ('${B}', 'water_logs', 'old-one', now() - interval '191 days'),
         ('${B}', 'water_logs', 'new-one', now() - interval '10 days');
     `);
     await db.query('select public.purge_deleted(7)');
@@ -2345,6 +2403,31 @@ describe('error reporting (report_error)', () => {
       1,
     );
     await db.exec(`delete from public.app_errors where message = 'after the deletion'`);
+  });
+
+  it('what a user typed does not survive in a report, even from an older app (DECISIONS 96)', async () => {
+    await as(A);
+    await db.query(`select public.report_error('sync', $1, $2, $3::jsonb)`, [
+      `Error: refused food_logs: invalid input "Mum's lasagne 2024" for anna.rossi@mail.it, Key (name)=(Pizza) id 123456 'food_logs'`,
+      `Error: refused food_logs: invalid input "Mum's lasagne"\n    at push (index.android.bundle:1:2345)\nmore message text\nflush@index.bundle:3:4`,
+      JSON.stringify({
+        table: 'food_logs',
+        note: 'my secret note',
+        code: '23505',
+        what: 'free text!',
+      }),
+    ]);
+    await admin();
+    const r = await one(
+      `select message, stack, context from public.app_errors where kind = 'sync' order by created_at desc limit 1`,
+    );
+    for (const secret of ['lasagne', 'anna.rossi', 'Pizza', '123456', 'secret', 'more message'])
+      assert.ok(!JSON.stringify(r).includes(secret), `"${secret}" kept in ${JSON.stringify(r)}`);
+    assert.match(r.message, /^Error: refused food_logs: invalid input "\?"/);
+    assert.match(r.message, /'food_logs'/);
+    assert.equal(r.stack, 'at push (index.android.bundle:1:#)\nflush@index.bundle:3:4');
+    assert.deepEqual(r.context, { table: 'food_logs', code: '23505' });
+    await db.exec(`delete from public.app_errors where kind = 'sync'`);
   });
 });
 
@@ -3019,6 +3102,7 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     admin_audit: 'details naming the account are replaced',
     oauth_clients: 'an app used only by this account goes',
     food_servings: 'through its food (foods.owner_id, cascade)',
+    files_to_delete: 'queued paths in the account folder go (DECISIONS 98)',
   };
   /** Rows for Z where no other account's row can be copied (the table is empty by then). */
   const EXPLICIT = {
@@ -3191,6 +3275,10 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
        values ($1, 'zed', 'crash', 'zed crashed', 'android')`,
       [Z],
     );
+    await db.query(
+      `insert into public.files_to_delete (bucket, path) values ('progress-photos', $1)`,
+      [`${Z}/queued.jpg`],
+    );
 
     // The real path: the delete-account function removes the files, then deletes the auth user.
     await db.query('delete from auth.users where id = $1', [Z]);
@@ -3243,5 +3331,103 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
       await count(`select count(*) as n from public.account_consent where user_id = '${Z}'`),
       0,
     );
+  });
+});
+
+describe('in-memory limits forget old entries one at a time (server/bounded-map.js, DECISIONS 97)', () => {
+  it('drops stale entries first, then the least recently used, never all at once', () => {
+    const m = boundedMap(3, (v) => v.stale);
+    m.set('victim', { stale: false });
+    m.set('old', { stale: true });
+    m.set('b', { stale: false });
+    m.set('c', { stale: false });
+    assert.equal(m.size, 3);
+    assert.equal(m.get('old'), undefined, 'the stale entry went first');
+    assert.ok(m.get('victim'), 'a live entry stays');
+    // Flooding with new keys pushes out only the least recently used ones.
+    m.get('victim');
+    m.set('d', { stale: false });
+    m.set('e', { stale: false });
+    assert.ok(m.get('victim'), 'the recently used entry survives a flood');
+    assert.equal(m.size, 3);
+  });
+});
+
+describe('the admin panel cannot change its own log (admin/roles.js, DECISIONS 97)', () => {
+  it('admin_panel adds to admin_audit and edits data, but cannot update, delete or empty the log', async () => {
+    await admin();
+    for (const sql of panelRoleSetup('test-panel-password-0123')) await db.exec(sql);
+    await db.exec(`insert into public.admin_audit (action, detail) values ('test.panel', '{}')`);
+    await db.exec('set role admin_panel');
+    await db.exec(
+      `insert into public.admin_audit (action, detail) values ('test.panel', '{"by":"panel"}')`,
+    );
+    await db.exec(`insert into public.vip_users (user_id, note) values ('${C}', 'panel test')`);
+    await db.exec(`delete from public.vip_users where user_id = '${C}'`);
+    await rejects(
+      `update public.admin_audit set detail = '{}' where action = 'test.panel'`,
+      '42501',
+    );
+    await rejects(`delete from public.admin_audit where action = 'test.panel'`, '42501');
+    await rejects(`truncate public.admin_audit`, '42501');
+    await rejects(
+      `alter table public.admin_audit disable trigger admin_audit_append_only`,
+      '42501',
+    );
+    await admin();
+    // Even with the right given back, the trigger still refuses it.
+    await db.exec('grant update, delete on public.admin_audit to admin_panel');
+    await db.exec('set role admin_panel');
+    await rejects(`delete from public.admin_audit where action = 'test.panel'`, '42501');
+    await admin();
+    await db.exec('revoke update, delete on public.admin_audit from admin_panel');
+    assert.equal(
+      await count(`select count(*) as n from public.admin_audit where action = 'test.panel'`),
+      2,
+    );
+    // The owner's own jobs still work (cleanup, anonymisation).
+    await db.exec(`delete from public.admin_audit where action = 'test.panel'`);
+  });
+});
+
+describe('the server refuses a birth date under 18 (profile_min_age, DECISIONS 96)', () => {
+  const push = (uid, birth, at) =>
+    db.query(`select public.sync_push('profiles', $1::jsonb, '[]'::jsonb)`, [
+      JSON.stringify([{ id: uid, birth_date: birth, updated_at: at }]),
+    ]);
+  const yearsAgo = (n) => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it('sync_push and direct writes refuse it with a clear error; adults pass', async () => {
+    await as(A);
+    await assert.rejects(
+      () => push(A, yearsAgo(15), new Date().toISOString()),
+      (e) => e.code === 'P0001' && /^AGE_UNDER_18/.test(e.message),
+    );
+    await assert.rejects(
+      () => db.query(`update public.profiles set birth_date = $1 where id = $2`, [yearsAgo(17), A]),
+      (e) => e.code === 'P0001',
+    );
+    await push(A, yearsAgo(30), new Date().toISOString());
+    await admin();
+    assert.equal(
+      (await one(`select birth_date::text as d from public.profiles where id = '${A}'`)).d,
+      yearsAgo(30),
+    );
+  });
+
+  it('a profile stored before the check is not locked out: the same date passes again', async () => {
+    await admin();
+    await db.exec(`alter table public.profiles disable trigger profiles_min_age`);
+    await db.query(`update public.profiles set birth_date = $1 where id = $2`, [yearsAgo(16), B]);
+    await db.exec(`alter table public.profiles enable trigger profiles_min_age`);
+    await as(B);
+    await push(B, yearsAgo(16), new Date(Date.now() + 60_000).toISOString());
+    await db.query(`update public.profiles set name = 'Bee' where id = $1`, [B]);
+    await admin();
+    await db.query(`update public.profiles set birth_date = null where id = $1`, [B]);
   });
 });

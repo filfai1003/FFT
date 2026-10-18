@@ -207,28 +207,53 @@ async function cleanup() {
 
 /**
  * Rows deleted more than 7 days ago go for good, with their files (DECISIONS 79). The database
- * deletes the rows and lists the files; they are removed through the storage API (removing them
- * from storage.objects alone would leave the bytes on the disk).
+ * deletes the rows and queues their files in `files_to_delete` in the same transaction (DECISIONS
+ * 98); the queue is then emptied through the storage API (removing them from storage.objects alone
+ * would leave the bytes on the disk). An entry goes only once storage confirmed the removal, so a
+ * failure is tried again at the next clean-up instead of leaving the file behind.
  */
 async function purgeDeleted() {
   const { rows } = await pool.query('select public.purge_deleted(7) as out');
-  const files = rows[0]?.out?.files ?? [];
-  const byBucket = new Map();
-  for (const f of files) byBucket.set(f.bucket, [...(byBucket.get(f.bucket) ?? []), f.path]);
-  for (const [bucket, paths] of byBucket)
-    for (let i = 0; i < paths.length; i += 100) {
-      const res = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`, {
-        method: 'DELETE',
-        headers: {
-          authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
-          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({ prefixes: paths.slice(i, i + 100) }),
-      });
-      if (!res.ok) console.error(`purge: removing files from ${bucket} failed: ${res.status}`);
-    }
   if (rows[0]?.out?.removed) console.log(`purge: ${rows[0].out.removed} deleted rows removed`);
+  await removeQueuedFiles();
+}
+
+async function removeQueuedFiles() {
+  const { rows } = await pool.query(
+    'select id, bucket, path from public.files_to_delete order by created_at limit 5000',
+  );
+  const byBucket = new Map();
+  for (const f of rows) byBucket.set(f.bucket, [...(byBucket.get(f.bucket) ?? []), f]);
+  for (const [bucket, items] of byBucket)
+    for (let i = 0; i < items.length; i += 100) {
+      const part = items.slice(i, i + 100);
+      const ids = part.map((f) => f.id);
+      let error = null;
+      try {
+        const res = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`, {
+          method: 'DELETE',
+          headers: {
+            authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
+            apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ prefixes: part.map((f) => f.path) }),
+        });
+        if (!res.ok) error = `status ${res.status}`;
+      } catch (e) {
+        error = String(e?.message ?? e).slice(0, 200);
+      }
+      if (!error) {
+        await pool.query('delete from public.files_to_delete where id = any ($1::uuid[])', [ids]);
+        continue;
+      }
+      console.error(`purge: removing files from ${bucket} failed (${error}); kept for a retry`);
+      await pool.query(
+        `update public.files_to_delete set attempts = attempts + 1, last_error = $2
+         where id = any ($1::uuid[])`,
+        [ids, error],
+      );
+    }
 }
 
 migrate('./migrations')

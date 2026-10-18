@@ -1,7 +1,7 @@
 // Nightly backup (Railway cron service `backup`, DECISIONS 60): the database and the user photos,
 // encrypted, into the Railway bucket `backups` in the EU (Amsterdam).
 //   db/<time>.sql.gz.enc          the whole database (pg_dump of public, auth, storage), gzip, AES-256-GCM
-//   photos/<bucket>/<path>.enc    each user photo, AES-256-GCM, copied once (photos never change)
+//   photos/<bucket>/<path>.enc    each user photo (and sealed copy in vault-files), AES-256-GCM, copied once
 //   deletions/latest.json.enc     the deletion log (ids of deleted accounts, DECISIONS 80)
 // Kept: every daily dump for 30 days, the first dump of each month for 6 months (retention.mjs);
 // photo copies whose original is gone are removed 30 days later. A failure is reported to the
@@ -101,12 +101,7 @@ async function backupDatabase(stamp) {
   // own schemas (restore drill 2026-10-18). Restore into the same supabase/postgres image.
   const dump = spawn(
     'pg_dump',
-    [
-      '--schema=public',
-      '--schema=auth',
-      '--schema=storage',
-      env('DATABASE_URL'),
-    ],
+    ['--schema=public', '--schema=auth', '--schema=storage', env('DATABASE_URL')],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
   let stderr = '';
@@ -132,26 +127,38 @@ async function backupDatabase(stamp) {
 /**
  * The deletion log (DECISIONS 80), apart from the dumps: the ids of the deleted accounts, so a
  * restore can delete again the accounts deleted after the dump it loads. Overwritten every night.
+ * Also `deletions/rows.json.enc` (DECISIONS 98): the rows deleted for good in the last 190 days
+ * (tombstones: table and row id only), so a restore can delete them again too.
  */
 async function backupDeletions(db) {
   const { rows } = await db.query(
     'select user_id, deleted_at from public.deleted_accounts order by deleted_at',
   );
-  const body = encryptBuffer(Buffer.from(JSON.stringify(rows)));
-  await s3.send(
-    new PutObjectCommand({
-      Bucket,
-      Key: 'deletions/latest.json.enc',
-      Body: body,
-      ContentLength: body.length,
-      ContentType: 'application/octet-stream',
-    }),
+  const tomb = await db.query(
+    'select table_name as "table", row_id as id from public.sync_tombstones order by server_at',
   );
+  for (const [Key, list] of [
+    ['deletions/latest.json.enc', rows],
+    ['deletions/rows.json.enc', tomb.rows],
+  ]) {
+    const body = encryptBuffer(Buffer.from(JSON.stringify(list)));
+    await s3.send(
+      new PutObjectCommand({
+        Bucket,
+        Key,
+        Body: body,
+        ContentLength: body.length,
+        ContentType: 'application/octet-stream',
+      }),
+    );
+  }
   return rows.length;
 }
 
 // ---------------------------------------------------------------- photos
-const PHOTO_BUCKETS = ['progress-photos', 'user-exercise-images'];
+// vault-files: the end-to-end encrypted copies (DECISIONS 64), sealed by the phones and encrypted
+// once more here; without them a restore would lose the photos of encrypted accounts (DECISIONS 98).
+const PHOTO_BUCKETS = ['progress-photos', 'user-exercise-images', 'vault-files'];
 const storage = (path, init = {}) =>
   fetch(`${env('SUPABASE_URL').replace(/\/$/, '')}/storage/v1/${path}`, {
     ...init,

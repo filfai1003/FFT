@@ -1,4 +1,4 @@
-import { isThisComputer, newConnections, splitTokens } from './connections';
+import { isThisComputer, newConnections, splitTokens, unseenConnections } from './connections';
 
 const day = 86400000;
 const now = Date.parse('2026-10-18T12:00:00Z');
@@ -21,6 +21,12 @@ describe('connected AI apps', () => {
     expect(newConnections(rows, now).map((r) => r.id)).toEqual(['claude']);
     expect(newConnections([{ app: true, createdAt: at(7) }], now)).toHaveLength(1);
     expect(newConnections([{ app: true, createdAt: at(7.01) }], now)).toHaveLength(0);
+  });
+
+  it('at start, points out once the apps connected since the last start (DECISIONS 99)', () => {
+    expect(unseenConnections(rows, null, now).map((r) => r.id)).toEqual(['claude']);
+    expect(unseenConnections(rows, at(2), now).map((r) => r.id)).toEqual(['claude']);
+    expect(unseenConnections(rows, at(0.5), now)).toHaveLength(0);
   });
 
   it('names a sign-in that went to this computer', () => {

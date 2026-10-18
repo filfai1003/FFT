@@ -67,7 +67,16 @@ Package name: `com.filfai1003.fft`.
 - Forgot password: requests appear in the admin panel (Password resets); set a temporary password
   there in sudo mode and email it by hand (DECISIONS 45) **only to the email address of the
   account** (never to another address written in the note: anyone can send a request). Requests
-  are deleted 30 days after they were sent, and with the account (DECISIONS 82).
+  are deleted 30 days after they were sent, and with the account (DECISIONS 82). Temporary
+  passwords are hashed with bcrypt cost 12 (DECISIONS 97).
+- Admin panel database roles (DECISIONS 97): `admin_ro` (reads, `ADMIN_RO_PASSWORD`) and
+  `admin_panel` (sudo mode: changes data, cannot change or delete `admin_audit`). The panel
+  creates both at start with the owner's `DATABASE_URL`; `admin_panel` gets a new random password
+  at every start (nothing to set on Railway). Its rights are given table by table at start, and
+  tables the owner creates later (migrations) get them through default privileges; after adding
+  a schema, or tables as another role, restart the panel. Changing
+  the schema (DDL) from the panel's SQL page no longer works (it is not the owner): use a
+  migration.
 
 ## Rotating the keys (JWT secret, anon and service-role keys)
 When a key may have leaked (the service-role key was a GitHub secret until 2026-10-18; rotated on
@@ -95,7 +104,10 @@ the repository; nothing here changes Railway by itself):
   not in these logs.
 - `backend` (Kong): its access log has the IP address, browser and the path with the query of every
   call. Set **`KONG_PROXY_ACCESS_LOG=off`** (and leave `KONG_PROXY_ERROR_LOG` as it is) on the
-  `backend` service.
+  `backend` service. Its error log at the default level (`warn`) still writes the client's IP
+  address and the request path (with ids in it, e.g. `client: <IP> … request: "GET /storage/v1/…"`)
+  for every warning (upstream timeouts, buffering of large bodies). Set **`KONG_LOG_LEVEL=error`**
+  on `backend` too (DECISIONS 97): real errors are still logged, warnings are not.
 - `web`, `site` (nginx): access logs are off in `web/nginx.conf` and `site/nginx.conf`; errors only.
 - `api`, `admin`, `backup`: no request logs; errors and counts only (no emails, no data).
 - Retention: Railway keeps logs for a time that depends on the plan (check Railway's current
@@ -153,7 +165,8 @@ the repository; nothing here changes Railway by itself):
 ## Backups (service `backup`, nightly)
 - A Railway cron service (`backup/`, Dockerfile `backup/Dockerfile`, schedule `0 3 * * *` UTC) dumps
   the database (`pg_dump` of public, auth and storage) and copies the user photos
-  (`progress-photos`, `user-exercise-images`) into the Railway bucket `backups` (region ams, EU).
+  (`progress-photos`, `user-exercise-images`) and the end-to-end encrypted copies (`vault-files`, still
+  sealed by the phones, DECISIONS 98) into the Railway bucket `backups` (region ams, EU).
   Everything is encrypted with AES-256-GCM using the service variable `BACKUP_KEY` (64 hex
   characters). **Keep a copy of `BACKUP_KEY` somewhere safe outside Railway: without it the backups
   cannot be read.**
@@ -204,11 +217,26 @@ the repository; nothing here changes Railway by itself):
      (`restore.mjs … deletions.json`); if the old database can still be read, also save its list
      (`psql "$OLD_DATABASE_URL" -At -c "select user_id from public.deleted_accounts" > ids.txt`).
      Then, against the restored database and storage:
-     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt]`
+     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt] --rows rows.json`
      (deletes those accounts with everything they own, and their files in the three buckets).
-  6. Delete the decrypted files (dump.sql, data.sql, deletions.json, photos) from your computer.
+     **The purge too** (DECISIONS 98): a dump older than a purge has the purged rows again. Decrypt
+     `deletions/rows.json.enc` to `rows.json` (rows deleted for good in the last 190 days, from the
+     tombstones; if the old database can still be read, export them from there instead:
+     `psql "$OLD_DATABASE_URL" -At -c "select json_agg(json_build_object('table', table_name, 'id', row_id)) from public.sync_tombstones" > rows.json`)
+     and pass it with `--rows` as above: those rows are deleted again and their files queued in
+     `files_to_delete`, which the api service empties when it starts. Then start the api service
+     once more (or wait for its daily clean-up), which also purges the rows that were already marked
+     deleted in the dump. Limit: rows deleted in the app less than 7 days before the restore (still
+     only marked deleted, no tombstone yet) come back unless a phone sends the deletion again.
+  6. Delete the decrypted files (dump.sql, data.sql, deletions.json, rows.json, photos) from your
+     computer.
   7. Not in the backups (put back by hand): the files of the public buckets `exercise-images`
-     (`npm run db:images`) and `downloads` (run the `Publish APK` workflow), and the end-to-end
-     encrypted files of `vault-files` (the phones still have the data and send it again).
+     (`npm run db:images`) and `downloads` (run the `Publish APK` workflow). The sealed files of
+     `vault-files` are in the backups since 2026-10-18 (step 4, like the photos; still sealed by
+     the phones, so only their owners can open them).
 - Deleted data (DECISIONS 79): the api service deletes for good, every day, rows deleted more than
-  7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.
+  7 days ago (`purge_deleted`) and their files, and tombstones after 190 days (as long as the
+  oldest backup, DECISIONS 98). Files are queued in `public.files_to_delete` together with the row
+  deletion and leave the queue only when storage confirmed the removal; a failed removal is tried
+  again at the next clean-up (`attempts` and `last_error` show it; a growing queue means storage
+  refuses the service key or is down).

@@ -9,12 +9,13 @@ import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
+import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
-import { authenticate } from '@/lib/biometrics';
+import { authenticate, canAuthenticate, unlockApp } from '@/lib/biometrics';
 import { openLegal } from '@/lib/legal';
 import { getMode } from '@/lib/mode';
 import { goBack } from '@/lib/navigation';
@@ -32,7 +33,7 @@ import { useSessionStore } from '@/features/auth/session-store';
 import { RelayCard } from '@/features/premium/RelayCard';
 import { ServerCopyCard } from '@/features/premium/ServerCopy';
 import { SyncCard } from '@/features/premium/SyncCard';
-import { usePrivacyStore } from './privacy-store';
+import { LOCK_AFTER_OPTIONS, type LockAfter, usePrivacyStore } from './privacy-store';
 
 /** Privacy & data: export, photo privacy, sharing, consent, delete account. */
 export function PrivacyScreen() {
@@ -108,6 +109,19 @@ export function PrivacyScreen() {
   const toggleLock = async (value: boolean) => {
     if (value && !(await authenticate(t('photos.unlockToEnable')))) return;
     privacy.set('lockPhotos', value);
+  };
+
+  /** App lock (DECISIONS 95): only with a lock on the phone, and after passing it once. */
+  const toggleAppLock = async (value: boolean) => {
+    if (!value) {
+      privacy.set('appLock', false);
+      return;
+    }
+    if (!(await canAuthenticate())) {
+      showToast({ message: t('privacy.appLockUnavailable') });
+      return;
+    }
+    if ((await unlockApp(t('appLock.reason'))) === 'passed') privacy.set('appLock', true);
   };
 
   const rows = (
@@ -265,6 +279,56 @@ export function PrivacyScreen() {
             },
           ])}
         </Card>
+
+        {/* Lock and screen protection of this phone (DECISIONS 95). */}
+        {Platform.OS !== 'web' ? (
+          <Card size="small" gap={0}>
+            <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
+              {t('privacy.device')}
+            </Text>
+            {rows([
+              {
+                name: t('privacy.appLock'),
+                detail: t('privacy.appLockDetail'),
+                value: privacy.appLock,
+                onChange: (v) => void toggleAppLock(v),
+              },
+            ])}
+            {privacy.appLock ? (
+              <View style={{ gap: 8, paddingVertical: 10 }}>
+                <Text variant="bodyS">{t('privacy.lockAfter')}</Text>
+                <Segmented
+                  options={LOCK_AFTER_OPTIONS.map((m) => ({
+                    value: String(m),
+                    label: t('privacy.lockAfterMin', { count: m }),
+                  }))}
+                  value={String(privacy.lockAfterMin)}
+                  onChange={(v) => privacy.set('lockAfterMin', Number(v) as LockAfter)}
+                  accessibilityLabel={t('privacy.lockAfter')}
+                />
+              </View>
+            ) : null}
+            <View style={{ borderTopWidth: 1, borderColor: colors.borderDecorative }}>
+              {rows([
+                {
+                  name: t('privacy.protectPhotos'),
+                  detail: t('privacy.protectPhotosDetail'),
+                  value: privacy.protectPhotos,
+                  onChange: (v) => privacy.set('protectPhotos', v),
+                },
+                {
+                  name: t('privacy.hideContent'),
+                  detail: t('privacy.hideContentDetail'),
+                  value: privacy.hideContent,
+                  onChange: (v) => privacy.set('hideContent', v),
+                },
+              ])}
+            </View>
+            <Text variant="bodyS" muted style={{ paddingTop: 8 }}>
+              {t('privacy.localNote')}
+            </Text>
+          </Card>
+        ) : null}
 
         <Card size="small" gap={0}>
           <View
