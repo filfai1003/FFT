@@ -8,9 +8,10 @@ import { AnimatedPressable, usePressScale } from './motion';
 
 /**
  * `outline` = round white button with a hairline border (headers of the main pages, cards);
- * `plain` = the bare icon in a 44px target (top bar of pushed pages: back, close, more).
+ * `plain` = the bare icon in a 44px target (top bar of pushed pages: back, close, more);
+ * `soft` = filled with the soft surface, no border (add / start buttons inside cards and rows).
  */
-export type IconButtonLook = 'outline' | 'plain';
+export type IconButtonLook = 'outline' | 'plain' | 'soft';
 
 /** Lets a container (the TopBar) switch the icon buttons inside it to its own look. */
 export const IconButtonLookContext = createContext<IconButtonLook>('outline');
@@ -38,7 +39,9 @@ export function IconButton({
 }: IconButtonProps) {
   const { colors } = useTheme();
   const inherited = useContext(IconButtonLookContext);
-  const plain = (look ?? inherited) === 'plain';
+  const kind = look ?? inherited;
+  const plain = kind === 'plain';
+  const soft = kind === 'soft';
   const press = usePressScale(0.92);
   const box = Math.max(size, touch.minTarget);
   return (
@@ -59,13 +62,15 @@ export function IconButton({
           width: box,
           height: box,
           borderRadius: box / 2,
-          borderWidth: plain ? 0 : 1,
+          borderWidth: plain || soft ? 0 : 1,
           borderColor: colors.borderDecorative,
           backgroundColor: plain
             ? press.pressed
               ? colors.surfaceAlt
               : 'transparent'
-            : colors.surface,
+            : soft
+              ? colors.surfaceAlt
+              : colors.surface,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: disabled ? 0.4 : press.pressed ? 0.85 : 1,

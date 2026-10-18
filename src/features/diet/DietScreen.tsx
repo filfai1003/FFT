@@ -7,6 +7,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
+import { formatInt } from '@/domain/numbers';
 import { useTheme } from '@/design/use-theme';
 import { meals, sumMacros, type Meal } from '@/domain/diet';
 import { addDays, monthYearLabel, weekOf } from '@/domain/day';
@@ -71,10 +72,12 @@ function FoodLog() {
               label={monthYearLabel(`${day.slice(0, 7)}-01`)}
               onPress={() => setCalendar(true)}
             />
-            <Text variant="screenTitle">{t('diet.title')}</Text>
+            <Text variant="screenTitle" accessibilityRole="header">
+              {t('nav.diet')}
+            </Text>
           </View>
           <IconButton
-            icon="more"
+            icon="settings"
             accessibilityLabel={t('diet.goalsAndMode')}
             onPress={() => router.push('/diet-goals')}
           />
@@ -86,7 +89,7 @@ function FoodLog() {
           <DaySummaryCard
             eaten={eaten}
             target={target}
-            caption={t('diet.targetLine', { kcal: Math.round(target.kcal) })}
+            caption={t('diet.targetLine', { kcal: formatInt(target.kcal) })}
           />
         ) : null}
 
@@ -149,7 +152,7 @@ function MealSection({
     <View
       accessibilityRole="summary"
       style={{
-        borderRadius: radius.cardSmall,
+        borderRadius: radius.card,
         borderWidth: 1,
         borderColor: colors.borderDecorative,
         backgroundColor: colors.surface,
@@ -166,17 +169,16 @@ function MealSection({
           minHeight: touch.minTarget,
         }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10 }}>
-          <Text variant="titleM" accessibilityRole="header">
-            {name}
-          </Text>
-          <Text variant="bodyS" muted numeric>
-            {entries.length > 0
-              ? t('diet.kcalValue', { kcal: Math.round(kcal) })
-              : t('diet.nothingYet')}
-          </Text>
-        </View>
+        <Text variant="titleM" accessibilityRole="header" style={{ flex: 1 }}>
+          {name}
+        </Text>
+        <Text variant="bodyS" muted numeric style={{ marginRight: 8 }}>
+          {entries.length > 0
+            ? t('diet.kcalValue', { kcal: Math.round(kcal) })
+            : t('diet.nothingYet')}
+        </Text>
         <IconButton
+          look="soft"
           icon="plus"
           accessibilityLabel={t('diet.addTo', { meal: name })}
           onPress={onAdd}
@@ -236,14 +238,14 @@ function MealSection({
           })}
         >
           <View style={{ flex: 1, gap: 1, paddingVertical: 4 }}>
-            <Text variant="body" numberOfLines={1}>
+            <Text variant="body" medium numberOfLines={1}>
               {e.name}
             </Text>
             <Text variant="bodyS" muted>
               {e.quantityLabel ?? ''}
             </Text>
           </View>
-          <Text variant="body" numeric style={{ fontWeight: '600' }}>
+          <Text variant="bodyS" semibold numeric>
             {String(Math.round(e.macros.kcal))}
           </Text>
         </Pressable>

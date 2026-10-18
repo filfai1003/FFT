@@ -6,6 +6,7 @@ import { Gauge } from '@/components/ui/Gauge';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import type { Macros } from '@/domain/diet';
+import { formatInt } from '@/domain/numbers';
 
 type Props = {
   eaten: Macros;
@@ -33,7 +34,7 @@ export function DaySummaryCard({ eaten, target, caption }: Props) {
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
             <Text variant="displayM" numeric>
-              {left}
+              {formatInt(left)}
             </Text>
             <Text variant="body" muted>
               {t('common.kcal')}
@@ -54,10 +55,10 @@ export function DaySummaryCard({ eaten, target, caption }: Props) {
           target: Math.round(target.kcal),
         })}
       />
-      <Text variant="label" muted numeric>
+      <Text variant="bodyS" muted numeric>
         {t('diet.eatenOfTarget', {
-          eaten: Math.round(eaten.kcal),
-          target: Math.round(target.kcal),
+          eaten: formatInt(eaten.kcal),
+          target: formatInt(target.kcal),
         })}
       </Text>
       <View
@@ -83,7 +84,7 @@ export function DaySummaryCard({ eaten, target, caption }: Props) {
               <Text variant="body" numeric style={{ fontWeight: '600' }}>
                 {`${Math.round(eaten[key])} g`}
               </Text>
-              <Text variant="label" muted numeric>
+              <Text variant="bodyS" muted numeric>
                 {t('diet.ofGrams', { g: Math.round(target[key]), name: t(`diet.macro.${key}`) })}
               </Text>
             </View>
