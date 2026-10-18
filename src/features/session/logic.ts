@@ -102,16 +102,24 @@ export function emptySet(
   logType: LogType,
   unit: WeightUnit,
 ): SessionSet {
+  // Everything is pre-filled from the last session (DECISIONS 48, version A): one tap on the tick
+  // saves the set as shown, and any field can still be typed over.
+  const timed = logType === 'time' || logType === 'distance_time';
   return {
     id: newId(),
-    // The load is pre-filled from the last session, the reps are for you to enter.
     weight:
       previous?.weightKg != null && logType === 'weight_reps'
         ? trimNumber(displayWeight(previous.weightKg, unit))
         : '',
-    reps: '',
-    duration: '',
-    distance: '',
+    reps:
+      previous?.reps != null && (logType === 'weight_reps' || logType === 'reps')
+        ? String(previous.reps)
+        : '',
+    duration: timed && previous?.durationS != null ? formatClock(previous.durationS) : '',
+    distance:
+      logType === 'distance_time' && previous?.distanceM != null
+        ? trimNumber(previous.distanceM / 1000)
+        : '',
     done: false,
     completedAt: null,
     previous: formatPrevious(previous, logType, unit),
@@ -180,9 +188,10 @@ export function buildExercise(
           smallPlates,
         }) ?? undefined)
       : undefined;
-  const sets = Array.from({ length: e.targetSets }, (_, i) =>
-    emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit),
-  );
+  const sets = Array.from({ length: e.targetSets }, (_, i) => {
+    const set = emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit);
+    return { ...set, reps: suggestedReps(set, e.logType, targetReps, suggestion) };
+  });
   // Drop sets: each drop has its own suggestion, from the same drop last time (not the main weight).
   const drops = e.logType === 'weight_reps' && e.drops?.reps.length ? e.drops : null;
   const lastDrops = [...e.previous].reverse().find((p) => p.drops?.length)?.drops ?? [];
@@ -222,6 +231,31 @@ export function buildExercise(
       stepFor(e.equipment, unit, smallPlates) ?? 2.5,
     ),
   };
+}
+
+/**
+ * Reps a set starts with: with a weight suggestion, the bottom of the target after a step up or
+ * down, else last time's reps plus one (never above the top of the target); without one, last
+ * time's reps, else the bottom of the target. Warm-ups (lighter than the working weight) keep
+ * last time's reps.
+ */
+export function suggestedReps(
+  set: Pick<SessionSet, 'weight' | 'reps'>,
+  logType: LogType,
+  targetReps: string | undefined,
+  suggestion: Suggestion | undefined,
+): string {
+  if (logType !== 'weight_reps' && logType !== 'reps') return '';
+  const target = parseTargetReps(targetReps);
+  const last = parseDecimal(set.reps);
+  const warmUp =
+    suggestion != null && set.weight !== '' && set.weight !== trimNumber(suggestion.from);
+  if (suggestion && target && !warmUp) {
+    if (suggestion.kind !== 'same') return String(target.min);
+    if (last != null) return String(Math.min(Math.round(last) + 1, target.max));
+  }
+  if (last != null) return set.reps;
+  return target ? String(target.min) : '';
 }
 
 /** Puts the drops on the sets that have them, pre-filled: suggestion, last time, or about -20%. */
@@ -367,11 +401,21 @@ export function toggleSet(
 ): { session: ActiveSession; completed: boolean } {
   const current = s.exercises[exerciseIndex].sets[setIndex];
   const completed = !current.done;
+  // One tap saves what the fields show; reps left empty take the plan's target or the set before.
+  const quick =
+    completed && current.reps.trim() === ''
+      ? quickSetValues(s.exercises[exerciseIndex], setIndex)
+      : null;
   const session = mapExercise(s, exerciseIndex, (e) => ({
     ...e,
     sets: e.sets.map((x, i) =>
       i === setIndex
-        ? { ...x, done: completed, completedAt: completed ? now.toISOString() : null }
+        ? {
+            ...x,
+            ...(quick ? { reps: quick.reps } : null),
+            done: completed,
+            completedAt: completed ? now.toISOString() : null,
+          }
         : x,
     ),
   }));
@@ -460,8 +504,10 @@ export function addSet(s: ActiveSession, exerciseIndex: number): ActiveSession {
     const last = e.sets[e.sets.length - 1];
     const next: SessionSet = {
       ...emptySet(undefined, e.logType, s.weightUnit),
-      // A new set starts from the previous set's load.
+      // A new set starts from the previous set (load, reps and last time's reference).
       weight: last?.weight ?? '',
+      reps: last?.reps ?? '',
+      previous: last?.previous ?? null,
       duration: last?.duration ?? '',
       distance: last?.distance ?? '',
       drops: undefined,

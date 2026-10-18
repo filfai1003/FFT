@@ -19,7 +19,15 @@ import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
-import { useAddWater, useDayTotals, useRemoveWater, useWater } from '@/features/diet/log';
+import {
+  useAddWater,
+  useCopyEntries,
+  useDayLog,
+  useDayTotals,
+  useRemoveWater,
+  useSetLogDeleted,
+  useWater,
+} from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
 import { useBodyEntries } from '@/features/progress/data';
 import { useToday } from '@/features/profile/use-today';
@@ -27,6 +35,8 @@ import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
 import { estimateMinutes, useActivePlan, useRotation } from '@/features/train/plans';
+import { NewPlanSheet } from '@/features/train/NewPlanSheet';
+import { useAskCoach, useCoachReady } from '@/features/ai/use-coach-ready';
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
@@ -102,6 +112,10 @@ export function NutritionWidget({ size }: Props) {
   const profile = useProfile();
   const showToast = useToastStore((s) => s.show);
   const totals = useDayTotals(today);
+  const log = useDayLog(today);
+  const yesterday = useDayLog(addDays(today, -1));
+  const copy = useCopyEntries();
+  const setDeleted = useSetLogDeleted();
   const target = useDayTarget(today);
   const eaten = totals.data ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
   const left = target ? Math.max(0, Math.round(target.kcal - eaten.kcal)) : 0;
@@ -158,6 +172,99 @@ export function NutritionWidget({ size }: Props) {
   });
   const over = target ? eaten.kcal > target.kcal * 1.1 : false;
   const setTarget = () => router.push('/diet-goals');
+
+  // Nothing logged today yet (the first days, or a new morning): a friendly start with one-tap
+  // actions instead of an empty ring.
+  const eatenFixed = (checks.data ?? []).some(
+    (c) => c.status === 'done' || c.status === 'adjusted',
+  );
+  const empty =
+    totals.data != null &&
+    eaten.kcal === 0 &&
+    (fixed ? checks.data != null && !eatenFixed : log.data != null && log.data.length === 0);
+  const yesterdayEntries = fixed ? [] : (yesterday.data ?? []);
+  const sameAsYesterday = async () => {
+    if (copy.isPending || yesterdayEntries.length === 0) return;
+    const meals = [...new Set(yesterdayEntries.map((e) => e.meal))];
+    const ids: string[] = [];
+    for (const meal of meals)
+      ids.push(
+        ...(await copy.mutateAsync({
+          entries: yesterdayEntries.filter((e) => e.meal === meal),
+          day: today,
+          meal,
+        })),
+      );
+    confirm();
+    showToast({
+      message: t('today.copiedDay', { count: ids.length }),
+      actionLabel: t('common.undo'),
+      bottomOffset: barHeight,
+      onAction: () => {
+        for (const id of ids) setDeleted.mutate({ id, deleted: true });
+      },
+    });
+  };
+
+  if (empty) {
+    const markLabel = nextMeal ? t('today.markEaten', { name: nextMeal.name }) : '';
+    if (size === 'small') {
+      return (
+        <Frame size="small" label={t('today.calories')}>
+          <IconTile icon="bowl" area="nutrition" size={44} />
+          <Text variant="bodyS" semibold numberOfLines={2}>
+            {fixed && nextMeal ? nextMeal.name : t('today.firstMeal')}
+          </Text>
+          <IconButton
+            icon={fixed ? 'check' : 'plus'}
+            accessibilityLabel={fixed && nextMeal ? markLabel : t('today.logMeal')}
+            disabled={fixed && !nextMeal}
+            onPress={onMeal}
+          />
+        </Frame>
+      );
+    }
+    const yesterdayKcal = Math.round(yesterdayEntries.reduce((a, e) => a + e.macros.kcal, 0));
+    return (
+      <Frame size="large" label={t('today.calories')}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <IconTile icon="bowl" area="nutrition" size={56} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="titleM">{t('today.firstMeal')}</Text>
+            <Text variant="bodyS" muted>
+              {fixed
+                ? t('today.firstMealFixed')
+                : target
+                  ? t('today.firstMealTarget', { kcal: formatInt(target.kcal) })
+                  : t('today.firstMealNoTarget')}
+            </Text>
+          </View>
+        </View>
+        {fixed ? (
+          nextMeal ? (
+            <Button label={markLabel} icon="check" variant="secondary" onPress={onMeal} />
+          ) : null
+        ) : (
+          <>
+            <Button label={t('today.logMeal')} icon="plus" variant="secondary" onPress={onMeal} />
+            {yesterdayEntries.length > 0 ? (
+              <Button
+                label={t('today.sameAsYesterday')}
+                accessibilityLabel={t('today.sameAsYesterdayLabel', {
+                  count: yesterdayEntries.length,
+                  kcal: formatInt(yesterdayKcal),
+                })}
+                icon="copy"
+                variant="ghost"
+                disabled={copy.isPending}
+                onPress={() => void sameAsYesterday()}
+              />
+            ) : null}
+          </>
+        )}
+      </Frame>
+    );
+  }
 
   // No target (DECISIONS 104): what was eaten, no "left" and no arcs, and a quiet way to set one.
   if (!target && size === 'small') {
@@ -380,6 +487,9 @@ export function WorkoutWidget({ size }: Props) {
   const { plan } = useActivePlan();
   const rotation = useRotation(plan);
   const { startDay } = useStartWorkout();
+  const [creating, setCreating] = useState(false);
+  const coachReady = useCoachReady();
+  const askCoach = useAskCoach();
   const tz = profile.data?.timezone ?? deviceTimeZone();
   const monthSessions = useMonthSessions(today.slice(0, 7));
   const doneToday = (monthSessions.data ?? []).filter(
@@ -512,22 +622,35 @@ export function WorkoutWidget({ size }: Props) {
       </>
     );
   } else {
+    // No plan: plan creation opens right here (and the coach can draft one when it is set up).
     body = (
       <View style={{ gap: 10 }}>
         <Text muted>{t('today.noPlan')}</Text>
         <Button
-          label={t('today.goTrain')}
+          label={t('train.createPlan')}
+          icon="plus"
           variant="secondary"
-          onPress={() => router.push('/train')}
+          onPress={() => setCreating(true)}
         />
+        {coachReady ? (
+          <Button
+            label={t('today.askCoachPlan')}
+            icon="chat"
+            variant="ghost"
+            onPress={() => askCoach(t('today.askCoachPlanPrompt'))}
+          />
+        ) : null}
       </View>
     );
   }
 
   return (
-    <Frame size={size} label={t('today.workout')} right={cycle}>
-      {body}
-    </Frame>
+    <>
+      <Frame size={size} label={t('today.workout')} right={cycle}>
+        {body}
+      </Frame>
+      <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />
+    </>
   );
 }
 

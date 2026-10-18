@@ -68,12 +68,12 @@ function session(unit: 'kg' | 'lb' = 'kg', exercises = [incline, plank]) {
 }
 
 describe('building a session', () => {
-  it('pre-fills the load from the previous session and leaves the reps empty', () => {
+  it('pre-fills the load and the reps from the previous session', () => {
     const s = session();
     const sets = s.exercises[0].sets;
     expect(sets).toHaveLength(4);
     expect(sets.map((x) => x.weight)).toEqual(['24', '24', '24', '22']);
-    expect(sets.map((x) => x.reps)).toEqual(['', '', '', '']);
+    expect(sets.map((x) => x.reps)).toEqual(['10', '9', '8', '8']);
     expect(sets.map((x) => x.previous)).toEqual(['24 × 10', '24 × 9', '24 × 8', '22 × 8']);
   });
 
@@ -375,6 +375,77 @@ describe('next weight suggestion', () => {
     const s = build({ ...bench, targetReps: undefined });
     expect(s.exercises[0].suggestion).toBeUndefined();
     expect(s.exercises[0].sets.map((x) => x.weight)).toEqual(['40', '80', '80']);
+  });
+
+  it('reps are pre-filled too: the bottom of the target after a step up, warm-ups as last time', () => {
+    const s = build({ ...bench, targetSets: 4 });
+    expect(s.exercises[0].sets.map((x) => x.reps)).toEqual(['10', '6', '6', '6']);
+  });
+
+  it('same weight: one more rep than last time, never above the top of the target', () => {
+    const previous = [7, 6, 8].map((reps) => ({
+      weightKg: 80,
+      reps,
+      durationS: null,
+      distanceM: null,
+    }));
+    const s = build({ ...bench, previous });
+    expect(s.exercises[0].suggestion?.kind).toBe('same');
+    expect(s.exercises[0].sets.map((x) => `${x.weight}×${x.reps}`)).toEqual([
+      '80×8',
+      '80×7',
+      '80×8',
+    ]);
+  });
+
+  it('no history: no load, the reps start at the bottom of the target', () => {
+    const s = build({ ...bench, previous: [] });
+    expect(s.exercises[0].sets.map((x) => [x.weight, x.reps, x.previous])).toEqual([
+      ['', '6', null],
+      ['', '6', null],
+      ['', '6', null],
+    ]);
+  });
+
+  it('one tap on the tick saves the pre-filled values; typed values win', () => {
+    let s = build(bench);
+    s = setField(s, 0, 1, 'reps', '7');
+    const a = toggleSet(s, 0, 0, now).session;
+    const b = toggleSet(a, 0, 1, now).session;
+    const rows = toRows(b, 'u', { endedAt: now, feeling: null, notes: '' }).sets;
+    expect(rows.map((r) => [r.weight_kg, r.reps])).toEqual([
+      [40, 10],
+      [82.5, 7],
+    ]);
+  });
+
+  it('a tick on a set whose reps were cleared takes the target', () => {
+    const s = setField(build(bench), 0, 1, 'reps', '');
+    const done = toggleSet(s, 0, 1, now).session.exercises[0].sets[1];
+    expect(done).toMatchObject({ done: true, reps: '6' });
+  });
+
+  it('an added set keeps the reps and last time of the set before', () => {
+    const s = addSet(build(bench), 0);
+    const sets = s.exercises[0].sets;
+    expect(sets[3]).toMatchObject({ weight: '82.5', reps: '6', previous: '80 × 8' });
+  });
+});
+
+describe('timed exercises', () => {
+  it('pre-fill the time and distance of last time', () => {
+    const run: NewExercise = {
+      exerciseId: 'run',
+      name: 'Run',
+      logType: 'distance_time',
+      imagePath: null,
+      restS: 60,
+      targetSets: 1,
+      previous: [{ weightKg: null, reps: null, durationS: 1500, distanceM: 5000 }],
+    };
+    const set = session('kg', [run]).exercises[0].sets[0];
+    expect(set).toMatchObject({ distance: '5', duration: '25:00', previous: '5 km · 25:00' });
+    expect(parseDuration(set.duration)).toBe(1500);
   });
 });
 

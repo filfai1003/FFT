@@ -56,13 +56,33 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
         title={t('session.finishTitle')}
         closeLabel={t('common.close')}
       >
-        <Text muted>
-          {nothingDone
-            ? t('session.finishNothing')
-            : t('session.finishBody', { done: sum.exercisesDone, total: sum.exercisesTotal })}
-        </Text>
+        {nothingDone ? (
+          // Nothing to save: one sentence, and discarding comes first (still confirmed).
+          <>
+            <View style={{ gap: 4 }}>
+              <Text variant="titleM">{t('session.noSetsYet')}</Text>
+              <Text muted>{t('session.finishNothing')}</Text>
+            </View>
+            <Button
+              size="large"
+              variant="danger"
+              label={t('session.discard')}
+              onPress={() => setConfirmDiscard(true)}
+            />
+            <Button
+              size="large"
+              variant="secondary"
+              label={t('session.keepTraining')}
+              onPress={onClose}
+            />
+          </>
+        ) : (
+          <Text muted>
+            {t('session.finishBody', { done: sum.exercisesDone, total: sum.exercisesTotal })}
+          </Text>
+        )}
 
-        {left.length > 0 ? (
+        {!nothingDone && left.length > 0 ? (
           <View
             style={{
               borderTopWidth: 1,
@@ -92,28 +112,32 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
           </View>
         ) : null}
 
-        <Button
-          size="large"
-          label={t('session.finishAndSave')}
-          disabled={nothingDone || busy}
-          onPress={finish}
-        />
-        <Button
-          size="large"
-          variant="secondary"
-          label={t('session.keepTraining')}
-          onPress={onClose}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('session.discard')}
-          onPress={() => setConfirmDiscard(true)}
-          style={{ minHeight: touch.minTarget, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text variant="label" muted>
-            {t('session.discard')}
-          </Text>
-        </Pressable>
+        {nothingDone ? null : (
+          <>
+            <Button
+              size="large"
+              label={t('session.finishAndSave')}
+              disabled={busy}
+              onPress={finish}
+            />
+            <Button
+              size="large"
+              variant="secondary"
+              label={t('session.keepTraining')}
+              onPress={onClose}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('session.discard')}
+              onPress={() => setConfirmDiscard(true)}
+              style={{ minHeight: touch.minTarget, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text variant="label" muted>
+                {t('session.discard')}
+              </Text>
+            </Pressable>
+          </>
+        )}
       </Sheet>
 
       <Sheet
