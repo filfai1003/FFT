@@ -4,7 +4,11 @@ import { create } from 'zustand';
 export type WidgetId = 'nutrition' | 'workout' | 'water' | 'weight' | 'streak' | 'supplements';
 /** small = half the width (two side by side), large = the whole width. */
 export type WidgetSize = 'small' | 'large';
-export type WidgetItem = { id: WidgetId; size: WidgetSize; visible: boolean };
+/**
+ * col: the slot a half-width card was put in (0 left, 1 right; DECISIONS 106). Without it the card
+ * takes the next free slot.
+ */
+export type WidgetItem = { id: WidgetId; size: WidgetSize; visible: boolean; col?: 0 | 1 };
 
 export const defaultWidgets: readonly WidgetItem[] = [
   { id: 'nutrition', size: 'large', visible: true },
@@ -35,10 +39,12 @@ export function mergeLayout(saved: unknown): HomeLayout {
     const id = (w.id as string | undefined) === 'creatine' ? 'supplements' : w.id;
     const base = id ? known.get(id) : undefined;
     if (!base || out.some((o) => o.id === base.id)) continue;
+    const size = w.size === 'small' || w.size === 'large' ? w.size : base.size;
     out.push({
       id: base.id,
-      size: w.size === 'small' || w.size === 'large' ? w.size : base.size,
+      size,
       visible: typeof w.visible === 'boolean' ? w.visible : base.visible,
+      ...(size === 'small' && (w.col === 0 || w.col === 1) ? { col: w.col } : {}),
     });
   }
   for (const w of defaultWidgets) if (!out.some((o) => o.id === w.id)) out.push({ ...w });
@@ -93,15 +99,25 @@ export function moveShown(
   const at = shown.findIndex((w) => w.id === id);
   const target = shown[at + delta];
   if (at < 0 || !target) return widgets;
-  return moveWidgetTo(widgets, id, target.id);
+  // Moved in reading order: it takes the next free slot there.
+  return moveWidgetTo(withoutCol(widgets, id), id, target.id);
 }
+
+const withoutCol = (widgets: readonly WidgetItem[], id: WidgetId): readonly WidgetItem[] =>
+  widgets.map((w) => {
+    if (w.id !== id) return w;
+    const { col: _col, ...rest } = w;
+    return rest;
+  });
 
 export function updateWidget(
   widgets: readonly WidgetItem[],
   id: WidgetId,
   patch: Partial<Pick<WidgetItem, 'size' | 'visible'>>,
 ): readonly WidgetItem[] {
-  return widgets.map((w) => (w.id === id ? { ...w, ...patch } : w));
+  // A card that changes size takes the next free slot.
+  const base = patch.size ? withoutCol(widgets, id) : widgets;
+  return base.map((w) => (w.id === id ? { ...w, ...patch } : w));
 }
 
 /** A card added back from the tray goes at the end of the shown ones. */
@@ -111,7 +127,8 @@ export function showWidget(widgets: readonly WidgetItem[], id: WidgetId): readon
   const rest = widgets.filter((w) => w.id !== id);
   const lastShown = rest.reduce((last, w, i) => (w.visible ? i : last), -1);
   const next = [...rest];
-  next.splice(lastShown + 1, 0, { ...item, visible: true });
+  const { col: _col, ...rest2 } = item;
+  next.splice(lastShown + 1, 0, { ...rest2, visible: true });
   return next;
 }
 

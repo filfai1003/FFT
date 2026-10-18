@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Text } from '@/components/ui/Text';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { renderUI } from '@/test/render';
-import { dropTarget } from './edit-grid';
+import { dropRows, gridGeometry, packRows, rowsKey, rowsToShown } from './edit-grid';
 import {
   changeTodayDraft,
   finishTodayEdit,
@@ -82,16 +82,75 @@ describe('Today layout: edits', () => {
     expect(ws.find((w) => w.id === 'nutrition')?.visible).toBe(true);
   });
 
-  it('drops on the card under the centre, else the nearest', () => {
-    const rects = [
-      { id: 'a', x: 0, y: 0, w: 100, h: 100 },
-      { id: 'b', x: 110, y: 0, w: 100, h: 100 },
-      { id: 'c', x: 0, y: 110, w: 210, h: 100 },
-    ];
-    expect(dropTarget(rects, 'a', 150, 50)).toBe('b');
-    expect(dropTarget(rects, 'a', 105, 160)).toBe('c');
-    expect(dropTarget(rects, 'a', 50, 50)).toBe('a');
-    expect(dropTarget(rects, 'a', 400, 20)).toBe('b');
+  describe('home screen placement', () => {
+    // 210 wide, gap 10: half-width cards are 100 wide; every card 100 tall. Rows (top):
+    // nutrition 0, workout 110, water|weight 220, streak 330, supplements|_ 440.
+    const rows = packRows(defaultWidgets);
+    const heights = new Map(defaultWidgets.map((w) => [w.id, 100]));
+    const { bands } = gridGeometry(rows, 210, 10, heights);
+    const item = (id: string) => defaultWidgets.find((w) => w.id === id)!;
+    const drop = (id: string, cx: number, cy: number) =>
+      rowsKey(dropRows(rows, bands, item(id), cx, cy, 210));
+
+    it('lays the cards out in rows with left and right slots', () => {
+      expect(rowsKey(rows)).toBe('nutrition,workout,water|weight,streak,supplements|_');
+      expect(bands.map((b) => b.top)).toEqual([0, 110, 220, 330, 440]);
+    });
+
+    it('a half-width card takes the slot under it; the one there moves aside or down', () => {
+      // Free slot: it just goes there.
+      expect(drop('weight', 160, 490)).toBe('nutrition,workout,water|_,streak,supplements|weight');
+      // Next to its partner: the two swap.
+      expect(drop('water', 160, 270)).toBe('nutrition,workout,weight|water,streak,supplements|_');
+      // Both slots taken: the card there goes down to the same slot of a new row.
+      expect(drop('supplements', 160, 270)).toBe(
+        'nutrition,workout,water|supplements,_|weight,streak',
+      );
+      // Over a wide card: a new row above or below it, in the slot under the finger.
+      expect(drop('supplements', 160, 120)).toBe(
+        'nutrition,_|supplements,workout,water|weight,streak',
+      );
+    });
+
+    it('a wide card goes above or below the row under it', () => {
+      expect(drop('nutrition', 100, 400)).toBe(
+        'workout,water|weight,streak,nutrition,supplements|_',
+      );
+      expect(drop('streak', 100, 230)).toBe('nutrition,workout,streak,water|weight,supplements|_');
+      expect(drop('nutrition', 100, 700)).toBe(
+        'workout,water|weight,streak,supplements|_,nutrition',
+      );
+    });
+
+    it('over its own place nothing changes', () => {
+      expect(drop('water', 50, 270)).toBe(rowsKey(rows));
+      expect(drop('workout', 150, 190)).toBe(rowsKey(rows));
+    });
+
+    it('slots are kept: the saved list gives back the same rows', () => {
+      const moved = dropRows(rows, bands, item('weight'), 160, 490, 210);
+      const saved = rowsToShown(moved, defaultWidgets);
+      expect(saved.find((w) => w.id === 'weight')?.col).toBe(1);
+      expect(rowsKey(packRows(saved))).toBe(rowsKey(moved));
+      expect(
+        rowsKey(
+          packRows(
+            mergeLayout(JSON.parse(serializeLayout({ widgets: saved, aiDock: false }))).widgets,
+          ),
+        ),
+      ).toBe(rowsKey(moved));
+    });
+
+    it('a card resized or moved by a screen reader takes the next free slot', () => {
+      const saved = rowsToShown(
+        dropRows(rows, bands, item('weight'), 160, 490, 210),
+        defaultWidgets,
+      );
+      expect(
+        updateWidget(saved, 'weight', { size: 'large' }).find((w) => w.id === 'weight')?.col,
+      ).toBeUndefined();
+      expect(moveShown(saved, 'weight', -1).find((w) => w.id === 'weight')?.col).toBeUndefined();
+    });
   });
 });
 

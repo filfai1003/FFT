@@ -1,16 +1,14 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
-  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Icon } from '@/components/ui/Icon';
@@ -19,10 +17,18 @@ import { Toggle } from '@/components/ui/Toggle';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
-import { dropTarget, type CardRect } from './edit-grid';
+import {
+  dropRows,
+  gridGeometry,
+  packRows,
+  rowsKey,
+  rowsToShown,
+  type CardBox,
+  type GridRow,
+  type RowBand,
+} from './edit-grid';
 import {
   moveShown,
-  moveWidgetTo,
   showWidget,
   updateWidget,
   type WidgetId,
@@ -33,6 +39,7 @@ export const WIDGET_GAP = 10;
 const WIGGLE_DEG = 0.6;
 const HOLD_TO_EDIT_MS = 450;
 const HOLD_TO_DRAG_MS = 150;
+const MOVE_MS = 220;
 
 type GridProps = {
   widgets: readonly WidgetItem[];
@@ -46,12 +53,17 @@ type GridProps = {
   onAiDock: (visible: boolean) => void;
 };
 
+/** The rows and row places when a drag started: every drop is worked out from them. */
+type Drag = { id: WidgetId; rows: GridRow[]; bands: RowBand[] };
+
 /**
- * The Today cards in a 2-column grid (small = half the width, large = the whole width). Outside
- * edit mode a long press on any card starts edit mode. In edit mode (DECISIONS 72) the cards
- * wiggle (not with reduce motion), can be held and dragged onto another card's place, made
- * small / wide, or hidden; hidden cards wait in the "Add cards" tray below. Screen readers get
- * move up / down, resize and hide as actions on each card.
+ * The Today cards on a 2-column grid laid out like a phone's home screen (DECISIONS 72, 106):
+ * rows of one wide card or two half-width slots, a slot may stay empty. Outside edit mode a long
+ * press on any card starts edit mode. In edit mode the cards wiggle (not with reduce motion), can
+ * be held and dragged: the others make room live, showing the page as it will be when the card is
+ * let go, and a dashed outline marks where it will land. Cards can also be made small / wide or
+ * hidden; hidden cards wait in the "Add cards" tray below. Screen readers get move up / down,
+ * resize and hide as actions on each card.
  */
 export function TodayGrid({
   widgets,
@@ -63,47 +75,91 @@ export function TodayGrid({
   onAiDock,
 }: GridProps) {
   const { t } = useTranslation();
+  const { colors, reduceMotion } = useTheme();
   const [width, setWidth] = useState(0);
-  const rects = useSharedValue<CardRect[]>([]);
-  // Every card's place, kept here and sent whole to the gesture: each card writing its own copy
-  // of the shared list (read, then set) lost the others when they were measured together, so a
-  // dragged card found no card to land on and went back.
-  const placed = useRef(new Map<string, CardRect>());
-  const place = (rect: CardRect) => {
-    placed.current.set(rect.id, rect);
-    rects.set([...placed.current.values()]);
-  };
-  const hover = useSharedValue('');
+  const [heights, setHeights] = useState<ReadonlyMap<WidgetId, number>>(() => new Map());
+  const [drag, setDrag] = useState<Drag | null>(null);
+  // The rows as they would be if the dragged card were let go now.
+  const [preview, setPreview] = useState<GridRow[] | null>(null);
   const shown = widgets.filter((w) => w.visible);
   const hidden = widgets.filter((w) => !w.visible);
-  // Two small cards side by side leave the same gap as the rows above and below.
-  const half = width > 0 ? (width - WIDGET_GAP) / 2 : '48%';
+  const rows = preview ?? packRows(shown);
+  const geometry = gridGeometry(rows, width, WIDGET_GAP, heights);
+  const measured = width > 0 && shown.every((w) => heights.has(w.id));
 
-  const drop = (id: WidgetId, targetId: string) => {
+  // Two half-width cards in a row are as tall as the taller one: the shorter one gets a minimum
+  // height just under it (so the taller one keeps being measured at its own height).
+  const minHeight = new Map<WidgetId, number>();
+  for (const r of rows) {
+    if (r.kind !== 'pair' || !r.left || !r.right) continue;
+    const hl = heights.get(r.left);
+    const hr = heights.get(r.right);
+    if (hl == null || hr == null) continue;
+    minHeight.set(hr > hl ? r.left : r.right, Math.max(hl, hr) - 0.5);
+  }
+
+  const measure = (id: WidgetId, h: number) =>
+    setHeights((prev) => (prev.get(id) === h ? prev : new Map(prev).set(id, h)));
+
+  const startDrag = (id: WidgetId) => {
     tick();
-    const target = shown.find((w) => w.id === targetId);
-    if (target && target.id !== id) onChange(moveWidgetTo(widgets, id, target.id));
+    setDrag({ id, rows, bands: geometry.bands });
   };
+  const hoverDrag = (id: WidgetId, cx: number, cy: number) => {
+    const item = shown.find((w) => w.id === id);
+    if (!drag || drag.id !== id || !item) return;
+    const next = dropRows(drag.rows, drag.bands, item, cx, cy, width);
+    if (rowsKey(next) !== rowsKey(rows))
+      setPreview(rowsKey(next) === rowsKey(drag.rows) ? null : next);
+  };
+  const endDrag = (dropped: boolean) => {
+    if (dropped) tick();
+    if (dropped && preview) onChange([...rowsToShown(preview, shown), ...hidden]);
+    setPreview(null);
+    setDrag(null);
+  };
+
+  const target = drag ? geometry.boxes.get(drag.id) : undefined;
 
   return (
     <View style={{ gap: 14 }}>
       <View
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: WIDGET_GAP }}
+        style={{ height: measured ? geometry.height : undefined, opacity: measured ? 1 : 0 }}
       >
+        {target && drag ? (
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: target.x,
+              top: target.y,
+              width: target.w,
+              height: geometry.rowHeight.get(drag.id) ?? heights.get(drag.id) ?? 0,
+              borderRadius: radius.card,
+              borderWidth: 2,
+              borderStyle: 'dashed',
+              borderColor: colors.borderControl,
+            }}
+          />
+        ) : null}
         {shown.map((item, n) => (
           <TodayCard
             key={item.id}
             item={item}
             index={n}
             count={shown.length}
-            width={item.size === 'large' ? '100%' : half}
+            box={geometry.boxes.get(item.id) ?? { x: 0, y: 0, w: 0 }}
+            width={width > 0 ? undefined : item.size === 'large' ? '100%' : '48%'}
+            minHeight={minHeight.get(item.id)}
             editing={editing}
-            rects={rects}
-            onPlace={place}
-            hover={hover}
+            animate={editing && measured && !reduceMotion}
+            dragging={drag?.id === item.id}
+            onMeasure={measure}
             onEnterEdit={onEnterEdit}
-            onDrop={drop}
+            onDragStart={startDrag}
+            onDragMove={hoverDrag}
+            onDragEnd={endDrag}
             onMove={(delta) => onChange(moveShown(widgets, item.id, delta))}
             onResize={() =>
               onChange(
@@ -141,13 +197,17 @@ function TodayCard({
   item,
   index,
   count,
+  box,
   width,
+  minHeight,
   editing,
-  rects,
-  hover,
+  animate,
+  dragging,
+  onMeasure,
   onEnterEdit,
-  onPlace,
-  onDrop,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
   onMove,
   onResize,
   onHide,
@@ -156,13 +216,21 @@ function TodayCard({
   item: WidgetItem;
   index: number;
   count: number;
-  width: number | `${number}%`;
+  /** Where the card goes on the grid. */
+  box: CardBox;
+  /** Before the grid is measured: a width in % instead of the box's. */
+  width?: `${number}%`;
+  minHeight?: number;
   editing: boolean;
-  rects: SharedValue<CardRect[]>;
-  hover: SharedValue<string>;
+  /** Moves to a new place smoothly (edit mode, no reduce motion). */
+  animate: boolean;
+  /** This card is the one being dragged. */
+  dragging: boolean;
+  onMeasure: (id: WidgetId, height: number) => void;
   onEnterEdit: () => void;
-  onPlace: (rect: CardRect) => void;
-  onDrop: (id: WidgetId, targetId: string) => void;
+  onDragStart: (id: WidgetId) => void;
+  onDragMove: (id: WidgetId, cx: number, cy: number) => void;
+  onDragEnd: (dropped: boolean) => void;
   onMove: (delta: -1 | 1) => void;
   onResize: () => void;
   onHide: () => void;
@@ -172,10 +240,28 @@ function TodayCard({
   const { colors, reduceMotion, oneHandMode } = useTheme();
   const name = t(`today.widget.${item.id}`);
   const id = item.id;
-  const dx = useSharedValue(0);
-  const dy = useSharedValue(0);
+  // The card's place (animated towards its box), and while dragged: where it was picked up plus
+  // the finger's movement.
+  const x = useSharedValue(box.x);
+  const y = useSharedValue(box.y);
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const height = useSharedValue(0);
   const lifted = useSharedValue(0);
+  const raised = useSharedValue(0);
   const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    if (animate && !dragging) {
+      x.set(withTiming(box.x, { duration: MOVE_MS }));
+      y.set(withTiming(box.y, { duration: MOVE_MS }));
+    } else {
+      x.set(box.x);
+      y.set(box.y);
+    }
+  }, [box.x, box.y, animate, dragging, x, y]);
 
   // A gentle wiggle while editing, alternating direction from card to card.
   useEffect(() => {
@@ -193,8 +279,6 @@ function TodayCard({
     return () => cancelAnimation(rotation);
   }, [editing, reduceMotion, index, rotation]);
 
-  const pickUp = () => tick();
-
   const hold = Gesture.LongPress()
     .enabled(!editing)
     .minDuration(HOLD_TO_EDIT_MS)
@@ -208,71 +292,77 @@ function TodayCard({
     .activateAfterLongPress(HOLD_TO_DRAG_MS)
     .onStart(() => {
       'worklet';
+      cancelAnimation(x);
+      cancelAnimation(y);
+      startX.set(x.get());
+      startY.set(y.get());
+      tx.set(0);
+      ty.set(0);
       lifted.set(1);
-      scheduleOnRN(pickUp);
+      raised.set(1);
+      scheduleOnRN(onDragStart, id);
     })
     .onUpdate((e) => {
       'worklet';
-      dx.set(e.translationX);
-      dy.set(e.translationY);
-      const all = rects.get();
-      const own = all.find((r) => r.id === id);
-      if (own)
-        hover.set(
-          dropTarget(
-            all,
-            id,
-            own.x + own.w / 2 + e.translationX,
-            own.y + own.h / 2 + e.translationY,
-          ),
-        );
+      tx.set(e.translationX);
+      ty.set(e.translationY);
+      scheduleOnRN(
+        onDragMove,
+        id,
+        startX.get() + box.w / 2 + e.translationX,
+        startY.get() + height.get() / 2 + e.translationY,
+      );
     })
-    .onEnd((e) => {
+    .onFinalize((_e, success) => {
       'worklet';
-      const all = rects.get();
-      const own = all.find((r) => r.id === id);
-      const target = own
-        ? dropTarget(
-            all,
-            id,
-            own.x + own.w / 2 + e.translationX,
-            own.y + own.h / 2 + e.translationY,
-          )
-        : id;
-      scheduleOnRN(onDrop, id, target);
-    })
-    .onFinalize(() => {
-      'worklet';
+      if (!lifted.get()) return;
+      // From where it was let go, the card glides to its place (set again when the drop lands).
+      x.set(startX.get() + tx.get());
+      y.set(startY.get() + ty.get());
       lifted.set(0);
-      dx.set(0);
-      dy.set(0);
-      hover.set('');
+      raised.set(withTiming(0, { duration: reduceMotion ? 0 : MOVE_MS }));
+      scheduleOnRN(onDragEnd, success);
     });
 
-  const outer = useAnimatedStyle(() => ({ zIndex: lifted.get() ? 10 : 0 }));
+  const outer = useAnimatedStyle(() => {
+    const up = lifted.get() === 1;
+    return {
+      zIndex: raised.get() > 0 ? 10 : 0,
+      transform: [
+        { translateX: up ? startX.get() + tx.get() : x.get() },
+        { translateY: up ? startY.get() + ty.get() : y.get() },
+      ],
+    };
+  });
   const inner = useAnimatedStyle(() => ({
     transform: [
-      { translateX: dx.get() },
-      { translateY: dy.get() },
       { rotate: `${lifted.get() ? 0 : rotation.get()}deg` },
       { scale: lifted.get() ? 1.03 : 1 },
     ],
     opacity: lifted.get() ? 0.92 : 1,
   }));
-  // The card it would land on gets the selection border (2px, text colour).
-  const target = useAnimatedStyle(() => ({ opacity: hover.get() === id && !lifted.get() ? 1 : 0 }));
 
   const sizeLabel = item.size === 'large' ? t('today.sizeLarge') : t('today.sizeSmall');
   const control = oneHandMode ? 52 : touch.minTarget;
 
   return (
     <Animated.View
-      layout={reduceMotion ? undefined : LinearTransition.duration(220)}
       onLayout={(e) => {
-        const { x, y, width: w, height: h } = e.nativeEvent.layout;
-        onPlace({ id, x, y, w, h });
+        const h = e.nativeEvent.layout.height;
+        height.set(h);
+        onMeasure(id, h);
       }}
-      style={[{ width, flexDirection: 'column' }, outer]}
+      style={[
+        {
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: width ?? box.w,
+          minHeight,
+          flexDirection: 'column',
+        },
+        outer,
+      ]}
     >
       <GestureDetector gesture={Gesture.Exclusive(drag, hold)}>
         <Animated.View
@@ -314,22 +404,6 @@ function TodayCard({
           >
             {children}
           </View>
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              {
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                borderRadius: item.size === 'large' ? radius.card : radius.cardSmall,
-                borderWidth: 2,
-                borderColor: colors.borderSelected,
-              },
-              target,
-            ]}
-          />
           {editing ? (
             <>
               <Pressable
