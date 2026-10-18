@@ -6,7 +6,8 @@ import { Buffer } from 'node:buffer';
 import http from 'node:http';
 import pg from 'pg';
 import { createApi, pgDatabase } from './api.js';
-import { createOAuth } from './oauth.js';
+import { createApkPublisher } from './apk.js';
+import { clientIp, createOAuth } from './oauth.js';
 import { migrate } from './migrate.js';
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
@@ -37,7 +38,31 @@ const oauth = createOAuth({
   sql: async (text, params) => (await pool.query(text, params)).rows,
   signIn,
   base: BASE,
+  // AI apps besides Claude and ChatGPT that may receive a sign-in (checked by the owner first).
+  extraRedirectHosts: (process.env.OAUTH_REDIRECT_HOSTS ?? '').split(','),
 });
+
+// The GitHub workflow that publishes a new APK (off unless APK_UPLOAD_TOKEN_SHA256 is set).
+const publishApk = createApkPublisher({
+  tokenSha256: process.env.APK_UPLOAD_TOKEN_SHA256,
+  supabaseUrl: process.env.SUPABASE_URL,
+  serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+});
+
+async function serveInternal(req, res, raw) {
+  let body = null;
+  try {
+    body = raw.length && raw.length < 4096 ? JSON.parse(raw.toString('utf8')) : null;
+  } catch {
+    body = null;
+  }
+  const out =
+    req.method === 'POST'
+      ? await publishApk({ headers: req.headers, body })
+      : { status: 405, body: { error: 'POST only' } };
+  res.writeHead(out.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+  res.end(JSON.stringify(out.body));
+}
 
 async function serveOAuth(req, res, url, raw) {
   if (req.method === 'OPTIONS') return void res.writeHead(204, cors).end();
@@ -55,9 +80,7 @@ async function serveOAuth(req, res, url, raw) {
     query: Object.fromEntries(url.searchParams),
     body,
     headers: req.headers,
-    ip: String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '')
-      .split(',')[0]
-      .trim(),
+    ip: clientIp(req.headers['x-forwarded-for'], req.socket.remoteAddress),
   });
   if (!out) return void res.writeHead(404).end('not found');
   res.writeHead(out.status, { ...cors, ...out.headers });
@@ -119,11 +142,14 @@ http
     if (path === '/health') return void res.writeHead(200).end('ok');
     const isApi = path === '/mcp' || path === '/v1' || path.startsWith('/v1/');
     const isOAuth = path.startsWith('/oauth/') || path.startsWith('/.well-known/');
+    const isInternal = path === '/internal/apk';
     const handler = handlers[path.split('/').pop() ?? ''];
-    if (!isApi && !isOAuth && !handler) return void res.writeHead(404).end('not found');
+    if (!isApi && !isOAuth && !isInternal && !handler)
+      return void res.writeHead(404).end('not found');
     try {
       const chunks = [];
       for await (const c of req) chunks.push(c);
+      if (isInternal) return void (await serveInternal(req, res, Buffer.concat(chunks)));
       if (isApi) return void (await serveApi(req, res, url, Buffer.concat(chunks)));
       if (isOAuth) return void (await serveOAuth(req, res, url, Buffer.concat(chunks)));
       const hasBody = !['GET', 'HEAD'].includes(req.method);
@@ -143,18 +169,31 @@ http
   .listen(Number(process.env.PORT ?? 3000), '::', () => console.log('functions listening'));
 
 /**
- * What the privacy policy promises about retention: handled password requests 30 days, the admin
+ * What the privacy policy promises about retention: password requests 30 days, the admin
  * change log and the sign-in log 12 months, error reports 60 days. Runs at start and every day.
+ * Clean-up of the AI app sign-in too.
  */
 async function cleanup() {
   const rules = [
-    `delete from public.password_reset_requests where handled_at < now() - interval '30 days'`,
+    // Password requests: 30 days after they were sent, handled or not (DECISIONS 82).
+    `delete from public.password_reset_requests where created_at < now() - interval '30 days'`,
     `delete from public.admin_audit where created_at < now() - interval '12 months'`,
     `delete from auth.audit_log_entries where created_at < now() - interval '12 months'`,
     `delete from public.app_errors where created_at < now() - interval '60 days'`,
     // Relay between phones (DECISIONS 65): a message is deleted once delivered, and in any case
     // after 30 days (a phone that never came back).
     `delete from public.relay_messages where created_at < now() - interval '30 days'`,
+    // AI app sign-in (DECISIONS 74): one-time codes live 5 minutes; an app that registered but
+    // never got a connection in 30 days is forgotten (it registers again if it comes back).
+    `delete from public.oauth_codes where expires_at < now() - interval '1 day'`,
+    // Deletion log (DECISIONS 80): needed only while a backup older than the deletion exists (6 months).
+    `delete from public.deleted_accounts where deleted_at < now() - interval '7 months'`,
+    // Connections past their 30 idle / 90 days end, so the app no longer lists them.
+    `update public.api_tokens set deleted_at = now()
+       where client_id is not null and deleted_at is null
+         and (refresh_expires_at < now() or ends_at < now())`,
+    `delete from public.oauth_clients c where c.created_at < now() - interval '30 days'
+       and not exists (select 1 from public.api_tokens t where t.client_id = c.id)`,
   ];
   for (const sql of rules) {
     try {
@@ -163,6 +202,33 @@ async function cleanup() {
       console.error('cleanup failed:', e.message);
     }
   }
+  await purgeDeleted().catch((e) => console.error('purge failed:', e.message));
+}
+
+/**
+ * Rows deleted more than 7 days ago go for good, with their files (DECISIONS 79). The database
+ * deletes the rows and lists the files; they are removed through the storage API (removing them
+ * from storage.objects alone would leave the bytes on the disk).
+ */
+async function purgeDeleted() {
+  const { rows } = await pool.query('select public.purge_deleted(7) as out');
+  const files = rows[0]?.out?.files ?? [];
+  const byBucket = new Map();
+  for (const f of files) byBucket.set(f.bucket, [...(byBucket.get(f.bucket) ?? []), f.path]);
+  for (const [bucket, paths] of byBucket)
+    for (let i = 0; i < paths.length; i += 100) {
+      const res = await fetch(`${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`, {
+        method: 'DELETE',
+        headers: {
+          authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
+          apikey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ prefixes: paths.slice(i, i + 100) }),
+      });
+      if (!res.ok) console.error(`purge: removing files from ${bucket} failed: ${res.status}`);
+    }
+  if (rows[0]?.out?.removed) console.log(`purge: ${rows[0].out.removed} deleted rows removed`);
 }
 
 migrate('./migrations')

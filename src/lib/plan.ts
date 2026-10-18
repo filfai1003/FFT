@@ -54,6 +54,8 @@ export const usePlanStore = create<PlanState>(() => ({
 }));
 
 const key = (userId: string) => `fft.plan.${userId}`;
+/** Where this device keeps an account's plan (removed when the account is deleted). */
+export const planKeyOf = key;
 
 /** Reads what this device knows about the account (instant, works offline). */
 export async function loadPlan(userId: string): Promise<PlanState> {

@@ -20,7 +20,9 @@ import { useBack } from '@/lib/navigation';
 import { useToastStore } from '@/lib/toast-store';
 import { ConnectAiButtons } from './ConnectAiButtons';
 import { SyncNeededCard } from './ServerCopy';
+import { isThisComputer, newConnections, splitTokens } from './connections';
 import {
+  type ApiToken,
   type ApiTokenScope,
   claudeCodeCommand,
   MCP_URL,
@@ -78,13 +80,20 @@ export function ApiScreen() {
     }
   };
 
-  const revoke = (id: string, tokenName: string) =>
+  // Personal tokens and connected AI apps (OAuth) are listed apart; a new connection is pointed out
+  // at the top, so a sign-in the user did not make is noticed (DECISIONS 74).
+  const { tokens: own, apps } = splitTokens(tokens.data ?? []);
+  const fresh = newConnections(apps);
+  const hostLabel = (host: string | null) =>
+    isThisComputer(host) ? t('api.thisComputer') : (host ?? t('api.unknownHost'));
+
+  const revoke = (id: string, tokenName: string, app: boolean) =>
     setRevoked.mutate(
       { id, revoked: true },
       {
         onSuccess: () =>
           showToast({
-            message: t('api.revoked', { name: tokenName }),
+            message: t(app ? 'api.disconnected' : 'api.revoked', { name: tokenName }),
             actionLabel: t('common.undo'),
             onAction: () => setRevoked.mutate({ id, revoked: false }),
             bottomOffset: barHeight,
@@ -110,11 +119,61 @@ export function ApiScreen() {
     </View>
   );
 
+  const row = (tok: ApiToken, i: number) => (
+    <View
+      key={tok.id}
+      style={{
+        minHeight: 60,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderTopWidth: i === 0 ? 0 : 1,
+        borderColor: colors.borderDecorative,
+      }}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="bodyS">{tok.name}</Text>
+        <Text variant="label" muted>
+          {[
+            tok.app ? hostLabel(tok.redirectHost) : `${tok.prefix}…`,
+            t(tok.scope === 'read' ? 'api.scopeRead' : 'api.scopeWrite'),
+            ...(tok.app ? [t('api.connectedOn', { date: date(tok.createdAt) })] : []),
+            tok.lastUsedAt ? t('api.lastUsed', { date: date(tok.lastUsedAt) }) : t('api.neverUsed'),
+          ].join(' · ')}
+        </Text>
+      </View>
+      <Button
+        label={t(tok.app ? 'api.disconnect' : 'api.revoke')}
+        accessibilityLabel={t(tok.app ? 'api.disconnectLabel' : 'api.revokeLabel', {
+          name: tok.name,
+        })}
+        block={false}
+        variant="secondary"
+        onPress={() => revoke(tok.id, tok.name, tok.app)}
+      />
+    </View>
+  );
+
   return (
     <>
       <Screen scroll bottomBarHeight={allowed && synced ? barHeight + 24 : 24} gap={14}>
         <TopBar onBack={goBack} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('api.title')}</Text>
+
+        {fresh.map((app) => (
+          <Card key={`new-${app.id}`} gap={6} tone="alt">
+            <Text variant="bodyS" medium>
+              {t('api.newConnectionTitle')}
+            </Text>
+            <Text variant="bodyS">
+              {t('api.newConnection', {
+                name: app.name,
+                host: hostLabel(app.redirectHost),
+                date: date(app.createdAt),
+              })}
+            </Text>
+          </Card>
+        ))}
 
         {!allowed ? (
           <Card gap={10}>
@@ -147,43 +206,21 @@ export function ApiScreen() {
               </>
             ) : null}
 
-            {tokens.data?.length ? (
+            {apps.length ? (
+              <Card size="small" gap={0}>
+                <Text variant="label" muted style={{ paddingBottom: 4 }}>
+                  {t('api.connectedApps')}
+                </Text>
+                {apps.map(row)}
+              </Card>
+            ) : null}
+
+            {own.length ? (
               <Card size="small" gap={0}>
                 <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
                   {t('api.tokens')}
                 </Text>
-                {tokens.data.map((tok, i) => (
-                  <View
-                    key={tok.id}
-                    style={{
-                      minHeight: 60,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      borderTopWidth: i === 0 ? 0 : 1,
-                      borderColor: colors.borderDecorative,
-                    }}
-                  >
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <Text variant="bodyS">{tok.name}</Text>
-                      <Text variant="bodyS" muted>
-                        {`${tok.prefix}… · ${t(
-                          tok.scope === 'read' ? 'api.scopeRead' : 'api.scopeWrite',
-                        )} · ${
-                          tok.lastUsedAt
-                            ? t('api.lastUsed', { date: date(tok.lastUsedAt) })
-                            : t('api.neverUsed')
-                        }`}
-                      </Text>
-                    </View>
-                    <Button
-                      label={t('api.revoke')}
-                      block={false}
-                      variant="secondary"
-                      onPress={() => revoke(tok.id, tok.name)}
-                    />
-                  </View>
-                ))}
+                {own.map(row)}
               </Card>
             ) : null}
           </>

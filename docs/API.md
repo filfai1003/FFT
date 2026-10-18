@@ -32,7 +32,9 @@ tokens: migration `20261016100000_api_tokens.sql`, app page Settings → API & M
   and MCP), `create_api_token` refuses (SQLSTATE 55000) and the sign-in for AI apps shows why.
   Tokens stay listed and work again once encryption is off. The api service reads it with
   `vault_on_of(user)`.
-- Limit: 120 requests a minute per account. Bodies are JSON (at most 64 KB).
+- 403 when the account withdrew its health data consent in the app (until it is given again).
+- Limit: 120 requests a minute per account; an MCP batch counts one per message and holds at most
+  20 messages. Bodies are JSON (at most 64 KB).
 - Dates are the user's local dates (`YYYY-MM-DD`, default today in the profile time zone); units
   are metric. Writes reach the user's phones with the next sync.
 
@@ -44,12 +46,18 @@ Without a token `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metad
 reads `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`,
 registers at `/oauth/register`, opens `/oauth/authorize` (FFT email and password, checked by the
 auth service; any account) and gets tokens at `/oauth/token` (access 7 days, then
-renewed with the refresh token). The sign-in page asks **Read and write** (preselected) or **Read
-only**; an app can ask for read only with the standard `scope=read` (supported scopes: `read`,
-`write`; the older `fft` means write), but the user's choice on the page wins. The token response's
-`scope` says what was granted, and a refresh keeps it. Each connection is a token row named after the app, listed and
-revocable in the app. In the app, Settings → API & MCP → Add to Claude / Add to ChatGPT copies the
-address and opens that app's connectors page.
+renewed with the refresh token). Only known AI apps can register: every redirect URI must be https
+on `claude.ai`, `claude.com`, `chatgpt.com` or `chat.openai.com` (exact host, default port), or a
+loopback address (`localhost`, `127.0.0.1`, `[::1]`, any port) for desktop apps; anything else gets
+`400 invalid_redirect_uri` (more hosts: server variable `OAUTH_REDIRECT_HOSTS`, comma separated).
+Registration is limited per address and hour (`429 temporarily_unavailable`). The sign-in page
+shows the host the access goes to and asks **Read only** (preselected) or **Read and write**; the
+user's choice is the granted scope (supported scopes: `read`, `write`), and a refresh keeps it.
+Refresh tokens rotate on every use; a replaced refresh token used again ends the connection. A
+refresh token expires after 30 days without use, and a connection 90 days after the sign-in
+(`invalid_grant`: sign in again). Each connection is a token row named after the app, listed in the
+app under Connected AI apps (with its host and date) and disconnected there. In the app, Settings →
+API & MCP → Add to Claude / Add to ChatGPT copies the address and opens that app's connectors page.
 
 ## MCP
 

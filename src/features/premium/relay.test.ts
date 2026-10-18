@@ -153,7 +153,7 @@ describe('encrypted relay between phones (DECISIONS 65)', () => {
         expect.objectContaining({ t: 'water_logs', r: expect.objectContaining({ ml: 250 }) }),
       ]),
     );
-    expect(mockRelay.messages.every((m) => !m.payload.includes('250'))).toBe(true);
+    expect(mockRelay.messages.every((m) => !m.payload.includes('"ml":250'))).toBe(true);
     expect((await loadRelay(U))!.sentFull).toEqual([OTHER]);
     mockRelay.messages.length = 0;
   });

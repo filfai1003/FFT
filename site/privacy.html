@@ -20,7 +20,7 @@
       </nav>
 
       <h1>Privacy policy</h1>
-      <p class="updated">Last updated: 17 October 2026</p>
+      <p class="updated">Last updated: 18 October 2026</p>
 
       <section class="summary" aria-labelledby="short">
         <h2 id="short">The short version</h2>
@@ -216,7 +216,9 @@
               <td>
                 The name and first characters of each personal token; the token itself is kept only
                 as a SHA-256 hash. For AI apps connected with "Sign in with FFT" (OAuth): the app's
-                name and its access.
+                name, the address it signed in from (for example claude.ai), its access, and when it
+                connected and was last used. A connection ends after 30 days without use and in any
+                case 90 days after you signed in.
               </td>
               <td>To let the tools you choose use your data, and let you revoke them.</td>
             </tr>
@@ -242,7 +244,8 @@
               <td>Admin change log</td>
               <td>
                 A record of changes made by our team in the admin panel (for example "temporary
-                password set for" an email address, or a plan given to an account).
+                password set for" an email address, or a plan given to an account), and of what
+                it looked at (which page or table, which account, which query).
               </td>
               <td>Security and accountability.</td>
             </tr>
@@ -267,9 +270,12 @@
         </li>
         <li>
           <strong>Explicit consent</strong> (art. 9(2)(a)) for health data: weight, body data, food,
-          workouts and photos. It is required to use the app, and you can withdraw it at any time in
-          Privacy &amp; data; the app then pauses until you give it again, export your data or
-          delete your account. Withdrawing does not affect what was done before.
+          workouts and photos. It is required to use the app, because a fitness and diet tracker
+          cannot work without storing them: if you do not agree, no profile is set up and nothing
+          is stored. You can withdraw it at any time in Privacy &amp; data; the app then pauses
+          until you give it again, export your data or delete your account, and our server stops
+          using your data too: the API, MCP, connected AI apps and the included AI coach are
+          refused for your account. Withdrawing does not affect what was done before.
         </li>
         <li>
           <strong>A separate explicit consent</strong> (art. 9(2)(a) and 6(1)(a)) for the AI coach:
@@ -311,7 +317,9 @@
         <li>
           <strong>Backups</strong>: every night the database and the photos are copied, encrypted
           (AES-256-GCM, with a key kept apart from the copies), into a storage bucket of our hosting
-          in the same EU region. They are kept for at most 12 months: daily copies for 30 days, then one copy a month for 12 months.
+          in the same EU region. They are kept for at most 6 months: daily copies for 30 days, then one copy a month for 6 months.
+          If we ever restore one, the accounts deleted after it was made are deleted again (we keep a
+          list of deleted account ids, nothing else, for that).
           For accounts with end-to-end encryption on, the backups hold only the encrypted copy:
           we cannot read it there either.
         </li>
@@ -319,8 +327,10 @@
       <p>
         Our team can technically access the server database to run and repair the service. We look
         at the content of your data only when needed to fix a problem you reported, at your request,
-        or when the law requires it. Changes made with the admin panel's editing unlocked are
-        logged.
+        or when the law requires it. The admin panel hides the content of your data and every
+        password hash by default; showing them needs an extra unlock and is logged, and so is every
+        page of data our team opens and every database query it runs. The panel cannot download
+        copies of the database: the only copies are the encrypted nightly backups.
       </p>
 
       <h2 id="recipients">6. Who else receives data</h2>
@@ -396,24 +406,36 @@
           <strong>Your account and app data</strong>: the copy on the server is kept until you turn
           it off or delete your account (then it is deleted at once; it may remain in the backups
           until they expire). Messages between your paired phones (section 2) are kept until the
-          phone they are for receives them, at most 30 days. Most things you
-          delete in the app are deleted from the server too, leaving only a marker (table and row
-          id) so your other devices delete them as well; a few (for example replaced meals or plan
-          items) are kept marked as deleted so your history stays correct. All of it goes when you
-          delete your account.
+          phone they are for receives them, at most 30 days. What you
+          delete in the app (an entry, a workout, a photo, including a photo replaced by a new one)
+          is first marked as deleted, so it can be undone and your other devices learn about it,
+          and is deleted for good, with its photo files, after 7 days: on the server and on your
+          devices. Only a marker (table and row id, no content) stays for 90 days so devices that
+          were offline delete it too. An own exercise still used in a past workout stays (hidden)
+          until that workout is deleted. Deleted data may remain in the backups until they expire.
+          All of it goes when you delete your account.
         </li>
         <li><strong>Consent history</strong>: until you delete your account.</li>
         <li><strong>AI usage records</strong>: until you delete your account.</li>
         <li>
-          <strong>Error reports</strong>: 60 days, then deleted automatically. They are not linked
-          to your account rows, so they are not removed when you delete the account; they still
-          expire after 60 days.
+          <strong>Error reports</strong>: 60 days, then deleted automatically. The ones sent while
+          you were signed in are deleted with your account; the ones sent without an account carry
+          no account id and expire after 60 days.
         </li>
         <li>
-          <strong>Password reset requests</strong>: until handled, then for at most 30 days.
+          <strong>Password reset requests</strong>: at most 30 days after you sent them (handled or
+          not), and deleted with your account. A temporary password is sent only to the email
+          address of the account.
         </li>
         <li>
           <strong>Admin change log and sign-in records</strong>: at most 12 months.
+        </li>
+        <li>
+          <strong>Our hosting provider's technical logs</strong> (Railway): error messages of our
+          services and, for some requests, the IP address, browser and the address requested. We
+          keep sign-in details (email, IP address) out of them where the software allows. They are
+          kept for a limited time set by Railway's service plan, cannot be deleted per account, and
+          expire by themselves.
         </li>
         <li>
           <strong>Data on your devices</strong>: until you delete the account in the app or remove
@@ -427,7 +449,7 @@
         In the app: Profile &gt; Privacy &amp; data &gt; Delete account. This deletes, right away,
         your account on the server with all its data and photos, and all the data on that device,
         including your AI conversations there. Your data may remain in the server backups until they
-        expire (at most 12 months: daily copies for 30 days, then one copy a month for 12 months), then it is gone.
+        expire (at most 6 months: daily copies for 30 days, then one copy a month for 6 months), then it is gone.
         On other devices where you used FFT, remove the app (or clear the browser's site data) to
         remove the copy there. On a phone you can instead choose
         <strong>Delete the account, keep my data on this phone</strong>: the account and its server
@@ -443,7 +465,13 @@
       <ul>
         <li>
           <strong>access</strong> your data and get a copy: Privacy &amp; data &gt; Download
-          everything (a ZIP with JSON, CSV and your photos);
+          everything (a ZIP with JSON, CSV and your photos). It holds your app data (including
+          items marked as deleted that are not yet gone), what our server keeps about your account
+          (email, plan, AI credit and usage, API tokens and connected apps, consent and copy
+          settings, paired phones, your error reports, password requests and our admin log entries
+          about your account), and what only this device has (AI conversations, AI settings
+          without your own API key). The file is removed from the app's storage an hour after
+          you share it, and when you delete your account;
         </li>
         <li><strong>correct</strong> it: you can edit almost everything in the app;</li>
         <li><strong>delete</strong> it: Delete account (section 8);</li>

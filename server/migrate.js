@@ -4,6 +4,11 @@ import pg from 'pg';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** Migrations renamed after they ran on the server: new file name -> the name recorded then. */
+const RENAMED = {
+  '20261017145000_vault.sql': '20261017140000_vault.sql',
+};
+
 /**
  * Applies supabase/migrations/*.sql that were not applied yet, in file order, each in one
  * transaction. Runs at every start, so a push to main that adds a migration updates the database.
@@ -39,6 +44,16 @@ export async function migrate(dir, log = console.log) {
       .filter((f) => f.endsWith('.sql'))
       .sort()) {
       if (done.has(file)) continue;
+      // A migration renamed after it ran (two files had the same version, which the Supabase CLI
+      // refuses): recorded under its old name, it is done; note the new name and go on.
+      const before = RENAMED[file];
+      if (before && done.has(before)) {
+        await client.query(
+          'insert into public.app_migrations (name) values ($1) on conflict do nothing',
+          [file],
+        );
+        continue;
+      }
       log(`migration ${file}`);
       await client.query('begin');
       try {

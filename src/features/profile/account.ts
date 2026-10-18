@@ -6,7 +6,7 @@ import { moveDeviceStores } from '@/features/auth/link-account';
 import { haltSync, pull, resumeSync } from '@/features/premium/sync';
 import { copyLocalData, LOCAL_USER_ID, wipeLocalData, type CopyResult } from '@/lib/local-db';
 import { resetPlan } from '@/lib/plan';
-import { useConversations } from '@/features/ai/agent/conversations';
+import { forgetAccountOnDevice } from './forget-device';
 import { useSessionStore as useWorkout } from '@/features/session/store';
 import { syncPendingSessions } from '@/features/session/sync';
 import { getMode } from '@/lib/mode';
@@ -121,7 +121,8 @@ export async function deleteAccount(queryClient: { clear: () => void }): Promise
   const { error } = await getSupabase().functions.invoke('delete-account');
   if (error) return error.message;
   const userId = useAuth.getState().userId;
-  if (userId) useConversations.getState().clearUser(userId);
+  // Every per-account key, the AI key, conversations and export files too (DECISIONS 83).
+  if (userId) await forgetAccountOnDevice(userId);
   await signOut().catch(() => undefined);
   clearLocalUserData(queryClient);
   return null;
@@ -179,6 +180,8 @@ export async function deleteAccountKeepData(queryClient: {
 
   await wipeLocalData(userId);
   moveDeviceStores(userId, LOCAL_USER_ID);
+  // The account's own keys (sync, relay, encryption key…) go; the AI settings stay with the phone.
+  await forgetAccountOnDevice(userId, { keepAiSettings: true });
   resetPlan();
   // Account-less first: the sign-out that follows is then not taken for "back to sign in".
   await enterOfflineMode(queryClient);

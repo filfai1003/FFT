@@ -23,7 +23,7 @@
       </nav>
 
       <h1>Delete your FFT account</h1>
-      <p class="updated">Last updated: 17 October 2026</p>
+      <p class="updated">Last updated: 18 October 2026</p>
 
       <h2 id="app">In the app</h2>
       <ol>
@@ -82,20 +82,29 @@
       <h2 id="kept">What is kept, and for how long</h2>
       <ul>
         <li>
-          <strong>Error reports</strong> (technical crash details, no data you entered): deleted
-          automatically 60 days after they were sent.
+          <strong>Error reports</strong> (technical crash details, no data you entered): the ones
+          sent while signed in are deleted with the account; the others carry no account id and are
+          deleted automatically 60 days after they were sent.
         </li>
         <li>
-          <strong>Password reset requests</strong> you sent (email and note): at most 30 days after
-          they were handled.
+          <strong>Password reset requests</strong> you sent (email and note): deleted with the
+          account; requests sent from another address go at most 30 days after they were sent.
         </li>
         <li>
-          <strong>Our admin change log and sign-in records</strong>, which may contain your email
-          address: at most 12 months, for security.
+          <strong>Our hosting provider's technical logs</strong> (Railway), which may contain your IP
+          address, browser and, for some requests, your email: they cannot be deleted per account
+          and expire by themselves after the time set by Railway's service plan.
+        </li>
+        <li>
+          <strong>Our sign-in records</strong>, which contain your email address: at most 12 months,
+          for security. Entries of our admin change log about your account keep only what was
+          done and when: your email and account id are removed from them.
         </li>
         <li>
           <strong>Server backups</strong> (database and photos, kept by our hosting in the EU): your
-          data may remain in them until they expire (at most 12 months: daily copies for 30 days, then one copy a month for 12 months), then it is gone.
+          data may remain in them until they expire (at most 6 months: daily copies for 30 days, then one copy a month for 6 months), then it is gone.
+          If a backup is ever restored, the accounts deleted after it was made are deleted again: we
+          keep the ids of deleted accounts (nothing else) for 7 months for that.
         </li>
         <li>
           Data you shared with AI apps or AI providers before deleting stays with them under their

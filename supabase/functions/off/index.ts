@@ -27,16 +27,32 @@ const n = (v: unknown): number | null => {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : null;
 };
 
+/**
+ * Same rule as cleanOffText in src/domain/off-product.ts (DECISIONS 84): OFF text is written by
+ * anyone, stored as a global food and read by AI apps, so no control, zero-width or direction
+ * characters, no markup characters, one line, short.
+ */
+function cleanOffText(s: unknown, max: number): string {
+  return String(s ?? '')
+    .normalize('NFC')
+    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁩﻿]/g, ' ')
+    .replace(/[<>{}`[\]\\|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
 export function toRow(p: OffProduct) {
-  const name = (p.product_name || p.product_name_en || '').trim();
+  const name = cleanOffText(p.product_name || p.product_name_en, 100);
   const nu = p.nutriments ?? {};
   const kcal = n(nu['energy-kcal_100g']) ?? (n(nu['energy_100g']) != null ? Math.round(n(nu['energy_100g'])! / 4.184) : null);
-  if (!p.code || !name || kcal == null) return null;
+  if (!p.code || !/^\d{1,14}$/.test(p.code) || !name || kcal == null) return null;
   const states = p.states_tags ?? [];
   return {
     barcode: p.code,
-    name: name.slice(0, 160),
-    brand: (p.brands ?? '').split(',')[0]?.trim() || null,
+    name,
+    brand: cleanOffText((p.brands ?? '').split(',')[0], 60) || null,
     kcal_100g: kcal,
     protein_100g: n(nu['proteins_100g']) ?? 0,
     carbs_100g: n(nu['carbohydrates_100g']) ?? 0,

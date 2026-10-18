@@ -44,6 +44,11 @@ import { fileOf, isOwn, pick, SYNC_ORDER } from './sync';
 const server = () => getAuthClient() as unknown as SupabaseClient;
 const stateKey = (userId: string) => `fft.relay.${userId}`;
 const codeKey = (userId: string) => `fft.relay-code.${userId}`;
+/** The keys this module keeps for an account (removed when the account is deleted). */
+export const relayKeysOf = (userId: string) => ({
+  plain: [stateKey(userId)],
+  secure: [codeKey(userId)],
+});
 const CODE_PREFIX = 'FFTRELAY1:';
 const ROWS_PER_MESSAGE = 200;
 

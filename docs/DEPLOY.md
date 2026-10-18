@@ -55,7 +55,8 @@ Package name: `com.filfai1003.fft`.
   is public by design (it is inside the APK): the real protection is the user's signed token (JWT)
   plus row level security on every table (a test fails if a table has none). A user only sees their
   own rows; the anon key alone sees nothing.
-- The service-role key never leaves Railway (`api`, `backend`, `storage`) and `.secrets/`.
+- The service-role key never leaves Railway (`api`, `backend`, `storage`) and `.secrets/`: not in
+  GitHub (the APK workflow uses its own `APK_UPLOAD_TOKEN`, see Publishing a new APK).
 - Rate limits per IP (per minute): auth 60, functions 60, rest and storage 600; request bodies on
   auth/rest/functions are capped at 1 MB. Passwords need 8+ characters, refresh tokens rotate.
 - REST exposes the `public` schema only.
@@ -64,7 +65,27 @@ Package name: `com.filfai1003.fft`.
   is all it allows: they only ever see their own data). Stronger app-only checks (Play Integrity)
   and email verification (needs an SMTP service) are possible later.
 - Forgot password: requests appear in the admin panel (Password resets); set a temporary password
-  there in sudo mode and email it by hand (DECISIONS 45).
+  there in sudo mode and email it by hand (DECISIONS 45) **only to the email address of the
+  account** (never to another address written in the note: anyone can send a request). Requests
+  are deleted 30 days after they were sent, and with the account (DECISIONS 82).
+
+## Logs (personal data in Railway's logs, DECISIONS 82)
+What each service writes to Railway's logs, and what the owner should set on Railway (not set from
+the repository; nothing here changes Railway by itself):
+- `auth` (GoTrue): at the default level every sign-in and token refresh logs the email
+  (`actor_username`), the user id, the caller's IP address and browser. Set **`GOTRUE_LOG_LEVEL=warn`**
+  (or `error`) on the `auth` service so that only problems are logged. The sign-in history the
+  admin panel and the policy refer to (`auth.audit_log_entries`, 12 months) is in the database,
+  not in these logs.
+- `backend` (Kong): its access log has the IP address, browser and the path with the query of every
+  call. Set **`KONG_PROXY_ACCESS_LOG=off`** (and leave `KONG_PROXY_ERROR_LOG` as it is) on the
+  `backend` service.
+- `web`, `site` (nginx): access logs are off in `web/nginx.conf` and `site/nginx.conf`; errors only.
+- `api`, `admin`, `backup`: no request logs; errors and counts only (no emails, no data).
+- Retention: Railway keeps logs for a time that depends on the plan (check Railway's current
+  documentation for the plan in use and write it in the privacy policy if it changes). Logs cannot
+  be deleted per account: they expire by themselves. The privacy policy and the delete-account page
+  say so.
 
 ## What happens on a push to `main`
 - `server/`, `supabase/migrations/`, `supabase/functions/`: Railway rebuilds `api`, which applies new migrations.
@@ -83,9 +104,24 @@ Package name: `com.filfai1003.fft`.
 - The APK is a public file in the storage bucket `downloads` (`fft.apk`, 300 MB limit), next to
   `config.js` (version, size, build). nginx (`site/nginx.conf`) serves both from the page's own
   address (`/fft.apk`, `/config.js`), reading the backend address from the service variable
-  `BACKEND_URL` on the `site` service, so no hosted address is stored in the repository. Publish a
-  new APK with `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
-  (nothing to commit; the `Publish APK` workflow does it automatically).
+  `BACKEND_URL` on the `site` service, so no hosted address is stored in the repository.
+- **Publishing a new APK** (DECISIONS 76): the `Publish APK` workflow (every 3 hours) finds the
+  newest finished EAS build and calls `POST https://fft-api.up.railway.app/internal/apk` with the
+  build id, its EAS artifact address and the app version; the `api` service checks the token,
+  downloads the APK from EAS (only `https://expo.dev/artifacts/eas/<id>.apk` addresses) and uploads
+  it and `config.js` to `downloads` with its own service-role key. GitHub never holds a key to the
+  database or the storage. One-time setup (the owner):
+  1. Make a token: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+  2. GitHub → Settings → Secrets → Actions: add `APK_UPLOAD_TOKEN` = the token. Remove the old
+     secrets `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` from GitHub (and rotate the
+     service-role key, since it was there: docs/BREACH.md).
+  3. Railway → `api` → Variables: `APK_UPLOAD_TOKEN_SHA256` = the token's SHA-256 in hex
+     (`node -e "console.log(require('crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" <token>`).
+     Not the token itself. Without this variable the endpoint answers 404 (publishing off).
+  The token can do only this: publish an EAS build as the install page's APK. By hand, without
+  the workflow: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/publish-apk.mjs <apk>`
+  from your computer (key from `.secrets/`).
+- The workflows pin their actions (commit SHAs) and `eas-cli` (exact version); update them by hand.
 - Local APK without the Expo queue: build the image once (`docker build -t fft-android tools/android-build`),
   then `docker run` it with `tools/android-build/build.sh` (see the script header); the APK lands in `build/`.
 - `app.config.js` turns on over-the-air updates (`runtimeVersion` fingerprint, `updates.url`) only when
@@ -98,10 +134,12 @@ Package name: `com.filfai1003.fft`.
   Everything is encrypted with AES-256-GCM using the service variable `BACKUP_KEY` (64 hex
   characters). **Keep a copy of `BACKUP_KEY` somewhere safe outside Railway: without it the backups
   cannot be read.**
-- Kept: every nightly dump for 30 days, then the first dump of each month for 12 months. Photo
-  copies whose original was deleted go 30 days later.
+- Kept: every nightly dump for 30 days, then the first dump of each month for 6 months
+  (`backup/retention.mjs`, DECISIONS 80). Photo copies whose original was deleted go 30 days later.
+  Also every night: `deletions/latest.json.enc`, the deletion log (ids of deleted accounts).
 - The admin panel shows the last run (Overview > Last backup); a failed run appears under Problems
-  ("Nightly backup").
+  ("Nightly backup"). The panel itself cannot download a dump any more (DECISIONS 75): these
+  encrypted backups are the only copies. Do not keep decrypted dumps around after a restore.
 - Restore a backup:
   1. Download the file from the bucket (`db/<time>.sql.gz.enc`), with any S3 client using the
      bucket's credentials from Railway.
@@ -109,3 +147,13 @@ Package name: `com.filfai1003.fft`.
   3. Load it into an EMPTY Postgres 17 database: `psql "$DATABASE_URL" -f dump.sql`.
   4. Photos: download `photos/<bucket>/<path>.enc`, decrypt each with `restore.mjs`, and upload
      them back to the same bucket and path in storage.
+  5. **Delete again the accounts deleted since the dump** (never skip this: a restore must not
+     bring a deleted account back). Download `deletions/latest.json.enc` and decrypt it
+     (`restore.mjs … deletions.json`); if the old database can still be read, also save its list
+     (`psql "$OLD_DATABASE_URL" -At -c "select user_id from public.deleted_accounts" > ids.txt`).
+     Then, against the restored database and storage:
+     `DATABASE_URL=… SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node backup/reapply-deletions.mjs deletions.json [ids.txt]`
+     (deletes those accounts with everything they own, and their files in the three buckets).
+  6. Delete the decrypted files (dump.sql, deletions.json, photos) from your computer.
+- Deleted data (DECISIONS 79): the api service deletes for good, every day, rows deleted more than
+  7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.

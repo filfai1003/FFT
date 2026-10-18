@@ -1,5 +1,5 @@
 import { catalogue } from './catalogue';
-import { columns, LOCAL_USER_ID, tableNames, withDefaults, type Row } from './schema';
+import { columns, foreignKeys, LOCAL_USER_ID, tableNames, withDefaults, type Row } from './schema';
 
 /** Where the on-device database and its files live (IndexedDB on the web, files on devices). */
 export type Kv = {
@@ -46,7 +46,31 @@ export const pkOf = (table: string) => (table === 'user_settings' ? 'user_id' : 
  * A change waiting to be sent to the server (premium sync). One entry per row: a row changed
  * several times is sent once, in its latest state. `at` = when the action happened.
  */
-export type Pending = { table: string; key: string; op: 'upsert' | 'delete'; at: string };
+export type Pending = {
+  table: string;
+  key: string;
+  op: 'upsert' | 'delete';
+  at: string;
+  /** A deleted row's file (a photo, an own exercise picture): removed from the server too. */
+  file?: { bucket: string; path: string };
+};
+
+/**
+ * Rows deleted (deleted_at) this many days ago leave the device for good, with their files
+ * (DECISIONS 79). The undo is 5 seconds; the days leave time for the deletion to reach the
+ * server and the other devices as a normal change first. Same number on the server.
+ */
+export const PURGE_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The file a row keeps on the device (and on the server), if any. */
+export function rowFile(table: string, row: Row): { bucket: string; path: string } | null {
+  if (table === 'progress_photos' && row.storage_path)
+    return { bucket: 'progress-photos', path: String(row.storage_path) };
+  if (table === 'exercises' && row.owner_id != null && row.image_path)
+    return { bucket: 'user-exercise-images', path: String(row.image_path) };
+  return null;
+}
 
 const outboxKey = (table: string, key: string) => `${table}:${key}`;
 
@@ -110,7 +134,106 @@ export class LocalDb {
     // home screen widget) still reaches the outbox.
     this.tracking = this.tracking || saved?.tracking === true;
     for (const name of tableNames) this.tables[name] = saved?.tables[name] ?? [];
-    if (this.seed() || !text) await this.save();
+    const purged = await this.purgeDeleted();
+    if (this.seed() || !text || purged > 0) await this.save();
+  }
+
+  /**
+   * Deletes for good the rows deleted (deleted_at) more than PURGE_DAYS ago, and their files
+   * (DECISIONS 79). Follows the server's foreign keys: a row still used by another (an own
+   * exercise in a past workout) stays; its `cascade` children go with it. While tracking, each
+   * removal goes to the outbox as a deletion (with its file), so the server and the other devices
+   * delete it too. Returns how many rows went.
+   */
+  async purgeDeleted(now = Date.now()): Promise<number> {
+    const cutoff = now - PURGE_DAYS * DAY_MS;
+    // Only the user's own rows: catalogue exercises and shared foods (owner null) stay.
+    const expired = (table: string, r: Row) =>
+      r.deleted_at != null &&
+      Date.parse(String(r.deleted_at)) < cutoff &&
+      !((table === 'exercises' || table === 'foods') && r.owner_id == null);
+    const removed: { table: string; row: Row }[] = [];
+    const gone = new Set<Row>();
+
+    /** Can `row` of `table` go, with its cascade children? (no restrict child left) */
+    const canRemove = (table: string, row: Row, seen: Set<Row>): boolean => {
+      if (seen.has(row)) return true;
+      seen.add(row);
+      const key = row[pkOf(table)];
+      for (const fk of foreignKeys) {
+        if (fk.parent !== table) continue;
+        const children = (this.tables[fk.table] ?? []).filter(
+          (c) => !gone.has(c) && c[fk.column] === key,
+        );
+        if (fk.onDelete === 'restrict' && children.length > 0) return false;
+        if (fk.onDelete === 'cascade' && !children.every((c) => canRemove(fk.table, c, seen)))
+          return false;
+      }
+      return true;
+    };
+    const remove = (table: string, row: Row) => {
+      if (gone.has(row)) return;
+      gone.add(row);
+      removed.push({ table, row });
+      const key = row[pkOf(table)];
+      for (const fk of foreignKeys) {
+        if (fk.parent !== table) continue;
+        for (const c of this.tables[fk.table] ?? []) {
+          if (gone.has(c) || c[fk.column] !== key) continue;
+          if (fk.onDelete === 'cascade') remove(fk.table, c);
+          // The server sets it to null itself (and sends the row back): here only locally.
+          else if (fk.onDelete === 'set null') c[fk.column] = null;
+        }
+      }
+    };
+
+    // Children first, so a parent whose children are all expired can go in the same pass.
+    for (const table of [...tableNames].reverse()) {
+      if (!(columns[table] ?? []).includes('deleted_at')) continue;
+      if (table === 'profiles' || table === 'user_settings') continue;
+      for (const row of this.tables[table] ?? [])
+        if (!gone.has(row) && expired(table, row) && canRemove(table, row, new Set()))
+          remove(table, row);
+    }
+    if (removed.length === 0) return 0;
+
+    for (const name of tableNames) {
+      const before = this.tables[name];
+      if (before.some((r) => gone.has(r))) this.tables[name] = before.filter((r) => !gone.has(r));
+    }
+    for (const { table, row } of removed) {
+      const file = rowFile(table, row);
+      if (file) await this.kv.removeFile(`${file.bucket}/${file.path}`);
+      if (this.tracking) {
+        const key = String(row[pkOf(table)]);
+        this.outbox[outboxKey(table, key)] = {
+          table,
+          key,
+          op: 'delete',
+          at: new Date(now).toISOString(),
+          ...(file ? { file } : {}),
+        };
+      }
+    }
+    return removed.length;
+  }
+
+  /**
+   * After a full download (a device that was away longer than the server keeps deletions): the
+   * user's rows of `table` that the server no longer has, and that are not waiting to be sent, are
+   * deleted here too (they were deleted elsewhere). `own` says which rows are the user's.
+   */
+  dropMissing(table: string, present: Set<string>, own: (row: Row) => boolean): boolean {
+    const pk = pkOf(table);
+    const before = this.tables[table] ?? [];
+    const keep = before.filter((r) => {
+      const key = String(r[pk]);
+      return present.has(key) || !own(r) || this.outbox[outboxKey(table, key)] != null;
+    });
+    if (keep.length === before.length) return false;
+    this.tables[table] = keep;
+    this.scheduleSave();
+    return true;
   }
 
   /**

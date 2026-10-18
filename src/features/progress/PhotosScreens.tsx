@@ -20,9 +20,11 @@ import { usePrivacyStore } from '@/features/profile/privacy-store';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { authenticate } from '@/lib/biometrics';
 import { goBack } from '@/lib/navigation';
+import { useToastStore } from '@/lib/toast-store';
 import {
   poses,
   useBodyEntries,
+  useDeletePhoto,
   usePhotos,
   usePhotoUrl,
   type BodyEntry,
@@ -51,9 +53,32 @@ export function PhotosScreen() {
   const entries = useBodyEntries();
   const unit = usePreferencesStore((s) => s.weightUnit);
   const [pose, setPose] = useState<Pose | 'all'>('all');
+  // The check-in whose photos are being deleted (a sheet lists them, one button each).
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const remove = useDeletePhoto();
+  const showToast = useToastStore((s) => s.show);
 
   const days = [...new Set((photos.data ?? []).map((p) => p.day))];
   const shown: Pose[] = pose === 'all' ? poses : [pose];
+  const toDelete = (photos.data ?? []).filter((p) => p.day === deleting);
+
+  const deletePhoto = (photo: Photo) =>
+    remove.mutate(
+      { id: photo.id, deleted: true },
+      {
+        onSuccess: () => {
+          if (toDelete.length <= 1) setDeleting(null);
+          showToast({
+            message: t('photos.deleted', {
+              pose: t(`photos.pose.${photo.pose}`),
+              date: shortDateLabel(photo.day),
+            }),
+            actionLabel: t('common.undo'),
+            onAction: () => remove.mutate({ id: photo.id, deleted: false }),
+          });
+        },
+      },
+    );
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
@@ -95,11 +120,18 @@ export function PhotosScreen() {
           const entry = entries.data?.find((e) => e.day === day);
           return (
             <View key={day} style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text variant="label">{shortDateLabel(day)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text variant="label" style={{ flex: 1 }}>
+                  {shortDateLabel(day)}
+                </Text>
                 <Text variant="bodyS" muted>
                   {infoFor(entry, unit)}
                 </Text>
+                <IconButton
+                  icon="trash"
+                  accessibilityLabel={t('photos.deleteDay', { date: shortDateLabel(day) })}
+                  onPress={() => setDeleting(day)}
+                />
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {shown.map((p) => (
@@ -124,6 +156,25 @@ export function PhotosScreen() {
         disabled={days.length < 2}
         onPress={() => router.push('/progress/photos/compare')}
       />
+
+      <Sheet
+        visible={deleting != null && toDelete.length > 0}
+        onClose={() => setDeleting(null)}
+        title={deleting ? t('photos.deleteTitle', { date: shortDateLabel(deleting) }) : ''}
+        closeLabel={t('common.close')}
+      >
+        <Text muted>{t('photos.deleteBody')}</Text>
+        {toDelete.map((p) => (
+          <Button
+            key={p.id}
+            variant="secondary"
+            icon="trash"
+            label={t('photos.deleteOne', { pose: t(`photos.pose.${p.pose}`).toLowerCase() })}
+            disabled={remove.isPending}
+            onPress={() => deletePhoto(p)}
+          />
+        ))}
+      </Sheet>
     </Screen>
   );
 }

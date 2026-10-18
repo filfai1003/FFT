@@ -66,6 +66,8 @@ jest.mock('@/features/premium/sync', () => ({
   pull: jest.fn(async () => void mockSteps.push('pull')),
   haltSync: jest.fn(() => void mockSteps.push('halt')),
   resumeSync: jest.fn(() => void mockSteps.push('resume')),
+  syncKeysOf: (userId: string) => [`fft.sync.${userId}`],
+  useSyncStatus: { getState: () => ({ lastAt: null }) },
 }));
 jest.mock('@/features/session/sync', () => ({
   syncPendingSessions: jest.fn(async () => void mockSteps.push('finishedWorkouts')),

@@ -78,6 +78,13 @@ const CHUNK = 200;
 const EPOCH = '1970-01-01T00:00:00.000Z';
 /** Pull a little before the last cursor: rows committed late are not missed (applying twice is harmless). */
 const OVERLAP_MS = 2 * 60 * 1000;
+/**
+ * The server keeps deletions (tombstones) 90 days (DECISIONS 79). A device whose last pull is
+ * older than this (a margin under 90) downloads everything again and drops what is gone there.
+ */
+const STALE_AFTER_MS = 80 * 24 * 60 * 60 * 1000;
+export const isStale = (cursor: string | null, now = Date.now()) =>
+  cursor != null && now - Date.parse(cursor) > STALE_AFTER_MS;
 
 const server = () => getAuthClient() as unknown as SupabaseClient;
 const cursorKey = (userId: string) => `fft.sync.${userId}`;
@@ -160,16 +167,43 @@ export function resumeSync(userId: string) {
 let refusedLastPush = 0;
 
 /** How the outbox goes up: readable rows, or sealed ones (end-to-end encryption, DECISIONS 64). */
+type FileRef = { bucket: string; path: string };
+type Del = { id: string; at: string; file?: FileRef };
 type Sender = {
   upsert(table: string, rows: Row[]): Promise<PushError | null>;
-  remove(table: string, dels: { id: string; at: string }[]): Promise<PushError | null>;
-  file(f: { bucket: string; path: string }): Promise<void>;
+  /** Deletes rows on the server, and the files they had (a purged photo, DECISIONS 79). */
+  remove(table: string, dels: Del[]): Promise<PushError | null>;
+  file(f: FileRef): Promise<void>;
 };
 type PushError = { message: string; code?: string };
 
+/** Removes files from the server, best effort (the server's own purge catches what is left). */
+async function removeFiles(bucket: string, paths: string[]) {
+  if (paths.length === 0) return;
+  await server()
+    .storage.from(bucket)
+    .remove(paths)
+    .catch(() => undefined);
+}
+
 const readable: Sender = {
   upsert: (table, rows) => pushRows(table, rows, []),
-  remove: (table, dels) => pushRows(table, [], dels),
+  remove: async (table, dels) => {
+    const error = await pushRows(
+      table,
+      [],
+      dels.map(({ id, at }) => ({ id, at })),
+    );
+    if (!error) {
+      const files = dels.flatMap((d) => (d.file ? [d.file] : []));
+      for (const bucket of new Set(files.map((f) => f.bucket)))
+        await removeFiles(
+          bucket,
+          files.filter((f) => f.bucket === bucket).map((f) => f.path),
+        );
+    }
+    return error;
+  },
   file: uploadFile,
 };
 
@@ -198,10 +232,18 @@ function sealedSender(userId: string, key: Uint8Array): Sender {
           };
         }),
       ),
-    remove: (table, dels) =>
-      send(
+    remove: async (table, dels) => {
+      const error = await send(
         dels.map((d) => ({ tbl: table, row_id: d.id, updated_at: isoTime(d.at), deleted: true })),
-      ),
+      );
+      // The sealed copies of the files go too.
+      if (!error)
+        await removeFiles(
+          VAULT_FILES,
+          dels.flatMap((d) => (d.file ? [sealedPath(userId, key, d.file)] : [])),
+        );
+      return error;
+    },
     file: async (f) => {
       const bytes = await readLocalFile(`${f.bucket}/${f.path}`);
       if (!bytes) return;
@@ -293,7 +335,7 @@ async function sendOutbox(userId: string, sender: Sender): Promise<number> {
     for (const part of chunks(dels)) {
       const error = await sender.remove(
         table,
-        part.map((p) => ({ id: p.key, at: p.at })),
+        part.map((p) => ({ id: p.key, at: p.at, ...(p.file ? { file: p.file } : {}) })),
       );
       if (error && isNetworkError(error)) throw new Error(error.message);
       sent.push(...part);
@@ -319,8 +361,11 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
   const db = getLocalDb(userId);
   await db.ready;
   // The device started with no readable database: everything comes back, not only what is new.
-  const full = opts.full || db.freshStart;
-  const saved = full ? null : await AsyncStorage.getItem(cursorKey(userId));
+  const stored = await AsyncStorage.getItem(cursorKey(userId));
+  // Away longer than the server keeps deletions: everything again, and what is gone there goes here.
+  const stale = isStale(stored);
+  const full = opts.full || db.freshStart || stale;
+  const saved = full ? null : stored;
   const since = saved ? new Date(new Date(saved).getTime() - OVERLAP_MS).toISOString() : EPOCH;
   const { data, error } = await server().rpc('sync_pull', { p_since: since });
   if (error) throw new Error(error.message);
@@ -337,6 +382,11 @@ export async function pull(userId: string, opts: { full?: boolean } = {}): Promi
     const rows = (result[table] as Row[] | undefined) ?? [];
     const deleted = result.tombstones.filter((t) => t.table === table);
     if (db.applyRemote(table, rows, deleted)) changed = true;
+    if (stale) {
+      const pk = pkOf(table);
+      const present = new Set(rows.map((r) => String(r[pk])));
+      if (db.dropMissing(table, present, (r) => isOwn(db, table, r, userId))) changed = true;
+    }
     for (const row of rows) {
       const f = fileOf(table, row);
       if (!f || (await readLocalFile(`${f.bucket}/${f.path}`))) continue;
@@ -375,8 +425,10 @@ async function pullSealed(
 ): Promise<boolean> {
   const db = getLocalDb(userId);
   await db.ready;
-  const full = opts.full || db.freshStart;
-  const saved = full ? null : await AsyncStorage.getItem(vaultCursorKey(userId));
+  const stored = await AsyncStorage.getItem(vaultCursorKey(userId));
+  const stale = isStale(stored);
+  const full = opts.full || db.freshStart || stale;
+  const saved = full ? null : stored;
   const since = saved ? new Date(new Date(saved).getTime() - OVERLAP_MS).toISOString() : EPOCH;
   const { data, error } = await server().rpc('vault_pull', { p_since: since });
   if (error) throw new Error(error.message);
@@ -407,8 +459,15 @@ async function pullSealed(
   let changed = false;
   const categories = sharedCategories(userId);
   for (const table of SYNC_ORDER) {
+    if (!tableShared(table, categories)) continue;
+    if (stale) {
+      const present = new Set(
+        (result.rows ?? []).filter((i) => i.tbl === table && !i.deleted).map((i) => i.row_id),
+      );
+      if (db.dropMissing(table, present, (r) => isOwn(db, table, r, userId))) changed = true;
+    }
     const got = byTable.get(table);
-    if (!got || !tableShared(table, categories)) continue;
+    if (!got) continue;
     if (db.applyRemote(table, got.rows, got.deleted)) changed = true;
     for (const row of got.rows) {
       const f = fileOf(table, row);
@@ -453,12 +512,25 @@ export async function syncOnce(userId: string): Promise<boolean> {
   // Encryption was turned off: once the readable copy is all up, the sealed one goes.
   if (!copyEncrypted(userId) && Object.keys(db.outbox).length === 0)
     await finishVaultClear(userId).catch((e: unknown) => reportError(e, 'sync'));
-  const changed = (await pull(userId)) || recovered;
+  const pulled = await pull(userId);
+  // Rows deleted a week ago go for good (here, then on the server with the next push).
+  const purged = (await db.purgeDeleted()) > 0;
+  if (purged) db.scheduleSave();
+  const changed = pulled || recovered || purged;
   useSyncStatus.setState({ lastAt: new Date().toISOString(), refused: refusedLastPush });
   return changed;
 }
 
 const resendKey = (userId: string) => `fft.sync.resent-2.${userId}`;
+
+/** Every key this module keeps for an account (removed when the account is deleted). */
+export const syncKeysOf = (userId: string) => [
+  cursorKey(userId),
+  vaultCursorKey(userId),
+  vaultClearKey(userId),
+  resendKey(userId),
+  cleanupKey(userId),
+];
 
 /** When this device last finished a sync, and how many rows the server refused then. */
 export const useSyncStatus = create<{ lastAt: string | null; refused: number }>(() => ({

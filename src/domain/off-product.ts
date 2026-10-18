@@ -18,17 +18,36 @@ const n = (v: unknown): number | null => {
   return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : null;
 };
 
+/** Longest product name and brand kept (DECISIONS 84): real names are far shorter. */
+export const OFF_NAME_MAX = 100;
+export const OFF_BRAND_MAX = 60;
+
+/**
+ * Open Food Facts text is written by anyone and ends up in AI tool results (DECISIONS 84): no
+ * control, zero-width or direction characters, no markup characters, one line, a length limit.
+ */
+export function cleanOffText(s: unknown, max: number): string {
+  return String(s ?? '')
+    .normalize('NFC')
+    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁩﻿]/g, ' ')
+    .replace(/[<>{}`[\]\\|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
 export function offToFoodRow(p: OffProduct) {
-  const name = (p.product_name || p.product_name_en || '').trim();
+  const name = cleanOffText(p.product_name || p.product_name_en, OFF_NAME_MAX);
   const nu = p.nutriments ?? {};
   const kj = n(nu['energy_100g']);
   const kcal = n(nu['energy-kcal_100g']) ?? (kj != null ? Math.round(kj / 4.184) : null);
-  if (!p.code || !name || kcal == null) return null;
+  if (!p.code || !/^\d{1,14}$/.test(p.code) || !name || kcal == null) return null;
   const states = p.states_tags ?? [];
   return {
     barcode: p.code,
-    name: name.slice(0, 160),
-    brand: (p.brands ?? '').split(',')[0]?.trim() || null,
+    name,
+    brand: cleanOffText((p.brands ?? '').split(',')[0], OFF_BRAND_MAX) || null,
     kcal_100g: kcal,
     protein_100g: n(nu['proteins_100g']) ?? 0,
     carbs_100g: n(nu['carbohydrates_100g']) ?? 0,

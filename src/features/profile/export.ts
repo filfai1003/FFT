@@ -1,9 +1,17 @@
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { zipSync, strToU8 } from 'fflate';
 import { Platform } from 'react-native';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { toCsv } from '@/domain/csv';
-import { getSupabase } from '@/lib/supabase';
+import { useAiAccessStore } from '@/features/ai/access';
+import { useConversations } from '@/features/ai/agent/conversations';
+import { useAiSettings } from '@/features/ai/settings-store';
+import { useSessionStore } from '@/features/auth/session-store';
+import { useSyncStatus } from '@/features/premium/sync';
+import { getMode } from '@/lib/mode';
+import { usePlanStore } from '@/lib/plan';
+import { getAuthClient, getSupabase } from '@/lib/supabase';
 
 type Row = Record<string, unknown>;
 
@@ -113,14 +121,61 @@ export async function workoutsCsv(): Promise<string> {
 
 const ymd = () => new Date().toISOString().slice(0, 10);
 
-/** Everything as a ZIP: data.json, a few CSVs and the progress photos. */
+/**
+ * What the server keeps about the account itself (DECISIONS 83): email, plan, AI credit and usage,
+ * tokens and connected apps, consent and copy settings, error reports, password requests, admin
+ * log entries. Account state, so through the auth client. Null without an account; an error
+ * message when the server cannot be reached (the rest of the export still works).
+ */
+async function accountPart(): Promise<unknown> {
+  if (getMode() !== 'cloud') return null;
+  try {
+    const { data, error } = await (getAuthClient() as unknown as SupabaseClient).rpc(
+      'export_my_account',
+    );
+    if (error) return { unavailable: error.message };
+    return data;
+  } catch (e) {
+    return { unavailable: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** What only this device has: AI conversations, AI and copy settings (never the AI key itself). */
+function devicePart(userId: string | null) {
+  const conversations = Object.values(useConversations.getState().conversations).filter(
+    (c) => c.userId === userId,
+  );
+  const ai = useAiSettings.getState();
+  const plan = usePlanStore.getState();
+  return {
+    ai_conversations: conversations,
+    ai_settings: {
+      provider: ai.provider,
+      model: ai.model,
+      baseUrl: ai.baseUrl,
+      ownKeySet: ai.apiKey.trim().length > 0,
+    },
+    ai_access: userId ? (useAiAccessStore.getState().byUser[userId] ?? null) : null,
+    server_copy: {
+      sync: plan.sync,
+      categories: plan.categories,
+      encrypted: plan.encrypted,
+      lastSync: useSyncStatus.getState().lastAt,
+    },
+  };
+}
+
+/** Everything as a ZIP: data.json, account.json, device.json, a few CSVs and the photos. */
 export async function fullExportZip(): Promise<Uint8Array> {
   const data = await collectData();
   const names = await exerciseNames();
+  const userId = useSessionStore.getState().userId;
   const files: Record<string, Uint8Array> = {
     'data.json': strToU8(
       JSON.stringify({ exportedAt: new Date().toISOString(), ...data }, null, 2),
     ),
+    'account.json': strToU8(JSON.stringify(await accountPart(), null, 2)),
+    'device.json': strToU8(JSON.stringify(devicePart(userId), null, 2)),
     'workouts.csv': strToU8(toCsv(workoutRows(data, names), workoutColumns)),
     'food_log.csv': strToU8(
       toCsv(
@@ -181,12 +236,39 @@ export async function deliverFile(name: string, bytes: Uint8Array, mime: string)
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
     return;
   }
+  // Earlier exports still in the cache go first (DECISIONS 83).
+  removeExportFiles({ olderThanMs: 0 });
   const file = new File(Paths.cache, name);
   if (file.exists) file.delete();
   file.create();
   file.write(bytes);
   if (await Sharing.isAvailableAsync())
     await Sharing.shareAsync(file.uri, { mimeType: mime, dialogTitle: name });
+}
+
+const EXPORT_FILE = /^fft-(export|workouts)-.*\.(zip|csv)$/;
+
+/**
+ * Deletes the export files left in the app's cache (they hold health data). Not right after the
+ * share sheet closes: the app the file went to (an email being written) may still be reading it.
+ * So: before each new export, at start for files older than an hour, and all of them when the
+ * account is deleted.
+ */
+export function removeExportFiles({ olderThanMs }: { olderThanMs: number }): number {
+  if (Platform.OS === 'web') return 0;
+  let removed = 0;
+  try {
+    for (const item of new Directory(Paths.cache).list()) {
+      if (!(item instanceof File) || !EXPORT_FILE.test(item.name)) continue;
+      const modified = item.modificationTime ?? 0;
+      if (olderThanMs > 0 && Date.now() - modified < olderThanMs) continue;
+      item.delete();
+      removed += 1;
+    }
+  } catch {
+    // Nothing to clean, or the cache cannot be read: nothing else depends on it.
+  }
+  return removed;
 }
 
 export const exportFileNames = {

@@ -568,3 +568,102 @@ describe('the database file survives crashes and restarts', () => {
     expect(reopened.tracking).toBe(false);
   });
 });
+
+describe('deleted rows leave the device for good after a week (DECISIONS 79)', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
+  const ACC = 'aaaaaaaa-0000-4000-8000-0000000000aa';
+
+  it('rows deleted more than 7 days ago go with their photo file; newer and live ones stay', async () => {
+    const kv = memoryKv();
+    const db = new LocalDb(kv, ACC);
+    await db.ready;
+    db.tracking = true;
+    const photo = (n: number, file: string, deletedAt: string | null) => ({
+      id: id(n),
+      user_id: ACC,
+      day: '2026-10-01',
+      pose: 'front',
+      storage_path: `${ACC}/${file}`,
+      deleted_at: deletedAt,
+    });
+    db.tables.progress_photos.push(
+      photo(1, 'old.jpg', ago(8)),
+      photo(2, 'new.jpg', ago(1)),
+      photo(3, 'live.jpg', null),
+    );
+    await kv.putFile(`progress-photos/${ACC}/old.jpg`, new Uint8Array([1]), 'image/jpeg');
+    await kv.putFile(`progress-photos/${ACC}/new.jpg`, new Uint8Array([2]), 'image/jpeg');
+    expect(await db.purgeDeleted()).toBe(1);
+    expect(db.tables.progress_photos.map((p) => p.id)).toEqual([id(2), id(3)]);
+    expect(await kv.readFile(`progress-photos/${ACC}/old.jpg`)).toBeNull();
+    expect(await kv.readFile(`progress-photos/${ACC}/new.jpg`)).not.toBeNull();
+    // The server and the other devices delete it too: a deletion with its file in the outbox.
+    expect(db.outbox[`progress_photos:${id(1)}`]).toMatchObject({
+      op: 'delete',
+      file: { bucket: 'progress-photos', path: `${ACC}/old.jpg` },
+    });
+  });
+
+  it('an own exercise used in a past workout stays; a deleted workout takes its sets', async () => {
+    const db = new LocalDb(memoryKv(), ACC);
+    await db.ready;
+    db.tables.exercises.push(
+      { id: id(10), owner_id: ACC, name: 'Used', deleted_at: ago(30) },
+      { id: id(11), owner_id: ACC, name: 'Unused', deleted_at: ago(30) },
+    );
+    db.tables.workout_sessions.push(
+      { id: id(20), user_id: ACC, status: 'done', deleted_at: null },
+      { id: id(21), user_id: ACC, status: 'done', deleted_at: ago(9) },
+    );
+    db.tables.session_sets.push(
+      { id: id(30), user_id: ACC, session_id: id(20), exercise_id: id(10), deleted_at: null },
+      { id: id(31), user_id: ACC, session_id: id(21), exercise_id: id(11), deleted_at: null },
+    );
+    await db.purgeDeleted();
+    const own = db.tables.exercises.filter((e) => e.owner_id === ACC).map((e) => e.id);
+    expect(own).toEqual([id(10)]);
+    expect(db.tables.workout_sessions.map((s) => s.id)).toEqual([id(20)]);
+    expect(db.tables.session_sets.map((s) => s.id)).toEqual([id(30)]);
+    // Not tracking (no copy on the server): nothing noted for a sync.
+    expect(Object.keys(db.outbox)).toHaveLength(0);
+  });
+
+  it('catalogue rows are never purged; the purge runs when the database opens', async () => {
+    const kv = memoryKv();
+    const first = new LocalDb(kv, ACC);
+    await first.ready;
+    const catalogue = first.tables.exercises.find((e) => e.owner_id == null)!;
+    catalogue.deleted_at = ago(100);
+    first.tables.water_logs.push({
+      id: id(40),
+      user_id: ACC,
+      day: '2026-09-01',
+      ml: 250,
+      deleted_at: ago(10),
+    });
+    await first.save();
+    const again = new LocalDb(kv, ACC);
+    await again.ready;
+    expect(again.tables.water_logs).toHaveLength(0);
+    expect(again.tables.exercises.some((e) => e.id === catalogue.id)).toBe(true);
+  });
+
+  it('a device back after months drops what the server lost, except its unsent changes', async () => {
+    const db = new LocalDb(memoryKv(), ACC);
+    await db.ready;
+    db.tables.water_logs.push(
+      { id: id(50), user_id: ACC, day: '2026-01-01', ml: 250 },
+      { id: id(51), user_id: ACC, day: '2026-01-02', ml: 250 },
+      { id: id(52), user_id: ACC, day: '2026-01-03', ml: 250 },
+    );
+    db.outbox[`water_logs:${id(52)}`] = {
+      table: 'water_logs',
+      key: id(52),
+      op: 'upsert',
+      at: ago(0),
+    };
+    expect(db.dropMissing('water_logs', new Set([id(50)]), (r) => r.user_id === ACC)).toBe(true);
+    expect(db.tables.water_logs.map((w) => w.id)).toEqual([id(50), id(52)]);
+  });
+});

@@ -38,7 +38,17 @@ import {
   turnSyncOn,
   setSharedCategories,
   applyCategoryChange,
+  isStale,
 } from './sync';
+
+describe('a device away longer than the server keeps deletions (DECISIONS 79)', () => {
+  it('is stale after 80 days without a pull (the server keeps tombstones 90)', () => {
+    const now = Date.parse('2026-10-18T00:00:00Z');
+    expect(isStale(null, now)).toBe(false);
+    expect(isStale('2026-08-01T00:00:00Z', now)).toBe(false);
+    expect(isStale('2026-07-20T00:00:00Z', now)).toBe(true);
+  });
+});
 
 const U = '11111111-2222-4333-8444-555555555555';
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
