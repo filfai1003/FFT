@@ -25,6 +25,10 @@ export type ApiToken = {
   createdAt: string;
   lastUsedAt: string | null;
   scope: ApiTokenScope;
+  /** A connected AI app (OAuth) rather than a personal token (DECISIONS 73). */
+  app: boolean;
+  /** Where a connected app's sign-in went back to (claude.ai, chatgpt.com, localhost…). */
+  redirectHost: string | null;
 };
 
 const server = () => getAuthClient() as unknown as SupabaseClient;
@@ -37,7 +41,7 @@ export function useApiTokens(enabled: boolean) {
     queryFn: async (): Promise<ApiToken[]> => {
       const { data, error } = await server()
         .from('api_tokens')
-        .select('id, name, prefix, created_at, last_used_at, scope')
+        .select('id, name, prefix, created_at, last_used_at, scope, client_id, redirect_host')
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -48,6 +52,8 @@ export function useApiTokens(enabled: boolean) {
         createdAt: r.created_at as string,
         lastUsedAt: (r.last_used_at as string | null) ?? null,
         scope: r.scope === 'read' ? 'read' : 'write',
+        app: r.client_id != null,
+        redirectHost: (r.redirect_host as string | null) ?? null,
       }));
     },
   });

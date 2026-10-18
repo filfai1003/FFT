@@ -216,7 +216,9 @@
               <td>
                 The name and first characters of each personal token; the token itself is kept only
                 as a SHA-256 hash. For AI apps connected with "Sign in with FFT" (OAuth): the app's
-                name and its access.
+                name, the address it signed in from (for example claude.ai), its access, and when it
+                connected and was last used. A connection ends after 30 days without use and in any
+                case 90 days after you signed in.
               </td>
               <td>To let the tools you choose use your data, and let you revoke them.</td>
             </tr>

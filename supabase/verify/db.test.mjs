@@ -1062,9 +1062,15 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     });
     assert.equal(pageRes.status, 200);
     assert.match(pageRes.body, /<b>Claude<\/b> wants to use your FFT data/);
-    // The permission is a visible choice; with no scope asked, read and write is preselected.
-    assert.match(pageRes.body, /name="access" value="write" checked/);
-    assert.match(pageRes.body, /name="access" value="read">/);
+    // The page says where the access goes (the host, which the app cannot pick freely).
+    assert.match(pageRes.body, /access to your data goes to <b>claude\.ai<\/b>/);
+    assert.match(
+      pageRes.headers['content-security-policy'],
+      /form-action 'self' https:\/\/claude\.ai;/,
+    );
+    // The permission is a visible choice; Read only is preselected (DECISIONS 73).
+    assert.match(pageRes.body, /name="access" value="read" checked/);
+    assert.match(pageRes.body, /name="access" value="write">/);
     assert.equal(
       (
         await go('GET', '/oauth/authorize', undefined, {
@@ -1168,7 +1174,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
     assert.equal(JSON.parse(after.body).error, 'invalid_grant');
   });
 
-  it('a read-only connection: chosen on the page (or asked with scope=read), kept on refresh', async () => {
+  it('a read-only connection: preselected whatever the app asks, kept on refresh', async () => {
     const ask = (scope) =>
       go('GET', '/oauth/authorize', undefined, {
         response_type: 'code',
@@ -1179,7 +1185,7 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
         scope,
       });
     assert.match((await ask('read')).body, /name="access" value="read" checked/);
-    assert.match((await ask('read write')).body, /name="access" value="write" checked/);
+    assert.match((await ask('read write')).body, /name="access" value="read" checked/);
     const exchange = async (location) =>
       JSON.parse(
         (
@@ -1245,9 +1251,206 @@ describe('sign in with FFT for AI apps (server/oauth.js)', () => {
       true,
     );
 
-    // No choice sent (an older page): the app's scope=read is honoured.
-    const plain = await authorize('c@test.dev', 'right', { scope: 'read' });
+    // No choice sent (an older page): read only, even when the app asked for write.
+    const plain = await authorize('c@test.dev', 'right', { scope: 'write' });
     assert.equal((await exchange(plain.headers.location)).scope, 'read');
+    // Read and write only when the user picks it.
+    const rw = await authorize('c@test.dev', 'right', { access: 'write' });
+    assert.equal((await exchange(rw.headers.location)).scope, 'write');
+  });
+
+  describe('only approved AI apps, connections that end (DECISIONS 73)', () => {
+    // Each call from its own address unless one is given (the limit counts refused calls too).
+    let n = 0;
+    const register = (uris, ip = `7.7.7.${(n += 1)}`) =>
+      oauth({
+        method: 'POST',
+        path: '/oauth/register',
+        body: { redirect_uris: uris, client_name: 'Some app' },
+        query: {},
+        headers: {},
+        ip,
+      });
+    const signInPage = (id, redirect) =>
+      go('GET', '/oauth/authorize', undefined, {
+        response_type: 'code',
+        client_id: id,
+        redirect_uri: redirect,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+      });
+
+    it('a redirect to an unapproved host is refused at registration', async () => {
+      for (const bad of [
+        'https://evil.com/cb',
+        'https://claude.ai.evil.com/cb',
+        'https://evilclaude.ai/cb',
+        'https://claude.ai:8443/cb',
+        'http://claude.ai/cb',
+        'https://user@claude.ai/cb',
+        'https://claude.ai/cb#x',
+        'cursor://oauth/callback',
+        'javascript:alert(1)',
+      ]) {
+        const r = await register([bad]);
+        assert.equal(r.status, 400, bad);
+        assert.equal(JSON.parse(r.body).error, 'invalid_redirect_uri', bad);
+      }
+      // One bad address among good ones: refused too.
+      assert.equal(
+        (await register(['https://chatgpt.com/connector_platform_oauth_redirect', 'https://x.dev']))
+          .status,
+        400,
+      );
+      for (const good of [
+        'https://chatgpt.com/connector_platform_oauth_redirect',
+        'https://claude.com/api/mcp/auth_callback',
+        'http://localhost:33418/callback',
+        'http://127.0.0.1:5173/cb',
+      ])
+        assert.equal((await register([good])).status, 201, good);
+    });
+
+    it('an app registered with an unapproved host gets no sign-in page, so no code', async () => {
+      await admin();
+      await db.query(
+        `insert into public.oauth_clients (id, name, redirect_uris) values ('fftc_old', 'Old', $1)`,
+        [['https://evil.com/cb']],
+      );
+      const r = await signInPage('fftc_old', 'https://evil.com/cb');
+      assert.equal(r.status, 400);
+      assert.match(JSON.parse(r.body).error_description, /not an approved app/);
+      const post = await go('POST', '/oauth/authorize', {
+        client_id: 'fftc_old',
+        redirect_uri: 'https://evil.com/cb',
+        code_challenge: challenge,
+        email: 'a@test.dev',
+        password: 'right',
+      });
+      assert.equal(post.status, 400);
+      assert.equal(post.headers.location, undefined);
+    });
+
+    it('a desktop app on this computer is named as such on the page', async () => {
+      const id = JSON.parse((await register(['http://127.0.0.1:5173/cb'])).body).client_id;
+      const r = await signInPage(id, 'http://127.0.0.1:5173/cb');
+      assert.equal(r.status, 200);
+      assert.match(r.body, /a program on this computer \(<b>127\.0\.0\.1:5173<\/b>\)/);
+    });
+
+    it('registrations are limited per address', async () => {
+      for (let i = 0; i < 10; i += 1)
+        assert.equal((await register([REDIRECT], '8.8.8.8')).status, 201);
+      const r = await register([REDIRECT], '8.8.8.8');
+      assert.equal(r.status, 429);
+      assert.equal((await register([REDIRECT], '8.8.4.4')).status, 201);
+    });
+
+    /** A fresh connection of A to claude.ai: its tokens. */
+    const connect = async () => {
+      // From its own address: the sign-in allows 10 attempts per address and minute.
+      const r = await oauth({
+        method: 'POST',
+        path: '/oauth/authorize',
+        body: {
+          client_id: clientId,
+          redirect_uri: REDIRECT,
+          code_challenge: challenge,
+          code_challenge_method: 'S256',
+          email: 'a@test.dev',
+          password: 'right',
+          access: 'read',
+        },
+        query: {},
+        headers: {},
+        ip: `6.6.6.${(n += 1)}`,
+      });
+      const t = await go('POST', '/oauth/token', {
+        grant_type: 'authorization_code',
+        code: new URL(r.headers.location).searchParams.get('code'),
+        redirect_uri: REDIRECT,
+        client_id: clientId,
+        code_verifier: verifier,
+      });
+      assert.equal(t.status, 200, t.body);
+      return JSON.parse(t.body);
+    };
+    const renew = (refreshToken) =>
+      go('POST', '/oauth/token', {
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+      });
+    const live = async () => {
+      await admin();
+      return db.query(
+        `select id, redirect_host, refresh_expires_at, created_at from public.api_tokens
+         where user_id = $1 and client_id = $2 and deleted_at is null`,
+        [A, clientId],
+      );
+    };
+
+    it('the connection records where it goes, readable by its owner', async () => {
+      await connect();
+      await as(A);
+      const row = await one(
+        `select redirect_host, refresh_expires_at > now() + interval '29 days' as month
+         from public.api_tokens where client_id is not null and deleted_at is null`,
+      );
+      assert.equal(row.redirect_host, 'claude.ai');
+      assert.equal(row.month, true);
+    });
+
+    it('a refresh token works once: used again, the connection ends', async () => {
+      const first = await connect();
+      const r = await renew(first.refresh_token);
+      assert.equal(r.status, 200, r.body);
+      const second = JSON.parse(r.body);
+      // The replaced refresh token comes back (a copy someone kept): everything stops.
+      const replay = await renew(first.refresh_token);
+      assert.equal(JSON.parse(replay.body).error, 'invalid_grant');
+      assert.equal((await live()).rows.length, 0);
+      assert.equal(JSON.parse((await renew(second.refresh_token)).body).error, 'invalid_grant');
+      const me = await api({
+        method: 'GET',
+        path: '/v1/me',
+        headers: { authorization: `Bearer ${second.access_token}` },
+      });
+      assert.equal(me.status, 401);
+    });
+
+    it('30 days without use, or 90 days after the sign-in, the connection ends', async () => {
+      let t = await connect();
+      let [row] = (await live()).rows;
+      await db.query(
+        `update public.api_tokens set refresh_expires_at = now() - interval '1 minute' where id = $1`,
+        [row.id],
+      );
+      assert.match(JSON.parse((await renew(t.refresh_token)).body).error_description, /expired/);
+      assert.equal((await live()).rows.length, 0);
+
+      t = await connect();
+      [row] = (await live()).rows;
+      // Used every week, but signed in 91 days ago.
+      await db.query(
+        `update public.api_tokens set created_at = now() - interval '91 days' where id = $1`,
+        [row.id],
+      );
+      assert.equal(JSON.parse((await renew(t.refresh_token)).body).error, 'invalid_grant');
+
+      // 85 days in: the new tokens stop at day 90, not 7 or 30 days later.
+      t = await connect();
+      [row] = (await live()).rows;
+      await db.query(
+        `update public.api_tokens set created_at = now() - interval '85 days' where id = $1`,
+        [row.id],
+      );
+      const r = JSON.parse((await renew(t.refresh_token)).body);
+      assert.ok(r.expires_in <= 5 * 86400 + 5 && r.expires_in > 4 * 86400, String(r.expires_in));
+      const [after] = (await live()).rows;
+      const days = (new Date(after.refresh_expires_at) - new Date(after.created_at)) / 86400000;
+      assert.ok(Math.abs(days - 90) < 0.01, String(days));
+    });
   });
 });
 

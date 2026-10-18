@@ -37,6 +37,8 @@ const oauth = createOAuth({
   sql: async (text, params) => (await pool.query(text, params)).rows,
   signIn,
   base: BASE,
+  // AI apps besides Claude and ChatGPT that may receive a sign-in (checked by the owner first).
+  extraRedirectHosts: (process.env.OAUTH_REDIRECT_HOSTS ?? '').split(','),
 });
 
 async function serveOAuth(req, res, url, raw) {
@@ -145,6 +147,7 @@ http
 /**
  * What the privacy policy promises about retention: handled password requests 30 days, the admin
  * change log and the sign-in log 12 months, error reports 60 days. Runs at start and every day.
+ * Clean-up of the AI app sign-in too.
  */
 async function cleanup() {
   const rules = [
@@ -155,6 +158,15 @@ async function cleanup() {
     // Relay between phones (DECISIONS 65): a message is deleted once delivered, and in any case
     // after 30 days (a phone that never came back).
     `delete from public.relay_messages where created_at < now() - interval '30 days'`,
+    // AI app sign-in (DECISIONS 73): one-time codes live 5 minutes; an app that registered but
+    // never got a connection in 30 days is forgotten (it registers again if it comes back).
+    `delete from public.oauth_codes where expires_at < now() - interval '1 day'`,
+    // Connections past their 30 idle / 90 days end, so the app no longer lists them.
+    `update public.api_tokens set deleted_at = now()
+       where client_id is not null and deleted_at is null
+         and (refresh_expires_at < now() or created_at < now() - interval '90 days')`,
+    `delete from public.oauth_clients c where c.created_at < now() - interval '30 days'
+       and not exists (select 1 from public.api_tokens t where t.client_id = c.id)`,
   ];
   for (const sql of rules) {
     try {
