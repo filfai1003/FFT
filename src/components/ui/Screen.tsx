@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  type ScrollViewProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { KeyboardAwareScrollView } from './keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space } from '@/design/tokens';
@@ -22,6 +28,8 @@ export type ScreenProps = {
   noTopInset?: boolean;
   gap?: number;
   style?: StyleProp<ViewStyle>;
+  /** Scroll events of a scrolling page (Home hides its coach bar while scrolling down). */
+  onScroll?: ScrollViewProps['onScroll'];
 };
 
 /** A page: theme background, safe areas and the side padding of the design. */
@@ -33,6 +41,7 @@ export function Screen({
   keyboardAware = true,
   gap = 16,
   style,
+  onScroll,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -56,12 +65,23 @@ export function Screen({
             contentContainerStyle={[padding, style]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            onScroll={onScroll}
+            scrollEventThrottle={onScroll ? 16 : undefined}
           >
             {children}
           </KeyboardAwareScrollView>
         ) : (
           <View style={[styles.fill, padding, style]}>{children}</View>
         )}
+        {/* The status bar area stays solid: scrolled content never shows under the clock. */}
+        {scroll && !noTopInset && insets.top > 0 ? (
+          <View
+            testID="screen-status-bar"
+            pointerEvents="none"
+            aria-hidden
+            style={[styles.statusBar, { height: insets.top, backgroundColor: colors.bg }]}
+          />
+        ) : null}
       </View>
     </FieldChain>
   );
@@ -70,4 +90,5 @@ export function Screen({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
+  statusBar: { position: 'absolute', top: 0, left: 0, right: 0 },
 });
