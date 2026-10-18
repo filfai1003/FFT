@@ -2,10 +2,12 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconTile } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { formatInt } from '@/domain/numbers';
@@ -26,8 +28,28 @@ import { useCopyEntries, useDayLog, useDayTotals, useSetLogDeleted, type LogEntr
 /** Diet tab: the food log of the chosen mode (count foods or fixed meals). */
 export function DietScreen() {
   const profile = useProfile();
+  // The mode decides the whole page: placeholders until it is read, never one log then the other.
+  if (profile.isPending) return <DietSkeleton />;
   if (profile.data?.diet_mode === 'fixed_meals') return <FixedMealsLog />;
   return <FoodLog />;
+}
+
+function DietSkeleton() {
+  const { t } = useTranslation();
+  return (
+    <Screen scroll bottomBarHeight={24} gap={14}>
+      <Text variant="screenTitle" accessibilityRole="header">
+        {t('nav.diet')}
+      </Text>
+      <SkeletonGroup accessibilityLabel={t('common.loading')}>
+        <Skeleton height={64} style={{ borderRadius: radius.card }} />
+        <SkeletonCard tile={false} lines={1} height={120} />
+        {meals.map((m) => (
+          <SkeletonCard key={m} lines={0} />
+        ))}
+      </SkeletonGroup>
+    </Screen>
+  );
 }
 
 function FoodLog() {
@@ -93,11 +115,22 @@ function FoodLog() {
           onSetTarget={() => router.push('/diet-goals')}
         />
 
+        {log.isSuccess && entries.length === 0 ? (
+          <EmptyState
+            compact
+            icon="bowl"
+            area="nutrition"
+            title={day === today ? t('empty.dietToday') : t('empty.dietDay')}
+            body={t('empty.dietBody')}
+          />
+        ) : null}
+
         <View style={{ gap: 10 }}>
           {meals.map((meal) => (
             <MealSection
               key={meal}
               meal={meal}
+              loading={log.isPending}
               entries={byMeal(meal)}
               yesterday={yesterdayOf(meal)}
               onSameAsYesterday={() => void sameAsYesterday(meal)}
@@ -135,7 +168,10 @@ function MealSection({
   onSameAsYesterday,
   onAdd,
   onOpen,
+  loading,
 }: {
+  /** The day's log is still being read: a placeholder instead of "Nothing yet". */
+  loading: boolean;
   meal: Meal;
   entries: LogEntry[];
   /** The same meal the day before: offered in one tap while this one is empty. */
@@ -175,11 +211,17 @@ function MealSection({
         <Text variant="titleM" accessibilityRole="header" style={{ flex: 1 }}>
           {name}
         </Text>
-        <Text variant="bodyS" muted numeric style={{ marginRight: 8 }}>
-          {entries.length > 0
-            ? t('diet.kcalValue', { kcal: Math.round(kcal) })
-            : t('diet.nothingYet')}
-        </Text>
+        {loading ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')} style={{ marginRight: 8 }}>
+            <Skeleton width={56} height={12} />
+          </SkeletonGroup>
+        ) : (
+          <Text variant="bodyS" muted numeric style={{ marginRight: 8 }}>
+            {entries.length > 0
+              ? t('diet.kcalValue', { kcal: Math.round(kcal) })
+              : t('diet.nothingYet')}
+          </Text>
+        )}
         <IconButton
           look="soft"
           icon="plus"

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonCard, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { DotBar } from '@/components/ui/DotBar';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { ListRow } from '@/components/ui/ListRow';
@@ -57,75 +59,92 @@ export function StrengthScreen() {
         ]}
       />
 
-      <Card gap={12}>
-        {s.overall != null ? (
-          <>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Text variant="displayL" numeric>{`${signed(s.overall)}%`}</Text>
-              <Text variant="bodyS" muted>
-                {t('progress.overall')}
-              </Text>
-            </View>
-            <DotColumnChart
-              values={chartValues(s.series)}
-              rows={10}
-              stretch
-              accessibilityLabel={t('progress.strengthChart', { pct: signed(s.overall) })}
-            />
-          </>
-        ) : (
-          <Text variant="displayL" numeric muted>
-            {'—'}
-          </Text>
-        )}
-      </Card>
-
-      {tab === 'groups' ? (
-        <Section title={t('progress.byGroup')}>
-          {s.groups.map((g) => (
-            <GroupRow
-              key={g.group}
-              name={t(`progress.group.${g.group}`)}
-              sets={g.sets}
-              pct={g.pctChange}
-              on={dotsOn(Math.max(0, g.pctChange), maxPct, 12)}
-              onPress={() =>
-                router.push({ pathname: '/progress/strength/[group]', params: { group: g.group } })
-              }
-            />
-          ))}
-        </Section>
+      {s.isPending ? (
+        <SkeletonGroup accessibilityLabel={t('common.loading')}>
+          <SkeletonCard tile={false} lines={0} height={120} />
+          <SkeletonRows count={4} leading={false} />
+        </SkeletonGroup>
       ) : (
-        <Section title={t('progress.exercisesEst')}>
-          {exercises.map((c) => {
-            const ex = s.exerciseName(c.exerciseId);
-            return (
-              <ListRow
-                key={c.exerciseId}
-                title={ex?.name ?? ''}
-                info={t('progress.fromTo', {
-                  from: Math.round(displayWeight(c.firstKg, unit)),
-                  to: Math.round(displayWeight(c.lastKg, unit)),
-                  unit: unit,
-                })}
-                leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
-                right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}
-                onPress={() =>
-                  router.push({
-                    pathname: '/progress/exercise/[exerciseId]',
-                    params: { exerciseId: c.exerciseId },
-                  })
-                }
+        <>
+          <Card gap={12}>
+            {s.overall != null ? (
+              <>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'baseline',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Text variant="displayL" numeric>{`${signed(s.overall)}%`}</Text>
+                  <Text variant="bodyS" muted>
+                    {t('progress.overall')}
+                  </Text>
+                </View>
+                <DotColumnChart
+                  values={chartValues(s.series)}
+                  rows={10}
+                  stretch
+                  accessibilityLabel={t('progress.strengthChart', { pct: signed(s.overall) })}
+                />
+              </>
+            ) : (
+              <EmptyState
+                card={false}
+                compact
+                icon="chart"
+                area="training"
+                title={t('empty.strengthTitle')}
+                body={t('empty.strengthBody')}
               />
-            );
-          })}
-        </Section>
+            )}
+          </Card>
+
+          {tab === 'groups' ? (
+            <Section title={t('progress.byGroup')}>
+              {s.groups.map((g) => (
+                <GroupRow
+                  key={g.group}
+                  name={t(`progress.group.${g.group}`)}
+                  sets={g.sets}
+                  pct={g.pctChange}
+                  on={dotsOn(Math.max(0, g.pctChange), maxPct, 12)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/progress/strength/[group]',
+                      params: { group: g.group },
+                    })
+                  }
+                />
+              ))}
+            </Section>
+          ) : (
+            <Section title={t('progress.exercisesEst')}>
+              {exercises.map((c) => {
+                const ex = s.exerciseName(c.exerciseId);
+                return (
+                  <ListRow
+                    key={c.exerciseId}
+                    title={ex?.name ?? ''}
+                    info={t('progress.fromTo', {
+                      from: Math.round(displayWeight(c.firstKg, unit)),
+                      to: Math.round(displayWeight(c.lastKg, unit)),
+                      unit: unit,
+                    })}
+                    leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
+                    right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/progress/exercise/[exerciseId]',
+                        params: { exerciseId: c.exerciseId },
+                      })
+                    }
+                  />
+                );
+              })}
+            </Section>
+          )}
+        </>
       )}
     </Screen>
   );

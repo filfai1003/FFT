@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Chip } from '@/components/ui/Chip';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
@@ -116,6 +118,36 @@ export function PhotosScreen() {
           />
         ))}
       </View>
+
+      {photos.isPending ? (
+        <SkeletonGroup accessibilityLabel={t('common.loading')}>
+          {[0, 1].map((i) => (
+            <View key={i} style={{ gap: 8 }}>
+              <Skeleton width={120} height={12} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {poses.map((p) => (
+                  <Skeleton
+                    key={p}
+                    width="31%"
+                    height={150}
+                    style={{ flex: 1, borderRadius: 14 }}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </SkeletonGroup>
+      ) : null}
+
+      {photos.isSuccess && days.length === 0 ? (
+        <EmptyState
+          icon="camera"
+          title={t('empty.photosTitle')}
+          body={t('empty.photosBody')}
+          action={{ label: t('photos.add'), icon: 'plus', onPress: () => router.push('/check-in') }}
+          actionVariant="primary"
+        />
+      ) : null}
 
       <View style={{ gap: 14 }}>
         {days.map((day) => {

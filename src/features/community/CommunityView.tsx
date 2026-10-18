@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
@@ -88,12 +90,12 @@ export function CommunityView() {
   const me = useCommunityMe();
   if (!available)
     return (
-      <Card gap={4}>
-        <Text semibold>{t('community.needsAccount')}</Text>
-        <Text variant="bodyS" muted>
-          {t('community.needsAccountInfo')}
-        </Text>
-      </Card>
+      <EmptyState
+        icon="users"
+        area="streak"
+        title={t('community.needsAccount')}
+        body={t('community.needsAccountInfo')}
+      />
     );
   if (me.isError)
     return (
@@ -108,7 +110,13 @@ export function CommunityView() {
         />
       </Card>
     );
-  if (me.isPending) return null;
+  if (me.isPending)
+    return (
+      <SkeletonGroup accessibilityLabel={t('common.loading')}>
+        <SkeletonCard lines={2} height={120} />
+        <SkeletonCard lines={1} />
+      </SkeletonGroup>
+    );
   return me.data ? <BoardView name={me.data.name} /> : <JoinView />;
 }
 
@@ -506,10 +514,19 @@ function BoardView({ name }: { name: string }) {
           <Text variant="bodyS" muted>
             {t('community.error')}
           </Text>
-        ) : podium.length === 0 && !board.isPending ? (
-          <Text variant="bodyS" muted>
-            {t('community.board.empty')}
-          </Text>
+        ) : board.isPending ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <Skeleton height={140} style={{ borderRadius: 12 }} />
+          </SkeletonGroup>
+        ) : podium.length === 0 ? (
+          <EmptyState
+            card={false}
+            compact
+            icon="trophy"
+            area="streak"
+            title={t('empty.boardTitle')}
+            body={t('empty.boardBody')}
+          />
         ) : (
           <Podium rows={podium} metric={metric} />
         )}
@@ -711,11 +728,17 @@ function FriendsCard({
   const showToast = useToastStore((s) => s.show);
   if (list.length === 0)
     return (
-      <Card>
-        <Text variant="bodyS" muted>
-          {t('community.friends.none')}
-        </Text>
-      </Card>
+      <EmptyState
+        compact
+        icon="users"
+        title={t('empty.friendsTitle')}
+        body={t('empty.friendsBody')}
+        action={{
+          label: t('community.friends.add'),
+          icon: 'plus',
+          onPress: () => router.push('/progress/community-profile'),
+        }}
+      />
     );
   return (
     <Card gap={0} style={{ paddingVertical: 4, paddingHorizontal: 14 }}>

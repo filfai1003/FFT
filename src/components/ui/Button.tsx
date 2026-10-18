@@ -143,7 +143,7 @@ export function Button({
           paddingHorizontal: small ? 14 : 22,
           // Inline buttons sit in rows (or centred columns): centre them, never pin them to the top.
           alignSelf: block ? 'stretch' : 'center',
-          opacity: !disabled && press.pressed ? 0.85 : 1,
+          opacity: disabled ? 1 : press.opacity,
         },
         container,
         style,

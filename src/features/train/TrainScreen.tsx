@@ -5,11 +5,13 @@ import { Pressable, View } from 'react-native';
 import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { IconTile } from '@/components/ui/IconTile';
 import { Section } from '@/components/ui/Section';
+import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -87,16 +89,31 @@ export function TrainScreen() {
 
         <ActiveSessionBanner />
 
+        {isPending ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <SkeletonCard lines={1} height={52} />
+            <SkeletonCard lines={0} />
+            <SkeletonCard lines={0} />
+          </SkeletonGroup>
+        ) : null}
+
         {!isPending && !plan ? (
-          <Card gap={12}>
-            <Text variant="titleM">{t('train.emptyTitle')}</Text>
-            <Button label={t('train.createPlan')} onPress={() => setCreating(true)} />
-            <Button
-              label={t('train.emptyWorkout')}
-              variant="secondary"
-              onPress={() => startEmpty(t('train.emptyWorkout'))}
-            />
-          </Card>
+          <EmptyState
+            icon="dumbbell"
+            area="training"
+            title={t('train.emptyTitle')}
+            body={t('empty.trainBody')}
+            action={{
+              label: t('train.createPlan'),
+              icon: 'plus',
+              onPress: () => setCreating(true),
+            }}
+            actionVariant="primary"
+            secondaryAction={{
+              label: t('train.emptyWorkout'),
+              onPress: () => startEmpty(t('train.emptyWorkout')),
+            }}
+          />
         ) : null}
 
         {plan && upNext ? (
@@ -129,10 +146,14 @@ export function TrainScreen() {
             </Card>
           </Reveal>
         ) : plan ? (
-          <Card gap={12}>
-            <Text muted>{t('train.noDays')}</Text>
-            <Button label={t('train.addDays')} variant="secondary" onPress={openPlan} />
-          </Card>
+          <EmptyState
+            icon="calendar"
+            area="training"
+            title={t('empty.planDaysTitle')}
+            body={t('empty.planDaysBody')}
+            action={{ label: t('train.addDays'), icon: 'plus', onPress: openPlan }}
+            actionVariant="primary"
+          />
         ) : null}
 
         {plan && plan.days.length > 0 ? (

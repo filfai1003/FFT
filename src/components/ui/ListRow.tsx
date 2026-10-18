@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
+import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
 import { Text } from './Text';
 
 export type ListRowProps = {
@@ -36,6 +37,7 @@ export function ListRow({
   divider = true,
 }: ListRowProps) {
   const { colors } = useTheme();
+  const press = usePressScale(pressFeedback.surface);
   const content = (
     <>
       {leading}
@@ -82,21 +84,24 @@ export function ListRow({
 
   if (!onPress) return <View style={style}>{content}</View>;
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState}
       aria-checked={accessibilityState?.checked}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       onPress={() => {
         tick();
         onPress();
       }}
-      style={({ pressed }) => [
+      style={[
         style,
-        { minHeight: Math.max(60, touch.listRowMin), opacity: pressed ? 0.7 : 1 },
+        { minHeight: Math.max(60, touch.listRowMin), opacity: press.opacity },
+        press.style,
       ]}
     >
       {content}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

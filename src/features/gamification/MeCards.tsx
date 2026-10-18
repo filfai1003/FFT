@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
 import { Icon } from '@/components/ui/Icon';
@@ -312,11 +313,13 @@ export function RecordsRow({ game }: { game: GameData }) {
         onRight={() => router.push('/progress/strength')}
       />
       {recent.length === 0 ? (
-        <Card>
-          <Text variant="bodyS" muted>
-            {t('game.noRecords')}
-          </Text>
-        </Card>
+        <EmptyState
+          compact
+          icon="trophy"
+          area="streak"
+          title={t('empty.recordsTitle')}
+          body={t('game.noRecords')}
+        />
       ) : (
         <ScrollView
           horizontal

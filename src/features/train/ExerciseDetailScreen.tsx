@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import { IconButton } from '@/components/ui/IconButton';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
+import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
@@ -216,7 +218,11 @@ export function ExerciseDetailScreen({
         )}
 
         <Section title={t('exerciseDetail.recent')}>
-          {sessions.data?.length ? (
+          {sessions.isPending ? (
+            <SkeletonGroup accessibilityLabel={t('common.loading')}>
+              <SkeletonRows count={3} leading={false} />
+            </SkeletonGroup>
+          ) : sessions.data?.length ? (
             sessions.data.map((s) => (
               <ListRow
                 key={s.id}
@@ -226,9 +232,13 @@ export function ExerciseDetailScreen({
               />
             ))
           ) : (
-            <Text variant="bodyS" muted>
-              {t('exerciseDetail.noSessions')}
-            </Text>
+            <EmptyState
+              compact
+              icon="dumbbell"
+              area="training"
+              title={t('empty.exerciseTitle')}
+              body={t('empty.exerciseBody')}
+            />
           )}
         </Section>
       </Screen>

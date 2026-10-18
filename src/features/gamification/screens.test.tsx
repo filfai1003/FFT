@@ -75,6 +75,12 @@ describe('Progress · Me cards', () => {
     });
   });
 
+  it('no records yet: a friendly empty state saying how to set one', async () => {
+    await renderUI(<RecordsRow game={{ ...mockGame, records: [] }} />);
+    expect(screen.getByRole('header', { name: 'No new records yet' })).toBeTruthy();
+    expect(screen.getByText(/Beat your best weight in any exercise/)).toBeTruthy();
+  });
+
   it('badge grid: earned, in progress and locked with how to unlock', async () => {
     await renderUI(<BadgeGrid badges={mockGame.badges} />);
     expect(screen.getByText(`3 of ${mockGame.badges.length} earned`)).toBeTruthy();

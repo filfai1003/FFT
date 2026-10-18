@@ -14,8 +14,15 @@ const native = Platform.OS !== 'web';
 /** A Pressable whose style can hold animated values (see usePressScale). */
 export const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+/**
+ * Press feedback, the same everywhere (DECISIONS 109): the touched thing sinks a little and dims.
+ * Cards, option cards and list rows sink to `surface`, buttons to `control`, round icon buttons
+ * (small, so a bigger step reads the same) to `icon`. Reduce motion keeps only the dimming.
+ */
+export const pressFeedback = { surface: 0.98, control: 0.97, icon: 0.92, opacity: 0.85 } as const;
+
 /** Light press feedback: the control sinks a little under the finger. None with "reduce motion". */
-export function usePressScale(amount = 0.97) {
+export function usePressScale(amount: number = pressFeedback.control) {
   const { reduceMotion } = useTheme();
   const [scale] = useState(() => new Animated.Value(1));
   const [pressed, setPressed] = useState(false);
@@ -28,6 +35,8 @@ export function usePressScale(amount = 0.97) {
     }).start();
   return {
     pressed,
+    /** The dimmed opacity while pressed (kept with reduce motion: dimming does not move). */
+    opacity: pressed ? pressFeedback.opacity : 1,
     style: { transform: [{ scale }] },
     onPressIn: () => {
       setPressed(true);
