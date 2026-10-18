@@ -1183,7 +1183,7 @@
     "downloadAllDetail": "ZIP · JSON + CSV + photos",
     "workoutsOnlyDetail": "CSV · opens in any spreadsheet",
     "blurDetail": "Safe to open the app in public",
-    "lockDetail": "Face ID or passcode to view",
+    "lockDetail": "Fingerprint, face or the phone code to view",
     "importDetail": "ZIP from Export · nothing is deleted",
     "deleteNote": "Removes all your data and photos from this phone and from our server right away. Copies in backups disappear when the backups expire. This can't be undone.",
     "aiConsent": "AI coach consent",
