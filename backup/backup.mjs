@@ -1,7 +1,7 @@
 // Nightly backup (Railway cron service `backup`, DECISIONS 60): the database and the user photos,
 // encrypted, into the Railway bucket `backups` in the EU (Amsterdam).
 //   db/<time>.sql.gz.enc          the whole database (pg_dump of public, auth, storage), gzip, AES-256-GCM
-//   photos/<bucket>/<path>.enc    each user photo, AES-256-GCM, copied once (photos never change)
+//   photos/<bucket>/<path>.enc    each user photo (and sealed copy in vault-files), AES-256-GCM, copied once
 //   deletions/latest.json.enc     the deletion log (ids of deleted accounts, DECISIONS 80)
 // Kept: every daily dump for 30 days, the first dump of each month for 6 months (retention.mjs);
 // photo copies whose original is gone are removed 30 days later. A failure is reported to the
@@ -101,12 +101,7 @@ async function backupDatabase(stamp) {
   // own schemas (restore drill 2026-10-18). Restore into the same supabase/postgres image.
   const dump = spawn(
     'pg_dump',
-    [
-      '--schema=public',
-      '--schema=auth',
-      '--schema=storage',
-      env('DATABASE_URL'),
-    ],
+    ['--schema=public', '--schema=auth', '--schema=storage', env('DATABASE_URL')],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
   let stderr = '';
@@ -151,7 +146,9 @@ async function backupDeletions(db) {
 }
 
 // ---------------------------------------------------------------- photos
-const PHOTO_BUCKETS = ['progress-photos', 'user-exercise-images'];
+// vault-files: the end-to-end encrypted copies (DECISIONS 64), sealed by the phones and encrypted
+// once more here; without them a restore would lose the photos of encrypted accounts (DECISIONS 98).
+const PHOTO_BUCKETS = ['progress-photos', 'user-exercise-images', 'vault-files'];
 const storage = (path, init = {}) =>
   fetch(`${env('SUPABASE_URL').replace(/\/$/, '')}/storage/v1/${path}`, {
     ...init,

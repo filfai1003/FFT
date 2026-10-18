@@ -176,7 +176,8 @@ the repository; nothing here changes Railway by itself):
 ## Backups (service `backup`, nightly)
 - A Railway cron service (`backup/`, Dockerfile `backup/Dockerfile`, schedule `0 3 * * *` UTC) dumps
   the database (`pg_dump` of public, auth and storage) and copies the user photos
-  (`progress-photos`, `user-exercise-images`) into the Railway bucket `backups` (region ams, EU).
+  (`progress-photos`, `user-exercise-images`) and the end-to-end encrypted copies (`vault-files`, still
+  sealed by the phones, DECISIONS 98) into the Railway bucket `backups` (region ams, EU).
   Everything is encrypted with AES-256-GCM using the service variable `BACKUP_KEY` (64 hex
   characters). **Keep a copy of `BACKUP_KEY` somewhere safe outside Railway: without it the backups
   cannot be read.**
@@ -231,7 +232,8 @@ the repository; nothing here changes Railway by itself):
      (deletes those accounts with everything they own, and their files in the three buckets).
   6. Delete the decrypted files (dump.sql, data.sql, deletions.json, photos) from your computer.
   7. Not in the backups (put back by hand): the files of the public buckets `exercise-images`
-     (`npm run db:images`) and `downloads` (run the `Publish APK` workflow), and the end-to-end
-     encrypted files of `vault-files` (the phones still have the data and send it again).
+     (`npm run db:images`) and `downloads` (run the `Publish APK` workflow). The sealed files of
+     `vault-files` are in the backups since 2026-10-18 (step 4, like the photos; still sealed by
+     the phones, so only their owners can open them).
 - Deleted data (DECISIONS 79): the api service deletes for good, every day, rows deleted more than
   7 days ago (`purge_deleted`) and their files, and tombstones after 90 days.
