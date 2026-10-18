@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { IconButton } from '@/components/ui/IconButton';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
@@ -57,19 +56,24 @@ export function ProgressScreen() {
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
-      <View
-        style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-      >
-        <View style={{ gap: 4 }}>
-          <Text variant="label" muted>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="bodyS" muted>
             {t('progress.since', {
               date: shortDateLabel(strength.from).split(' ').slice(1).join(' '),
             })}
           </Text>
-          <Text variant="screenTitle">{t('nav.progress')}</Text>
+          <Text variant="screenTitle" accessibilityRole="header">
+            {t('nav.progress')}
+          </Text>
         </View>
-        <IconButton
+        {/* Canvas "Progress": a dark "Check-in" pill (the accent stays for the main actions). */}
+        <Button
+          variant="dark"
+          size="small"
+          block={false}
           icon="plus"
+          label={t('checkIn.title')}
           accessibilityLabel={t('progress.newCheckIn')}
           onPress={() => router.push('/check-in')}
         />
@@ -96,7 +100,7 @@ export function ProgressScreen() {
                 numeric
                 style={{ color: strength.overall >= 0 ? colors.successText : colors.warningText }}
               >{`${signed(strength.overall)}%`}</Text>
-              <Text variant="label" muted style={{ flex: 1 }}>
+              <Text variant="bodyS" muted style={{ flex: 1 }}>
                 {t('progress.avgChange')}
               </Text>
             </View>
@@ -127,14 +131,14 @@ export function ProgressScreen() {
         <CardHead label={t('progress.bodyTitle')} />
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <View style={{ flex: 1, gap: 8 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('progress.tabWeight')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <Text variant="displayM" numeric>
                 {weightValue ?? '—'}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {unit}
               </Text>
             </View>
@@ -149,7 +153,7 @@ export function ProgressScreen() {
               />
             ) : null}
             {weightDelta != null ? (
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {`${signed(weightDelta)} ${unit}`}
               </Text>
             ) : null}
@@ -162,14 +166,14 @@ export function ProgressScreen() {
             }}
           />
           <View style={{ flex: 1, gap: 8 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('progress.tabFat')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <Text variant="displayM" numeric>
                 {body.bodyFat.latestPct ?? '—'}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {'%'}
               </Text>
             </View>
@@ -184,7 +188,7 @@ export function ProgressScreen() {
               />
             ) : null}
             {body.bodyFat.deltaPts != null ? (
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('progress.pts', { delta: signed(body.bodyFat.deltaPts) })}
               </Text>
             ) : null}
@@ -226,7 +230,7 @@ export function ProgressScreen() {
         disabled={photoDays < 2}
         onPress={() => router.push('/progress/photos/compare')}
       />
-      <Text variant="label" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
+      <Text variant="bodyS" muted style={{ color: colors.textMuted, textAlign: 'center' }}>
         {t('progress.today', { date: shortDateLabel(today) })}
       </Text>
     </Screen>
@@ -238,7 +242,7 @@ function CardHead({ label }: { label: string }) {
   const { colors } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Text variant="label" muted style={{ flex: 1 }}>
+      <Text variant="bodyS" muted style={{ flex: 1 }}>
         {label}
       </Text>
       <Icon name="chevronRight" size={16} color={colors.textMuted} />

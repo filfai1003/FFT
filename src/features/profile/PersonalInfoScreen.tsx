@@ -143,7 +143,7 @@ export function PersonalInfoScreen() {
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1.6, gap: 6 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('onboarding.body.birthDate')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -287,13 +287,13 @@ export function PersonalInfoScreen() {
             <Text variant="displayM" numeric style={{ opacity: 0.5 }}>
               {suggestion.current}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {'→'}
             </Text>
             <Text variant="displayM" numeric>
               {suggestion.suggested}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('common.kcal')}
             </Text>
           </View>

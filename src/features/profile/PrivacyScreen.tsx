@@ -135,7 +135,7 @@ export function PrivacyScreen() {
       >
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodyS">{r.name}</Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {r.detail}
           </Text>
         </View>
@@ -146,13 +146,13 @@ export function PrivacyScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
-        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
         <Text variant="screenTitle" style={{ fontSize: 28 }}>
           {t('privacy.title')}
         </Text>
 
         <Card size="small" gap={0}>
-          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
             {t('privacy.yourData')}
           </Text>
           <View
@@ -166,7 +166,7 @@ export function PrivacyScreen() {
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyS">{t('privacy.downloadAll')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('privacy.downloadAllDetail')}
               </Text>
             </View>
@@ -191,7 +191,7 @@ export function PrivacyScreen() {
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyS">{t('privacy.workoutsOnly')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('privacy.workoutsOnlyDetail')}
               </Text>
             </View>
@@ -216,7 +216,7 @@ export function PrivacyScreen() {
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyS">{t('privacy.importTitle')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('privacy.importDetail')}
               </Text>
             </View>
@@ -229,7 +229,7 @@ export function PrivacyScreen() {
             />
           </View>
           {busy ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('privacy.preparing')}
             </Text>
           ) : null}
@@ -247,7 +247,7 @@ export function PrivacyScreen() {
         {userId ? <SyncCard userId={userId} /> : null}
 
         <Card size="small" gap={0}>
-          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
             {t('privacy.photos')}
           </Text>
           {rows([
@@ -278,7 +278,7 @@ export function PrivacyScreen() {
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyS">{t('privacy.consent')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {health ? t('privacy.givenOn', { date: grantedOn }) : t('privacy.notGiven')}
               </Text>
             </View>
@@ -304,7 +304,7 @@ export function PrivacyScreen() {
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyS">{t('privacy.aiConsent')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {aiConsent
                   ? t('privacy.givenOn', { date: dateOf(aiConsent.grantedAt) })
                   : t('privacy.notGiven')}
@@ -328,7 +328,7 @@ export function PrivacyScreen() {
         </Card>
 
         <Card size="small" gap={0}>
-          <Text variant="label" muted style={{ paddingBottom: 4 }}>
+          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
             {t('legal.title')}
           </Text>
           {(['privacy', 'terms', 'deleteAccount'] as const).map((page, i) => (
@@ -436,19 +436,19 @@ export function PrivacyScreen() {
         {canKeep ? (
           <View style={{ gap: 6 }}>
             <Text variant="bodyS">{t('privacy.deleteAllTitle')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('privacy.deleteAllDetail')}
             </Text>
             <Text variant="bodyS" style={{ paddingTop: 6 }}>
               {t('privacy.deleteKeep')}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('privacy.deleteKeepDetail')}
             </Text>
           </View>
         ) : null}
         {deleting ? (
-          <Text variant="label" muted accessibilityRole="alert">
+          <Text variant="bodyS" muted accessibilityRole="alert">
             {t('privacy.deleting')}
           </Text>
         ) : null}

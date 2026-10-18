@@ -43,7 +43,7 @@ export function ChangePasswordScreen() {
     setBusy(false);
     if (result === null) {
       showToast({ message: t('password.done') });
-      goBack(router, '/profile');
+      goBack(router, '/profile/settings');
     } else if (result === 'wrongCurrent') setError(t('password.wrongCurrent'));
     else setError(t('password.failed'));
   };
@@ -51,7 +51,7 @@ export function ChangePasswordScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('password.title')}</Text>
         <Card gap={12}>
           <Input

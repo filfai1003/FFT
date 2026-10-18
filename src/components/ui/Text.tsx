@@ -7,6 +7,8 @@ export type TextProps = RNTextProps & {
   /** Number text: uses plain digits when "Dot-matrix numbers" is off. */
   numeric?: boolean;
   medium?: boolean;
+  /** 600 weight in body sizes (small headings: "Units", "Calories"). */
+  semibold?: boolean;
   muted?: boolean;
   /** Overrides the colour with the accent. Use sparingly: never for body text. */
   accent?: boolean;
@@ -18,6 +20,7 @@ export function Text({
   variant = 'body',
   numeric,
   medium,
+  semibold,
   muted,
   accent,
   danger,
@@ -32,6 +35,7 @@ export function Text({
     dotNumbers: theme.dotNumbers,
     numeric,
     medium,
+    semibold,
   });
   const color = danger
     ? theme.colors.danger

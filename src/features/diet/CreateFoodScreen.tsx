@@ -248,7 +248,7 @@ function FoodForm({ initial }: { initial?: Food }) {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('createFood.nutrition')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -267,7 +267,7 @@ function FoodForm({ initial }: { initial?: Food }) {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('createFood.portions')}
           </Text>
           {portions.map((p, i) => (

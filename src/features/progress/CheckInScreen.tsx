@@ -105,7 +105,7 @@ export function CheckInScreen() {
         backgroundColor: colors.surface,
       }}
     >
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {label}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
@@ -125,11 +125,11 @@ export function CheckInScreen() {
             fontSize: 32,
           }}
         />
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {unitLabel}
         </Text>
       </View>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {hint}
       </Text>
     </View>
@@ -146,7 +146,7 @@ export function CheckInScreen() {
           <Text variant="screenTitle" style={{ fontSize: 36 }} accessibilityRole="header">
             {shortDateLabel(today)}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('checkIn.optional')}
           </Text>
         </View>
@@ -168,7 +168,7 @@ export function CheckInScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('checkIn.measurements')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -188,7 +188,7 @@ export function CheckInScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('checkIn.photos')}
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>

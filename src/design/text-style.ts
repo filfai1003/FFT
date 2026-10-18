@@ -22,6 +22,8 @@ export type TextStyleOptions = {
   /** True when the text is a number: tabular digits. */
   numeric?: boolean;
   medium?: boolean;
+  /** 600 weight for small headings ("Units", "Calories") in body sizes. */
+  semibold?: boolean;
 };
 
 export function resolveTextStyle(o: TextStyleOptions): TextStyle {
@@ -38,7 +40,9 @@ export function resolveTextStyle(o: TextStyleOptions): TextStyle {
     style.fontFamily = o.boldText ? fontFamily.labelBold : fontFamily.label;
   } else {
     const heavy = o.medium ?? o.variant === 'titleM';
-    if (o.boldText) {
+    if (o.semibold) {
+      style.fontFamily = o.boldText ? fontFamily.bodyBold : fontFamily.bodySemiBold;
+    } else if (o.boldText) {
       style.fontFamily = heavy ? fontFamily.bodyBold : fontFamily.bodySemiBold;
     } else if (o.variant === 'titleM') {
       style.fontFamily = fontFamily.bodySemiBold;

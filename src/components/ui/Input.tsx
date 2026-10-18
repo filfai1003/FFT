@@ -84,7 +84,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   return (
     <View style={{ gap: 6 }}>
       {label ? (
-        <Text variant="label" muted nativeID={id}>
+        <Text variant="bodyS" semibold muted nativeID={id}>
           {label}
         </Text>
       ) : null}

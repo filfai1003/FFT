@@ -1,321 +1,316 @@
-import Constants from 'expo-constants';
-import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Gauge } from '@/components/ui/Gauge';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconButton } from '@/components/ui/IconButton';
+import { MenuList } from '@/components/ui/MenuList';
 import { Screen } from '@/components/ui/Screen';
-import { goBack } from '@/lib/navigation';
-import { TopBar } from '@/components/ui/TopBar';
-import { Sheet } from '@/components/ui/Sheet';
-import { useToday } from '@/features/profile/use-today';
 import { Text } from '@/components/ui/Text';
-import { fontFamily } from '@/design/tokens';
+import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
-import { ageInYears } from '@/domain/nutrition';
+import { deviceTimeZone, localDay } from '@/domain/day';
+import { formatInt } from '@/domain/numbers';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
-import { AppUpdateCard } from '@/features/settings/AppUpdateCard';
+import { useGoalForDay } from '@/features/diet/log';
+import { useStrength } from '@/features/progress/strength';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
-import { getMode } from '@/lib/mode';
-import { usePlanStore } from '@/lib/plan';
-import { logOut, logOutAnyway } from './account';
+import { useMonthSessions } from '@/features/train/history';
+import { tick } from '@/lib/haptics';
+import { goBack } from '@/lib/navigation';
 import { useLatestWeight, useProfile } from './api';
+import { useProfileStats } from './stats';
+import { useToday } from './use-today';
 
-/** Profile: who you are, your plan, and the settings sections. */
-export function ProfileScreen() {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const profile = useProfile();
-  const plan = usePlanStore((s) => s.plan ?? 'free');
-  const weight = useLatestWeight();
-  const today = useToday();
-  const prefs = usePreferencesStore();
-  const [help, setHelp] = useState(false);
-  const [unsynced, setUnsynced] = useState(false);
-
-  const p = profile.data;
-  const name = p?.name?.trim() || t('profile.you');
-  const initials = name
+/** "Filippo Rossi" -> "FR"; empty when there is no name. */
+export function initialsOf(name: string | null | undefined): string {
+  return (name ?? '')
+    .trim()
     .split(/\s+/)
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('');
-  const age = p?.birth_date ? ageInYears(new Date(p.birth_date), new Date(today)) : null;
+}
+
+const GOALS = ['lose_fat', 'maintain', 'build_muscle'] as const;
+
+/**
+ * Your own page (the avatar on Home), after the canvas "Your profile": who you are and a few of
+ * your numbers, all computed on the device; Settings sit behind the gear. Levels, badges, records
+ * and friends (canvas "Progress · Me" / community) are planned, not built: they will go under
+ * "This month", where the canvas has them.
+ */
+export function ProfileScreen() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const router = useRouter();
+  const today = useToday();
+  const profile = useProfile();
+  const weight = useLatestWeight();
+  const prefs = usePreferencesStore();
+  const stats = useProfileStats();
+  const strength = useStrength('4w');
+  const goal = useGoalForDay(today);
+  const month = useMonthSessions(today.slice(0, 7));
+
+  const p = profile.data;
+  const name = p?.name?.trim() || t('profile.you');
+  const initials = initialsOf(p?.name) || name.slice(0, 1).toUpperCase();
+  const tz = p?.timezone ?? deviceTimeZone();
+  const goalKey = GOALS.find((g) => g === p?.goal);
+
   const height =
     p?.height_cm == null
       ? null
       : prefs.lengthUnit === 'cm'
-        ? `${Math.round(Number(p.height_cm))} CM`
+        ? t('profile.cm', { cm: Math.round(Number(p.height_cm)) })
         : (() => {
             const f = cmToFeetInches(Number(p.height_cm));
             return `${f.feet}′${f.inches}″`;
           })();
-  const line = [
-    age != null ? `${age} Y` : null,
-    height,
-    weight.data
-      ? `${displayWeight(weight.data.weightKg, prefs.weightUnit)} ${prefs.weightUnit}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
   const since = p?.created_at
-    ? new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(
+    ? new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(
         new Date(p.created_at),
       )
     : '';
+  const subtitle = [
+    goalKey ? t(`profile.goal.${goalKey}`) : null,
+    since ? t('profile.memberSince', { date: since }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  // Only on this page, never shared: body numbers and the calorie goal.
+  const privateLine = [
+    weight.data
+      ? `${displayWeight(weight.data.weightKg, prefs.weightUnit)} ${prefs.weightUnit}`
+      : null,
+    height,
+    goal ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) }) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const offline = getMode() === 'offline';
-  // Most used first: you and your units, then how the app talks to you and looks, the coach and
-  // the plan; privacy and help at the end, on their own.
-  const themeName = t(
-    prefs.theme === 'dark'
-      ? 'settings.themeDark'
-      : prefs.theme === 'system'
-        ? 'settings.themeSystem'
-        : 'settings.themeLight',
+  const monthName = new Intl.DateTimeFormat('en', { month: 'long', timeZone: 'UTC' }).format(
+    new Date(`${today}T12:00:00Z`),
   );
-  const groups: { icon: IconName; name: string; value?: string; onPress: () => void }[][] = [
-    [
-      {
-        icon: 'user',
-        name: t('profile.menu.profile'),
-        onPress: () => router.push('/profile-edit'),
-      },
-      {
-        icon: 'scale',
-        name: t('profile.menu.units'),
-        value: `${prefs.weightUnit} · ${prefs.lengthUnit === 'cm' ? 'cm' : 'ft·in'}`,
-        onPress: () => router.push('/profile/units'),
-      },
-      {
-        icon: 'bell',
-        name: t('profile.menu.notifications'),
-        onPress: () => router.push('/profile/notifications'),
-      },
-      {
-        icon: 'palette',
-        name: t('profile.menu.look'),
-        value: themeName,
-        onPress: () => router.push('/profile/look'),
-      },
-      {
-        icon: 'eye',
-        name: t('profile.menu.accessibility'),
-        onPress: () => router.push('/profile/accessibility'),
-      },
-    ],
-    [
-      { icon: 'sparkle', name: t('profile.menu.ai'), onPress: () => router.push('/profile/ai') },
-      ...(offline
-        ? []
-        : [
-            {
-              icon: 'trophy' as IconName,
-              name: t('profile.menu.premium'),
-              onPress: () => router.push('/profile/premium'),
-            },
-            {
-              icon: 'code' as IconName,
-              name: t('profile.menu.api'),
-              onPress: () => router.push('/profile/api'),
-            },
-          ]),
-    ],
-    [
-      ...(offline
-        ? []
-        : [
-            {
-              icon: 'lock' as IconName,
-              name: t('profile.menu.password'),
-              onPress: () => router.push('/profile/password'),
-            },
-          ]),
-      {
-        icon: 'shield',
-        name: t('profile.menu.privacy'),
-        onPress: () => router.push('/profile/privacy'),
-      },
-      { icon: 'info', name: t('profile.menu.help'), onPress: () => setHelp(true) },
-    ],
+  const monthSessions = (month.data ?? []).filter((s) =>
+    localDay(new Date(s.startedAt), tz).startsWith(today.slice(0, 7)),
+  );
+  const trainingDays = new Set(monthSessions.map((s) => localDay(new Date(s.startedAt), tz))).size;
+  const daysSoFar = stats.data?.daysSoFar ?? Number(today.slice(8, 10));
+  const score = strength.overall;
+  const none = t('profile.stats.none');
+
+  const pills: {
+    key: string;
+    icon: IconName;
+    value: string;
+    label: string;
+    onPress: () => void;
+  }[] = [
+    {
+      key: 'streak',
+      icon: 'flame',
+      value: stats.data ? formatInt(stats.data.streak) : none,
+      label: t('profile.stats.dayStreak'),
+      onPress: () => router.push('/calendar'),
+    },
+    {
+      key: 'workouts',
+      icon: 'dumbbell',
+      value: month.data ? formatInt(monthSessions.length) : none,
+      label: t('profile.stats.workouts', { month: monthName }),
+      onPress: () => router.push('/train/history'),
+    },
+    {
+      key: 'strength',
+      icon: 'chart',
+      value: score == null ? none : `${score > 0 ? '+' : ''}${score}%`,
+      label: t('profile.stats.strength'),
+      onPress: () => router.push('/progress/strength'),
+    },
   ];
 
-  const doLogOut = async () => {
-    const result = await logOut(queryClient);
-    if (!result.ok) setUnsynced(true);
-  };
+  const rings: {
+    key: string;
+    icon: IconName;
+    value: string;
+    label: string;
+    share: number;
+    a11y: string;
+  }[] = [
+    {
+      key: 'logged',
+      icon: 'calendar',
+      value: stats.data
+        ? t('profile.stats.ofDays', { n: stats.data.loggedThisMonth, total: daysSoFar })
+        : none,
+      label: t('profile.stats.daysLogged'),
+      share: stats.data ? stats.data.loggedThisMonth / Math.max(1, daysSoFar) : 0,
+      a11y: t('profile.stats.daysLoggedA11y', {
+        n: stats.data?.loggedThisMonth ?? 0,
+        total: daysSoFar,
+      }),
+    },
+    {
+      key: 'trained',
+      icon: 'dumbbell',
+      value: month.data ? t('profile.stats.ofDays', { n: trainingDays, total: daysSoFar }) : none,
+      label: t('profile.stats.trainingDays'),
+      share: trainingDays / Math.max(1, daysSoFar),
+      a11y: t('profile.stats.trainingDaysA11y', { n: trainingDays, total: daysSoFar }),
+    },
+  ];
 
   return (
-    <>
-      <Screen scroll bottomBarHeight={24} gap={14}>
-        <TopBar onBack={() => goBack(router, '/')} backLabel={t('common.close')} backIcon="close" />
-        <View style={{ gap: 4 }}>
-          <Text variant="label" muted>
-            {t('profile.memberSince', { date: since })}
-          </Text>
-          <Text variant="screenTitle">{t('nav.profile')}</Text>
-        </View>
+    <Screen scroll bottomBarHeight={24} gap={12}>
+      <TopBar
+        onBack={() => goBack(router, '/')}
+        backLabel={t('common.close')}
+        backIcon="close"
+        right={
+          <IconButton
+            icon="settings"
+            look="outline"
+            accessibilityLabel={t('profile.settings')}
+            onPress={() => router.push('/profile/settings')}
+          />
+        }
+      />
 
+      <View style={{ alignItems: 'center', gap: 6 }}>
+        <View
+          aria-hidden
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: colors.borderDecorative,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text variant="displayM">{initials}</Text>
+        </View>
+        <Text
+          variant="screenTitle"
+          accessibilityRole="header"
+          numberOfLines={2}
+          style={{ textAlign: 'center', marginTop: 4 }}
+        >
+          {name}
+        </Text>
+        {subtitle ? (
+          <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {pills.map((s) => (
+          <Card
+            key={s.key}
+            size="small"
+            gap={2}
+            onPress={() => {
+              tick();
+              s.onPress();
+            }}
+            accessibilityLabel={`${s.value} ${s.label}`}
+            style={{ flex: 1, flexBasis: 0, paddingVertical: 10, paddingHorizontal: 12 }}
+          >
+            <Icon name={s.icon} size={18} color={colors.text} />
+            <Text variant="displayS" numeric numberOfLines={1}>
+              {s.value}
+            </Text>
+            <Text variant="bodyS" muted numberOfLines={2}>
+              {s.label}
+            </Text>
+          </Card>
+        ))}
+      </View>
+
+      <Text
+        variant="titleM"
+        accessibilityRole="header"
+        style={{ paddingTop: 6, paddingHorizontal: 2 }}
+      >
+        {t('profile.stats.thisMonth')}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {rings.map((r) => (
+          <Card
+            key={r.key}
+            gap={10}
+            style={{
+              flex: 1,
+              flexBasis: 0,
+              padding: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Gauge value={r.share} size={48} stroke={5} accessibilityLabel={r.a11y}>
+              <Icon name={r.icon} size={20} color={colors.text} />
+            </Gauge>
+            <View style={{ flex: 1, minWidth: 0 }} aria-hidden>
+              <Text variant="displayS" numeric numberOfLines={1}>
+                {r.value}
+              </Text>
+              <Text variant="bodyS" muted>
+                {r.label}
+              </Text>
+            </View>
+          </Card>
+        ))}
+      </View>
+
+      <MenuList
+        items={[
+          {
+            icon: 'chart',
+            label: t('profile.links.progress'),
+            onPress: () => router.push('/progress'),
+          },
+          {
+            icon: 'clock',
+            label: t('profile.links.history'),
+            onPress: () => router.push('/train/history'),
+          },
+          {
+            icon: 'flame',
+            label: t('profile.links.goals'),
+            value: goal ? t('profile.goalKcal', { kcal: formatInt(goal.kcal) }) : undefined,
+            onPress: () => router.push('/diet-goals'),
+          },
+        ]}
+      />
+
+      {privateLine ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${name}. ${t('profile.personalInfo')}`}
-          onPress={() => router.push('/profile-edit')}
+          accessibilityLabel={`${t('profile.privateLine', { line: privateLine })}. ${t('profile.links.personal')}`}
+          onPress={() => {
+            tick();
+            router.push('/profile-edit');
+          }}
           style={({ pressed }) => ({
+            minHeight: 44,
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 14,
-            padding: 14,
-            paddingLeft: 16,
-            borderRadius: 22,
-            borderWidth: 1,
-            borderColor: colors.borderDecorative,
-            backgroundColor: colors.surface,
-            opacity: pressed ? 0.8 : 1,
+            gap: 10,
+            paddingHorizontal: 2,
+            opacity: pressed ? 0.7 : 1,
           })}
         >
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: colors.dotOff,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text
-              style={{ fontFamily: fontFamily.bodySemiBold, fontSize: 20 }}
-              accessibilityElementsHidden
-            >
-              {initials}
-            </Text>
-          </View>
-          <View style={{ flex: 1, gap: 3 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text variant="bodyL" medium numberOfLines={1} style={{ flexShrink: 1 }}>
-                {name}
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: 7,
-                  paddingVertical: 2,
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: colors.borderControl,
-                }}
-              >
-                <Text variant="label">{t(`profile.${plan}`)}</Text>
-              </View>
-            </View>
-            <Text variant="label" muted>
-              {line}
-            </Text>
-          </View>
-        </Pressable>
-
-        {offline ? (
-          <Card gap={10}>
-            <Text variant="titleM">{t('link.cardTitle')}</Text>
-            <Button
-              label={t('link.cardButton')}
-              onPress={() => router.push('/profile/link-account')}
-            />
-          </Card>
-        ) : null}
-
-        {groups.map((rows, i) => (
-          <View
-            key={i}
-            style={{
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: colors.borderDecorative,
-              backgroundColor: colors.surface,
-              paddingLeft: 16,
-              paddingRight: 14,
-            }}
-          >
-            {rows.map((r, j) => (
-              <Pressable
-                key={r.name}
-                accessibilityRole="button"
-                accessibilityLabel={r.value ? `${r.name}, ${r.value}` : r.name}
-                onPress={r.onPress}
-                style={({ pressed }) => ({
-                  minHeight: 52,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderTopWidth: j === 0 ? 0 : 1,
-                  borderColor: colors.divider,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Icon name={r.icon} size={20} color={colors.text} />
-                <Text style={{ flex: 1 }}>{r.name}</Text>
-                {r.value ? (
-                  <Text variant="bodyS" muted>
-                    {r.value}
-                  </Text>
-                ) : null}
-                <Icon name="chevronRight" size={18} color={colors.textMuted} />
-              </Pressable>
-            ))}
-          </View>
-        ))}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={offline ? t('profile.leaveOffline') : t('profile.logOut')}
-          onPress={doLogOut}
-          style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Text variant="label" muted>
-            {offline ? t('profile.leaveOffline') : t('profile.logOut')}
+          <Icon name="lock" size={16} color={colors.textMuted} />
+          <Text variant="bodyS" muted style={{ flex: 1 }}>
+            {t('profile.privateLine', { line: privateLine })}
           </Text>
         </Pressable>
-      </Screen>
-
-      <Sheet
-        visible={help}
-        onClose={() => setHelp(false)}
-        title={t('profile.help')}
-        closeLabel={t('common.close')}
-      >
-        <Text muted>{t('profile.helpBody')}</Text>
-        <Text variant="label" muted>
-          {t('profile.version', { version: Constants.expoConfig?.version ?? '1.0.0' })}
-        </Text>
-        <AppUpdateCard />
-      </Sheet>
-
-      <Sheet
-        visible={unsynced}
-        onClose={() => setUnsynced(false)}
-        title={t('profile.unsyncedTitle')}
-        closeLabel={t('common.close')}
-        footer={
-          <View style={{ gap: 8 }}>
-            <Button size="large" label={t('profile.stay')} onPress={() => setUnsynced(false)} />
-            <Button
-              variant="danger"
-              label={t('profile.logOutAnyway')}
-              onPress={async () => {
-                await logOutAnyway(queryClient);
-                setUnsynced(false);
-              }}
-            />
-          </View>
-        }
-      >
-        <Text muted>{t('profile.unsyncedBody')}</Text>
-      </Sheet>
-    </>
+      ) : null}
+    </Screen>
   );
 }

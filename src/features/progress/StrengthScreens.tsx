@@ -40,7 +40,7 @@ export function StrengthScreen() {
         onBack={() => goBack(router, '/progress')}
         backLabel={t('common.back')}
         right={
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t(`progress.periodLong.${period}`)}
           </Text>
         }
@@ -68,7 +68,7 @@ export function StrengthScreen() {
               }}
             >
               <Text variant="displayL" numeric>{`${signed(s.overall)}%`}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('progress.overall')}
               </Text>
             </View>
@@ -157,7 +157,7 @@ function GroupRow(props: {
     >
       <View style={{ width: 92, gap: 2 }}>
         <Text variant="body">{props.name}</Text>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('progress.setsCount', { count: props.sets })}
         </Text>
       </View>
@@ -208,13 +208,13 @@ export function MuscleGroupScreen() {
         onBack={() => goBack(router, '/progress/strength')}
         backLabel={t('common.back')}
         right={
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t(`progress.periodLong.${period}`)}
           </Text>
         }
       />
       <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('progress.muscleGroup')}
         </Text>
         <Text variant="screenTitle" accessibilityRole="header">
@@ -227,7 +227,7 @@ export function MuscleGroupScreen() {
           <>
             <View style={{ gap: 4 }}>
               <Text variant="displayL" numeric>{`${signed(d.score)}%`}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('progress.avgChange')}
               </Text>
             </View>
@@ -259,7 +259,7 @@ export function MuscleGroupScreen() {
               <Text variant="displayS" numeric>
                 {x.value}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {x.label}
               </Text>
             </View>

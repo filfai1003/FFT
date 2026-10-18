@@ -81,7 +81,7 @@ export function CalendarScreen() {
           />
           <View style={{ alignItems: 'center', gap: 2 }}>
             <Text variant="label">{title}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('calendar.summary', { workouts: trainedCount, diet: onTargetCount })}
             </Text>
           </View>

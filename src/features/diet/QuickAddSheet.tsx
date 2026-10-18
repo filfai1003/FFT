@@ -69,7 +69,7 @@ function Body({ food, meal, day, onClose }: Props & { food: Food }) {
       <View
         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}
       >
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('diet.macroLine', {
             p: Math.round(values.protein),
             c: Math.round(values.carbs),
@@ -80,7 +80,7 @@ function Body({ food, meal, day, onClose }: Props & { food: Food }) {
           <Text variant="displayM" numeric>
             {Math.round(values.kcal)}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('common.kcal')}
           </Text>
         </View>

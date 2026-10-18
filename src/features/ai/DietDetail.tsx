@@ -8,7 +8,7 @@ export function DietDetail({ diet }: { diet: ImportedDiet }) {
   const { t } = useTranslation();
   return (
     <View style={{ gap: 6 }}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {diet.mode === 'tracking' ? t('ai.modeTracking') : t('ai.modeFixed')}
       </Text>
       <Text variant="body">
@@ -20,7 +20,7 @@ export function DietDetail({ diet }: { diet: ImportedDiet }) {
             {m.isMain ? `${m.name} · ${t('fixed.mainBadge')}` : m.name}
             {diet.workoutAfter === m.name ? ` · ${t('ai.workoutAfter')}` : ''}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('diet.mealLine', {
               kcal: m.kcal,
               p: Math.round(m.proteinG),
@@ -29,7 +29,7 @@ export function DietDetail({ diet }: { diet: ImportedDiet }) {
             })}
           </Text>
           {m.description ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {m.description}
             </Text>
           ) : null}

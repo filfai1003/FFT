@@ -52,7 +52,7 @@ export function LinkAccountScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={14}>
-        <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+        <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
         <Text variant="screenTitle">{t('link.title')}</Text>
         <Card gap={12}>
           <Input

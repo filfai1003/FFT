@@ -40,7 +40,7 @@ export function ApiScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const goBack = useBack('/profile');
+  const goBack = useBack('/profile/settings');
   const barHeight = useActionBarHeight();
   const showToast = useToastStore((s) => s.show);
   // Every account (DECISIONS 47); the account-less mode has no server account to connect.
@@ -95,7 +95,7 @@ export function ApiScreen() {
   const address = (label: string, value: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 }}>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {label}
         </Text>
         <Text variant="bodyS" selectable>
@@ -133,7 +133,7 @@ export function ApiScreen() {
             {synced ? (
               <>
                 <Card gap={10}>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {t('api.connectTitle')}
                   </Text>
                   <ConnectAiButtons />
@@ -149,7 +149,7 @@ export function ApiScreen() {
 
             {tokens.data?.length ? (
               <Card size="small" gap={0}>
-                <Text variant="label" muted style={{ paddingBottom: 4 }}>
+                <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
                   {t('api.tokens')}
                 </Text>
                 {tokens.data.map((tok, i) => (
@@ -166,7 +166,7 @@ export function ApiScreen() {
                   >
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text variant="bodyS">{tok.name}</Text>
-                      <Text variant="label" muted>
+                      <Text variant="bodyS" muted>
                         {`${tok.prefix}… · ${t(
                           tok.scope === 'read' ? 'api.scopeRead' : 'api.scopeWrite',
                         )} · ${
@@ -218,7 +218,7 @@ export function ApiScreen() {
           maxLength={60}
         />
         <View style={{ gap: 8 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('api.scopeTitle')}
           </Text>
           <Segmented

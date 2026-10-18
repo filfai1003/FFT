@@ -13,7 +13,7 @@ export function HowToCard({ exerciseId }: { exerciseId: string }) {
   if (!h) return null;
   return (
     <Card size="small" gap={10}>
-      <Text variant="label" muted accessibilityRole="header">
+      <Text variant="bodyS" muted accessibilityRole="header">
         {t('exerciseDetail.howTo')}
       </Text>
       {h.steps.map((step, i) => (
@@ -39,7 +39,7 @@ export function HowToCard({ exerciseId }: { exerciseId: string }) {
         </View>
       ))}
       <View style={{ gap: 6, paddingTop: 8, borderTopWidth: 1, borderColor: colors.divider }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('exerciseDetail.avoid')}
         </Text>
         {h.mistakes.map((m, i) => (

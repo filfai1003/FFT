@@ -168,7 +168,7 @@ export function MealPlanEditor({
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text>{t('fixed.mainMeal')}</Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('fixed.mainMealDetail')}
               </Text>
             </View>
@@ -215,12 +215,12 @@ export function MealPlanEditor({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text variant="body">{m.name}</Text>
           {m.isMain ? (
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('fixed.mainBadge')}
             </Text>
           ) : null}
         </View>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('diet.mealLine', {
             kcal: m.kcal,
             p: Math.round(m.proteinG),
@@ -229,7 +229,7 @@ export function MealPlanEditor({
           })}
         </Text>
         {role ? (
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t(`fixed.${role}`)}
           </Text>
         ) : null}
@@ -276,7 +276,7 @@ export function MealPlanEditor({
           }}
         >
           <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {matches
                 ? t('fixed.matches')
                 : t('fixed.differs', { kcal: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` })}

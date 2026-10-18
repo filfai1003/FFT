@@ -83,7 +83,7 @@ export function FoodSearchScreen() {
             onPress={() => setMealSheet(true)}
             style={{ gap: 2, minHeight: touch.minTarget, justifyContent: 'center' }}
           >
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('diet.addToLabel')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -173,7 +173,7 @@ export function FoodSearchScreen() {
                     />
                   ) : null}
                 </View>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t('diet.per100', {
                     p: round(f.per100.protein),
                     c: round(f.per100.carbs),

@@ -185,7 +185,7 @@ function CodeSheet({ visible, onClose }: { visible: boolean; onClose: () => void
           <Text variant="titleM" numeric selectable style={{ textAlign: 'center' }}>
             {code.text}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('relay.codeWarning')}
           </Text>
         </View>
@@ -287,7 +287,7 @@ function DeviceRow({
         <Text variant="bodyS">
           {mine ? `${device.name} · ${t('relay.thisPhone')}` : device.name}
         </Text>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {device.last_seen_at
             ? t('relay.lastSeen', { date: new Date(device.last_seen_at).toLocaleDateString() })
             : t('relay.never')}
@@ -343,21 +343,21 @@ export function RelayCard() {
     <Card size="small" gap={8}>
       <Text variant="bodyS">{t('relay.title')}</Text>
       {choice === 'on' ? (
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('relay.serverCopyOn')}
         </Text>
       ) : web ? (
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('relay.webNote')}
         </Text>
       ) : (
         <>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('relay.intro')}
           </Text>
           {paired ? (
             <>
-              <Text variant="label" muted style={{ paddingTop: 4 }}>
+              <Text variant="bodyS" muted style={{ paddingTop: 4 }}>
                 {t('relay.devicesTitle')}
               </Text>
               {(devices.data ?? []).map((d, i) => (
@@ -374,7 +374,7 @@ export function RelayCard() {
                 label={t('relay.showCode')}
                 onPress={() => setSheet('code')}
               />
-              <Text variant="label" muted style={{ paddingTop: 4 }}>
+              <Text variant="bodyS" muted style={{ paddingTop: 4 }}>
                 {t('relay.categoriesTitle')}
               </Text>
               <SyncCategoryList

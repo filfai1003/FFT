@@ -59,7 +59,12 @@ export function Segmented<T extends string>({
               opacity: o.disabled ? 0.35 : 1,
             }}
           >
-            <Text variant="body" medium={selected} style={{ fontSize: 14, color: colors.text }}>
+            <Text
+              variant="body"
+              semibold={selected}
+              medium={!selected}
+              style={{ fontSize: 14, color: colors.text }}
+            >
               {o.label}
             </Text>
           </Pressable>

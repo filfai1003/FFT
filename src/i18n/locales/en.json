@@ -964,10 +964,52 @@
     "keepTarget": "Keep my current target",
     "leaveOffline": "Leave offline mode",
     "ai": "AI plans & import",
-    "premium": "Premium"
+    "premium": "Premium",
+    "settings": "Settings",
+    "goal": {
+      "lose_fat": "Lose fat",
+      "maintain": "Maintain",
+      "build_muscle": "Build muscle"
+    },
+    "kg": "{{kg}} kg",
+    "cm": "{{cm}} cm",
+    "stats": {
+      "label": "Your numbers",
+      "workouts": "Workouts in {{month}}",
+      "streak": "Logging streak",
+      "streakDays_one": "{{count}} day",
+      "streakDays_other": "{{count}} days",
+      "strength": "Strength, 4 wk",
+      "dayStreak": "Day streak",
+      "thisMonth": "This month",
+      "ofDays": "{{n}} of {{total}}",
+      "daysLogged": "Days logged",
+      "daysLoggedA11y": "{{n}} of {{total}} days this month with something logged",
+      "trainingDays": "Days trained",
+      "trainingDaysA11y": "Trained on {{n}} of {{total}} days this month",
+      "none": "–"
+    },
+    "links": {
+      "progress": "Progress",
+      "history": "Workout history",
+      "goals": "Goals and diet mode",
+      "personal": "Personal info"
+    },
+    "goalKcal": "{{kcal}} kcal",
+    "privateLine": "Only you see: {{line}}"
   },
   "settings": {
     "title": "Settings",
+    "preferences": "Units, look and reminders",
+    "reminders": "Reminders",
+    "group": {
+      "account": "Account",
+      "plans": "Plans",
+      "app": "App",
+      "data": "Data"
+    },
+    "premiumHelp": "The AI coach, without your own key",
+    "apiHelp": "Connect AI apps and your own tools",
     "units": "Units",
     "weight": "Weight",
     "length": "Length",

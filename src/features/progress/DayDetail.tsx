@@ -67,7 +67,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
   const section = (title: string, color: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {title}
       </Text>
     </View>
@@ -98,7 +98,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
                 >
                   <Text variant="body">{name}</Text>
                   {s.stats.sets > 0 ? (
-                    <Text variant="label" muted>
+                    <Text variant="bodyS" muted>
                       {t('calendar.workoutInfo', { sets: s.stats.sets })}
                     </Text>
                   ) : null}
@@ -142,7 +142,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
                   target: Math.round(target?.kcal ?? 0),
                 })}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {`${t('diet.mealLine', {
                   kcal: Math.round(eaten.kcal),
                   p: Math.round(eaten.protein),

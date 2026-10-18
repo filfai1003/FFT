@@ -11,6 +11,7 @@ import { OptionCard } from '@/components/ui/OptionCard';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
+import { useTheme } from '@/design/use-theme';
 import { MacroSplitCard } from '@/features/diet/MacroSplitCard';
 import { MealPlanEditor } from '@/features/diet/MealPlanEditor';
 import { LegalLinks } from '@/features/legal/LegalLinks';
@@ -20,20 +21,23 @@ type StepProps = { draft: OnboardingDraft; patch: (p: Partial<OnboardingDraft>) 
 
 export function GoalStep({ draft, patch }: StepProps) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
+  // Glyph and tint per goal, as in the canvas "Onboarding · goal".
   const goals = [
-    ['lose_fat', 'loseFat'],
-    ['maintain', 'maintain'],
-    ['build_muscle', 'buildMuscle'],
+    ['lose_fat', 'loseFat', 'arrowDown', colors.warningSoft, colors.warningText],
+    ['maintain', 'maintain', 'minus', colors.waterSoft, colors.macroSplit.protein],
+    ['build_muscle', 'buildMuscle', 'arrowUp', colors.successSoft, colors.successText],
   ] as const;
   return (
-    <View style={{ gap: 12 }} accessibilityRole="radiogroup">
-      {goals.map(([value, key]) => (
+    <View style={{ gap: 10 }} accessibilityRole="radiogroup">
+      {goals.map(([value, key, icon, tint, ink]) => (
         <OptionCard
           key={value}
           title={t(`onboarding.goal.${key}`)}
           description={t(`onboarding.goal.${key}Detail`)}
           selected={draft.goal === value}
           onPress={() => patch({ goal: value })}
+          icon={{ name: icon, tint, ink }}
         />
       ))}
     </View>
@@ -61,7 +65,7 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
         autoCapitalize="words"
       />
       <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" semibold muted>
           {t('onboarding.body.birthDate')}
         </Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -217,7 +221,7 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
   return (
     <View style={{ gap: 20 }}>
       <Card gap={14}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" semibold muted>
           {t('onboarding.target.daily')}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
@@ -228,7 +232,7 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           >
             {target.kcal}
           </Text>
-          <Text variant="label" muted>
+          <Text variant="bodyS" semibold muted>
             {t('common.kcal')}
           </Text>
         </View>
@@ -242,7 +246,7 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           decreaseLabel={t('onboarding.target.lower')}
           increaseLabel={t('onboarding.target.raise')}
         />
-        <Text variant="label" muted>
+        <Text variant="bodyS" semibold muted>
           {suggestion}
         </Text>
       </Card>
@@ -357,7 +361,7 @@ function ConsentRow(props: {
     >
       <View style={{ flex: 1, gap: 2 }}>
         <Text>{props.title}</Text>
-        <Text variant="label" muted>
+        <Text variant="bodyS" semibold muted>
           {props.detail}
         </Text>
       </View>

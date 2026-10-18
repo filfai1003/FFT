@@ -24,21 +24,16 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
   const { colors } = useTheme();
   const macros = macrosFromPercents(kcal, percents);
   const total = percents.protein + percents.carbs + percents.fat;
-  // The dot bar always shows the split relative to the total, whatever the total is.
-  const dots = (pct: number) => (total > 0 ? Math.round((pct / total) * 30) : 0);
   const rows = [
     ['protein', macros.proteinG, colors.macroSplit.protein, percents.protein],
     ['carbs', macros.carbsG, colors.macroSplit.carbs, percents.carbs],
     ['fat', macros.fatG, colors.macroSplit.fat, percents.fat],
   ] as const;
-  const a = dots(percents.protein);
-  const b = a + dots(percents.carbs);
 
   return (
     <Card gap={12}>
-      <Text variant="label" muted>
-        {t('goals.macroSplit')}
-      </Text>
+      <Text semibold>{t('goals.macroSplit')}</Text>
+      {/* One filled bar split in three (canvas "Goals"): always relative to the total. */}
       <View
         accessible
         accessibilityRole="image"
@@ -47,24 +42,20 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
           c: percents.carbs,
           f: percents.fat,
         })}
-        style={{ flexDirection: 'row', gap: 3 }}
+        style={{
+          flexDirection: 'row',
+          gap: 2,
+          height: 12,
+          borderRadius: 6,
+          overflow: 'hidden',
+          backgroundColor: colors.dotOff,
+        }}
       >
-        {Array.from({ length: 30 }, (_, i) => (
-          <View
-            key={i}
-            style={{
-              flex: 1,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor:
-                i < a
-                  ? colors.macroSplit.protein
-                  : i < b
-                    ? colors.macroSplit.carbs
-                    : colors.macroSplit.fat,
-            }}
-          />
-        ))}
+        {total > 0
+          ? rows.map(([key, , color, pct]) =>
+              pct > 0 ? <View key={key} style={{ flex: pct, backgroundColor: color }} /> : null,
+            )
+          : null}
       </View>
       {rows.map(([key, grams, color, pct]) => (
         <View
@@ -75,12 +66,12 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
             alignItems: 'center',
             gap: 10,
             borderTopWidth: 1,
-            borderColor: colors.borderDecorative,
+            borderColor: colors.divider,
           }}
         >
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
+          <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: color }} />
           <Text style={{ flex: 1 }}>{t(`diet.macro.${key}`)}</Text>
-          <Text variant="label" muted style={{ width: 52, textAlign: 'right' }}>
+          <Text semibold numeric style={{ width: 60, textAlign: 'right' }}>
             {t('goals.gramsValue', { g: grams })}
           </Text>
           <View style={{ width: 84 }}>
@@ -99,7 +90,7 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
               selectTextOnFocus
             />
           </View>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('goals.percentSign')}
           </Text>
         </View>

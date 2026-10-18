@@ -79,7 +79,7 @@ export function AiManualScreen() {
       <Text variant="screenTitle">{t('ai.manualTitle')}</Text>
 
       <Card gap={12}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('ai.step1')}
         </Text>
         <Input
@@ -93,7 +93,7 @@ export function AiManualScreen() {
       </Card>
 
       <Card gap={12}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('ai.step2')}
         </Text>
         <Input

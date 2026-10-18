@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
+import { SectionLabel } from '@/components/ui/MenuList';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
@@ -27,7 +28,7 @@ function SettingsPage({ title, children }: { title: string; children: React.Reac
   const router = useRouter();
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
-      <TopBar onBack={() => goBack(router, '/profile')} backLabel={t('common.back')} />
+      <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
       <Text variant="screenTitle">{title}</Text>
       {children}
     </Screen>
@@ -35,12 +36,13 @@ function SettingsPage({ title, children }: { title: string; children: React.Reac
 }
 
 /** Units: weight, length, energy, first day of the week. */
-export function UnitsScreen() {
+/** The content of the units page, also a section of "Units, look and reminders". */
+export function UnitsSection() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const prefs = usePreferencesStore();
   return (
-    <SettingsPage title={t('settings.units')}>
+    <>
       <Card gap={0}>
         <UnitRow label={t('settings.weight')} first>
           <Segmented
@@ -82,12 +84,12 @@ export function UnitsScreen() {
             gap: 12,
             paddingVertical: 10,
             borderTopWidth: 1,
-            borderColor: colors.borderDecorative,
+            borderColor: colors.divider,
           }}
         >
           <View style={{ flex: 1, gap: 2 }}>
             <Text>{t('settings.smallPlates')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('settings.smallPlatesDetail', {
                 step: prefs.weightUnit === 'kg' ? '1.25 kg' : '2.5 lb',
               })}
@@ -111,12 +113,13 @@ export function UnitsScreen() {
           />
         </UnitRow>
       </Card>
-    </SettingsPage>
+    </>
   );
 }
 
 /** Look: accent colour, app theme and workout theme. */
-export function LookScreen() {
+/** The content of the look page, also a section of "Units, look and reminders". */
+export function LookSection() {
   const { t } = useTranslation();
   const { colors, mode } = useTheme();
   const prefs = usePreferencesStore();
@@ -128,7 +131,7 @@ export function LookScreen() {
     { value: 'system' as const, label: t('settings.themeSystem') },
   ];
   return (
-    <SettingsPage title={t('settings.look')}>
+    <>
       <Card gap={14}>
         <View style={{ gap: 10 }}>
           <Text>{t('settings.accent')}</Text>
@@ -199,12 +202,13 @@ export function LookScreen() {
           />
         </View>
       </Card>
-    </SettingsPage>
+    </>
   );
 }
 
 /** Notifications: the rest timer and every reminder (the only place they are set). */
-export function NotificationsScreen() {
+/** The content of the notifications page, also a section of "Units, look and reminders". */
+export function NotificationsSection() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const prefs = usePreferencesStore();
@@ -220,7 +224,7 @@ export function NotificationsScreen() {
   };
 
   return (
-    <SettingsPage title={t('settings.notifications')}>
+    <>
       <Card gap={0}>
         <View
           style={{
@@ -235,7 +239,7 @@ export function NotificationsScreen() {
             <Text variant="bodyS" medium>
               {t('settings.notification.rest_timer.name')}
             </Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {prefs.notifications.rest_timer
                 ? t('settings.notification.rest_timer.detail')
                 : t('settings.off')}
@@ -252,7 +256,7 @@ export function NotificationsScreen() {
             key={kind}
             style={{
               borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
+              borderColor: colors.divider,
             }}
           >
             <ReminderRow kind={kind} bare />
@@ -275,6 +279,55 @@ export function NotificationsScreen() {
           }}
         />
       </Sheet>
+    </>
+  );
+}
+
+/** One page per section (old links and deep links keep working). */
+export function UnitsScreen() {
+  const { t } = useTranslation();
+  return (
+    <SettingsPage title={t('settings.units')}>
+      <UnitsSection />
+    </SettingsPage>
+  );
+}
+
+export function LookScreen() {
+  const { t } = useTranslation();
+  return (
+    <SettingsPage title={t('settings.look')}>
+      <LookSection />
+    </SettingsPage>
+  );
+}
+
+export function NotificationsScreen() {
+  const { t } = useTranslation();
+  return (
+    <SettingsPage title={t('settings.notifications')}>
+      <NotificationsSection />
+    </SettingsPage>
+  );
+}
+
+/** Canvas "Units, look and reminders": the three sections on one page, from Settings. */
+export function PreferencesScreen() {
+  const { t } = useTranslation();
+  return (
+    <SettingsPage title={t('settings.preferences')}>
+      <View style={{ gap: 6 }}>
+        <SectionLabel>{t('settings.units')}</SectionLabel>
+        <UnitsSection />
+      </View>
+      <View style={{ gap: 6 }}>
+        <SectionLabel>{t('settings.look')}</SectionLabel>
+        <LookSection />
+      </View>
+      <View style={{ gap: 6 }}>
+        <SectionLabel>{t('settings.reminders')}</SectionLabel>
+        <NotificationsSection />
+      </View>
     </SettingsPage>
   );
 }
@@ -292,20 +345,21 @@ function UnitRow({
 }) {
   const { colors } = useTheme();
   return (
+    // Canvas: the label on the left, a compact segmented control on the right, one row each.
     <View
       style={{
-        gap: 8,
-        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        minHeight: 54,
+        paddingVertical: 6,
         borderTopWidth: first ? 0 : 1,
-        borderColor: colors.borderDecorative,
-        borderBottomWidth: 0,
+        borderColor: colors.divider,
         marginBottom: last ? -4 : 0,
       }}
     >
-      <Text variant="bodyS" muted>
-        {label}
-      </Text>
-      {children}
+      <Text style={{ flex: 1 }}>{label}</Text>
+      <View style={{ width: 150 }}>{children}</View>
     </View>
   );
 }

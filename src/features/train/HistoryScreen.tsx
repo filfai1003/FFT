@@ -86,7 +86,7 @@ export function HistoryScreen({
           />
           <View style={{ alignItems: 'center', gap: 2 }}>
             <Text variant="label">{monthYearLabel(`${ym}-01`)}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('history.workouts', { count: inMonth.length })}
             </Text>
           </View>
@@ -100,7 +100,7 @@ export function HistoryScreen({
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
           {letters.map((l, i) => (
             <View key={i} style={{ width: `${100 / 7}%`, alignItems: 'center', paddingBottom: 4 }}>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {l}
               </Text>
             </View>
@@ -215,7 +215,7 @@ function SessionRow({
       })}
     >
       <View style={{ width: 36, alignItems: 'center' }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {weekdayName(day).slice(0, 3)}
         </Text>
         <Text variant="displayS" numeric>
@@ -239,7 +239,7 @@ function SessionRow({
             </View>
           ) : null}
         </View>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('history.info', {
             min: s.stats.minutes,
             tonnes: tonnes.toFixed(1),

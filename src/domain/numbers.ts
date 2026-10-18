@@ -21,3 +21,10 @@ export function parseDecimal(text: string): number | null {
   const n = Number(normalized);
   return Number.isFinite(n) ? n : null;
 }
+
+/** A whole number with thousands separators, as the design writes them: 2700 -> "2,700". */
+export function formatInt(n: number): string {
+  const r = Math.round(n);
+  const sign = r < 0 ? '-' : '';
+  return sign + String(Math.abs(r)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

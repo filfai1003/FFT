@@ -80,7 +80,7 @@ export function SummaryScreen() {
             <View
               style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }}
             />
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {`${session.dayName} · ${shortDateLabel(day)}`}
             </Text>
           </View>
@@ -96,14 +96,14 @@ export function SummaryScreen() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {stats.map((s) => (
             <Card key={s.label} size="small" gap={6} style={{ width: '48%', flexGrow: 1 }}>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {s.label}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text variant="displayM" numeric>
                   {s.value}
                 </Text>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {s.unit}
                 </Text>
               </View>
@@ -129,7 +129,7 @@ export function SummaryScreen() {
                 />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text variant="bodyS">{r.name}</Text>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {r.kind === 'max'
                       ? t('summary.maxDetail', {
                           value: trimNumber(displayWeight(r.value, unit)),
@@ -157,7 +157,7 @@ export function SummaryScreen() {
           accessibilityRole="radiogroup"
           accessibilityLabel={t('summary.howFelt')}
         >
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('summary.howFelt')}
           </Text>
           <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -186,7 +186,7 @@ export function SummaryScreen() {
                   <Text variant="displayS" numeric>
                     {n}
                   </Text>
-                  <Text variant="label" muted={!selected}>
+                  <Text variant="bodyS" muted={!selected}>
                     {t(`summary.feeling.${n}`)}
                   </Text>
                 </Pressable>
@@ -211,7 +211,7 @@ export function SummaryScreen() {
                   <Text variant="bodyS" medium>
                     {e.name}
                   </Text>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {e.sets
                       .filter((s) => s.done)
                       .map((s) =>
@@ -230,11 +230,11 @@ export function SummaryScreen() {
           onPress={() => setShowSets((v) => !v)}
           style={{ minHeight: touch.minTarget, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {showSets ? t('summary.hideSets') : t('summary.seeSets')}
           </Text>
         </Pressable>
-        <Text variant="label" muted style={{ textAlign: 'center' }}>
+        <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
           {t('summary.minutes', { count: minutes })}
         </Text>
       </Screen>

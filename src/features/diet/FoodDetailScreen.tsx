@@ -172,7 +172,7 @@ export function FoodDetailScreen() {
                 style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.text }}
               />
             ) : null}
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {food.data.source === 'custom'
                 ? t('diet.yourFood')
                 : food.data.source === 'ciqual'
@@ -197,11 +197,11 @@ export function FoodDetailScreen() {
               <Text variant="displayL" numeric>
                 {Math.round(values.kcal)}
               </Text>
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('common.kcal')}
               </Text>
             </View>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {t('diet.forGrams', { g: value })}
             </Text>
           </View>
@@ -216,19 +216,19 @@ export function FoodDetailScreen() {
           >
             {shares.map(([key, grams, goal]) => (
               <View key={key} style={{ flex: 1, gap: 4 }}>
-                <Text variant="label" muted>
+                <Text variant="bodyS" muted>
                   {t(`diet.field.${key}`)}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
                   <Text variant="displayS" numeric>
                     {Math.round(grams * 10) / 10}
                   </Text>
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {'g'}
                   </Text>
                 </View>
                 {goal > 0 ? (
-                  <Text variant="label" muted>
+                  <Text variant="bodyS" muted>
                     {t('diet.ofGoal', { pct: shareOfGoal(grams, goal) })}
                   </Text>
                 ) : null}
@@ -238,7 +238,7 @@ export function FoodDetailScreen() {
         </Card>
 
         <View style={{ gap: 10 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('diet.amount')}
           </Text>
           {portions.length > 0 ? (
@@ -335,13 +335,13 @@ function NutritionTable({ per100, grams }: { per100: Per100; grams: number }) {
   return (
     <View accessibilityRole="summary">
       <View style={{ flexDirection: 'row', paddingBottom: 6 }}>
-        <Text variant="label" muted style={{ flex: 1.4 }}>
+        <Text variant="bodyS" muted style={{ flex: 1.4 }}>
           {t('diet.nutrition')}
         </Text>
-        <Text variant="label" muted style={{ flex: 1, textAlign: 'right' }}>
+        <Text variant="bodyS" muted style={{ flex: 1, textAlign: 'right' }}>
           {t('diet.perGrams', { g: 100 })}
         </Text>
-        <Text variant="label" muted style={{ flex: 1, textAlign: 'right' }}>
+        <Text variant="bodyS" muted style={{ flex: 1, textAlign: 'right' }}>
           {t('diet.perGrams', { g: round(grams) })}
         </Text>
       </View>

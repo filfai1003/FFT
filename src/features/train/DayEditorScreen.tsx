@@ -128,7 +128,7 @@ export function DayEditorScreen() {
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('plan.exercisesCount', { count: state.exercises.length })}
           </Text>
         </View>
@@ -199,7 +199,7 @@ export function DayEditorScreen() {
                         <Text variant="body" numberOfLines={1}>
                           {e.exercise.name}
                         </Text>
-                        <Text variant="label" muted>
+                        <Text variant="bodyS" muted>
                           {[
                             labels[index]
                               ? t('plan.supersetLabel', { label: labels[index] })
@@ -315,7 +315,7 @@ function ExpandedExercise(props: {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1, gap: 6 }}>
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {t('plan.sets')}
           </Text>
           <Stepper
@@ -339,7 +339,7 @@ function ExpandedExercise(props: {
       </View>
 
       <View style={{ gap: 6 }}>
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {t('plan.rest')}
         </Text>
         <Stepper
@@ -362,7 +362,7 @@ function ExpandedExercise(props: {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ flex: 1, gap: 2 }}>
             <Text>{t('plan.supersetToggle')}</Text>
-            <Text variant="label" muted>
+            <Text variant="bodyS" muted>
               {props.label
                 ? t('plan.supersetDetailOn', { label: props.label })
                 : t('plan.supersetDetail')}
@@ -398,7 +398,7 @@ function DropSetEditor({
   const mode = drops ? drops.on : 'off';
   return (
     <View style={{ gap: 8 }}>
-      <Text variant="label" muted>
+      <Text variant="bodyS" muted>
         {t('plan.dropSet')}
       </Text>
       <Segmented
@@ -451,7 +451,7 @@ function DropSetEditor({
               }
             />
           ) : null}
-          <Text variant="label" muted>
+          <Text variant="bodyS" muted>
             {drops.on === 'every' ? t('plan.dropEveryDetail') : t('plan.dropLastDetail')}
           </Text>
         </>

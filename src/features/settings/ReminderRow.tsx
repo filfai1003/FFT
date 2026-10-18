@@ -34,7 +34,7 @@ function ClockEditor({
   return (
     <View style={{ gap: 8 }}>
       {label ? (
-        <Text variant="label" muted>
+        <Text variant="bodyS" muted>
           {label}
         </Text>
       ) : null}
@@ -115,7 +115,7 @@ export function ReminderRow({ kind, bare = false }: { kind: ReminderKind; bare?:
           {name}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text variant="label" muted style={{ flexShrink: 1 }}>
+          <Text variant="bodyS" muted style={{ flexShrink: 1 }}>
             {summary}
           </Text>
           <Icon name="edit" size={14} color={colors.textMuted} />

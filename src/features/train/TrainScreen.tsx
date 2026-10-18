@@ -6,7 +6,6 @@ import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
-import { Icon, type IconName } from '@/components/ui/Icon';
 import { Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
@@ -51,12 +50,11 @@ export function TrainScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ gap: 4 }}>
+        {/* Canvas "Train": title, then the library and history as round buttons on the right. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flex: 1, gap: 2 }}>
             {plan && rotation ? (
-              <Text variant="label" muted>
+              <Text variant="bodyS" muted>
                 {t('train.cycleProgress', {
                   n: rotation.state.cycle,
                   done: rotation.state.doneCount,
@@ -64,8 +62,26 @@ export function TrainScreen() {
                 })}
               </Text>
             ) : null}
-            <Text variant="screenTitle">{t('nav.train')}</Text>
+            <Text variant="screenTitle" accessibilityRole="header">
+              {t('nav.train')}
+            </Text>
           </View>
+          <IconButton
+            icon="book"
+            accessibilityLabel={t('train.library')}
+            onPress={() => router.push('/train/library')}
+          />
+          <IconButton
+            icon="clock"
+            accessibilityLabel={
+              lastDay.data
+                ? `${t('train.history')}, ${t('train.historyLast', {
+                    when: whenLabel(lastDay.data, today, t as Translate),
+                  })}`
+                : t('train.history')
+            }
+            onPress={() => router.push('/train/history')}
+          />
         </View>
 
         <ActiveSessionBanner />
@@ -85,11 +101,11 @@ export function TrainScreen() {
         {plan && upNext ? (
           <Reveal index={1}>
             <Card gap={12}>
-              <Text variant="label" muted>
+              <Text variant="bodyS" semibold muted>
                 {t('train.nextWorkout')}
               </Text>
               <View style={{ gap: 4 }}>
-                <Text variant="displayM" numberOfLines={2}>
+                <Text variant="displayS" numberOfLines={2}>
                   {upNext.name}
                 </Text>
                 <Text variant="bodyS" muted>
@@ -128,29 +144,6 @@ export function TrainScreen() {
             </Section>
           </Reveal>
         ) : null}
-
-        <Reveal index={3}>
-          <Section title={t('train.explore')} gap={8}>
-            <NavRow
-              icon="search"
-              title={t('train.library')}
-              info={t('train.libraryInfo')}
-              onPress={() => router.push('/train/library')}
-            />
-            <NavRow
-              icon="calendar"
-              title={t('train.history')}
-              info={
-                lastDay.data
-                  ? t('train.historyLast', {
-                      when: whenLabel(lastDay.data, today, t as Translate),
-                    })
-                  : t('train.historyNone')
-              }
-              onPress={() => router.push('/train/history')}
-            />
-          </Section>
-        </Reveal>
 
         {plans && plans.length > 0 ? (
           <Section title={t('train.yourPlans')} gap={8}>
@@ -225,37 +218,6 @@ export function TrainScreen() {
         />
       ) : null}
     </>
-  );
-}
-
-/** A full-width row that opens a section of the tab: icon, what it is, what is inside, chevron. */
-function NavRow({
-  icon,
-  title,
-  info,
-  onPress,
-}: {
-  icon: IconName;
-  title: string;
-  info: string;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  return (
-    <Card size="small" onPress={onPress} accessibilityLabel={`${title}. ${info}`} gap={0}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <Icon name={icon} size={22} color={colors.text} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="body" medium>
-            {title}
-          </Text>
-          <Text variant="label" muted>
-            {info}
-          </Text>
-        </View>
-        <Icon name="chevronRight" size={18} color={colors.textMuted} />
-      </View>
-    </Card>
   );
 }
 
