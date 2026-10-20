@@ -21,6 +21,10 @@
     "clear": "Clear",
     "loading": "Loading"
   },
+  "ui": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
   "empty": {
     "trainBody": "A plan tells you what to train next and keeps each cycle on track.",
     "planDaysTitle": "No days in this plan yet",

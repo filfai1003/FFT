@@ -5,6 +5,7 @@ import { fontFamily, inputFontSize, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon } from './Icon';
+import { pressFeedback } from './motion';
 import { Text } from './Text';
 
 export type StepperProps = {
@@ -88,7 +89,10 @@ export function Stepper({
             height: size,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
+            opacity: disabled ? 0.4 : pressed ? pressFeedback.opacity : 1,
+            // Pressed: the button fills a little, so each tap of a quick series is seen.
+            borderRadius: variant === 'amount' ? size / 2 : 11,
+            backgroundColor: pressed && !disabled ? colors.surfaceAlt : 'transparent',
           },
           variant === 'amount' && {
             borderRadius: size / 2,

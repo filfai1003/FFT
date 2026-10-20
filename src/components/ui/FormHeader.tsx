@@ -4,6 +4,7 @@ import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon } from './Icon';
+import { pressFeedback } from './motion';
 import { Text } from './Text';
 
 export type FormHeaderProps = {
@@ -44,7 +45,7 @@ export function FormHeader({ title, left, right }: FormHeaderProps) {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 4,
-              opacity: pressed ? 0.7 : 1,
+              opacity: pressed ? pressFeedback.opacity : 1,
             })}
           >
             {left.icon ? <Icon name={left.icon} color={colors.text} /> : null}

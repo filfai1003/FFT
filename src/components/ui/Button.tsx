@@ -1,4 +1,4 @@
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, View, type StyleProp, type ViewStyle } from 'react-native';
 import { fontFamily, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
@@ -31,6 +31,11 @@ export type ButtonProps = {
    * read with it. Only shown while disabled.
    */
   disabledReason?: string;
+  /**
+   * The action is running (signing in, exporting…): a spinner takes the icon's place (a still clock
+   * with reduce motion); the button keeps its look but cannot be pressed again, read as busy.
+   */
+  loading?: boolean;
   /** Fills the width of its container. Default true. */
   block?: boolean;
   accessibilityLabel?: string;
@@ -45,11 +50,12 @@ export function Button({
   icon,
   disabled = false,
   disabledReason,
+  loading = false,
   block = true,
   accessibilityLabel,
   style,
 }: ButtonProps) {
-  const { colors } = useTheme();
+  const { colors, reduceMotion } = useTheme();
   const press = usePressScale();
   const large = size === 'large';
   const small = size === 'small';
@@ -123,9 +129,10 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={reason}
-      accessibilityState={{ disabled }}
+      accessibilityState={loading ? { disabled, busy: true } : { disabled }}
       aria-disabled={disabled}
-      disabled={disabled}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       onPress={() => {
@@ -150,7 +157,13 @@ export function Button({
         press.style,
       ]}
     >
-      {icon ? <Icon name={icon} size={small ? 16 : 20} color={fg} /> : null}
+      {loading && !reduceMotion ? (
+        <ActivityIndicator testID="button-busy" size="small" color={fg} />
+      ) : loading ? (
+        <Icon name="clock" size={small ? 16 : 20} color={fg} />
+      ) : icon ? (
+        <Icon name={icon} size={small ? 16 : 20} color={fg} />
+      ) : null}
       {/*
         One line: Android measures the semibold font a little short and wrapped the last word onto
         a second line that the button's fixed height cut off ("Add to ChatGPT" showed "Add to").

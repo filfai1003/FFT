@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Animated, Pressable, View } from 'react-native';
+import { Animated, Easing, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -17,6 +17,8 @@ export function ToastHost() {
   const { colors, reduceMotion } = useTheme();
   const { bottom } = useSafeAreaInsets();
   const [opacity] = useState(() => new Animated.Value(0));
+  // The time left to undo, drained by a thin line along the bottom of the toast.
+  const [left] = useState(() => new Animated.Value(1));
 
   const id = toast?.id;
   const duration = toast?.durationMs ?? TOAST_DURATION_MS;
@@ -25,12 +27,21 @@ export function ToastHost() {
     if (id == null) return;
     if (reduceMotion) opacity.setValue(1);
     else Animated.timing(opacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+    left.setValue(1);
+    const drain = Animated.timing(left, {
+      toValue: 0,
+      duration,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+    if (!reduceMotion) drain.start();
     const timer = setTimeout(() => dismiss(id), duration);
     return () => {
       clearTimeout(timer);
+      drain.stop();
       opacity.setValue(0);
     };
-  }, [id, duration, dismiss, opacity, reduceMotion]);
+  }, [id, duration, dismiss, opacity, left, reduceMotion]);
 
   if (!toast) return null;
 
@@ -58,8 +69,26 @@ export function ToastHost() {
           paddingRight: 6,
           borderRadius: 16,
           backgroundColor: colors.text,
+          overflow: 'hidden',
         }}
       >
+        {/* An undo toast shows how long is left (not with reduce motion: a still line says nothing). */}
+        {toast.actionLabel && !reduceMotion ? (
+          <Animated.View
+            testID="toast-time-left"
+            aria-hidden
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              height: 3,
+              backgroundColor: colors.bg,
+              opacity: 0.45,
+              width: left.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
+            }}
+          />
+        ) : null}
         <Text variant="bodyS" style={{ flex: 1, color: colors.bg }}>
           {toast.message}
         </Text>

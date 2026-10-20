@@ -2,8 +2,10 @@ import { forwardRef, useEffect, useId, useRef, useState } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 import { fontFamily, inputFontSize, radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { useTranslation } from 'react-i18next';
 import { useFieldChain } from './field-chain';
 import { Icon } from './Icon';
+import { IconButton } from './IconButton';
 import { Text } from './Text';
 
 export type InputProps = Omit<TextInputProps, 'style' | 'accessibilityLabel'> & {
@@ -19,18 +21,26 @@ export type InputProps = Omit<TextInputProps, 'style' | 'accessibilityLabel'> & 
   /** Doto 24 text for names/titles (field variant). */
   display?: boolean;
   error?: string;
+  /**
+   * With `secureTextEntry`: an eye button in the field shows what was typed (default on), so a
+   * typo is seen before it fails. `false` keeps the field always hidden.
+   */
+  reveal?: boolean;
 };
 
 // react-native-web draws the browser's focus ring on the text field itself, inside our own border.
 const webNoOutline = { outlineStyle: 'none', outlineWidth: 0 } as object;
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { label, accessibilityLabel, variant = 'field', display = false, error, ...rest },
+  { label, accessibilityLabel, variant = 'field', display = false, error, reveal = true, ...rest },
   ref,
 ) {
   const { colors, textScale } = useTheme();
+  const { t } = useTranslation();
   const id = useId();
   const [focused, setFocused] = useState(false);
+  const [shown, setShown] = useState(false);
+  const revealable = rest.secureTextEntry === true && reveal && variant !== 'compact';
   const chain = useFieldChain();
   const inner = useRef<TextInput | null>(null);
   useEffect(() => chain?.register(inner), [chain]);
@@ -115,6 +125,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           maxFontSizeMultiplier={1.5}
           returnKeyType={variant === 'search' ? 'search' : chained ? 'next' : undefined}
           {...rest}
+          secureTextEntry={revealable ? !shown : rest.secureTextEntry}
           onSubmitEditing={
             chained && !rest.onSubmitEditing ? () => chain.next(inner) : rest.onSubmitEditing
           }
@@ -128,6 +139,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           }}
           style={[textStyle, webNoOutline]}
         />
+        {revealable ? (
+          <IconButton
+            look="plain"
+            icon={shown ? 'eyeOff' : 'eye'}
+            accessibilityLabel={shown ? t('ui.hidePassword') : t('ui.showPassword')}
+            onPress={() => setShown((v) => !v)}
+            style={{ marginRight: -12 }}
+          />
+        ) : null}
       </View>
       {error ? (
         <Text variant="bodyS" style={{ color: colors.danger }} accessibilityRole="alert">
