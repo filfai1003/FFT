@@ -80,7 +80,12 @@ export function TodayGrid({
   const { t } = useTranslation();
   const { colors, reduceMotion } = useTheme();
   const [width, setWidth] = useState(0);
-  const [heights, setHeights] = useState<ReadonlyMap<WidgetId, number>>(() => new Map());
+  // Each card's measured height, and whether it was measured while held up by a minimum height
+  // (then its own height may be smaller: see the pairs below).
+  const [measures, setMeasures] = useState<ReadonlyMap<WidgetId, { h: number; held: boolean }>>(
+    () => new Map(),
+  );
+  const heights = new Map([...measures].map(([id, m]) => [id, m.h]));
   const [drag, setDrag] = useState<Drag | null>(null);
   // The rows as they would be if the dragged card were let go now.
   const [preview, setPreview] = useState<GridRow[] | null>(null);
@@ -91,18 +96,28 @@ export function TodayGrid({
   const measured = width > 0 && shown.every((w) => heights.has(w.id));
 
   // Two half-width cards in a row are as tall as the taller one: the shorter one gets a minimum
-  // height just under it (so the taller one keeps being measured at its own height).
+  // height just under it (so the taller one keeps being measured at its own height). When the
+  // taller one shrinks (leaving edit mode drops the toolbars) below the one held up, that one is
+  // let go for a frame to measure its own height; holding it would make the two take turns being
+  // the taller one, half a pixel at a time.
   const minHeight = new Map<WidgetId, number>();
   for (const r of rows) {
     if (r.kind !== 'pair' || !r.left || !r.right) continue;
-    const hl = heights.get(r.left);
-    const hr = heights.get(r.right);
-    if (hl == null || hr == null) continue;
-    minHeight.set(hr > hl ? r.left : r.right, Math.max(hl, hr) - 0.5);
+    const ml = measures.get(r.left);
+    const mr = measures.get(r.right);
+    if (!ml || !mr) continue;
+    if ((ml.held && mr.h < ml.h - 1) || (mr.held && ml.h < mr.h - 1)) continue;
+    minHeight.set(mr.h > ml.h ? r.left : r.right, Math.max(ml.h, mr.h) - 0.5);
   }
 
-  const measure = (id: WidgetId, h: number) =>
-    setHeights((prev) => (prev.get(id) === h ? prev : new Map(prev).set(id, h)));
+  const measure = (id: WidgetId, h: number) => {
+    const min = minHeight.get(id);
+    const held = min != null && h <= min + 1;
+    setMeasures((prev) => {
+      const cur = prev.get(id);
+      return cur && cur.h === h && cur.held === held ? prev : new Map(prev).set(id, { h, held });
+    });
+  };
 
   const startDrag = (id: WidgetId) => {
     tick();
@@ -355,6 +370,7 @@ function TodayCard({
 
   return (
     <Animated.View
+      testID={`grid-card-${id}`}
       onLayout={(e) => {
         const h = e.nativeEvent.layout.height;
         height.set(h);

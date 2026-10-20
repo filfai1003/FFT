@@ -247,3 +247,43 @@ describe('Today edit mode: the grid', () => {
     expect(screen.getByLabelText('Make Water full width')).toBeTruthy();
   });
 });
+
+describe('Today grid: two half cards side by side', () => {
+  const layout = (height: number, width = 400) => ({
+    nativeEvent: { layout: { x: 0, y: 0, width, height } },
+  });
+  const minOf = (id: string) =>
+    StyleSheet.flatten(screen.getByTestId(`grid-card-${id}`).props.style).minHeight as
+      number | undefined;
+
+  it('settle at once when the taller one shrinks (no back and forth after editing)', async () => {
+    await renderUI(<Harness editing={false} />);
+    const grid = screen.getByTestId('grid-card-water').parent!.parent!;
+    await act(async () => fireEvent(grid, 'layout', layout(0, 400)));
+    for (const id of ['nutrition', 'workout', 'streak', 'supplements'])
+      await act(async () =>
+        fireEvent(screen.getByTestId(`grid-card-${id}`), 'layout', layout(100)),
+      );
+    // Edit mode: water 200 tall (with its toolbar), weight 150, held up to water.
+    await act(async () => fireEvent(screen.getByTestId('grid-card-water'), 'layout', layout(200)));
+    await act(async () => fireEvent(screen.getByTestId('grid-card-weight'), 'layout', layout(150)));
+    expect(minOf('weight')).toBe(199.5);
+    await act(async () =>
+      fireEvent(screen.getByTestId('grid-card-weight'), 'layout', layout(199.5)),
+    );
+    expect(minOf('weight')).toBe(199.5);
+    // Back to normal: water shrinks to 140. Weight is let go (not water held up to weight).
+    await act(async () => fireEvent(screen.getByTestId('grid-card-water'), 'layout', layout(140)));
+    expect(minOf('weight')).toBeUndefined();
+    expect(minOf('water')).toBeUndefined();
+    // Weight measures its own height: now it is the taller one and water follows it, once.
+    await act(async () => fireEvent(screen.getByTestId('grid-card-weight'), 'layout', layout(150)));
+    expect(minOf('water')).toBe(149.5);
+    expect(minOf('weight')).toBeUndefined();
+    await act(async () =>
+      fireEvent(screen.getByTestId('grid-card-water'), 'layout', layout(149.5)),
+    );
+    expect(minOf('water')).toBe(149.5);
+    expect(minOf('weight')).toBeUndefined();
+  });
+});
