@@ -1,5 +1,5 @@
 import type { BodyEntry } from './data';
-import { bodyProgress } from './series';
+import { bodyProgress, changeArea } from './series';
 
 const e = (
   day: string,
@@ -65,5 +65,24 @@ describe('bodyProgress', () => {
     expect(empty.weight.latestKg).toBeNull();
     expect(empty.weight.buckets.every((v) => v == null)).toBe(true);
     expect(empty.bodyFat.leanKg).toBeNull();
+  });
+});
+
+describe('changeArea', () => {
+  it('weight follows the profile goal, neutral without one or when steady', () => {
+    expect(changeArea(-1.2, 'lose_fat')).toBe('better');
+    expect(changeArea(0.8, 'lose_fat')).toBe('worse');
+    expect(changeArea(0.8, 'build_muscle')).toBe('better');
+    expect(changeArea(-0.8, 'build_muscle')).toBe('worse');
+    expect(changeArea(-2, 'maintain')).toBe('neutral');
+    expect(changeArea(-2, null)).toBe('neutral');
+    expect(changeArea(0.02, 'lose_fat')).toBe('neutral');
+    expect(changeArea(null, 'lose_fat')).toBe('neutral');
+  });
+
+  it('body fat and waist: smaller is better', () => {
+    expect(changeArea(-0.5, 'smallerIsBetter')).toBe('better');
+    expect(changeArea(1, 'smallerIsBetter')).toBe('worse');
+    expect(changeArea(0, 'smallerIsBetter')).toBe('neutral');
   });
 });

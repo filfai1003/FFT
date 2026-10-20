@@ -32,6 +32,8 @@
     "dietToday": "Nothing logged today",
     "dietDay": "Nothing logged on this day",
     "dietBody": "Tap + on a meal to add what you ate.",
+    "bodyTitle": "No check-ins yet",
+    "bodyBody": "Your weight, body fat and measurements show up here, with how they change.",
     "weightTitle": "No weight yet",
     "weightBody": "Log it at your next check-in to see where you are heading.",
     "strengthTitle": "No strength change yet",
@@ -1016,6 +1018,8 @@
     "noneYet": "nothing logged yet",
     "lineNext": "Your line starts at the next check-in",
     "steady": "Steady",
+    "downBy": "down {{value}}",
+    "upBy": "up {{value}}",
     "firstBefore": "Your first photos become your before"
   },
   "checkIn": {

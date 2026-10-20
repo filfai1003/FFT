@@ -34,7 +34,7 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { poses, useBodyEntries, usePhotos } from './data';
 import { EmptyLine } from './EmptyLine';
 import { PhotoTile } from './PhotoTile';
-import { bodyProgress, useProgressPeriod } from './series';
+import { bodyProgress, changeArea, useProgressPeriod } from './series';
 import { useStrength } from './strength';
 
 export const signed = (n: number, digits = 1) =>
@@ -44,6 +44,28 @@ export const signed = (n: number, digits = 1) =>
 export function useChangeInk() {
   const { colors } = useTheme();
   return (n: number) => (n > 0 ? colors.successText : n < 0 ? colors.danger : colors.text);
+}
+
+/** A change said in words for screen readers ("down 1.8 kg"): the arrow of a chip is not read. */
+export function useChangeWords() {
+  const { t } = useTranslation();
+  return (delta: number, text: string) =>
+    delta < 0
+      ? t('progress.downBy', { value: text })
+      : delta > 0
+        ? t('progress.upBy', { value: text })
+        : t('progress.steady');
+}
+
+/** A line takes the colour of its change: green better, red worse, black otherwise. */
+export function useLineColors() {
+  const { colors } = useTheme();
+  return {
+    lineColor: (a: Area) =>
+      a === 'better' ? colors.success : a === 'worse' ? colors.danger : colors.text,
+    lineFill: (a: Area) =>
+      a === 'better' ? colors.successSoft : a === 'worse' ? colors.dangerSoft : colors.surfaceAlt,
+  };
 }
 
 /** Fill missing chart values so every column shows at least one dot. */
@@ -180,6 +202,7 @@ function MeNumbers({ records }: { records: ReactNode }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const changeInk = useChangeInk();
+  const words = useChangeWords();
   const router = useRouter();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
@@ -207,36 +230,22 @@ function MeNumbers({ records }: { records: ReactNode }) {
     body.weight.deltaKg != null
       ? displayWeight(Math.abs(body.weight.deltaKg), unit) * Math.sign(body.weight.deltaKg)
       : null;
-  const weightArea: Area =
-    weightDelta == null || Math.abs(weightDelta) < 0.05
-      ? 'neutral'
-      : goal === 'build_muscle'
-        ? weightDelta > 0
-          ? 'better'
-          : 'worse'
-        : goal === 'lose_fat'
-          ? weightDelta < 0
-            ? 'better'
-            : 'worse'
-          : 'neutral';
+  const weightArea: Area = changeArea(weightDelta, goal);
   const fatDelta = body.bodyFat.deltaPts;
-  const fatArea: Area =
-    fatDelta == null || fatDelta === 0 ? 'neutral' : fatDelta < 0 ? 'better' : 'worse';
-  const weightLine = body.weight.buckets.filter((v): v is number => v != null);
-  const fatLine = body.bodyFat.buckets.filter((v): v is number => v != null);
+  const fatArea: Area = changeArea(fatDelta, 'smallerIsBetter');
+  // A line needs two values logged in the period (the buckets carry the last one forward).
+  const weightLine =
+    body.weight.points.length > 1 ? body.weight.buckets.filter((v): v is number => v != null) : [];
+  const fatLine =
+    body.bodyFat.count > 1 ? body.bodyFat.buckets.filter((v): v is number => v != null) : [];
   // Waist: every value in the period, oldest first; smaller is better.
   const waist = body.measures.waist;
   const waistLine = (entries.data ?? [])
     .filter((e) => e.day >= body.from && e.measures.waist != null)
     .map((e) => e.measures.waist as number);
-  const waistArea: Area =
-    waist == null || waist.delta === 0 ? 'neutral' : waist.delta < 0 ? 'better' : 'worse';
+  const waistArea: Area = changeArea(waist?.delta ?? null, 'smallerIsBetter');
   const weightStart = body.weight.points[0]?.value;
-  // The line takes the colour of the change: green better, red worse, black otherwise.
-  const lineColor = (a: Area) =>
-    a === 'better' ? colors.success : a === 'worse' ? colors.danger : colors.text;
-  const lineFill = (a: Area) =>
-    a === 'better' ? colors.successSoft : a === 'worse' ? colors.dangerSoft : colors.surfaceAlt;
+  const { lineColor, lineFill } = useLineColors();
   const weekKg =
     body.weight.latestKg != null && body.weight.sevenDayKg != null && weightLine.length > 1
       ? displayWeight(
@@ -268,7 +277,15 @@ function MeNumbers({ records }: { records: ReactNode }) {
         accessibilityLabel={
           noWeight
             ? `${t('empty.weightTitle')}. ${t('progress.newCheckIn')}`
-            : t('progress.tabWeight')
+            : [
+                t('progress.tabWeight'),
+                weightValue != null ? `${weightValue} ${unit}` : null,
+                weightDelta != null
+                  ? words(weightDelta, `${Math.abs(weightDelta).toFixed(1)} ${unit}`)
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(', ')
         }
         gap={12}
       >
@@ -551,11 +568,16 @@ function HalfStat({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
+  const words = useChangeWords();
   return (
     <Card
       onPress={onPress}
       accessibilityLabel={
-        value == null ? `${label}: ${t('progress.noneYet')}. ${t('progress.newCheckIn')}` : label
+        value == null
+          ? `${label}: ${t('progress.noneYet')}. ${t('progress.newCheckIn')}`
+          : [label, `${value} ${unit}`, change ? words(change.delta, change.label) : null]
+              .filter(Boolean)
+              .join(', ')
       }
       gap={10}
       style={{ flex: 1 }}

@@ -73,7 +73,7 @@ describe('Progress · Me numbers (DECISIONS 114)', () => {
     expect(screen.getByText('81.4')).toBeTruthy();
     expect(screen.getByText('18')).toBeTruthy();
     expect(screen.getAllByText('Your line starts at the next check-in').length).toBe(2);
-    await fireEvent.press(screen.getByLabelText('Body fat'));
+    await fireEvent.press(screen.getByLabelText('Body fat, 18 %'));
     expect(mockPush).toHaveBeenLastCalledWith('/progress/body');
   });
 
