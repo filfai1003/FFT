@@ -45,6 +45,7 @@ export const columns: Record<string, string[]> = {
     'spoken_countdown',
     'water_glass_ml',
     'small_plates',
+    'area_colors',
     'notifications',
     'created_at',
     'updated_at',
@@ -383,6 +384,7 @@ const specific: Record<string, () => Row> = {
     spoken_countdown: false,
     water_glass_ml: 250,
     small_plates: false,
+    area_colors: {},
     notifications: {
       rest_timer: true,
       workout_reminder: true,

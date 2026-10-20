@@ -1,6 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { accentOptions, bars, color, palettes, radius, space, touch, typeScale } from './tokens';
+import {
+  accentOptions,
+  areaFamilies,
+  areaHues,
+  bars,
+  color,
+  palettes,
+  radius,
+  space,
+  touch,
+  typeScale,
+} from './tokens';
+import { areaHueOptions, colourAreas, defaultAreaColors } from './area-colors';
 import { contrastRatio as contrast } from './contrast';
 import { buildTheme, resolveMode, textScaleFor, textScaleSteps } from './theme';
 import { defaultAppearance, useAppearanceStore } from './appearance-store';
@@ -150,6 +162,92 @@ describe('theme', () => {
     expect(textScaleFor(3)).toBe(1);
     expect(textScaleFor(0)).toBe(textScaleSteps[0]);
     expect(textScaleFor(99)).toBe(textScaleSteps[4]);
+  });
+});
+
+/** Hue angle (0..360) of a #RRGGBB colour. */
+function hueOf(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  if (d === 0) return 0;
+  const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (h * 60 + 360) % 360;
+}
+const hueGap = (a: string, b: string) => {
+  const d = Math.abs(hueOf(a) - hueOf(b));
+  return Math.min(d, 360 - d);
+};
+
+describe('area colours (DECISIONS 118)', () => {
+  it('the default families are the colour code of 107 (tokens.json domain)', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const p = palettes[mode];
+      for (const area of colourAreas) {
+        const f = areaFamilies[defaultAreaColors[area]][mode];
+        expect([p[area], p[`${area}Soft`], p[`${area}Ink`]]).toEqual([f.main, f.soft, f.ink]);
+      }
+    }
+    expect(json.color.domain.training).toBe(areaFamilies.purple.light.main);
+    expect(json.color.domain.nutrition).toBe(areaFamilies.teal.light.main);
+    expect(json.color.domain.streak).toBe(areaFamilies.orange.light.main);
+    // The default theme is unchanged by the new option.
+    expect(buildTheme({ accent: 'red', highContrast: false }).training).toBe(color.training);
+  });
+
+  // Every family any area can take passes the rules of the defaults, in both themes, with and
+  // without high contrast, through the real theme (what the screens read).
+  const cases = colourAreas.flatMap((area) =>
+    areaHueOptions[area].flatMap((hue) =>
+      (['light', 'dark'] as const).flatMap((mode) =>
+        [false, true].map((highContrast) => [area, hue, mode, highContrast] as const),
+      ),
+    ),
+  );
+  it.each(cases)('%s in %s, %s, high contrast %s', (area, hue, mode, highContrast) => {
+    const areas = { ...defaultAreaColors, [area]: hue };
+    // Another area may hold this hue by default: the test only looks at `area`.
+    const th = buildTheme({ accent: 'red', highContrast, mode, areas });
+    const main = th[area];
+    const soft = th[`${area}Soft`];
+    const ink = th[`${area}Ink`];
+    const family = areaFamilies[hue][mode];
+    // Ink: text and icons on the soft ground and on the page and cards.
+    for (const ground of [soft, th.bg, th.surface])
+      expect(contrast(ink, ground)).toBeGreaterThanOrEqual(4.5);
+    // Fill (rings, bars, calendar dots, icons on it): 3:1 against the page and cards. The default
+    // streak orange (107) is the one family under it; high contrast swaps in its darker fill.
+    const minFill = !highContrast && family.mainHighContrast ? 2.3 : 3;
+    for (const ground of [th.bg, th.surface])
+      expect(contrast(main, ground)).toBeGreaterThanOrEqual(minFill);
+    // The soft ground can be told apart from the card under a tile (never the same colour).
+    expect(soft).not.toBe(th.surface);
+    // The calendar dots follow the area.
+    if (area === 'training') expect(th.track.workout).toBe(main);
+    if (area === 'nutrition') expect([th.track.diet, th.track.supplement]).toEqual([main, main]);
+  });
+
+  it('no hue can be mistaken for better green or worse red, and every hue is its own', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const p = palettes[mode];
+      for (const hue of areaHues) {
+        // Teal, the nutrition default of 107, is the nearest to green (about 21 degrees, darker).
+        expect([hue, hueGap(areaFamilies[hue][mode].main, p.success) >= 20]).toEqual([hue, true]);
+        expect([hue, hueGap(areaFamilies[hue][mode].main, p.danger) >= 25]).toEqual([hue, true]);
+        for (const other of areaHues)
+          if (other !== hue)
+            expect([
+              hue,
+              other,
+              hueGap(areaFamilies[hue][mode].main, areaFamilies[other][mode].main) >= 25,
+            ]).toEqual([hue, other, true]);
+      }
+    }
+  });
+
+  it('nutrition never takes pink (the protein colour on every nutrition card)', () => {
+    expect(areaHueOptions.nutrition).not.toContain('pink');
+    for (const area of colourAreas) expect(areaHueOptions[area][0]).toBe(defaultAreaColors[area]);
   });
 });
 

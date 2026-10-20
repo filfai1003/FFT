@@ -3967,3 +3967,50 @@ describe('only the name is required; 18+ is a confirmation (DECISIONS 103)', () 
     await restore();
   });
 });
+
+describe('area colours ride with the settings (user_settings.area_colors, DECISIONS 118)', () => {
+  const push = (colors) =>
+    db.query(`select public.sync_push('user_settings', $1::jsonb, '[]'::jsonb)`, [
+      JSON.stringify([
+        {
+          user_id: A,
+          area_colors: colors,
+          updated_at: new Date(Date.now() + 180_000).toISOString(),
+        },
+      ]),
+    ]);
+  const colorsOfA = async () => {
+    await admin();
+    return (await one(`select area_colors from public.user_settings where user_id = $1`, [A]))
+      .area_colors;
+  };
+
+  it('defaults to {} and the sync keeps a valid choice', async () => {
+    assert.deepEqual(await colorsOfA(), {});
+    await as(A);
+    await push({ training: 'blue', streak: 'pink' });
+    assert.deepEqual(await colorsOfA(), { training: 'blue', streak: 'pink' });
+  });
+
+  it('refuses green / red, pink nutrition, unknown areas and non-objects', async () => {
+    await as(A);
+    for (const bad of [
+      { training: 'green' },
+      { streak: 'red' },
+      { nutrition: 'pink' },
+      { water: 'blue' },
+      ['blue'],
+    ])
+      await assert.rejects(
+        () =>
+          db.query(`update public.user_settings set area_colors = $1::jsonb where user_id = $2`, [
+            JSON.stringify(bad),
+            A,
+          ]),
+        (e) => e.code === '23514',
+        JSON.stringify(bad),
+      );
+    await admin();
+    await db.query(`update public.user_settings set area_colors = '{}' where user_id = $1`, [A]);
+  });
+});
