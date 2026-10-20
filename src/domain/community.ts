@@ -127,3 +127,106 @@ export function movement(
 export function topPercent(place: number, total: number): number {
   return Math.max(1, Math.ceil((100 * place) / Math.max(1, total)));
 }
+
+// --- Audiences (DECISIONS 117) -------------------------------------------------------------------
+
+/** Who a leaderboard compares with. Everyone is free; the others need Supporter or Premium. */
+export type CommunityAudience = 'everyone' | 'friends' | 'country' | 'class';
+export const communityAudiences: readonly CommunityAudience[] = [
+  'everyone',
+  'friends',
+  'country',
+  'class',
+];
+export const isPaidAudience = (a: CommunityAudience) => a !== 'everyone';
+/** The plans that unlock the paid audiences (the server checks `plan_of` the same way). */
+export const canFilterAudience = (plan: string | null | undefined) =>
+  plan === 'supporter' || plan === 'premium';
+
+/** Age groups sent instead of the birth date (18+ only: the app is for adults). */
+export const AGE_GROUPS = ['18-24', '25-34', '35-44', '45-54', '55+'] as const;
+export type AgeGroup = (typeof AGE_GROUPS)[number];
+
+/** Full years between a birth date and a day (both YYYY-MM-DD). */
+function ageOn(birthDate: string, day: string): number {
+  const [by, bm, bd] = birthDate.split('-').map(Number);
+  const [y, m, d] = day.split('-').map(Number);
+  return y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+}
+
+export function ageGroupOf(birthDate: string | null | undefined, today: string): AgeGroup | null {
+  if (!birthDate || !/^\d{4}-\d{2}-\d{2}/.test(birthDate)) return null;
+  const age = ageOn(birthDate.slice(0, 10), today);
+  if (!Number.isFinite(age) || age < 18 || age > 120) return null;
+  if (age <= 24) return '18-24';
+  if (age <= 34) return '25-34';
+  if (age <= 44) return '35-44';
+  if (age <= 54) return '45-54';
+  return '55+';
+}
+
+/**
+ * Weight classes (the IPF powerlifting classes, kg): the upper limit of each class; above the
+ * last one is "<last>+". Code = sex letter + limit: 'm83' = over 74 up to 83 kg, 'm120+' = over
+ * 120 kg. Sent instead of the weight.
+ */
+export const WEIGHT_CLASS_LIMITS = {
+  m: [59, 66, 74, 83, 93, 105, 120],
+  f: [47, 52, 57, 63, 69, 76, 84],
+} as const;
+
+export function weightClassOf(
+  sex: string | null | undefined,
+  weightKg: number | null | undefined,
+): string | null {
+  const s = sex === 'male' ? 'm' : sex === 'female' ? 'f' : null;
+  if (!s || weightKg == null || !Number.isFinite(weightKg) || weightKg < 25 || weightKg > 400)
+    return null;
+  const limits: readonly number[] = WEIGHT_CLASS_LIMITS[s];
+  const limit = limits.find((l) => weightKg <= l);
+  return limit != null ? `${s}${limit}` : `${s}${limits[limits.length - 1]}+`;
+}
+
+/**
+ * The kg range of a class code: 'm83' = { from: 74, to: 83 }; from null = "up to", to null =
+ * "over". Null for a code that is not a class.
+ */
+export function weightClassRange(code: string): { from: number | null; to: number | null } | null {
+  const m = /^([mf])(\d+)(\+?)$/.exec(code);
+  if (!m) return null;
+  const limits: readonly number[] = WEIGHT_CLASS_LIMITS[m[1] as 'm' | 'f'];
+  const n = Number(m[2]);
+  const i = limits.indexOf(n);
+  if (i < 0) return null;
+  if (m[3] === '+') return i === limits.length - 1 ? { from: n, to: null } : null;
+  return { from: i === 0 ? null : limits[i - 1], to: n };
+}
+
+/** An ISO 3166-1 alpha-2 country code, or null (user-assigned codes refused, as on the server). */
+export function countryCodeOf(region: string | null | undefined): string | null {
+  const c = (region ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c) || /^(AA|Q[M-Z]|X[A-Z]|ZZ)$/.test(c)) return null;
+  return c;
+}
+
+export type CommunityGroups = {
+  country: string | null;
+  age_group: AgeGroup | null;
+  weight_class: string | null;
+};
+
+/** What `community_set_groups` receives: buckets only, never the birth date or the weight. */
+export function communityGroups(input: {
+  today: string;
+  birthDate: string | null | undefined;
+  sex: string | null | undefined;
+  weightKg: number | null | undefined;
+  /** The profile's country when it has one, otherwise the phone's region. */
+  country: string | null | undefined;
+}): CommunityGroups {
+  return {
+    country: countryCodeOf(input.country),
+    age_group: ageGroupOf(input.birthDate, input.today),
+    weight_class: weightClassOf(input.sex, input.weightKg),
+  };
+}

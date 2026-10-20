@@ -5,6 +5,7 @@ import { DATA_CATEGORIES, normalizeCategories, type DataCategory } from '@/domai
 /**
  * The account's plan and where its data lives (DECISIONS 42, 47, 62).
  * - free: every feature; with the copy on the server: sync (web app, every device), API and MCP
+ * - supporter: + the community filters (friends, country, age and weight class)
  * - premium: + the AI coach included in the app, paid from a monthly AI credit
  * Every account keeps all its data on the device. The copy on the server is the user's choice
  * (`sync`); with it features/premium/sync.ts keeps the server up to date in the background. The
@@ -13,9 +14,10 @@ import { DATA_CATEGORIES, normalizeCategories, type DataCategory } from '@/domai
  */
 export type DataHome = 'device' | 'online';
 
-export type Plan = 'free' | 'premium';
-// 'supporter' (saved before DECISIONS 47) is no longer a plan: read as unknown, asked again.
-export const isPlan = (v: unknown): v is Plan => v === 'free' || v === 'premium';
+// 'supporter' is back (DECISIONS 117): it unlocks the community filters, nothing else.
+export type Plan = 'free' | 'supporter' | 'premium';
+export const isPlan = (v: unknown): v is Plan =>
+  v === 'free' || v === 'supporter' || v === 'premium';
 
 /**
  * Keep a copy on the server (DECISIONS 62): 'on', 'off', or 'undecided' (a new account that has
