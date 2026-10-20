@@ -8,6 +8,8 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 const BUCKETS = ['progress-photos', 'user-exercise-images', 'vault-files'];
+// Public, in a folder named after the member's public id, never the account id (see below).
+const AVATARS = 'community-avatars';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -24,6 +26,23 @@ Deno.serve(async (req) => {
       const { data: files } = await admin.storage.from(bucket).list(user.id, { limit: 100 });
       if (!files || files.length === 0) break;
       const { error } = await admin.storage.from(bucket).remove(files.map((f) => `${user.id}/${f.name}`));
+      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: cors });
+    }
+  }
+
+  // The community photo (DECISIONS 119): removed here at once; deleting the member row (cascade)
+  // also queues it in files_to_delete, emptied by the api service, in case this step fails.
+  const { data: member } = await admin
+    .from('community_members')
+    .select('public_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (member?.public_id) {
+    const { data: files } = await admin.storage.from(AVATARS).list(member.public_id, { limit: 100 });
+    if (files && files.length > 0) {
+      const { error } = await admin.storage
+        .from(AVATARS)
+        .remove(files.map((f) => `${member.public_id}/${f.name}`));
       if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: cors });
     }
   }

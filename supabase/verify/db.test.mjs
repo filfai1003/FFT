@@ -3222,12 +3222,13 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
         ['Anna', 1, 2, true],
       ],
     );
-    // Never the account ids, never anything but the score.
+    // Never the account ids, never anything but the score (and the look, DECISIONS 119).
     const text = JSON.stringify(b);
     assert.ok(!text.includes(A) && !text.includes(B));
     assert.deepEqual(Object.keys(b.rows[0]).sort(), [
       'is_me',
       'level',
+      'look',
       'name',
       'place',
       'place_before',
@@ -3473,6 +3474,209 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     }
   });
 
+  it('profile look (DECISIONS 119): Supporter / Premium only, validated, hidden when the plan ends, photos cleaned up', async () => {
+    const SP = '11900000-0000-0000-0000-00000000000a'; // supporter
+    const FP = '11900000-0000-0000-0000-00000000000b'; // free
+    const GONE = '11900000-0000-0000-0000-00000000000c'; // supporter whose account is deleted
+    await admin();
+    for (const [id, mail] of [
+      [SP, 'sp@test.dev'],
+      [FP, 'fp@test.dev'],
+      [GONE, 'gone@test.dev'],
+    ])
+      await db.query(
+        `insert into auth.users (id, instance_id, aud, role, email)
+         values ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', $2)`,
+        [id, mail],
+      );
+    await db.exec(
+      `insert into public.user_plans (user_id, plan) values ('${SP}', 'supporter'), ('${GONE}', 'supporter')`,
+    );
+    const pid = {};
+    for (const [id, name] of [
+      [SP, 'Sol'],
+      [FP, 'Fio'],
+      [GONE, 'Gus'],
+    ]) {
+      await as(id);
+      pid[id] = (await one(`select public.community_join($1) as m`, [name])).m.public_id;
+    }
+    await unthrottle();
+    await submit(SP, 1, [{ period: 'month', metric: 'workouts', value: 5 }], ['first_workout']);
+    await submit(FP, 1, [{ period: 'month', metric: 'workouts', value: 1 }], ['first_workout']);
+    const queued = (path) =>
+      count(
+        `select count(*) as n from public.files_to_delete where bucket = 'community-avatars' and path = $1`,
+        [path],
+      );
+    const upload = (path) =>
+      db.query(`insert into storage.objects (bucket_id, name) values ('community-avatars', $1)`, [
+        path,
+      ]);
+
+    // The bucket: public read, small JPEG / WebP only (Supabase storage checks them on upload).
+    await admin();
+    const bucket = await one(
+      `select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'community-avatars'`,
+    );
+    assert.deepEqual(
+      [bucket.public, Number(bucket.file_size_limit), bucket.allowed_mime_types],
+      [true, 262144, ['image/jpeg', 'image/webp']],
+    );
+
+    // Free: nothing can be set (42501); clearing is always allowed.
+    await as(FP);
+    await rejects(`select public.community_set_cosmetics('ocean')`, '42501');
+    await rejects(`select public.community_set_cosmetics(null, null, 'runner')`, '42501');
+    await db.query(`select public.community_set_cosmetics()`);
+    await db.query(`select public.community_set_photo(null)`);
+    await assert.rejects(() => upload(`${pid[FP]}/abcdef12.jpg`), { code: '42501' });
+    await rejects(`select public.community_set_photo('${pid[FP]}/abcdef12.jpg')`, '42501');
+
+    // Supporter: only the listed values, only an earned badge.
+    await as(SP);
+    for (const bad of [
+      `'red'`,
+      `null, 'glow'`,
+      `null, null, 'Best lifter ever'`,
+      `null, null, null, 'streak_365'`,
+      `null, null, null, 'Bad Badge'`,
+    ])
+      await rejects(`select public.community_set_cosmetics(${bad})`, '22023');
+    const me = (
+      await one(
+        `select public.community_set_cosmetics('ocean', 'double', 'runner', 'first_workout') as m`,
+      )
+    ).m;
+    assert.deepEqual(
+      [me.profile_colour, me.frame, me.title, me.showcase_badge],
+      ['ocean', 'double', 'runner', 'first_workout'],
+    );
+    assert.deepEqual(me.look, {
+      colour: 'ocean',
+      frame: 'double',
+      title: 'runner',
+      badge: 'first_workout',
+    });
+
+    // Photos: own folder only, a real upload, the file name format.
+    const p1 = `${pid[SP]}/abcdef12.jpg`;
+    await assert.rejects(() => upload(`${pid[FP]}/abcdef12.jpg`), { code: '42501' });
+    await assert.rejects(() => upload(`${pid[SP]}/photo.png`), { code: '42501' });
+    await assert.rejects(() => upload(`${SP}/abcdef12.jpg`), { code: '42501' });
+    await rejects(`select public.community_set_photo('${pid[SP]}/notthere1.jpg')`, '22023');
+    await upload(p1);
+    await rejects(`select public.community_set_photo('${pid[FP]}/abcdef12.jpg')`, '22023');
+    assert.equal(
+      (await one(`select public.community_set_photo($1) as m`, [p1])).m.look.photo,
+      p1,
+    );
+    // Others cannot remove it or list the folder.
+    await as(FP);
+    await db.query(`delete from storage.objects where bucket_id = 'community-avatars'`);
+    assert.equal(
+      await count(`select count(*) as n from storage.objects where bucket_id = 'community-avatars'`),
+      0,
+    );
+    await admin();
+    assert.equal(
+      await count(
+        `select count(*) as n from storage.objects where bucket_id = 'community-avatars' and name = $1`,
+        [p1],
+      ),
+      1,
+    );
+
+    // What others see: on boards, friends and the public profile; free members show nothing.
+    const lookOn = async (uid, name) => {
+      const b = await board(uid, 'workouts');
+      return b.rows.find((r) => r.name === name)?.look ?? null;
+    };
+    assert.deepEqual(await lookOn(FP, 'Sol'), {
+      colour: 'ocean',
+      frame: 'double',
+      title: 'runner',
+      badge: 'first_workout',
+      photo: p1,
+    });
+    assert.equal(await lookOn(SP, 'Fio'), null);
+    await as(FP);
+    assert.equal(
+      (await one(`select public.community_profile($1) as p`, [pid[SP]])).p.look.colour,
+      'ocean',
+    );
+    await db.query(`select public.community_add_friend(null, $1)`, [pid[SP]]);
+    await as(SP);
+    assert.equal(
+      (await one(`select public.community_friends() as f`)).f.find((f) => f.name === 'Fio').look,
+      null,
+    );
+    await as(FP);
+    assert.equal(
+      (await one(`select public.community_friends() as f`)).f.find((f) => f.name === 'Sol').look
+        .title,
+      'runner',
+    );
+
+    // The plan ends: hidden from others, kept for the member; back with the plan.
+    await admin();
+    await db.exec(`delete from public.user_plans where user_id = '${SP}'`);
+    assert.equal(await lookOn(FP, 'Sol'), null);
+    await as(SP);
+    const kept = (await one(`select public.community_me() as m`)).m;
+    assert.deepEqual([kept.profile_colour, kept.photo_path, kept.look], ['ocean', p1, null]);
+    await admin();
+    await db.exec(`insert into public.user_plans (user_id, plan) values ('${SP}', 'supporter')`);
+    assert.equal((await lookOn(FP, 'Sol')).photo, p1);
+
+    // A replaced or removed photo is queued for removal from storage.
+    await as(SP);
+    const p2 = `${pid[SP]}/bcdef123.webp`;
+    await upload(p2);
+    await db.query(`select public.community_set_photo($1)`, [p2]);
+    await admin();
+    assert.equal(await queued(p1), 1);
+    assert.equal(await queued(p2), 0);
+    // The member may delete its own file.
+    await as(SP);
+    await db.query(`delete from storage.objects where bucket_id = 'community-avatars' and name = $1`, [
+      p1,
+    ]);
+    await admin();
+    assert.equal(
+      await count(`select count(*) as n from storage.objects where name = $1`, [p1]),
+      0,
+    );
+    // An admin removal (admin/server.js: photo_path = null) queues it too.
+    await db.query(`update public.community_members set photo_path = null where user_id = $1`, [
+      SP,
+    ]);
+    assert.equal(await queued(p2), 1);
+
+    // Leaving queues the photo; so does deleting the account (the member row cascades).
+    await as(SP);
+    const p3 = `${pid[SP]}/cdef1234.jpg`;
+    await upload(p3);
+    await db.query(`select public.community_set_photo($1)`, [p3]);
+    await db.query(`select public.community_leave()`);
+    await as(GONE);
+    const p4 = `${pid[GONE]}/def12345.jpg`;
+    await upload(p4);
+    await db.query(`select public.community_set_photo($1)`, [p4]);
+    await admin();
+    await db.query(`delete from auth.users where id = $1`, [GONE]);
+    assert.equal(await queued(p3), 1);
+    assert.equal(await queued(p4), 1);
+    await as(FP);
+    await db.query(`select public.community_leave()`);
+    await admin();
+    await db.exec(
+      `delete from public.files_to_delete where bucket = 'community-avatars';
+       delete from storage.objects where bucket_id = 'community-avatars';
+       delete from auth.users where id in ('${SP}', '${FP}');`,
+    );
+  });
+
   it('the export lists the community data; leaving deletes member, scores and friendships', async () => {
     await as(A);
     const exp = (await one(`select public.community_export() as e`)).e;
@@ -3604,8 +3808,19 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     );
     // Public buckets with no one's files: the exercise catalogue images, the APK.
     const shared = ['exercise-images', 'downloads'];
+    // Community photos (DECISIONS 119) are filed by public id, not account id: delete-account
+    // removes the member's folder, and the member row's deletion (also by a restore's
+    // reapply_deletions) queues the file in files_to_delete.
+    assert.ok(buckets.includes('community-avatars'));
+    assert.ok(fn.includes("const AVATARS = 'community-avatars'"), 'delete-account: community photos');
+    assert.equal(
+      await count(
+        `select count(*) as n from pg_trigger where tgname = 'community_members_queue_photo'`,
+      ),
+      1,
+    );
     for (const b of buckets) {
-      if (shared.includes(b)) continue;
+      if (shared.includes(b) || b === 'community-avatars') continue;
       assert.ok(listed.includes(b), `bucket ${b} is not emptied by delete-account`);
       assert.ok(restore.includes(`'${b}'`), `bucket ${b} is not emptied after a restore`);
     }
