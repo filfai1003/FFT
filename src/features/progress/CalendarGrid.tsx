@@ -166,7 +166,7 @@ export function CalendarGrid({
                     />
                     <View
                       style={dot(
-                        colors.track.supplement,
+                        colors.success,
                         supps === 'all' ? 'full' : supps === 'some' ? 'ring' : 'empty',
                       )}
                     />
@@ -203,7 +203,7 @@ export function CalendarLegend() {
   const items = [
     [dot(colors.track.workout, 'full'), t('calendar.legendWorkout')],
     [dot(colors.track.diet, 'full'), t('calendar.legendDietOn')],
-    [dot(colors.track.supplement, 'full'), t('calendar.legendSupplements')],
+    [dot(colors.success, 'full'), t('calendar.legendSupplements')],
     [dot(colors.textMuted, 'ring'), t('calendar.legendPartly')],
   ] as const;
   return (

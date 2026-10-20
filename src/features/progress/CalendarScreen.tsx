@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { addDays, monthYearLabel, shortDateLabel, weekOf } from '@/domain/day';
@@ -79,11 +80,23 @@ export function CalendarScreen() {
             accessibilityLabel={mode === 'week' ? t('calendar.prevWeek') : t('history.prevMonth')}
             onPress={() => move(-1)}
           />
-          <View style={{ alignItems: 'center', gap: 2 }}>
+          <View style={{ alignItems: 'center', gap: 6, flexShrink: 1 }}>
             <Text variant="label">{title}</Text>
-            <Text variant="bodyS" muted>
-              {t('calendar.summary', { workouts: trainedCount, diet: onTargetCount })}
-            </Text>
+            {/* The period at a glance, in the areas' colours (DECISIONS 114). */}
+            <View
+              style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}
+            >
+              <StatusChip
+                area="training"
+                icon="dumbbell"
+                label={t('calendar.workoutsCount', { count: trainedCount })}
+              />
+              <StatusChip
+                area="nutrition"
+                icon="bowl"
+                label={t('calendar.onTargetCount', { count: onTargetCount })}
+              />
+            </View>
           </View>
           <IconButton
             icon="chevronRight"

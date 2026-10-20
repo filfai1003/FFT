@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { DotBar } from '@/components/ui/DotBar';
 import { IconButton } from '@/components/ui/IconButton';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
@@ -17,6 +19,7 @@ import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import { type SessionView } from '@/features/train/history';
 import { useMarkWorkoutDone, useSetWorkoutDeleted } from '@/features/train/mark-done';
 import { useActivePlan, useRotation } from '@/features/train/plans';
+import { useToday } from '@/features/profile/use-today';
 import { useToastStore } from '@/lib/toast-store';
 
 /**
@@ -28,6 +31,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
   const { colors } = useTheme();
   const router = useRouter();
   const showToast = useToastStore((s) => s.show);
+  const today = useToday();
 
   const goals = useGoals();
   const totals = useDayTotals(day);
@@ -136,21 +140,43 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
           {section(t('calendar.diet'), colors.track.diet)}
           {eaten && eaten.kcal > 0 ? (
             <>
-              <Text variant="body">
-                {target
-                  ? t('calendar.dietLine', {
-                      eaten: Math.round(eaten.kcal),
-                      target: Math.round(target.kcal),
-                    })
-                  : t('calendar.dietLineNoTarget', { eaten: Math.round(eaten.kcal) })}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text variant="body" semibold numeric style={{ flex: 1 }}>
+                  {target
+                    ? t('calendar.dietLine', {
+                        eaten: Math.round(eaten.kcal),
+                        target: Math.round(target.kcal),
+                      })
+                    : t('calendar.dietLineNoTarget', { eaten: Math.round(eaten.kcal) })}
+                </Text>
+                {target && !(day === today && eaten.kcal < target.kcal) ? (
+                  <StatusChip
+                    area={status === 'onTarget' ? 'better' : 'worse'}
+                    icon={status === 'onTarget' ? 'check' : 'close'}
+                    label={status === 'onTarget' ? t('calendar.onTarget') : t('calendar.offTarget')}
+                  />
+                ) : null}
+              </View>
+              {/* Eaten against the target as a filled bar (DECISIONS 114). */}
+              {target ? (
+                <DotBar
+                  total={Math.max(1, Math.round(target.kcal))}
+                  on={Math.min(Math.round(eaten.kcal), Math.round(target.kcal))}
+                  color={colors.nutrition}
+                  track={colors.nutritionSoft}
+                  accessibilityLabel={t('calendar.dietLine', {
+                    eaten: Math.round(eaten.kcal),
+                    target: Math.round(target.kcal),
+                  })}
+                />
+              ) : null}
               <Text variant="bodyS" muted>
-                {`${t('diet.mealLine', {
+                {t('diet.mealLine', {
                   kcal: Math.round(eaten.kcal),
                   p: Math.round(eaten.protein),
                   c: Math.round(eaten.carbs),
                   f: Math.round(eaten.fat),
-                })}${target ? ` · ${status === 'onTarget' ? t('calendar.dietOnTarget') : t('calendar.dietOff')}` : ''}`}
+                })}
               </Text>
             </>
           ) : null}
@@ -166,7 +192,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
           <View
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
           >
-            {section(t('calendar.supplements'), colors.track.supplement)}
+            {section(t('calendar.supplements'), colors.success)}
             {(supplements.data?.length ?? 0) > 0 ? (
               <IconButton
                 icon="edit"
