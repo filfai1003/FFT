@@ -89,6 +89,34 @@ export function Gauge({
               );
             })
           : null}
+        {/* The pieces meet edge to edge (butt ends), so the track's round ends would show grey at
+            both ends of the fill: a tiny round dot in the first and last piece's colour covers them. */}
+        {filled > 0 && segments?.length
+          ? (() => {
+              const shown = segments.filter((s) => s.share > 0);
+              if (shown.length === 0) return null;
+              const dot = Math.min(0.01, filled / 2);
+              return [
+                { at: 0, color: shown[0]!.color },
+                { at: filled - dot, color: shown[shown.length - 1]!.color },
+              ].map((cap, i) => (
+                <Circle
+                  key={`cap${i}`}
+                  testID={`gauge-cap-${i}`}
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={r}
+                  fill="none"
+                  stroke={cap.color}
+                  strokeWidth={stroke}
+                  strokeLinecap="round"
+                  strokeDasharray={`${dot} ${c}`}
+                  strokeDashoffset={-cap.at}
+                  transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
+                />
+              ));
+            })()
+          : null}
         {filled > 0 && !segments?.length ? (
           <Circle
             cx={size / 2}
