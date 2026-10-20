@@ -6,7 +6,11 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormHeader } from '@/components/ui/FormHeader';
+import { IconTile } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
+import { StatusChip } from '@/components/ui/StatusChip';
+import { radius } from '@/design/tokens';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
@@ -80,7 +84,20 @@ export function DietGoalsScreen() {
   const [planName, setPlanName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (goals.isPending || !profile.data) return <Screen>{null}</Screen>;
+  if (goals.isPending || !profile.data)
+    return (
+      <Screen gap={18}>
+        <FormHeader
+          left={{ label: t('common.cancel'), onPress: () => goBack(router) }}
+          title={t('goals.title')}
+        />
+        <SkeletonGroup accessibilityLabel={t('common.loading')} gap={8}>
+          <Skeleton height={76} style={{ borderRadius: radius.cardSmall }} />
+          <Skeleton height={76} style={{ borderRadius: radius.cardSmall }} />
+          <Skeleton height={200} style={{ borderRadius: radius.card, marginTop: 10 }} />
+        </SkeletonGroup>
+      </Screen>
+    );
 
   const p = profile.data;
   // Every detail is optional (DECISIONS 103): no suggestion without sex, age, height and weight
@@ -172,6 +189,8 @@ export function DietGoalsScreen() {
     setPercents(macroPercents(defaultMacros(next, weight.data.weightKg)));
   };
 
+  const isSuggested =
+    maintenance != null && kcal === suggestedKcalFromProfile(p, maintenance) && !problem;
   const suggestion = (() => {
     if (!maintenance) return t('goals.noSuggestion');
     const pct = Math.round(((kcal - maintenance) / maintenance) * 100);
@@ -239,23 +258,23 @@ export function DietGoalsScreen() {
           <Text variant="bodyS" muted>
             {t('goals.howYouTrack')}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 8 }} accessibilityRole="radiogroup">
-            <View style={{ flex: 1 }}>
-              <OptionCard
-                title={t('onboarding.mode.tracking')}
-                description={t('onboarding.mode.trackingDetail')}
-                selected={chosenMode === 'tracking'}
-                onPress={() => setMode('tracking')}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <OptionCard
-                title={t('onboarding.mode.fixed')}
-                description={t('onboarding.mode.fixedDetail')}
-                selected={chosenMode === 'fixed_meals'}
-                onPress={() => setMode('fixed_meals')}
-              />
-            </View>
+          {/* Stacked, each with its icon (canvas "Diet goals"): side by side the two
+              descriptions wrapped into narrow columns. */}
+          <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+            <OptionCard
+              title={t('onboarding.mode.tracking')}
+              description={t('onboarding.mode.trackingDetail')}
+              icon={{ name: 'search', tint: colors.nutritionSoft, ink: colors.nutritionInk }}
+              selected={chosenMode === 'tracking'}
+              onPress={() => setMode('tracking')}
+            />
+            <OptionCard
+              title={t('onboarding.mode.fixed')}
+              description={t('onboarding.mode.fixedDetail')}
+              icon={{ name: 'check', tint: colors.nutritionSoft, ink: colors.nutritionInk }}
+              selected={chosenMode === 'fixed_meals'}
+              onPress={() => setMode('fixed_meals')}
+            />
           </View>
         </View>
 
@@ -282,9 +301,19 @@ export function DietGoalsScreen() {
         {withTarget ? (
           <>
             <Card gap={12}>
-              <Text variant="bodyS" muted>
-                {t('goals.dailyCalories')}
-              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                }}
+              >
+                <Text semibold>{t('goals.dailyCalories')}</Text>
+                {isSuggested ? (
+                  <StatusChip area="nutrition" label={t('goals.suggestedChip')} />
+                ) : null}
+              </View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
                 <Text variant="displayXL" numeric style={{ fontSize: 52, lineHeight: 52 }}>
                   {kcal}
@@ -336,20 +365,22 @@ export function DietGoalsScreen() {
 
             <View
               style={{
-                minHeight: 52,
+                minHeight: 64,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 12,
-                paddingLeft: 16,
+                paddingLeft: 12,
                 paddingRight: 8,
-                borderRadius: 18,
+                borderRadius: radius.cardSmall,
                 borderWidth: 1,
                 borderColor: colors.borderDecorative,
-                backgroundColor: colors.surfaceAlt,
+                backgroundColor: colors.surface,
               }}
             >
-              <View style={{ flex: 1, gap: 2 }}>
+              {/* Training's own colour: the bonus depends on a workout (DECISIONS 107). */}
+              <IconTile icon="dumbbell" area="training" />
+              <View style={{ flex: 1, gap: 2, paddingVertical: 8 }}>
                 <Text>{t('goals.trainingBonus')}</Text>
                 <Text variant="bodyS" muted>
                   {t('goals.trainingBonusDetail')}

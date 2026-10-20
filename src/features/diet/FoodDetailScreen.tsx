@@ -6,6 +6,11 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
+import { DotBar } from '@/components/ui/DotBar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
+import { radius } from '@/design/tokens';
+import { VerifiedTick } from './VerifiedTick';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
@@ -65,7 +70,25 @@ export function FoodDetailScreen() {
   const [mealSheet, setMealSheet] = useState(false);
   const [amount, setAmount] = useState<number | null>(null);
 
-  if (!food.data) return <Screen>{null}</Screen>;
+  if (!food.data)
+    return (
+      <Screen gap={14}>
+        <IconButton
+          icon="chevronLeft"
+          accessibilityLabel={t('common.back')}
+          onPress={() => goBack(router)}
+        />
+        {food.isError ? (
+          <EmptyState icon="search" area="nutrition" title={t('diet.foodMissing')} />
+        ) : (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <Skeleton width="70%" height={24} />
+            <Skeleton height={170} style={{ borderRadius: radius.card }} />
+            <Skeleton height={48} style={{ borderRadius: radius.pill }} />
+          </SkeletonGroup>
+        )}
+      </Screen>
+    );
   const per100: Per100 = food.data.per100;
 
   // Default amount: the saved entry, else the first named portion, else 100 g.
@@ -167,11 +190,7 @@ export function FoodDetailScreen() {
             {name}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {food.data.verified ? (
-              <View
-                style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.text }}
-              />
-            ) : null}
+            {food.data.verified ? <VerifiedTick /> : null}
             <Text variant="bodyS" muted>
               {food.data.source === 'custom'
                 ? t('diet.yourFood')
@@ -205,19 +224,22 @@ export function FoodDetailScreen() {
               {t('diet.forGrams', { g: value })}
             </Text>
           </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 12,
-              borderTopWidth: 1,
-              borderColor: colors.borderDecorative,
-              paddingTop: 12,
-            }}
-          >
+          {/* One tinted tile per macro in its colour (canvas "Food detail"); with a target, a bar
+              fills with this portion's share of the day's goal. */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             {shares.map(([key, grams, goal]) => (
-              <View key={key} style={{ flex: 1, gap: 4 }}>
-                <Text variant="bodyS" muted>
-                  {t(`diet.field.${key}`)}
+              <View
+                key={key}
+                style={{
+                  flex: 1,
+                  gap: 6,
+                  borderRadius: radius.row,
+                  backgroundColor: colors.macroSoft[key],
+                  padding: 10,
+                }}
+              >
+                <Text variant="bodyS" semibold style={{ color: colors.macroInk[key] }}>
+                  {t(`diet.macro.${key}`)}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
                   <Text variant="displayS" numeric>
@@ -228,9 +250,21 @@ export function FoodDetailScreen() {
                   </Text>
                 </View>
                 {goal > 0 ? (
-                  <Text variant="bodyS" muted>
-                    {t('diet.ofGoal', { pct: shareOfGoal(grams, goal) })}
-                  </Text>
+                  <>
+                    <DotBar
+                      total={goal}
+                      on={grams}
+                      size={6}
+                      color={colors.macroSplit[key]}
+                      track={colors.surface}
+                      accessibilityLabel={`${t(`diet.macro.${key}`)}, ${t('diet.ofGoal', {
+                        pct: shareOfGoal(grams, goal),
+                      })}`}
+                    />
+                    <Text variant="label" semibold numeric style={{ color: colors.macroInk[key] }}>
+                      {t('diet.ofGoal', { pct: shareOfGoal(grams, goal) })}
+                    </Text>
+                  </>
                 ) : null}
               </View>
             ))}

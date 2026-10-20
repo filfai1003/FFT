@@ -82,7 +82,8 @@ export function DayPickerSheet({
                     borderRadius: 22,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    borderWidth: 1,
+                    // Selection = 2px border in the text colour; today a thin ring.
+                    borderWidth: isSelected ? 2 : 1,
                     borderColor: isSelected
                       ? colors.borderSelected
                       : day === today
