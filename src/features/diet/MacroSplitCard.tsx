@@ -69,7 +69,7 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
             borderColor: colors.divider,
           }}
         >
-          <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: color }} />
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: color }} />
           <Text style={{ flex: 1 }}>{t(`diet.macro.${key}`)}</Text>
           <Text semibold numeric style={{ width: 60, textAlign: 'right' }}>
             {t('goals.gramsValue', { g: grams })}

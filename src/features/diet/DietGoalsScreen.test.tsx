@@ -2,6 +2,7 @@ import '@/i18n';
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderUI } from '@/test/render';
 import { useToastStore } from '@/lib/toast-store';
+import { suggestedKcal } from '@/domain/nutrition';
 import { DietGoalsScreen } from './DietGoalsScreen';
 
 const mockSaveGoal = jest.fn(async (_g: unknown) => undefined);
@@ -95,6 +96,15 @@ describe('Diet goals: a target or none (DECISIONS 104)', () => {
     expect(saved.kcal).toBeGreaterThanOrEqual(1500);
     expect(saved.waterMl).toBe(2500);
     expect(mockRemoveTarget).not.toHaveBeenCalled();
+  });
+
+  it('marks a target equal to the suggestion "Suggested for you" (DECISIONS 112)', async () => {
+    const suggested = suggestedKcal(2600, 'maintain');
+    mockGoals = [goal({ kcal: suggested, maintenanceKcal: 2600 })];
+    await renderUI(<DietGoalsScreen />);
+    expect(screen.getByText('Suggested for you')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Raise calories by 50'));
+    expect(screen.queryByText('Suggested for you')).toBeNull();
   });
 
   it('keeping "no target" writes nothing to the goals', async () => {
