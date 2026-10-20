@@ -101,7 +101,7 @@ export function RestCard() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <IconTile icon="clock" area="training" size={28} />
-          <Text variant="label" muted>
+          <Text variant="bodyS" semibold>
             {t('session.rest', { time: formatClock(rest.totalS) })}
           </Text>
         </View>

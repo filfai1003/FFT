@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
@@ -69,9 +70,14 @@ export function SessionScreen() {
     // Finished, discarded or never existed: nothing to show here.
     return (
       <Screen gap={16}>
-        <Text variant="screenTitle">{t('session.noneTitle')}</Text>
-        <Text muted>{t('session.noneBody')}</Text>
-        <Button label={t('session.backToTrain')} onPress={() => router.replace('/train')} />
+        <EmptyState
+          icon="dumbbell"
+          area="training"
+          title={t('session.noneTitle')}
+          body={t('session.noneBody')}
+          action={{ label: t('session.backToTrain'), onPress: () => router.replace('/train') }}
+          actionVariant="primary"
+        />
       </Screen>
     );
   }
@@ -252,6 +258,7 @@ export function SessionScreen() {
               set={set}
               columns={cols}
               large={oneHand}
+              current={i === doing && k === nextSet}
               onChange={(setIndex, field, value) => onChange(setIndex, field, value, i)}
               onToggle={(setIndex) => onToggle(setIndex, i)}
               onDropChange={(setIndex, k, field, value) =>
@@ -361,8 +368,8 @@ export function SessionScreen() {
                 key={e.rowId}
                 style={{
                   flex: 1,
-                  height: 4,
-                  borderRadius: 2,
+                  height: 6,
+                  borderRadius: 3,
                   // The exercises on screen (a whole superset) are lit: the page indicator.
                   backgroundColor:
                     i === index || group.includes(i)
@@ -398,16 +405,13 @@ export function SessionScreen() {
             <RestCard />
           </>
         ) : (
-          <Card gap={12}>
-            <Text variant="titleM">{t('session.emptyTitle')}</Text>
-            <Text muted>{t('session.emptyBody')}</Text>
-            <Button
-              label={t('session.addExercise')}
-              onPress={() =>
-                router.push({ pathname: '/exercise-picker', params: { target: 'session' } })
-              }
-            />
-          </Card>
+          // The big button below already adds the first exercise: no second one here.
+          <EmptyState
+            icon="plus"
+            area="training"
+            title={t('session.emptyTitle')}
+            body={t('session.emptyBody')}
+          />
         )}
       </Screen>
 
