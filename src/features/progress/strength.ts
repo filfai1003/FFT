@@ -54,6 +54,8 @@ export function groupDetail(
   sets: number;
   setsPerWeek: number;
   volumeChange: number | null;
+  /** The group's own score over the period (the overall series mixes every group). */
+  series: (number | null)[];
 } {
   const own = s.changes.filter((c) => {
     const m = s.muscleOf(c.exerciseId);
@@ -68,5 +70,14 @@ export function groupDetail(
     sets,
     setsPerWeek: Math.round((sets / s.weeks) * 10) / 10,
     volumeChange: weeklyVolumeChange(rows, s.from, s.to),
+    series: scoreSeries(
+      s.rows.filter((r) => {
+        const m = s.muscleOf(r.exerciseId);
+        return m != null && strengthGroup(m) === group;
+      }),
+      s.from,
+      s.to,
+      s.series.length,
+    ),
   };
 }
