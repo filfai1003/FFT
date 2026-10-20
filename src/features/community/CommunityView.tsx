@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { DotBar } from '@/components/ui/DotBar';
 import { Card } from '@/components/ui/Card';
 import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -44,7 +45,7 @@ import {
 } from './api';
 import { useBoardChoice } from './board-store';
 import { NameSheet } from './NameSheet';
-import { IconTile, type Area } from '@/components/ui/IconTile';
+import { IconTile, useAreaColors, type Area } from '@/components/ui/IconTile';
 
 /** Colour code (DECISIONS 107): diet is nutrition, the rest is training. */
 const metricArea: Record<CommunityMetric, Area> = {
@@ -159,20 +160,8 @@ function JoinView() {
                 padding: 10,
               }}
             >
-              <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.borderDecorative,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name={metricIcon[m]} size={17} color={colors.text} />
-              </View>
+              {/* In the area's colour, as on the board's tabs (DECISIONS 107, 114). */}
+              <IconTile icon={metricIcon[m]} area={metricArea[m]} size={34} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text semibold style={{ fontSize: 14 }}>
                   {t(`community.metric.${m}`)}
@@ -545,7 +534,11 @@ function BoardView({ name }: { name: string }) {
         right={t('community.friends.add')}
         onRight={() => router.push('/progress/community-profile')}
       />
-      <FriendsCard list={friends.data ?? []} metric={metric} />
+      <FriendsCard
+        list={friends.data ?? []}
+        metric={metric}
+        mine={rows.find((r) => r.is_me)?.value ?? null}
+      />
 
       <FiltersSheet
         visible={filters}
@@ -714,18 +707,81 @@ function PlaceRow({
   );
 }
 
+type FriendRow = { public_id: string; name: string; status: string; value: number | null };
+
+/**
+ * A friend's score next to yours as two bars (canvas ProgressCommunity, DECISIONS 114): theirs in
+ * the board's area colour, yours in the text colour. Scores below zero (strength) show no bars.
+ */
+function FriendBars({
+  name,
+  theirs,
+  mine,
+  metric,
+}: {
+  name: string;
+  theirs: number;
+  mine: number;
+  metric: CommunityMetric;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const area = useAreaColors(metricArea[metric]);
+  if (theirs < 0 || mine < 0) return null;
+  const max = Math.max(theirs, mine, 1);
+  const bars = [
+    { who: name, value: theirs, color: area.fill },
+    { who: t('community.friends.you'), value: mine, color: colors.text },
+  ];
+  return (
+    <View aria-hidden style={{ gap: 4 }}>
+      {bars.map((b) => (
+        <View key={b.who} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text variant="label" muted numberOfLines={1} style={{ width: 52 }}>
+            {b.who}
+          </Text>
+          <DotBar
+            total={100}
+            on={Math.round((b.value / max) * 100)}
+            size={6}
+            color={b.color}
+            accessibilityLabel={`${b.who} ${formatScore(metric, b.value)}`}
+            style={{ flex: 1 }}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function FriendsCard({
   list,
   metric,
+  mine,
 }: {
-  list: { public_id: string; name: string; status: string; value: number | null }[];
+  list: FriendRow[];
   metric: CommunityMetric;
+  /** Your score on this board, to compare with (null without one). */
+  mine: number | null;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const answer = useAnswerFriend();
   const showToast = useToastStore((s) => s.show);
+  // What a friend's line says: a request, no score, or how far ahead / behind you they are.
+  const subtitle = (f: FriendRow): string => {
+    if (f.status === 'asked_you') return t('community.friends.askedYou');
+    if (f.status === 'asked') return t('community.friends.asked');
+    if (f.value == null) return t('community.friends.noScore');
+    if (mine == null) return t(`community.metric.${metric}`);
+    const gap = Math.round((Number(f.value) - Number(mine)) * 10) / 10;
+    if (gap === 0) return t('community.friends.level');
+    const text = formatGap(metric, Math.abs(gap));
+    return gap > 0
+      ? t('community.friends.ahead', { gap: text })
+      : t('community.friends.behind', { gap: text });
+  };
   if (list.length === 0)
     return (
       <EmptyState
@@ -756,27 +812,33 @@ function FriendsCard({
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={f.name}
+            accessibilityLabel={[f.name, f.status === 'friends' ? subtitle(f) : null]
+              .filter(Boolean)
+              .join(', ')}
             onPress={() => {
               tick();
               router.push({ pathname: '/progress/community-profile', params: { id: f.public_id } });
             }}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52 }}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              minHeight: 52,
+              paddingVertical: 8,
+            }}
           >
             <Avatar name={f.name} size={38} />
-            <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
               <Text semibold numberOfLines={1}>
                 {f.name}
               </Text>
               <Text variant="bodyS" muted>
-                {f.status === 'asked_you'
-                  ? t('community.friends.askedYou')
-                  : f.status === 'asked'
-                    ? t('community.friends.asked')
-                    : f.value == null
-                      ? t('community.friends.noScore')
-                      : t(`community.metric.${metric}`)}
+                {subtitle(f)}
               </Text>
+              {f.status === 'friends' && f.value != null && mine != null ? (
+                <FriendBars name={f.name} theirs={f.value} mine={mine} metric={metric} />
+              ) : null}
             </View>
             {f.status === 'friends' && f.value != null ? (
               <Text semibold numeric>
@@ -981,6 +1043,7 @@ export function CommunityPinned() {
   const mine = board.data?.rows.find((r) => r.is_me) ?? null;
   const total = board.data?.total ?? 0;
   const moveText = mine ? movement(mine.place, mine.place_before) : null;
+  const next = mine ? nextTarget(board.data?.rows ?? [], mine) : null;
   const a11y = mine
     ? t('community.you.a11y', {
         place: mine.place,
@@ -1007,40 +1070,89 @@ export function CommunityPinned() {
           borderWidth: 1,
           borderColor: colors.borderDecorative,
           backgroundColor: colors.surface,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
+          gap: 14,
           padding: 16,
         }}
       >
-        <IconTile icon="trophy" area="streak" size={44} />
-        {mine ? (
-          <Text variant="displayL" numeric>
-            {`#${mine.place}`}
-          </Text>
-        ) : null}
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text semibold numberOfLines={1}>
-            {mine
-              ? t('community.you.top', { pct: topPercent(mine.place, total) })
-              : t('community.you.noScore')}
-          </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <IconTile icon="trophy" area="streak" size={44} />
           {mine ? (
-            <MoveLine row={mine} long />
-          ) : (
-            <Text variant="label" muted>
-              {t('community.you.noScoreInfo')}
+            <Text variant="displayL" numeric>
+              {`#${mine.place}`}
             </Text>
-          )}
+          ) : null}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text semibold numberOfLines={1}>
+              {mine
+                ? t('community.you.ofTotal', { total, pct: topPercent(mine.place, total) })
+                : t('community.you.noScore')}
+            </Text>
+            {mine ? (
+              <MoveLine row={mine} long />
+            ) : (
+              <Text variant="label" muted>
+                {t('community.you.noScoreInfo')}
+              </Text>
+            )}
+          </View>
+          {mine ? (
+            <Text variant="displayS" numeric>
+              {formatScore(key.metric, mine.value)}
+            </Text>
+          ) : null}
         </View>
-        {mine ? (
-          <Text variant="displayS" numeric>
-            {formatScore(key.metric, mine.value)}
-          </Text>
+        {/* How far the next place is, as a fill (canvas ProgressCommunity, DECISIONS 114). */}
+        {mine && next ? (
+          <View style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <Text variant="bodyS" semibold style={{ flexShrink: 1 }}>
+                {next.row.place === mine.place - 1
+                  ? t('community.you.toPass', {
+                      gap: formatGap(key.metric, next.gap),
+                      name: next.row.name,
+                    })
+                  : t('community.you.toReach', {
+                      gap: formatGap(key.metric, next.gap),
+                      place: next.row.place,
+                    })}
+              </Text>
+              <Text variant="bodyS" muted numeric>
+                {`#${next.row.place} · ${formatScore(key.metric, next.row.value)}`}
+              </Text>
+            </View>
+            <DotBar
+              total={100}
+              on={Math.round(next.share * 100)}
+              color={colors.streak}
+              track={colors.streakSoft}
+              accessibilityLabel={t('community.you.nextA11y', { place: next.row.place })}
+            />
+          </View>
         ) : null}
       </Pressable>
     </View>
   );
+}
+
+/**
+ * The next place to aim for: the row just above yours on the board (the board lists the top 8 and
+ * you, so below 9th it is 8th), how much is missing and how far you are on the way (0..1).
+ */
+export function nextTarget(
+  rows: readonly BoardRow[],
+  mine: BoardRow,
+): { row: BoardRow; gap: number; share: number } | null {
+  const above = rows.filter((r) => !r.is_me && r.place < mine.place && r.value > mine.value);
+  const row = above.sort((a, b) => b.place - a.place)[0];
+  if (!row) return null;
+  const gap = Math.round((Number(row.value) - Number(mine.value)) * 10) / 10;
+  const share = Number(row.value) > 0 ? Math.max(0, Math.min(1, mine.value / row.value)) : 0;
+  return { row, gap, share };
+}
+
+/** A gap between two scores: workouts as a count, the rest in points of %. */
+function formatGap(metric: CommunityMetric, gap: number): string {
+  return metric === 'workouts' ? String(Math.ceil(gap)) : `${gap}%`;
 }
 
 /** The member's initial in the Progress header: opens the community profile. */

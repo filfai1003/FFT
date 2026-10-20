@@ -2308,7 +2308,10 @@
       "same": "Same place"
     },
     "you": {
-      "top": "You · top {{pct}}%",
+      "ofTotal": "of {{total}} · top {{pct}}%",
+      "toPass": "{{gap}} more to pass {{name}}",
+      "toReach": "{{gap}} more to reach #{{place}}",
+      "nextA11y": "On the way to place {{place}}",
       "up_one": "Up {{count}} place since yesterday",
       "up_other": "Up {{count}} places since yesterday",
       "down_one": "Down {{count}} place since yesterday",
@@ -2331,6 +2334,10 @@
       "declined": "Request declined",
       "accepted": "You are now friends",
       "noScore": "No score yet",
+      "you": "You",
+      "level": "Level with you",
+      "ahead": "{{gap}} ahead of you",
+      "behind": "{{gap}} behind you",
       "count_one": "{{count}} friend",
       "count_other": "{{count}} friends",
       "and": "{{list}} and {{last}}",
