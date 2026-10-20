@@ -2548,6 +2548,8 @@
       "seeHowInfo": "Name, level, scores and badges only",
       "join": "Join the community",
       "joinInfo": "Leaderboards anyone can win, opt-in"
-    }
+    },
+    "errorFilterUnavailable": "This filter is not available yet. Choose Everyone for now.",
+    "errorFilterPlan": "This filter comes with Supporter and Premium."
   }
 }

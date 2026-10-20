@@ -4,7 +4,7 @@ import { usePlanStore } from '@/lib/plan';
 import { useToastStore } from '@/lib/toast-store';
 import { renderUI } from '@/test/render';
 import { useBoardChoice } from './board-store';
-import { CommunityView, formatScore, nextTarget } from './CommunityView';
+import { boardErrorKey, CommunityView, formatScore, nextTarget } from './CommunityView';
 import { PublicProfileScreen } from './PublicProfileScreen';
 
 const mockPush = jest.fn();
@@ -257,5 +257,14 @@ describe('Community profile', () => {
     expect(toast?.actionLabel).toBe('Undo');
     await toast?.onAction?.();
     expect(mockJoin).toHaveBeenCalledWith('Filippo');
+  });
+});
+
+describe('board errors', () => {
+  it('tells a server without the filter, a missing plan and the network apart', () => {
+    expect(boardErrorKey({ code: 'PGRST202' })).toBe('community.errorFilterUnavailable');
+    expect(boardErrorKey({ code: '42883' })).toBe('community.errorFilterUnavailable');
+    expect(boardErrorKey({ code: '42501' })).toBe('community.errorFilterPlan');
+    expect(boardErrorKey(new TypeError('Network request failed'))).toBe('community.error');
   });
 });

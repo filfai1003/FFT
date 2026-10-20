@@ -399,6 +399,19 @@ function useStrengthSubjects(period: CommunityPeriod): { id: string; label: stri
   ];
 }
 
+/**
+ * Why a board could not be read: a server without the audiences yet (it does not know the
+ * filter), a plan that does not include filters, or the network.
+ */
+export function boardErrorKey(
+  error: unknown,
+): 'community.errorFilterUnavailable' | 'community.errorFilterPlan' | 'community.error' {
+  const code = (error as { code?: string } | null)?.code;
+  if (code === 'PGRST202' || code === '42883') return 'community.errorFilterUnavailable';
+  if (code === '42501') return 'community.errorFilterPlan';
+  return 'community.error';
+}
+
 /** A member: metric tabs, filters, podium, places 4–8 and friends. */
 function BoardView({ name }: { name: string }) {
   const { t } = useTranslation();
@@ -590,7 +603,7 @@ function BoardView({ name }: { name: string }) {
         </View>
         {board.isError ? (
           <Text variant="bodyS" muted>
-            {t('community.error')}
+            {t(boardErrorKey(board.error))}
           </Text>
         ) : board.isPending ? (
           <SkeletonGroup accessibilityLabel={t('common.loading')}>
@@ -639,7 +652,6 @@ function BoardView({ name }: { name: string }) {
         metric={metric}
         mine={rows.find((r) => r.is_me)?.value ?? null}
       />
-
     </>
   );
 }
