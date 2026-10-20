@@ -88,6 +88,9 @@ describe('Progress · Me cards', () => {
     await renderUI(<BadgeGrid badges={mockGame.badges} />);
     expect(screen.getByText(`4 of ${mockGame.badges.length} earned`)).toBeTruthy();
     expect(screen.getByLabelText('First workout: earned 1 Oct')).toBeTruthy();
+    // Rare and epic badges say so (DECISIONS 116).
+    expect(screen.getByLabelText('Epic. Iron week: earned 7 Oct')).toBeTruthy();
+    expect(screen.getAllByText('Rare', { includeHiddenElements: true }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('10 workouts: 7 of 10')).toBeTruthy();
     expect(screen.getByLabelText('Early bird: locked. Start 5 workouts before 8:00')).toBeTruthy();
   });

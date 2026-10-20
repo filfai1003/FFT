@@ -401,6 +401,33 @@ export function GainPill({ text }: { text: string }) {
 }
 
 /** Every badge: earned, in progress (x of y) or locked (how to unlock). */
+/** Rare and epic badges (DECISIONS 116): a small tag under the medal; epic in the streak colour. */
+function RarityTag({ rarity }: { rarity: 'rare' | 'epic' }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const epic = rarity === 'epic';
+  return (
+    <View
+      aria-hidden
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 6,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: epic ? colors.streakSoft : colors.borderControl,
+        backgroundColor: epic ? colors.streakSoft : 'transparent',
+      }}
+    >
+      <Icon name="star" size={10} color={epic ? colors.streakInk : colors.textMuted} />
+      <Text variant="label" semibold style={{ color: epic ? colors.streakInk : colors.textMuted }}>
+        {t(`game.rarity.${rarity}`)}
+      </Text>
+    </View>
+  );
+}
+
 export function BadgeGrid({ badges }: { badges: readonly BadgeState[] }) {
   const { t } = useTranslation();
   const label = useBadgeLabel();
@@ -426,10 +453,13 @@ export function BadgeGrid({ badges }: { badges: readonly BadgeState[] }) {
             key={b.id}
             accessible
             accessibilityRole="image"
-            accessibilityLabel={label(b)}
+            accessibilityLabel={
+              b.rarity === 'common' ? label(b) : `${t(`game.rarity.${b.rarity}`)}. ${label(b)}`
+            }
             style={{ width: '25%', alignItems: 'center', gap: 6, paddingHorizontal: 2 }}
           >
             <BadgeMedal badge={b} />
+            {b.rarity !== 'common' ? <RarityTag rarity={b.rarity} /> : null}
             <Text
               variant="label"
               semibold
