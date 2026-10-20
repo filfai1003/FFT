@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Chip } from '@/components/ui/Chip';
 import { DotBar } from '@/components/ui/DotBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
@@ -19,29 +18,20 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { dotsOn } from '@/domain/dots';
-import { relativeDay, shortDateLabel, weekdayName, dayOfMonth } from '@/domain/day';
+import { relativeDay, shortDateLabel } from '@/domain/day';
 import { parseDecimal } from '@/domain/numbers';
 import { goalProgress, goalStartValue } from '@/domain/progress';
 import { cmToFeetInches, displayWeight, storedWeight } from '@/domain/units';
 import { useProfile } from '@/features/profile/api';
-import { usePrivacyStore } from '@/features/profile/privacy-store';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useToastStore } from '@/lib/toast-store';
 import { goBack } from '@/lib/navigation';
-import {
-  measureKeys,
-  useBodyEntries,
-  useBodyGoal,
-  useDeleteEntry,
-  useSetBodyGoal,
-  type BfMethod,
-} from './data';
+import { measureKeys, useBodyEntries, useBodyGoal, useDeleteEntry, useSetBodyGoal } from './data';
 import { EmptyLine } from './EmptyLine';
 import { signed, useChangeWords, useLineColors } from './ProgressScreen';
 import { bodyProgress, changeArea, useProgressPeriod } from './series';
 
-const methods: BfMethod[] = ['scale', 'calipers', 'tape'];
 const fmt = (n: number, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toFixed(d);
 
 type Change = { area: Area; delta: number; label: string };
@@ -186,8 +176,6 @@ export function BodyScreen() {
   const goal = useBodyGoal();
   const remove = useDeleteEntry();
   const setGoal = useSetBodyGoal();
-  const method = usePrivacyStore((s) => s.bodyFatMethod);
-  const setMethod = usePrivacyStore((s) => s.set);
   const showToast = useToastStore((s) => s.show);
   const words = useChangeWords();
   const p = bodyProgress(entries.data ?? [], period, today);
@@ -280,9 +268,7 @@ export function BodyScreen() {
   const rows = [...weights].reverse().slice(0, 8);
   const dayLabel = (day: string) => {
     const r = relativeDay(day, today);
-    return r.kind === 'today'
-      ? t('common.today')
-      : `${weekdayName(day).slice(0, 3)} ${shortDateLabel(day).split(' ')[1]} ${dayOfMonth(day)}`;
+    return r.kind === 'today' ? t('common.today') : shortDateLabel(day); // "Wed 14 Oct"
   };
   const since = shortDateLabel(p.from).split(' ').slice(1).join(' ');
 
@@ -450,22 +436,6 @@ export function BodyScreen() {
                 {fatTarget != null ? (
                   <Button variant="ghost" label={t('progress.changeGoal')} onPress={openGoal} />
                 ) : null}
-              </View>
-              <View style={[{ gap: 10 }, divider]}>
-                <Text variant="bodyS" muted>
-                  {t('progress.measuredWith')}
-                </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {methods.map((m) => (
-                    <Chip
-                      key={m}
-                      role="radio"
-                      label={t(`progress.method.${m}`)}
-                      selected={method === m}
-                      onPress={() => setMethod('bodyFatMethod', m as 'scale' | 'calipers' | 'tape')}
-                    />
-                  ))}
-                </View>
               </View>
             </Card>
 

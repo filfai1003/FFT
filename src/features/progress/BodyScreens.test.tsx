@@ -62,5 +62,8 @@ describe('Body page (DECISIONS 114)', () => {
     expect(screen.getByLabelText('Weekly average weight over the period')).toBeTruthy();
     // Body fat has one value: where its line will start.
     expect(screen.getByText('Your line starts at the next check-in')).toBeTruthy();
+    // Entries read "Tue 1 Sep" (the day was written twice), and no body fat method chips.
+    expect(screen.getByText('Tue 1 Sep')).toBeTruthy();
+    expect(screen.queryByText('Calipers')).toBeNull();
   });
 });

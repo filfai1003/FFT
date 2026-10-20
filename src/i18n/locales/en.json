@@ -1017,7 +1017,6 @@
     "sinceDate": "Since {{date}}",
     "lean": "Lean mass{{delta}}",
     "fat": "Fat mass{{delta}}",
-    "measuredWith": "Measured with · keep it the same",
     "method": {
       "scale": "Smart scale",
       "calipers": "Calipers",
