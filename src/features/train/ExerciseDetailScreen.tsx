@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
+import type { IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { IconTile, type Area } from '@/components/ui/IconTile';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
@@ -127,6 +130,8 @@ export function ExerciseDetailScreen({
                 }
                 unit={unit}
                 note={t('exerciseDetail.heaviest')}
+                icon="trophy"
+                area="streak"
               />
               <StatCard
                 label={t('exerciseDetail.est1rm')}
@@ -137,6 +142,8 @@ export function ExerciseDetailScreen({
                 }
                 unit={unit}
                 note={t('exerciseDetail.epley')}
+                icon="chart"
+                area="training"
               />
             </View>
 
@@ -163,23 +170,16 @@ export function ExerciseDetailScreen({
               </View>
               {values.length >= 2 ? (
                 <>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: colors.accent,
-                      }}
-                    />
-                    <Text variant="bodyS" muted>
-                      {t('exerciseDetail.change', {
-                        delta: `${delta! >= 0 ? '+' : '−'}${Math.abs(delta!)}`,
-                        unit: unit,
-                        count: values.length,
-                      })}
-                    </Text>
-                  </View>
+                  {/* The change as a pill: green and up when stronger, red and down when weaker. */}
+                  <StatusChip
+                    area={delta! > 0 ? 'better' : delta! < 0 ? 'worse' : 'neutral'}
+                    icon={delta! > 0 ? 'arrowUp' : delta! < 0 ? 'arrowDown' : undefined}
+                    label={t('exerciseDetail.change', {
+                      delta: `${delta! >= 0 ? '+' : '−'}${Math.abs(delta!)}`,
+                      unit: unit,
+                      count: values.length,
+                    })}
+                  />
                   <DotColumnChart
                     values={values}
                     rows={10}
@@ -187,26 +187,34 @@ export function ExerciseDetailScreen({
                     dotGap={3}
                     columnGap={6}
                     stretch
+                    color={colors.trainingSoft}
+                    lastColor={colors.training}
                     labels={values.map((v) => String(Math.round(v)))}
-                    accessibilityLabel={t('exerciseDetail.chartLabel', {
-                      from: Math.round(values[0]),
-                      to: Math.round(values[values.length - 1]),
-                      unit,
-                    })}
+                    accessibilityLabel={t(
+                      delta! >= 0 ? 'exerciseDetail.chartLabel' : 'exerciseDetail.chartLabelDown',
+                      {
+                        from: Math.round(values[0]),
+                        to: Math.round(values[values.length - 1]),
+                        unit,
+                      },
+                    )}
                   />
                 </>
               ) : (
-                <Text variant="displayL" numeric muted>
-                  {'—'}
+                <Text variant="bodyS" muted>
+                  {t('exerciseDetail.chartEmpty')}
                 </Text>
               )}
             </Card>
           </>
         ) : (
-          <Card size="small" gap={4}>
-            <Text variant="bodyS" muted>
-              {t('exerciseDetail.best')}
-            </Text>
+          <Card size="small" gap={6}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <IconTile icon="trophy" area="streak" size={30} />
+              <Text variant="bodyS" semibold>
+                {t('exerciseDetail.best')}
+              </Text>
+            </View>
             <Text variant="displayM" numeric>
               {exercise.logType === 'reps'
                 ? (record?.bestReps ?? '—')
@@ -297,17 +305,24 @@ function StatCard({
   value,
   unit,
   note,
+  icon,
+  area,
 }: {
   label: string;
   value: string;
   unit: string;
   note: string;
+  icon: IconName;
+  area: Area;
 }) {
   return (
     <Card size="small" gap={6} style={{ flex: 1 }}>
-      <Text variant="bodyS" muted>
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <IconTile icon={icon} area={area} size={30} />
+        <Text variant="bodyS" semibold style={{ flex: 1 }}>
+          {label}
+        </Text>
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
         <Text variant="displayM" numeric>
           {value}
