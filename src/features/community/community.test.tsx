@@ -1,7 +1,9 @@
 import '@/i18n';
 import { fireEvent, screen } from '@testing-library/react-native';
+import { usePlanStore } from '@/lib/plan';
 import { useToastStore } from '@/lib/toast-store';
 import { renderUI } from '@/test/render';
+import { useBoardChoice } from './board-store';
 import { CommunityView, formatScore } from './CommunityView';
 import { PublicProfileScreen } from './PublicProfileScreen';
 
@@ -20,6 +22,7 @@ jest.mock('@/features/train/exercises', () => ({ useExercises: () => ({ data: []
 jest.mock('@/features/gamification/data', () => ({ useGamification: () => null }));
 
 const mockState: { member: boolean } = { member: false };
+const mockBoardKeys: { audience: string }[] = [];
 const mockJoin = jest.fn(async () => undefined);
 const mockLeave = jest.fn(async () => undefined);
 const mockSubmit = jest.fn(async () => undefined);
@@ -61,7 +64,19 @@ jest.mock('./api', () => {
       isError: false,
       data: mockState.member ? me : null,
     }),
-    useBoard: () => ({ isPending: false, isError: false, data: { total: 40, rows } }),
+    useBoard: (key: { audience: string }) => {
+      mockBoardKeys.push(key);
+      return {
+        isPending: false,
+        isError: false,
+        data:
+          key.audience === 'country'
+            ? { audience: 'country', total: 0, rows: [], reason: 'no_country' }
+            : key.audience === 'class'
+              ? { audience: 'class', total: 2, rows, age_group: '25-34', weight_class: 'm83' }
+              : { total: 40, rows },
+      };
+    },
     useFriends: () => ({
       data: [{ public_id: 'p9', name: 'Marta', level: 3, status: 'asked_you', value: null }],
     }),
@@ -91,6 +106,9 @@ beforeEach(() => {
   mockPush.mockClear();
   mockJoin.mockClear();
   mockLeave.mockClear();
+  mockBoardKeys.length = 0;
+  useBoardChoice.setState({ audience: 'everyone', period: 'month' });
+  usePlanStore.setState({ plan: null });
 });
 
 describe('Community: join', () => {
@@ -128,14 +146,59 @@ describe('Community: leaderboard', () => {
     });
   });
 
-  it('the filters: Everyone is free, the others carry Supporter and lead to it', async () => {
+  it('free: Everyone works, the other audiences carry Supporter and open the plans', async () => {
+    mockState.member = true;
+    usePlanStore.setState({ plan: 'free' });
+    await renderUI(<CommunityView />);
+    await fireEvent.press(screen.getByLabelText('Compare with: Everyone'));
+    expect(screen.getByText('All 40 people on this leaderboard')).toBeTruthy();
+    expect(screen.getAllByText('Supporter').length).toBe(3);
+    await fireEvent.press(screen.getByLabelText('Friends. Needs Supporter, opens the plans'));
+    expect(mockPush).toHaveBeenCalledWith('/profile/premium');
+    expect(mockBoardKeys.every((k) => k.audience === 'everyone')).toBe(true);
+  });
+
+  it('a stored audience falls back to Everyone without the plan', async () => {
+    mockState.member = true;
+    usePlanStore.setState({ plan: 'free' });
+    useBoardChoice.setState({ audience: 'friends' });
+    await renderUI(<CommunityView />);
+    expect(mockBoardKeys.length).toBeGreaterThan(0);
+    expect(mockBoardKeys.every((k) => k.audience === 'everyone')).toBe(true);
+  });
+
+  it('Supporter: a real choice, part of the board query, with the audience shown', async () => {
+    mockState.member = true;
+    usePlanStore.setState({ plan: 'supporter' });
+    await renderUI(<CommunityView />);
+    await fireEvent.press(screen.getByLabelText('Compare with: Everyone'));
+    expect(screen.queryByText('Supporter')).toBeNull();
+    expect(screen.getByText('Places are counted among the people you pick.')).toBeTruthy();
+    await fireEvent.press(
+      screen.getByLabelText('Age and weight class. Your age group and weight class'),
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockBoardKeys[mockBoardKeys.length - 1].audience).toBe('class');
+    expect(screen.getByLabelText('Compare with: Age and weight class')).toBeTruthy();
+    expect(screen.getByText('25-34 · 74–83 kg')).toBeTruthy();
+    // The menu shows the choice as selected when opened again.
+    await fireEvent.press(screen.getByLabelText('Compare with: Age and weight class'));
+    expect(
+      screen.getByRole('radio', { name: 'Age and weight class. Your age group and weight class' })
+        .props.accessibilityState,
+    ).toEqual({ checked: true });
+    // No country known: the board says so.
+    await fireEvent.press(screen.getByLabelText('Your country. People in your country'));
+    expect(screen.getByText('No country yet')).toBeTruthy();
+  });
+
+  it('the period is a dropdown too', async () => {
     mockState.member = true;
     await renderUI(<CommunityView />);
-    await fireEvent.press(screen.getByLabelText('Who you compare with: Everyone. Change'));
-    expect(screen.getByText('Compare with')).toBeTruthy();
-    expect(screen.getAllByText('Supporter').length).toBe(3);
-    await fireEvent.press(screen.getByLabelText('Friends. Supporter, coming soon'));
-    expect(mockPush).toHaveBeenCalledWith('/profile/premium');
+    await fireEvent.press(screen.getByLabelText('Period: This month'));
+    await fireEvent.press(screen.getByRole('radio', { name: 'This week' }));
+    expect(screen.getByLabelText('Period: This week')).toBeTruthy();
+    expect(useBoardChoice.getState().period).toBe('week');
   });
 
   it('scores read as counts and signed percentages', () => {

@@ -688,10 +688,7 @@ describe('plans and AI credit', () => {
     await as(C);
     assert.equal((await one('select public.my_plan() as p')).p, 'free');
     await admin();
-    await rejects(
-      `insert into public.user_plans (user_id, plan) values ('${S}', 'gold')`,
-      '23514',
-    );
+    await rejects(`insert into public.user_plans (user_id, plan) values ('${S}', 'gold')`, '23514');
   });
 
   it('free accounts keep data online too', async () => {

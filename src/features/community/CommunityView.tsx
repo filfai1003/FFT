@@ -7,22 +7,26 @@ import { Card } from '@/components/ui/Card';
 import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { Segmented } from '@/components/ui/Segmented';
-import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import {
+  canFilterAudience,
+  communityAudiences,
   communityMetrics,
   communityScores,
   daysLeft,
+  isPaidAudience,
   movement,
   topPercent,
+  weightClassRange,
+  type CommunityAudience,
   type CommunityMetric,
   type CommunityPeriod,
 } from '@/domain/community';
 import { useGamification } from '@/features/gamification/data';
-import { Avatar, PillButton, dayMonth } from '@/features/gamification/components';
+import { Avatar, dayMonth } from '@/features/gamification/components';
+import { usePlanStore } from '@/lib/plan';
 import { SectionHead } from '@/features/gamification/MeCards';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
@@ -39,10 +43,12 @@ import {
   useFriends,
   useJoinCommunity,
   useSetCommunityName,
+  type Board,
   type BoardKey,
   type BoardRow,
 } from './api';
 import { useBoardChoice } from './board-store';
+import { DropdownButton, DropdownMenu, type DropdownOption } from './Dropdown';
 import { NameSheet } from './NameSheet';
 import { IconTile, type Area } from '@/components/ui/IconTile';
 
@@ -72,14 +78,64 @@ export function formatScore(metric: CommunityMetric, value: number): string {
   return `${v}%`;
 }
 
+/** Supporter or Premium (DECISIONS 117): the paid audiences can be chosen. */
+function useCanFilter(): boolean {
+  return canFilterAudience(usePlanStore((s) => s.plan));
+}
+
 function useBoardKey(): BoardKey {
   const today = useToday();
-  const { metric, subject, period } = useBoardChoice();
+  const canFilter = useCanFilter();
+  const { metric, subject, period, audience } = useBoardChoice();
   return {
     metric,
     subject: metric === 'strength' ? subject : '',
     period,
     periodStart: periodStartOf(period, today),
+    // A plan that ended falls back to Everyone (the server would refuse the others).
+    audience: canFilter ? audience : 'everyone',
+  };
+}
+
+/** A country's name in the app's language ("Italy"), or its code where the phone cannot say. */
+function countryName(code: string, language: string): string {
+  try {
+    const Names = (
+      Intl as unknown as {
+        DisplayNames?: new (l: string[], o: { type: 'region' }) => { of: (c: string) => string };
+      }
+    ).DisplayNames;
+    return Names ? (new Names([language], { type: 'region' }).of(code) ?? code) : code;
+  } catch {
+    return code;
+  }
+}
+
+/** "74–83 kg", "Up to 59 kg", "Over 120 kg". */
+function useClassLabel() {
+  const { t } = useTranslation();
+  return (code: string) => {
+    const r = weightClassRange(code);
+    if (!r) return '';
+    if (r.from == null) return t('community.weightClass.upTo', { to: r.to });
+    if (r.to == null) return t('community.weightClass.over', { from: r.from });
+    return t('community.weightClass.range', { from: r.from, to: r.to });
+  };
+}
+
+/** The board's audience as one line: "Everyone", "Friends", "Italy", "25-34 · 74–83 kg". */
+function useAudienceLine() {
+  const { t, i18n } = useTranslation();
+  const classLabel = useClassLabel();
+  return (audience: CommunityAudience, board: Board | undefined) => {
+    if (audience === 'country' && board?.country)
+      return countryName(board.country, i18n.language || 'en');
+    if (audience === 'class' && board?.age_group && board.weight_class)
+      return t('community.classLine', {
+        age: board.age_group,
+        weight: classLabel(board.weight_class),
+      });
+    return t(`community.audience.${audience}`);
   };
 }
 
@@ -367,7 +423,10 @@ function BoardView({ name }: { name: string }) {
   const board = useBoard(key, true);
   const friends = useFriends(key, true);
   const subjects = useStrengthSubjects(period);
-  const [filters, setFilters] = useState(false);
+  const canFilter = useCanFilter();
+  const audienceLine = useAudienceLine();
+  // One dropdown open at a time: who to compare with, or the period.
+  const [open, setOpen] = useState<'who' | 'period' | null>(null);
   useCommunitySubmit();
 
   // The community shows the profile name: follow a change made elsewhere (Personal info).
@@ -479,24 +538,49 @@ function BoardView({ name }: { name: string }) {
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <PillButton
-          icon="globe"
-          label={t('community.audience.everyone')}
-          accessibilityLabel={t('community.compareA11y', { who: t('community.audience.everyone') })}
-          onPress={() => setFilters(true)}
+        <DropdownButton
+          icon={key.audience === 'friends' || key.audience === 'class' ? 'users' : 'globe'}
+          value={t(`community.audience.${key.audience}`)}
+          expanded={open === 'who'}
+          accessibilityLabel={t('community.compareA11y', {
+            who: t(`community.audience.${key.audience}`),
+          })}
+          onPress={() => setOpen(open === 'who' ? null : 'who')}
         />
-        <PillButton
+        <DropdownButton
           icon="calendar"
-          label={t(`community.period.${period}`)}
+          value={t(`community.period.${period}`)}
+          expanded={open === 'period'}
           accessibilityLabel={t('community.periodA11y', {
             period: t(`community.period.${period}`),
           })}
-          onPress={() => setFilters(true)}
+          onPress={() => setOpen(open === 'period' ? null : 'period')}
         />
         <Text variant="label" muted style={{ flex: 1, textAlign: 'right' }}>
           {left === 0 ? t('community.lastDay') : t('community.daysLeft', { count: left })}
         </Text>
       </View>
+      {open === 'who' ? (
+        <AudienceMenu
+          canFilter={canFilter}
+          value={key.audience}
+          total={key.audience === 'everyone' ? (board.data?.total ?? null) : null}
+          onDone={() => setOpen(null)}
+        />
+      ) : open === 'period' ? (
+        <DropdownMenu
+          label={t('community.filters.period')}
+          value={period}
+          options={(['week', 'month'] as const).map((p) => ({
+            value: p,
+            label: t(`community.period.${p}`),
+          }))}
+          onSelect={(p: CommunityPeriod) => {
+            set({ period: p });
+            setOpen(null);
+          }}
+        />
+      ) : null}
 
       <Card
         gap={14}
@@ -506,6 +590,11 @@ function BoardView({ name }: { name: string }) {
           <Text variant="titleM" semibold accessibilityRole="header">
             {title}
           </Text>
+          {key.audience !== 'everyone' ? (
+            <Text variant="bodyS" semibold>
+              {audienceLine(key.audience, board.data)}
+            </Text>
+          ) : null}
           <Text variant="bodyS" muted>
             {t(`community.board.info.${metric}`, { date: dayMonth(key.periodStart) })}
           </Text>
@@ -518,6 +607,15 @@ function BoardView({ name }: { name: string }) {
           <SkeletonGroup accessibilityLabel={t('common.loading')}>
             <Skeleton height={140} style={{ borderRadius: 12 }} />
           </SkeletonGroup>
+        ) : board.data?.reason === 'no_country' || board.data?.reason === 'no_class' ? (
+          <EmptyState
+            card={false}
+            compact
+            icon={board.data.reason === 'no_country' ? 'globe' : 'users'}
+            area="streak"
+            title={t(`community.empty.${board.data.reason}.title`)}
+            body={t(`community.empty.${board.data.reason}.body`)}
+          />
         ) : podium.length === 0 ? (
           <EmptyState
             card={false}
@@ -525,7 +623,9 @@ function BoardView({ name }: { name: string }) {
             icon="trophy"
             area="streak"
             title={t('empty.boardTitle')}
-            body={t('empty.boardBody')}
+            body={
+              key.audience === 'friends' ? t('community.empty.friendsBody') : t('empty.boardBody')
+            }
           />
         ) : (
           <Podium rows={podium} metric={metric} />
@@ -546,12 +646,6 @@ function BoardView({ name }: { name: string }) {
         onRight={() => router.push('/progress/community-profile')}
       />
       <FriendsCard list={friends.data ?? []} metric={metric} />
-
-      <FiltersSheet
-        visible={filters}
-        onClose={() => setFilters(false)}
-        total={board.data?.total ?? null}
-      />
     </>
   );
 }
@@ -816,156 +910,81 @@ function FriendsCard({
   );
 }
 
-/** "Compare with": Everyone (free) or the Supporter choices (coming soon), and the period. */
-function FiltersSheet({
-  visible,
-  onClose,
+/**
+ * "Compare with" (DECISIONS 117): Everyone for every member; Friends, Country, Age and weight
+ * class for Supporter and Premium. Without those plans they carry the Supporter tag and open the
+ * Plans page.
+ */
+function AudienceMenu({
+  canFilter,
+  value,
   total,
+  onDone,
 }: {
-  visible: boolean;
-  onClose: () => void;
+  canFilter: boolean;
+  value: CommunityAudience;
   total: number | null;
+  onDone: () => void;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const { period, set } = useBoardChoice();
-  const toSupporter = () => {
-    onClose();
+  const { set } = useBoardChoice();
+  const toPlans = () => {
+    onDone();
     router.push('/profile/premium');
   };
-  const groups = [
-    {
-      id: 'everyone',
-      detail: total
+  const options: DropdownOption<CommunityAudience>[] = communityAudiences.map((a) => {
+    const label = t(`community.audience.${a}`);
+    const detail =
+      a === 'everyone' && total
         ? t('community.audienceDetail.everyoneCount', { count: total })
-        : t('community.audienceDetail.everyone'),
-      paid: false,
-    },
-    { id: 'friends', detail: t('community.audienceDetail.friends'), paid: true },
-    { id: 'country', detail: t('community.audienceDetail.country'), paid: true },
-    { id: 'class', detail: t('community.audienceDetail.class'), paid: true },
-  ] as const;
+        : t(`community.audienceDetail.${a}`);
+    const locked = isPaidAudience(a) && !canFilter;
+    return {
+      value: a,
+      label,
+      detail,
+      tag: locked ? t('community.supporterTag') : undefined,
+      accessibilityLabel: locked ? t('community.supporterA11y', { name: label }) : undefined,
+    };
+  });
   return (
-    <Sheet
-      visible={visible}
-      onClose={onClose}
-      title={t('community.filters.title')}
-      closeLabel={t('common.close')}
-      footer={<Button size="large" label={t('community.filters.show')} onPress={onClose} />}
-    >
-      <Card gap={0} style={{ paddingVertical: 4, paddingHorizontal: 12 }}>
-        <View accessibilityRole="radiogroup" accessibilityLabel={t('community.filters.title')}>
-          {groups.map((g, i) => {
-            const on = g.id === 'everyone';
-            const label = t(`community.audience.${g.id}`);
-            return (
-              <Pressable
-                key={g.id}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
-                aria-checked={on}
-                accessibilityLabel={
-                  g.paid ? t('community.supporterA11y', { name: label }) : `${label}. ${g.detail}`
-                }
-                onPress={() => {
-                  tick();
-                  if (g.paid) toSupporter();
-                }}
-                style={{
-                  minHeight: 60,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  borderTopWidth: i === 0 ? 0 : 1,
-                  borderTopColor: colors.divider,
-                }}
-              >
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    borderWidth: 2,
-                    borderColor: on ? colors.borderSelected : colors.borderControl,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {on ? (
-                    <View
-                      style={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: colors.dotOn,
-                      }}
-                    />
-                  ) : null}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text semibold={on} medium={!on}>
-                    {label}
-                  </Text>
-                  <Text variant="bodyS" muted>
-                    {g.detail}
-                  </Text>
-                </View>
-                {g.paid ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 3,
-                      minHeight: 24,
-                      paddingHorizontal: 8,
-                      borderRadius: 12,
-                      backgroundColor: colors.surfaceAlt,
-                    }}
-                  >
-                    <Icon name="star" size={12} color={colors.textMuted} />
-                    <Text variant="label" semibold style={{ color: colors.textMuted }}>
-                      {t('community.supporterTag')}
-                    </Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </Card>
-      <View style={{ gap: 8 }}>
-        <Text variant="bodyS" semibold style={{ color: colors.textMuted, paddingHorizontal: 2 }}>
-          {t('community.filters.period')}
-        </Text>
-        <Segmented
-          accessibilityLabel={t('community.filters.period')}
-          value={period}
-          onChange={(p: CommunityPeriod) => set({ period: p })}
-          options={[
-            { value: 'week', label: t('community.period.week') },
-            { value: 'month', label: t('community.period.month') },
-          ]}
-        />
-      </View>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`${t('community.filters.note')} ${t('community.filters.what')}`}
-        onPress={toSupporter}
-        style={{ minHeight: 44, justifyContent: 'center' }}
-      >
-        <Text variant="bodyS" style={{ color: colors.textMuted }}>
-          {`${t('community.filters.note')} `}
-          <Text
-            variant="bodyS"
-            semibold
-            style={{ textDecorationLine: 'underline', color: colors.textMuted }}
-          >
-            {t('community.filters.what')}
+    <DropdownMenu
+      label={t('community.filters.title')}
+      value={value}
+      options={options}
+      onSelect={(a) => {
+        if (isPaidAudience(a) && !canFilter) return toPlans();
+        set({ audience: a });
+        onDone();
+      }}
+      footer={
+        canFilter ? (
+          <Text variant="bodyS" muted style={{ paddingVertical: 10 }}>
+            {t('community.filters.notePaid')}
           </Text>
-        </Text>
-      </Pressable>
-    </Sheet>
+        ) : (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`${t('community.filters.note')} ${t('community.filters.what')}`}
+            onPress={toPlans}
+            style={{ minHeight: 44, justifyContent: 'center', paddingVertical: 8 }}
+          >
+            <Text variant="bodyS" style={{ color: colors.textMuted }}>
+              {`${t('community.filters.note')} `}
+              <Text
+                variant="bodyS"
+                semibold
+                style={{ textDecorationLine: 'underline', color: colors.textMuted }}
+              >
+                {t('community.filters.what')}
+              </Text>
+            </Text>
+          </Pressable>
+        )
+      }
+    />
   );
 }
 

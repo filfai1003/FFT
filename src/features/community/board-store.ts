@@ -1,17 +1,19 @@
 import { create } from 'zustand';
-import type { CommunityMetric, CommunityPeriod } from '@/domain/community';
+import type { CommunityAudience, CommunityMetric, CommunityPeriod } from '@/domain/community';
 
-/** What the community page shows: metric, strength subject and period (shared with the pinned bar). */
-export const useBoardChoice = create<{
+type Choice = {
   metric: CommunityMetric;
   subject: string;
   period: CommunityPeriod;
-  set: (
-    patch: Partial<{ metric: CommunityMetric; subject: string; period: CommunityPeriod }>,
-  ) => void;
-}>((set) => ({
+  /** Who to compare with (DECISIONS 117); only Everyone is used without Supporter / Premium. */
+  audience: CommunityAudience;
+};
+
+/** What the community page shows: metric, strength subject, period and audience. */
+export const useBoardChoice = create<Choice & { set: (patch: Partial<Choice>) => void }>((set) => ({
   metric: 'workouts',
   subject: '',
   period: 'month',
+  audience: 'everyone',
   set: (patch) => set(patch),
 }));
