@@ -6,6 +6,7 @@ import { useSessionStore as useWorkoutStore } from '@/features/session/store';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { reportError } from '@/lib/error-report';
+import { usePlanStore } from '@/lib/plan';
 import { setAppQueryClient } from './app-refresh';
 import { buildSnapshot } from './build';
 import { updateWidgets } from './update';
@@ -56,6 +57,8 @@ export function WidgetBridge() {
     const offWorkout = useWorkoutStore.subscribe(soon);
     const offPrefs = usePreferencesStore.subscribe(soon);
     const offLook = useAppearanceStore.subscribe(soon);
+    // The plan decides whether the area colours show (DECISIONS 118).
+    const offPlan = usePlanStore.subscribe(soon);
     return () => {
       stopped = true;
       if (timer) clearTimeout(timer);
@@ -63,6 +66,7 @@ export function WidgetBridge() {
       offWorkout();
       offPrefs();
       offLook();
+      offPlan();
     };
     // `today`: a new day redraws the widgets from zero.
   }, [userId, queryClient, today]);

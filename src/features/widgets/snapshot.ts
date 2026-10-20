@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { AreaColors } from '@/design/area-colors';
 import type { AccentName } from '@/design/tokens';
 import type { Meal } from '@/domain/diet';
 import { displayWeight, type WeightUnit } from '@/domain/units';
@@ -19,7 +20,14 @@ export type WidgetSnapshot = {
   timeZone: string;
   weightUnit: WeightUnit;
   /** The app's look and accessibility settings the widgets follow too. */
-  look: { accent: AccentName; highContrast: boolean; textScaleStep: number; bold: boolean };
+  look: {
+    accent: AccentName;
+    highContrast: boolean;
+    textScaleStep: number;
+    bold: boolean;
+    /** Area colours (DECISIONS 118); missing in snapshots from before: the defaults. */
+    areas?: AreaColors;
+  };
   /** Rest timer notifications are on (Settings): "Set done" from the widget starts one. */
   restAlerts: boolean;
   /** Secret part of the widget links that send something (the AI coach chips, links.ts). */

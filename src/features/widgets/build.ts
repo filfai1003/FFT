@@ -1,5 +1,6 @@
 import { goalForDay, mealForHour, mealsDone, nextFixedMeal, targetForDay } from '@/domain/diet';
 import { defaultAppearance } from '@/design/appearance-store';
+import { effectiveAreaColors } from '@/design/area-colors';
 import { addDays, deviceTimeZone, localDay, localHour } from '@/domain/day';
 import type { WeightUnit } from '@/domain/units';
 import { fetchFixedChecks, fetchFixedPlan } from '@/features/diet/fixed';
@@ -16,6 +17,7 @@ import { useSessionStore as useWorkoutStore } from '@/features/session/store';
 import { rowToState } from '@/features/settings/mapping';
 import { fetchSupplementLogs, fetchSupplements } from '@/features/supplements/data';
 import { fetchPlans, fetchPlanSessions, rotationOf } from '@/features/train/plans';
+import { planOf } from '@/lib/plan';
 import { getSupabase } from '@/lib/supabase';
 import type { Row } from '@/types/db';
 import { widgetToken } from './links';
@@ -214,6 +216,8 @@ export async function buildSnapshot(
       highContrast: appearance.highContrast,
       textScaleStep: appearance.textScaleStep,
       bold: appearance.boldText,
+      // Area colours (DECISIONS 118): the choice for Supporter / Premium, the defaults otherwise.
+      areas: effectiveAreaColors(appearance.areaColors, await planOf(userId)),
     },
     restAlerts: prefs?.notifications.rest_timer ?? true,
     token: await widgetToken(),
