@@ -746,6 +746,7 @@ const TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.ttf': 'font/ttf',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml',
 };
 
 async function staticFile(res, pathname) {

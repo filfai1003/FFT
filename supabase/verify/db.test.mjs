@@ -1121,6 +1121,26 @@ describe('personal API and MCP (server/api.js)', () => {
     );
   });
 
+  it('MCP initialize gives AI apps the FFT logo (icons on the server address)', async () => {
+    const withBase = createApi(testDb, { base: 'https://api.test' });
+    const r = await withBase({
+      method: 'POST',
+      path: '/mcp',
+      headers: { authorization: `Bearer ${token}` },
+      body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-06-18' },
+      },
+    });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.deepEqual(
+      r.body.result.serverInfo.icons.map((i) => i.src),
+      ['https://api.test/icon-512.png', 'https://api.test/favicon.svg'],
+    );
+  });
+
   it('an MCP batch counts each message toward the limit, and is at most 20 (DECISIONS 77)', async () => {
     const small = createApi(testDb, { perMinute: 5 });
     const batch = (n) =>

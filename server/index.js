@@ -3,6 +3,7 @@
 // personal API of paid plans (REST at /v1, MCP at /mcp; see api.js) on its own public domain,
 // with the sign-in for AI apps that connect to the MCP server (OAuth, see oauth.js).
 import { Buffer } from 'node:buffer';
+import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import pg from 'pg';
 import { createApi, pgDatabase } from './api.js';
@@ -135,11 +136,35 @@ for (const name of ['off', 'delete-account', 'ai']) {
   await import(`./fn/${name}/index.ts`);
 }
 
+/** The logo files, read once (server/public). /favicon.ico answers with the PNG: browsers take it. */
+const ICONS = Object.fromEntries(
+  [
+    ['/favicon.ico', 'favicon.png', 'image/png'],
+    ['/favicon.png', 'favicon.png', 'image/png'],
+    ['/favicon.svg', 'favicon.svg', 'image/svg+xml'],
+    ['/apple-touch-icon.png', 'apple-touch-icon.png', 'image/png'],
+    ['/icon-512.png', 'icon-512.png', 'image/png'],
+  ].map(([route, file, type]) => [
+    route,
+    { type, body: readFileSync(new URL(`./public/${file}`, import.meta.url)) },
+  ]),
+);
+
 http
   .createServer(async (req, res) => {
     const url = new URL(req.url, 'http://x');
     const path = url.pathname.replace(/\/+$/, '');
     if (path === '/health') return void res.writeHead(200).end('ok');
+    // The FFT logo: the browser tab and AI apps (Claude connectors) show it for this address.
+    const icon = ICONS[path];
+    if (icon && (req.method === 'GET' || req.method === 'HEAD')) {
+      res.writeHead(200, {
+        'Content-Type': icon.type,
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      return void res.end(req.method === 'HEAD' ? undefined : icon.body);
+    }
     const isApi = path === '/mcp' || path === '/v1' || path.startsWith('/v1/');
     const isOAuth = path.startsWith('/oauth/') || path.startsWith('/.well-known/');
     const isInternal = path === '/internal/apk';
