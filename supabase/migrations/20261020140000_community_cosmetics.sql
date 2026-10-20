@@ -183,7 +183,8 @@ revoke execute on function public.community_set_cosmetics(text, text, text, text
 /**
  * Sets the caller's photo to a file it uploaded ("<public_id>/<name>.jpg|webp" in
  * community-avatars; it must exist), or removes it (null, always allowed). Setting needs Supporter
- * or Premium (42501). The previous file is queued for removal (trigger).
+ * or Premium (42501). The previous file is queued for removal (trigger); setting a queued file
+ * again (undo) takes it off the queue.
  */
 create or replace function public.community_set_photo(p_path text default null)
 returns jsonb
@@ -207,6 +208,8 @@ begin
       select 1 from storage.objects o where o.bucket_id = 'community-avatars' and o.name = p_path) then
       raise exception 'the photo was not uploaded' using errcode = '22023';
     end if;
+    -- Undo of a removal (the app's toast): the file is in use again, so off the removal queue.
+    delete from public.files_to_delete f where f.bucket = 'community-avatars' and f.path = p_path;
   end if;
   update public.community_members set photo_path = p_path, updated_at = now() where user_id = uid;
   return public.community_me();

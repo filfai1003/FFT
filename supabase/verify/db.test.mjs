@@ -3567,15 +3567,14 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     await rejects(`select public.community_set_photo('${pid[SP]}/notthere1.jpg')`, '22023');
     await upload(p1);
     await rejects(`select public.community_set_photo('${pid[FP]}/abcdef12.jpg')`, '22023');
-    assert.equal(
-      (await one(`select public.community_set_photo($1) as m`, [p1])).m.look.photo,
-      p1,
-    );
+    assert.equal((await one(`select public.community_set_photo($1) as m`, [p1])).m.look.photo, p1);
     // Others cannot remove it or list the folder.
     await as(FP);
     await db.query(`delete from storage.objects where bucket_id = 'community-avatars'`);
     assert.equal(
-      await count(`select count(*) as n from storage.objects where bucket_id = 'community-avatars'`),
+      await count(
+        `select count(*) as n from storage.objects where bucket_id = 'community-avatars'`,
+      ),
       0,
     );
     await admin();
@@ -3637,16 +3636,23 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     await admin();
     assert.equal(await queued(p1), 1);
     assert.equal(await queued(p2), 0);
+    // Undo (the file is still there): back in use, off the queue; then replaced again.
+    await as(SP);
+    await db.query(`select public.community_set_photo($1)`, [p1]);
+    await admin();
+    assert.deepEqual([await queued(p1), await queued(p2)], [0, 1]);
+    await as(SP);
+    await db.query(`select public.community_set_photo($1)`, [p2]);
+    await admin();
+    assert.deepEqual([await queued(p1), await queued(p2)], [1, 0]);
     // The member may delete its own file.
     await as(SP);
-    await db.query(`delete from storage.objects where bucket_id = 'community-avatars' and name = $1`, [
-      p1,
-    ]);
-    await admin();
-    assert.equal(
-      await count(`select count(*) as n from storage.objects where name = $1`, [p1]),
-      0,
+    await db.query(
+      `delete from storage.objects where bucket_id = 'community-avatars' and name = $1`,
+      [p1],
     );
+    await admin();
+    assert.equal(await count(`select count(*) as n from storage.objects where name = $1`, [p1]), 0);
     // An admin removal (admin/server.js: photo_path = null) queues it too.
     await db.query(`update public.community_members set photo_path = null where user_id = $1`, [
       SP,
@@ -3812,7 +3818,10 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     // removes the member's folder, and the member row's deletion (also by a restore's
     // reapply_deletions) queues the file in files_to_delete.
     assert.ok(buckets.includes('community-avatars'));
-    assert.ok(fn.includes("const AVATARS = 'community-avatars'"), 'delete-account: community photos');
+    assert.ok(
+      fn.includes("const AVATARS = 'community-avatars'"),
+      'delete-account: community photos',
+    );
     assert.equal(
       await count(
         `select count(*) as n from pg_trigger where tgname = 'community_members_queue_photo'`,
