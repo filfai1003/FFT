@@ -20,6 +20,8 @@ type Props = {
   /** Always show it sharp (the compare screen, after you chose to look). */
   revealed?: boolean;
   label?: string;
+  /** No photo yet and this tile invites one: a plus over the pose name (DECISIONS 114). */
+  invite?: boolean;
 };
 
 /**
@@ -33,6 +35,7 @@ export function PhotoTile({
   interactive = true,
   revealed = false,
   label,
+  invite = false,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -87,6 +90,7 @@ export function PhotoTile({
         />
       ) : null}
       {photo && !isShown ? <Icon name="lock" size={18} color={colors.text} /> : null}
+      {!photo && invite ? <Icon name="plus" size={18} color={colors.textMuted} /> : null}
       <View
         style={{
           paddingHorizontal: 6,

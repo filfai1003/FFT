@@ -1011,7 +1011,12 @@
     "consistency": "Consistency",
     "weightLine": "Weight over the period",
     "fatLine": "Body fat over the period",
-    "periodTitle": "Period"
+    "periodTitle": "Period",
+    "addAtCheckIn": "Add at check-in",
+    "noneYet": "nothing logged yet",
+    "lineNext": "Your line starts at the next check-in",
+    "steady": "Steady",
+    "firstBefore": "Your first photos become your before"
   },
   "checkIn": {
     "title": "Check-in",
