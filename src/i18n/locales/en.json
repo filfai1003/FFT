@@ -733,7 +733,7 @@
     "mealUnchecked": "{{name}} unchecked",
     "saveForToday": "Save for today",
     "onlyToday": "Only changes today. Your plan stays the same.",
-    "plannedLine": "Planned · {{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
+    "planned": "Planned",
     "whatDidYouEat": "What did you eat",
     "atePlanned": "Ate it as planned",
     "ateDifferent": "Ate a different amount",

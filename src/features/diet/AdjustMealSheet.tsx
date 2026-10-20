@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { parseDecimal } from '@/domain/numbers';
+import { formatInt, parseDecimal } from '@/domain/numbers';
 import { checkAsPlanned, mealForPosition } from '@/domain/diet';
 import { useTheme } from '@/design/use-theme';
 import { touch } from '@/design/tokens';
 import { useSetCheck, type FixedMeal, type StoredCheck } from './fixed';
+import { MacroValues } from './MacroValues';
 
 type Choice = 'planned' | 'different' | 'foods' | 'skipped';
 
@@ -93,7 +94,8 @@ function Body({ meal, day, check, onClose }: Props & { meal: FixedMeal }) {
         aria-checked={selected}
         style={{
           borderRadius: 16,
-          borderWidth: 1,
+          // Selection = 2px border in the text colour (as everywhere).
+          borderWidth: selected ? 2 : 1,
           borderColor: selected ? colors.borderSelected : colors.borderDecorative,
           backgroundColor: selected ? colors.surfaceSelected : colors.surfaceAlt,
         }}
@@ -148,14 +150,21 @@ function Body({ meal, day, check, onClose }: Props & { meal: FixedMeal }) {
         </View>
       }
     >
-      <Text variant="label" muted>
-        {t('diet.plannedLine', {
-          kcal: meal.kcal,
-          p: Math.round(meal.proteinG),
-          c: Math.round(meal.carbsG),
-          f: Math.round(meal.fatG),
-        })}
-      </Text>
+      {/* What was planned, at a glance: the kcal big and the macros in their colours. */}
+      <View style={{ gap: 6 }}>
+        <Text variant="bodyS" muted>
+          {t('diet.planned')}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+          <Text variant="displayS" numeric>
+            {formatInt(meal.kcal)}
+          </Text>
+          <Text variant="bodyS" muted>
+            {t('common.kcal')}
+          </Text>
+        </View>
+        <MacroValues macros={{ protein: meal.proteinG, carbs: meal.carbsG, fat: meal.fatG }} />
+      </View>
       <View
         style={{ gap: 8 }}
         accessibilityRole="radiogroup"
