@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { Avatar } from '@/features/gamification/components';
+import { cleanLook } from '@/domain/community-look';
+import { MemberAvatar } from './MemberAvatar';
 import { useProgressView } from '@/features/gamification/progress-view';
 import { tick } from '@/lib/haptics';
 import { useCommunityAvailable, useCommunityMe, useFriends } from './api';
@@ -85,7 +86,7 @@ export function ProfileCommunityCard() {
                     borderColor: colors.surface,
                   }}
                 >
-                  <Avatar name={f.name} size={34} />
+                  <MemberAvatar name={f.name} look={cleanLook(f.look)} size={34} />
                 </View>
               ))}
             </View>

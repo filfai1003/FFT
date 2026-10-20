@@ -32,6 +32,11 @@ jest.mock('./stats', () => ({
 jest.mock('@/features/community/ProfileCommunityCard', () => ({
   ProfileCommunityCard: () => null,
 }));
+// No community look here (DECISIONS 119): the plain initials (MemberAvatar.test.tsx covers it).
+jest.mock('@/features/community/api', () => ({
+  useCommunityAvailable: () => false,
+  useCommunityMe: () => ({ data: null }),
+}));
 jest.mock('@/features/progress/strength', () => ({ useStrength: () => ({ overall: 3.5 }) }));
 jest.mock('@/features/diet/log', () => ({
   useGoalForDay: () => ({ kcal: 2600 }),

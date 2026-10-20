@@ -45,7 +45,17 @@ jest.mock('./api', () => {
     { public_id: 'p1', name: 'Noor', level: 9, value: 12, place: 1, place_before: 1, is_me: false },
     { public_id: 'p2', name: 'Bea', level: 4, value: 10, place: 2, place_before: 3, is_me: false },
     { public_id: 'p3', name: 'Jonas', level: 5, value: 9, place: 3, place_before: 2, is_me: false },
-    { public_id: 'p4', name: 'Kenji', level: 5, value: 8, place: 4, place_before: 6, is_me: false },
+    {
+      public_id: 'p4',
+      name: 'Kenji',
+      level: 5,
+      value: 8,
+      place: 4,
+      place_before: 6,
+      is_me: false,
+      // A Supporter's look (DECISIONS 119): title and showcase badge next to the name.
+      look: { colour: 'ocean', frame: 'dotted', title: 'runner', badge: 'first_workout' },
+    },
     {
       public_id: 'p-me',
       name: 'Filippo',
@@ -121,7 +131,7 @@ describe('Community: join', () => {
     expect(screen.getByText('Join the community')).toBeTruthy();
     expect(screen.getByText('Your scores')).toBeTruthy();
     expect(screen.getByText('Weight')).toBeTruthy();
-    expect(screen.getByText('Photos')).toBeTruthy();
+    expect(screen.getByText('Progress photos')).toBeTruthy();
     expect(screen.getByLabelText('Change your name')).toBeTruthy();
     await fireEvent.press(screen.getByText('Join'));
     expect(mockJoin).toHaveBeenCalledWith('Filippo');
@@ -135,7 +145,10 @@ describe('Community: leaderboard', () => {
     await renderUI(<CommunityView />);
     expect(screen.getByText('Most workouts')).toBeTruthy();
     expect(screen.getByLabelText('1: Noor, 12')).toBeTruthy();
-    expect(screen.getByLabelText('4. Kenji, 8, Up 2')).toBeTruthy();
+    expect(screen.getByLabelText('4. Kenji, Runner, badge First workout, 8, Up 2')).toBeTruthy();
+    expect(
+      screen.getByTestId('member-avatar-frame-dotted', { includeHiddenElements: true }),
+    ).toBeTruthy();
     expect(screen.getByText('Wants to be your friend')).toBeTruthy();
     expect(screen.getByLabelText('Accept Marta')).toBeTruthy();
     // A friend next to you: how far ahead, in words and as two bars.

@@ -17,6 +17,9 @@ import { deviceTimeZone, localDay } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { cmToFeetInches, displayWeight } from '@/domain/units';
 import { latestRecords, nextBadges } from '@/domain/gamification';
+import { cleanLook } from '@/domain/community-look';
+import { useCommunityAvailable, useCommunityMe } from '@/features/community/api';
+import { LookLine, MemberAvatar } from '@/features/community/MemberAvatar';
 import { ProfileCommunityCard } from '@/features/community/ProfileCommunityCard';
 import { useGoalForDay } from '@/features/diet/log';
 import {
@@ -68,6 +71,9 @@ export function ProfileScreen() {
   const goal = useGoalForDay(today);
   const month = useMonthSessions(today.slice(0, 7));
   const game = useGamification();
+  const communityAvailable = useCommunityAvailable();
+  const member = useCommunityMe();
+  const look = cleanLook(member.data?.look);
 
   const p = profile.data;
   const name = p?.name?.trim() || t('profile.you');
@@ -237,19 +243,24 @@ export function ProfileScreen() {
                 : name
             }
           >
-            <View
-              aria-hidden
-              style={{
-                width: 88,
-                height: 88,
-                borderRadius: 44,
-                backgroundColor: colors.surfaceAlt,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text variant="displayM">{initials}</Text>
-            </View>
+            {look ? (
+              // Your community look (DECISIONS 119): photo, colour and frame, as others see you.
+              <MemberAvatar name={name} look={look} size={88} />
+            ) : (
+              <View
+                aria-hidden
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: 44,
+                  backgroundColor: colors.surfaceAlt,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text variant="displayM">{initials}</Text>
+              </View>
+            )}
           </Gauge>
           {level ? (
             <View
@@ -295,6 +306,7 @@ export function ProfileScreen() {
             {name}
           </Text>
         )}
+        <LookLine look={look} size={20} />
         {subtitle && !profile.isPending ? (
           <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
             {subtitle}
@@ -426,6 +438,16 @@ export function ProfileScreen() {
 
       <MenuList
         items={[
+          ...(communityAvailable
+            ? [
+                {
+                  icon: 'palette' as const,
+                  label: t('look.entry'),
+                  help: t('look.entryInfo'),
+                  onPress: () => router.push('/profile/customize'),
+                },
+              ]
+            : []),
           {
             icon: 'chart',
             area: 'training',
