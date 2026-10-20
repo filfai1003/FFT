@@ -690,9 +690,7 @@
     "notes": "Workout notes",
     "notesPlaceholder": "Notes (optional)",
     "seeSets": "See all sets",
-    "hideSets": "Hide sets",
-    "minutes_one": "{{count}} minute of training",
-    "minutes_other": "{{count}} minutes of training"
+    "hideSets": "Hide sets"
   },
   "history": {
     "title": "History",

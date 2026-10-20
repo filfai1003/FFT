@@ -90,6 +90,9 @@ describe('Workout summary', () => {
     expect(screen.getByText('Workout done')).toBeTruthy();
     expect(screen.getByText('1 new record today')).toBeTruthy();
     expect(screen.getByText('40:00')).toBeTruthy();
+    // Volume with its tile, and no second line repeating the duration.
+    expect(screen.getByText('480')).toBeTruthy();
+    expect(screen.queryByText(/minutes of training/)).toBeNull();
     expect(screen.getByText('New max')).toBeTruthy();
     // The workout just finished counts for the streak (two days before + today).
     expect(screen.getByText('3 day streak')).toBeTruthy();
