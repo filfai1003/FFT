@@ -30,6 +30,8 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
   const week = game ? streakWeek(game.activity.loggedDays, today, weekStart) : [];
   const logged = week.filter((d) => d.state === 'done').length;
   const todayOpen = week.some((d) => d.state === 'today');
+  // Day 0 is an invitation, not a "0-day streak".
+  const streakTitle = streak > 0 ? t('game.streakWord', { count: streak }) : t('game.startStreak');
   const ring = (
     <Gauge
       value={target ? streak / target : 1}
@@ -49,14 +51,14 @@ export function StreakWidget({ size }: { size: WidgetSize }) {
   const title = (
     // Half width: "12 days" wraps next to the ring rather than being cut.
     <Text variant="displayS" numberOfLines={size === 'small' ? 2 : 1}>
-      {t('game.streakWord', { count: streak })}
+      {streakTitle}
     </Text>
   );
 
   return (
     <Card
       onPress={() => router.navigate('/progress')}
-      accessibilityLabel={`${t('game.streakWord', { count: streak })}. ${t('today.widget.streak')}`}
+      accessibilityLabel={`${streakTitle}. ${t('today.widget.streak')}`}
       gap={12}
       size={size === 'small' ? 'small' : 'default'}
       style={{

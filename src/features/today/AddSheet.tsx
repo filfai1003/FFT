@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { create } from 'zustand';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconTile, useAreaColors, type Area } from '@/components/ui/IconTile';
 import { Sheet } from '@/components/ui/Sheet';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
@@ -26,8 +27,7 @@ type Tile = {
   key: string;
   label: string;
   icon: IconName;
-  tint: string;
-  ink: string;
+  area: Area;
   run: () => void;
 };
 
@@ -58,24 +58,21 @@ export function AddSheet() {
       key: 'food',
       label: t('add.food'),
       icon: 'search',
-      tint: colors.warningSoft,
-      ink: colors.warningText,
+      area: 'nutrition',
       run: () => go({ pathname: '/food-search', params: { meal, day: today } }),
     },
     {
       key: 'scan',
       label: t('add.scan'),
       icon: 'barcode',
-      tint: colors.surfaceAlt,
-      ink: colors.text,
+      area: 'nutrition',
       run: () => go({ pathname: '/scanner', params: { meal, day: today } }),
     },
     {
       key: 'water',
       label: t('add.water', { ml: glassMl }),
       icon: 'droplet',
-      tint: colors.waterSoft,
-      ink: colors.text,
+      area: 'water',
       run: () => {
         setOpen(false);
         void addWater.mutateAsync({ day: today, ml: glassMl }).then((id) => {
@@ -93,16 +90,14 @@ export function AddSheet() {
       key: 'body',
       label: t('add.body'),
       icon: 'scale',
-      tint: colors.successSoft,
-      ink: colors.successText,
+      area: 'neutral',
       run: () => go('/check-in'),
     },
     {
       key: 'workout',
       label: active ? t('add.workoutResume') : t('add.workout'),
       icon: 'dumbbell',
-      tint: colors.surfaceAlt,
-      ink: colors.text,
+      area: 'training',
       run: () =>
         go(
           active
@@ -114,8 +109,7 @@ export function AddSheet() {
       key: 'photo',
       label: t('add.photo'),
       icon: 'camera',
-      tint: colors.surfaceAlt,
-      ink: colors.text,
+      area: 'neutral',
       run: () => go('/progress/photos'),
     },
   ];
@@ -131,45 +125,7 @@ export function AddSheet() {
     >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {tiles.map((tile) => (
-          <Pressable
-            key={tile.key}
-            accessibilityRole="button"
-            accessibilityLabel={tile.label}
-            onPress={() => {
-              tick();
-              tile.run();
-            }}
-            style={({ pressed }) => ({
-              width: '31%',
-              flexGrow: 1,
-              minHeight: 92,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: colors.borderDecorative,
-              backgroundColor: colors.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: 10,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: tile.tint,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Icon name={tile.icon} size={21} color={tile.ink} />
-            </View>
-            <Text variant="bodyS" medium style={{ textAlign: 'center' }}>
-              {tile.label}
-            </Text>
-          </Pressable>
+          <AddTile key={tile.key} tile={tile} />
         ))}
       </View>
 
@@ -193,15 +149,17 @@ export function AddSheet() {
                 onPress={() =>
                   go({ pathname: '/food/[foodId]', params: { foodId: f.id, meal, day: today } })
                 }
-                style={{
+                style={({ pressed }) => ({
                   minHeight: 56,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 12,
                   borderTopWidth: i === 0 ? 0 : 1,
                   borderTopColor: colors.divider,
-                }}
+                  opacity: pressed ? 0.7 : 1,
+                })}
               >
+                <IconTile icon="bowl" area="nutrition" size={36} />
                 <View style={{ flex: 1 }}>
                   <Text medium numberOfLines={1}>
                     {f.name}
@@ -213,7 +171,19 @@ export function AddSheet() {
                     })}
                   </Text>
                 </View>
-                <Icon name="plus" size={18} color={colors.text} />
+                <View
+                  aria-hidden
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.text,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="plus" size={18} color={colors.bg} />
+                </View>
               </Pressable>
             ))}
           </View>
@@ -224,7 +194,7 @@ export function AddSheet() {
         accessibilityRole="button"
         accessibilityLabel={t('add.coach')}
         onPress={() => go('/ai-chat')}
-        style={{
+        style={({ pressed }) => ({
           minHeight: 50,
           borderRadius: 25,
           borderWidth: 1,
@@ -234,7 +204,8 @@ export function AddSheet() {
           alignItems: 'center',
           gap: 10,
           paddingHorizontal: 16,
-        }}
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
         <Icon name="sparkle" size={20} color={colors.textMuted} />
         <Text muted style={{ flex: 1 }}>
@@ -242,5 +213,52 @@ export function AddSheet() {
         </Text>
       </Pressable>
     </Sheet>
+  );
+}
+
+/**
+ * One way to add something: a tile in its area's soft colour (colour code, DECISIONS 107), the
+ * icon on a light square and the label in the area's ink.
+ */
+function AddTile({ tile }: { tile: Tile }) {
+  const { colors } = useTheme();
+  const c = useAreaColors(tile.area);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={tile.label}
+      onPress={() => {
+        tick();
+        tile.run();
+      }}
+      style={({ pressed }) => ({
+        width: '31%',
+        flexGrow: 1,
+        minHeight: 100,
+        borderRadius: 18,
+        backgroundColor: c.soft,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 10,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          backgroundColor: colors.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name={tile.icon} size={21} color={c.ink} />
+      </View>
+      <Text variant="bodyS" semibold style={{ textAlign: 'center', color: c.ink }}>
+        {tile.label}
+      </Text>
+    </Pressable>
   );
 }
