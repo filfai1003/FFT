@@ -81,6 +81,28 @@ describe('Home · calories card', () => {
     expect(screen.getByText('40 / 150 g')).toBeTruthy();
   });
 
+  it('over the target: how much over, never "0 kcal left"', async () => {
+    mockTarget = { kcal: 2000, protein: 150, carbs: 200, fat: 60 };
+    mockTotals = { kcal: 2250, protein: 160, carbs: 220, fat: 70 };
+    await renderUI(<NutritionWidget size="large" />);
+    expect(screen.getByText('250')).toBeTruthy();
+    expect(screen.getByText('kcal over')).toBeTruthy();
+    expect(screen.queryByText('kcal left')).toBeNull();
+    expect(screen.getByText('20 g over')).toBeTruthy();
+    await renderUI(<NutritionWidget size="small" />);
+    expect(screen.getByRole('header', { name: 'Calories' })).toBeTruthy();
+    expect(screen.getByText('kcal over')).toBeTruthy();
+  });
+
+  it('fixed meals, all ticked: a filled check and the words', async () => {
+    mockTarget = { kcal: 2000, protein: 150, carbs: 200, fat: 60 };
+    mockDietMode = 'fixed_meals';
+    mockChecks = [{ fixedMealId: 'm1', status: 'done' }];
+    await renderUI(<NutritionWidget size="large" />);
+    expect(screen.getByText('All meals done for today.')).toBeTruthy();
+    expect(screen.queryByText('Mark Breakfast as eaten')).toBeNull();
+  });
+
   it('no target (DECISIONS 104): eaten and macros, no "left", and a link to set one', async () => {
     mockTarget = null;
     await renderUI(<NutritionWidget size="large" />);
@@ -109,11 +131,15 @@ describe('Home · calories card with nothing logged yet', () => {
     mockLogs = {};
   });
 
-  it('a friendly start instead of an empty ring, with Log a meal', async () => {
+  it('looks like the full card, unfilled: 0 of the target, empty macro bars with their targets', async () => {
     await renderUI(<NutritionWidget size="large" />);
-    expect(screen.getByText('Log your first meal')).toBeTruthy();
-    expect(screen.getByText(/target is 2,000 kcal/)).toBeTruthy();
-    expect(screen.queryByText('kcal left')).toBeNull();
+    expect(screen.getByText('2,000')).toBeTruthy();
+    expect(screen.getByText('kcal left')).toBeTruthy();
+    expect(screen.getByText('0 of 2,000')).toBeTruthy();
+    expect(screen.getByText('0 / 150 g')).toBeTruthy();
+    expect(screen.getByText('0 / 200 g')).toBeTruthy();
+    expect(screen.getByText('0 / 60 g')).toBeTruthy();
+    expect(screen.getByText('150 g left')).toBeTruthy();
     expect(screen.queryByText('Same as yesterday')).toBeNull();
     await fireEvent.press(screen.getByText('Log a meal'));
     expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ pathname: '/food-search' }));
@@ -144,16 +170,19 @@ describe('Home · calories card with nothing logged yet', () => {
   it('fixed meals: tick the next meal in one tap', async () => {
     mockDietMode = 'fixed_meals';
     await renderUI(<NutritionWidget size="large" />);
-    expect(screen.getByText('Log your first meal')).toBeTruthy();
+    expect(screen.getByText('2,000')).toBeTruthy();
+    expect(screen.getByText('Breakfast')).toBeTruthy();
+    expect(screen.queryByText('Same as yesterday')).toBeNull();
     await fireEvent.press(screen.getByText('Mark Breakfast as eaten'));
     expect(mockSetCheck).toHaveBeenCalledWith(
       expect.objectContaining({ day: '2026-10-18', mealId: 'm1' }),
     );
   });
 
-  it('small tile: the same start, with its one-tap button', async () => {
+  it('small tile: the empty arc with the whole target left, and its one-tap button', async () => {
     await renderUI(<NutritionWidget size="small" />);
-    expect(screen.getByText('Log your first meal')).toBeTruthy();
+    expect(screen.getByText('2,000')).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Calories left' })).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Log a meal'));
     expect(mockPush).toHaveBeenCalled();
   });

@@ -27,6 +27,8 @@ describe('Home · weight card', () => {
     mockEntries = [{ day: '2026-10-18', weightKg: 80.4 }];
     await renderUI(<WeightWidget size="large" />);
     expect(screen.getByText('Logged Sun 18 Oct')).toBeTruthy();
+    // One weigh-in: dashes where the line will be.
+    expect(screen.getByTestId('pending-line', { includeHiddenElements: true })).toBeTruthy();
     await renderUI(<WeightWidget size="small" />);
     expect(screen.getByText('Logged Sun 18')).toBeTruthy();
   });

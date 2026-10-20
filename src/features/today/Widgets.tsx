@@ -71,6 +71,7 @@ function Frame({
   area,
   right,
   onPress,
+  pressLabel,
   children,
 }: {
   size: WidgetSize;
@@ -79,6 +80,8 @@ function Frame({
   area: Area;
   right?: ReactNode;
   onPress?: () => void;
+  /** What a tap on the card does, when it differs from its title ("Log your weight"). */
+  pressLabel?: string;
   children: ReactNode;
 }) {
   const title = (
@@ -116,7 +119,7 @@ function Frame({
         gap={12}
         style={{ flexGrow: 1, padding: 16 }}
         onPress={onPress}
-        accessibilityLabel={onPress ? label : undefined}
+        accessibilityLabel={onPress ? (pressLabel ?? label) : undefined}
       >
         {head}
         {children}
@@ -129,7 +132,7 @@ function Frame({
       gap={12}
       style={{ flexGrow: 1, padding: 16 }}
       onPress={onPress}
-      accessibilityLabel={onPress ? label : undefined}
+      accessibilityLabel={onPress ? (pressLabel ?? label) : undefined}
     >
       {head}
       {children}
@@ -154,6 +157,8 @@ export function NutritionWidget({ size }: Props) {
   const target = useDayTarget(today);
   const eaten = totals.data ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
   const left = target ? Math.max(0, Math.round(target.kcal - eaten.kcal)) : 0;
+  // Past the target the middle says how much over, never "0 kcal left".
+  const overBy = target ? Math.max(0, Math.round(eaten.kcal - target.kcal)) : 0;
 
   const fixed = profile.data?.diet_mode === 'fixed_meals';
   const plannedMeals = useFixedPlan();
@@ -208,16 +213,12 @@ export function NutritionWidget({ size }: Props) {
   const over = target ? eaten.kcal > target.kcal * 1.1 : false;
   const setTarget = () => router.push('/diet-goals');
 
-  // Nothing logged today yet (the first days, or a new morning): a friendly start with one-tap
-  // actions instead of an empty ring.
-  const eatenFixed = (checks.data ?? []).some(
-    (c) => c.status === 'done' || c.status === 'adjusted',
-  );
+  // Nothing logged today yet (the first days, or a new morning): the card looks the same, just
+  // unfilled (an empty arc, empty macro bars with their targets), and offers yesterday's meals.
   const empty =
-    totals.data != null &&
-    eaten.kcal === 0 &&
-    (fixed ? checks.data != null && !eatenFixed : log.data != null && log.data.length === 0);
+    !fixed && totals.data != null && eaten.kcal === 0 && log.data != null && log.data.length === 0;
   const yesterdayEntries = fixed ? [] : (yesterday.data ?? []);
+  const yesterdayKcal = Math.round(yesterdayEntries.reduce((a, e) => a + e.macros.kcal, 0));
   const sameAsYesterday = async () => {
     if (copy.isPending || yesterdayEntries.length === 0) return;
     const meals = [...new Set(yesterdayEntries.map((e) => e.meal))];
@@ -240,62 +241,6 @@ export function NutritionWidget({ size }: Props) {
       },
     });
   };
-
-  if (empty) {
-    const markLabel = nextMeal ? t('today.markEaten', { name: nextMeal.name }) : '';
-    if (size === 'small') {
-      return (
-        <Frame size="small" label={t('today.calories')} icon="bowl" area="nutrition">
-          <Text variant="bodyS" semibold numberOfLines={2}>
-            {fixed && nextMeal ? nextMeal.name : t('today.firstMeal')}
-          </Text>
-          <IconButton
-            icon={fixed ? 'check' : 'plus'}
-            accessibilityLabel={fixed && nextMeal ? markLabel : t('today.logMeal')}
-            disabled={fixed && !nextMeal}
-            onPress={onMeal}
-          />
-        </Frame>
-      );
-    }
-    const yesterdayKcal = Math.round(yesterdayEntries.reduce((a, e) => a + e.macros.kcal, 0));
-    return (
-      <Frame size="large" label={t('today.calories')} icon="bowl" area="nutrition">
-        <View style={{ gap: 2 }}>
-          <Text variant="titleM">{t('today.firstMeal')}</Text>
-          <Text variant="bodyS" muted>
-            {fixed
-              ? t('today.firstMealFixed')
-              : target
-                ? t('today.firstMealTarget', { kcal: formatInt(target.kcal) })
-                : t('today.firstMealNoTarget')}
-          </Text>
-        </View>
-        {fixed ? (
-          nextMeal ? (
-            <Button label={markLabel} icon="check" variant="secondary" onPress={onMeal} />
-          ) : null
-        ) : (
-          <>
-            <Button label={t('today.logMeal')} icon="plus" variant="secondary" onPress={onMeal} />
-            {yesterdayEntries.length > 0 ? (
-              <Button
-                label={t('today.sameAsYesterday')}
-                accessibilityLabel={t('today.sameAsYesterdayLabel', {
-                  count: yesterdayEntries.length,
-                  kcal: formatInt(yesterdayKcal),
-                })}
-                icon="copy"
-                variant="ghost"
-                disabled={copy.isPending}
-                onPress={() => void sameAsYesterday()}
-              />
-            ) : null}
-          </>
-        )}
-      </Frame>
-    );
-  }
 
   // No target (DECISIONS 104): what was eaten, no "left" and no arcs, and a quiet way to set one.
   if (!target && size === 'small') {
@@ -328,7 +273,12 @@ export function NutritionWidget({ size }: Props) {
 
   if (size === 'small') {
     return (
-      <Frame size="small" label={t('today.caloriesLeft')} icon="bowl" area="nutrition">
+      <Frame
+        size="small"
+        label={overBy > 0 ? t('today.calories') : t('today.caloriesLeft')}
+        icon="bowl"
+        area="nutrition"
+      >
         <Gauge
           value={share}
           size={110}
@@ -339,10 +289,10 @@ export function NutritionWidget({ size }: Props) {
           accessibilityLabel={gaugeLabel}
         >
           <Text variant="displayS" numeric>
-            {formatInt(left)}
+            {formatInt(overBy > 0 ? overBy : left)}
           </Text>
           <Text variant="bodyS" muted>
-            {t('today.kcalLeftShort')}
+            {overBy > 0 ? t('today.kcalOverShort') : t('today.kcalLeftShort')}
           </Text>
         </Gauge>
         {fixed && nextMeal ? (
@@ -399,9 +349,20 @@ export function NutritionWidget({ size }: Props) {
           >
             {(['protein', 'carbs', 'fat'] as const).map((key) => (
               <View key={key} style={{ flex: 1, gap: 2 }}>
-                <Text variant="bodyS" medium>
-                  {t(`diet.macro.${key}`)}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View
+                    aria-hidden
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: colors.macroSplit[key],
+                    }}
+                  />
+                  <Text variant="bodyS" medium>
+                    {t(`diet.macro.${key}`)}
+                  </Text>
+                </View>
                 <Text variant="bodyS" muted numeric>
                   {`${Math.round(eaten[key])} g`}
                 </Text>
@@ -425,10 +386,10 @@ export function NutritionWidget({ size }: Props) {
               accessibilityLabel={gaugeLabel}
             >
               <Text variant="displayM" numeric>
-                {formatInt(left)}
+                {formatInt(overBy > 0 ? overBy : left)}
               </Text>
               <Text variant="bodyS" muted>
-                {t('today.kcalLeftShort')}
+                {overBy > 0 ? t('today.kcalOverShort') : t('today.kcalLeftShort')}
               </Text>
               <Text variant="label" muted numeric>
                 {t('today.eatenOf', {
@@ -498,10 +459,39 @@ export function NutritionWidget({ size }: Props) {
               />
             </>
           ) : (
-            <Text muted>{t('today.allMealsDone')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View aria-hidden>
+                <CheckFill
+                  done
+                  size={28}
+                  fill={colors.nutrition}
+                  iconOn={colors.bg}
+                  iconOff="transparent"
+                  iconSize={16}
+                />
+              </View>
+              <Text semibold style={{ flex: 1 }}>
+                {t('today.allMealsDone')}
+              </Text>
+            </View>
           )
         ) : (
-          <Button label={t('today.logMeal')} icon="plus" variant="secondary" onPress={onMeal} />
+          <>
+            <Button label={t('today.logMeal')} icon="plus" variant="secondary" onPress={onMeal} />
+            {empty && yesterdayEntries.length > 0 ? (
+              <Button
+                label={t('today.sameAsYesterday')}
+                accessibilityLabel={t('today.sameAsYesterdayLabel', {
+                  count: yesterdayEntries.length,
+                  kcal: formatInt(yesterdayKcal),
+                })}
+                icon="copy"
+                variant="ghost"
+                disabled={copy.isPending}
+                onPress={() => void sameAsYesterday()}
+              />
+            ) : null}
+          </>
         )}
       </View>
     </Frame>
@@ -557,30 +547,57 @@ export function WorkoutWidget({ size }: Props) {
   if (doneToday.length > 0) {
     body = (
       <>
-        <View style={{ gap: 4 }}>
-          <Text variant={small ? 'displayS' : 'displayM'} numberOfLines={2}>
-            {t('today.workoutDone')}
-          </Text>
-          <Text variant="bodyS" muted>
-            {t('today.workoutDoneInfo', {
-              names: doneToday.map((s) => s.name || t('train.emptyWorkout')).join(', '),
-              sets: doneToday.reduce((a, s) => a + s.stats.sets, 0),
-            })}
-          </Text>
+        {/* Done at a glance: a filled training check beside the words (above them at half width). */}
+        <View
+          style={{
+            flexDirection: small ? 'column' : 'row',
+            alignItems: small ? 'flex-start' : 'center',
+            gap: small ? 8 : 12,
+          }}
+        >
+          <View aria-hidden>
+            <CheckFill
+              done
+              size={small ? 36 : 44}
+              fill={colors.training}
+              iconOn={colors.bg}
+              iconOff="transparent"
+              iconSize={small ? 20 : 24}
+            />
+          </View>
+          <View style={{ flex: small ? undefined : 1, gap: 2 }}>
+            <Text variant={small ? 'titleM' : 'displayS'} numberOfLines={2}>
+              {t('today.workoutDone')}
+            </Text>
+            <Text variant="bodyS" muted>
+              {t('today.workoutDoneInfo', {
+                names: doneToday.map((s) => s.name || t('train.emptyWorkout')).join(', '),
+                sets: doneToday.reduce((a, s) => a + s.stats.sets, 0),
+              })}
+            </Text>
+          </View>
         </View>
         {plan ? <Button label={t('today.trainAgain')} variant="ghost" onPress={openPlan} /> : null}
       </>
     );
   } else if (upNext && plan) {
-    const start = (
-      <Button
-        label={t('train.start')}
-        icon="play"
-        block
-        disabled={upNext.exercises.length === 0}
-        onPress={() => startDay(plan, upNext, rotation)}
-      />
-    );
+    // A day without exercises cannot start: instead of a dead Start, the way to fill it.
+    const start =
+      upNext.exercises.length === 0 ? (
+        <Button
+          label={t('today.addExercises')}
+          icon="plus"
+          variant="secondary"
+          onPress={openPlan}
+        />
+      ) : (
+        <Button
+          label={t('train.start')}
+          icon="play"
+          block
+          onPress={() => startDay(plan, upNext, rotation)}
+        />
+      );
     body = small ? (
       <>
         <Text variant="displayS" numberOfLines={2}>
@@ -637,20 +654,27 @@ export function WorkoutWidget({ size }: Props) {
           </View>
         ) : null}
         {start}
-        <Button label={t('train.differentDay')} variant="ghost" onPress={openPlan} />
+        {upNext.exercises.length > 0 ? (
+          <Button label={t('train.differentDay')} variant="ghost" onPress={openPlan} />
+        ) : null}
       </>
     );
   } else {
     // No plan: plan creation opens right here (and the coach can draft one when it is set up).
+    // Shaped like the "up next" card: a big title where the day's name goes, one short line.
     body = (
       <View style={{ gap: 10 }}>
-        <Text muted>{t('today.noPlan')}</Text>
-        <Button
-          label={t('train.createPlan')}
-          icon="plus"
-          variant="secondary"
-          onPress={() => setCreating(true)}
-        />
+        <View style={{ gap: 2 }}>
+          <Text variant={small ? 'titleM' : 'displayS'} numberOfLines={2}>
+            {t('today.noPlanTitle')}
+          </Text>
+          {small ? null : (
+            <Text variant="bodyS" muted>
+              {t('today.noPlanInfo')}
+            </Text>
+          )}
+        </View>
+        <Button label={t('train.createPlan')} icon="plus" onPress={() => setCreating(true)} />
         {coachReady ? (
           <Button
             label={t('today.askCoachPlan')}
@@ -883,6 +907,24 @@ function BigNumber({ value, unit }: { value: string; unit?: string }) {
   );
 }
 
+/** Where the weight line will be: a flat row of dashes in the empty-track colour. */
+function PendingLine({ height }: { height: number }) {
+  const { colors } = useTheme();
+  return (
+    <View aria-hidden testID="pending-line" style={{ height, justifyContent: 'center' }}>
+      {/* Dashes drawn as small bars: a one-sided dashed border is solid on Android. */}
+      <View style={{ flexDirection: 'row', gap: 5 }}>
+        {Array.from({ length: 12 }, (_, i) => (
+          <View
+            key={i}
+            style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.dotOff }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** The latest weight, a line of the last weeks and how it moved this week. Opens Body. */
 export function WeightWidget({ size }: Props) {
   const { t } = useTranslation();
@@ -903,7 +945,8 @@ export function WeightWidget({ size }: Props) {
       label={t('today.weight')}
       icon="scale"
       area="neutral"
-      onPress={() => router.push('/progress/body')}
+      onPress={() => router.push(latest ? '/progress/body' : '/check-in')}
+      pressLabel={latest ? undefined : t('today.logWeight')}
     >
       {latest?.weightKg != null ? (
         <>
@@ -915,7 +958,10 @@ export function WeightWidget({ size }: Props) {
               color={colors.text}
               accessibilityLabel={t('today.weightLineA11y')}
             />
-          ) : null}
+          ) : (
+            // One weigh-in: the line starts with the second one.
+            <PendingLine height={small ? 40 : 48} />
+          )}
           {trend ? (
             <View
               accessible
@@ -953,9 +999,18 @@ export function WeightWidget({ size }: Props) {
           )}
         </>
       ) : (
-        <Text variant="bodyS" muted>
-          {t('today.noWeight')}
-        </Text>
+        // No weight yet: the same card unfilled (a dash for the number, a flat dashed line where
+        // the trend goes) and the way to log it; the whole card opens the check-in.
+        <>
+          <BigNumber value={'–'} unit={t('today.kgUnit')} />
+          <PendingLine height={small ? 40 : 48} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="plus" size={18} color={colors.text} />
+            <Text variant="bodyS" semibold>
+              {t('today.logWeight')}
+            </Text>
+          </View>
+        </>
       )}
     </Frame>
   );
@@ -983,20 +1038,41 @@ export function SupplementsWidget({ size }: Props) {
         icon="pill"
         area="supplements"
         right={
-          <IconButton
-            icon={list.length ? 'edit' : 'plus'}
-            size={36}
-            accessibilityLabel={
-              list.length ? t('calendar.editSupplements') : t('today.supplementsAdd')
-            }
-            onPress={() => setOpen(true)}
-          />
+          // With an empty list the dashed pill below is the one way in.
+          list.length ? (
+            <IconButton
+              icon="edit"
+              size={36}
+              accessibilityLabel={t('calendar.editSupplements')}
+              onPress={() => setOpen(true)}
+            />
+          ) : undefined
         }
       >
         {list.length === 0 ? (
-          <Text variant="bodyS" muted>
-            {t('today.supplementsEmpty')}
-          </Text>
+          // No list yet: one empty pill, the shape the supplements will take, opens the list.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('today.supplementsAdd')}
+            onPress={() => setOpen(true)}
+            style={({ pressed }) => ({
+              minHeight: 52,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderStyle: 'dashed',
+              borderColor: colors.borderControl,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 12,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Icon name="plus" size={20} color={colors.text} />
+            <Text variant="bodyS" semibold style={{ flex: 1 }}>
+              {t('today.supplementsAdd')}
+            </Text>
+          </Pressable>
         ) : (
           <View style={{ gap: 8 }}>
             <View
