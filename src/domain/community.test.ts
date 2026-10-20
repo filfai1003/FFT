@@ -1,4 +1,10 @@
 import {
+  ageGroupOf,
+  canFilterAudience,
+  communityGroups,
+  countryCodeOf,
+  weightClassOf,
+  weightClassRange,
   communityPeriodEnd,
   communityPeriodStart,
   communityScores,
@@ -127,5 +133,67 @@ describe('places', () => {
     expect(movement(3, 3)).toEqual({ kind: 'same', n: 0 });
     expect(topPercent(214, 1940)).toBe(12);
     expect(topPercent(1, 3)).toBe(34);
+  });
+});
+
+describe('community groups (DECISIONS 117): buckets only', () => {
+  it('age groups from the birth date, 18+ only, birthday counted', () => {
+    expect(ageGroupOf('2001-10-15', '2026-10-14')).toBe('18-24'); // 24 until tomorrow
+    expect(ageGroupOf('2001-10-14', '2026-10-14')).toBe('25-34');
+    expect(ageGroupOf('1982-01-01', '2026-10-14')).toBe('35-44');
+    expect(ageGroupOf('1972-06-01', '2026-10-14')).toBe('45-54');
+    expect(ageGroupOf('1971-10-14', '2026-10-14')).toBe('55+');
+    expect(ageGroupOf('2010-01-01', '2026-10-14')).toBeNull();
+    expect(ageGroupOf(null, '2026-10-14')).toBeNull();
+    expect(ageGroupOf('soon', '2026-10-14')).toBeNull();
+  });
+
+  it('weight classes by sex (IPF limits), with the top open class', () => {
+    expect(weightClassOf('male', 59)).toBe('m59');
+    expect(weightClassOf('male', 59.1)).toBe('m66');
+    expect(weightClassOf('male', 78.4)).toBe('m83');
+    expect(weightClassOf('male', 120)).toBe('m120');
+    expect(weightClassOf('male', 131)).toBe('m120+');
+    expect(weightClassOf('female', 62)).toBe('f63');
+    expect(weightClassOf('female', 90)).toBe('f84+');
+    expect(weightClassOf(null, 80)).toBeNull();
+    expect(weightClassOf('male', null)).toBeNull();
+    expect(weightClassOf('female', 5)).toBeNull();
+  });
+
+  it('class ranges for the label', () => {
+    expect(weightClassRange('m83')).toEqual({ from: 74, to: 83 });
+    expect(weightClassRange('m59')).toEqual({ from: null, to: 59 });
+    expect(weightClassRange('f84+')).toEqual({ from: 84, to: null });
+    expect(weightClassRange('m80')).toBeNull();
+    expect(weightClassRange('m83+')).toBeNull();
+  });
+
+  it('country codes: two letters, user-assigned ones refused', () => {
+    expect(countryCodeOf('it')).toBe('IT');
+    expect(countryCodeOf(' GB ')).toBe('GB');
+    expect(countryCodeOf('XX')).toBeNull();
+    expect(countryCodeOf('ZZ')).toBeNull();
+    expect(countryCodeOf('ITA')).toBeNull();
+    expect(countryCodeOf(null)).toBeNull();
+  });
+
+  it('what is sent: never the birth date or the weight', () => {
+    const g = communityGroups({
+      today: '2026-10-14',
+      birthDate: '1995-03-02',
+      sex: 'male',
+      weightKg: 78.4,
+      country: 'it',
+    });
+    expect(g).toEqual({ country: 'IT', age_group: '25-34', weight_class: 'm83' });
+    expect(JSON.stringify(g)).not.toMatch(/1995|78/);
+  });
+
+  it('paid audiences: Supporter and Premium', () => {
+    expect(canFilterAudience('supporter')).toBe(true);
+    expect(canFilterAudience('premium')).toBe(true);
+    expect(canFilterAudience('free')).toBe(false);
+    expect(canFilterAudience(null)).toBe(false);
   });
 });

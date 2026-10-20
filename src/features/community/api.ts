@@ -1,9 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { getLocales } from 'expo-localization';
 import {
+  communityGroups,
   communityPeriodStart,
   communityScores,
+  type CommunityAudience,
+  type CommunityGroups,
   type CommunityMetric,
   type CommunityPeriod,
 } from '@/domain/community';
@@ -11,7 +15,9 @@ import { goalForDay, hasTarget } from '@/domain/diet';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useGoals } from '@/features/diet/log';
 import { useGamification } from '@/features/gamification/data';
+import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
+import { useBodyEntries } from '@/features/progress/data';
 import { useExercises } from '@/features/train/exercises';
 import { useActivePlan } from '@/features/train/plans';
 import { getMode } from '@/lib/mode';
@@ -38,7 +44,7 @@ export type CommunityMe = {
   badges: string[];
   joined_at: string;
   submitted_at: string | null;
-};
+} & Partial<CommunityGroups>;
 
 export type BoardRow = {
   public_id: string;
@@ -49,7 +55,19 @@ export type BoardRow = {
   place_before: number;
   is_me: boolean;
 };
-export type Board = { total: number; rows: BoardRow[] };
+/**
+ * A board within an audience (DECISIONS 117). `reason`: why a country / class board is empty
+ * (the caller's own group is unknown); `country` / `age_group` / `weight_class`: the group shown.
+ */
+export type Board = {
+  total: number;
+  rows: BoardRow[];
+  audience?: CommunityAudience;
+  reason?: 'no_country' | 'no_class' | null;
+  country?: string | null;
+  age_group?: string | null;
+  weight_class?: string | null;
+};
 
 export type FriendStatus = 'friends' | 'asked' | 'asked_you';
 export type Friend = {
@@ -82,7 +100,7 @@ export const communityKeys = {
   all: ['community'] as const,
   me: (userId: string | null) => ['community', 'me', userId] as const,
   board: (k: BoardKey) => ['community', 'board', k] as const,
-  friends: (k: BoardKey | null) => ['community', 'friends', k] as const,
+  friends: (k: Omit<BoardKey, 'audience'> | null) => ['community', 'friends', k] as const,
   profile: (id: string | null) => ['community', 'profile', id] as const,
 };
 
@@ -91,6 +109,8 @@ export type BoardKey = {
   periodStart: string;
   metric: CommunityMetric;
   subject: string;
+  /** Who it compares with ('everyone' unless the plan allows the others). */
+  audience: CommunityAudience;
 };
 
 /** The community needs an account: not in the account-less mode. */
@@ -121,12 +141,23 @@ export function useBoard(key: BoardKey, enabled: boolean) {
         p_metric: key.metric,
         p_subject: key.subject,
         p_limit: 8,
+        // Left out for Everyone: the call stays the same as before the audiences.
+        ...(key.audience === 'everyone' ? {} : { p_audience: key.audience }),
       }),
     staleTime: 60_000,
   });
 }
 
-export function useFriends(key: BoardKey | null, enabled: boolean) {
+export function useFriends(board: BoardKey | null, enabled: boolean) {
+  // The friends list does not depend on the audience.
+  const key = board
+    ? {
+        period: board.period,
+        periodStart: board.periodStart,
+        metric: board.metric,
+        subject: board.subject,
+      }
+    : null;
   return useQuery({
     queryKey: communityKeys.friends(key),
     enabled,
@@ -217,6 +248,33 @@ export function useRemoveFriend() {
   });
 }
 
+/**
+ * The member's groups from what the device knows: age group from the profile's birth date, weight
+ * class from its sex and the latest weight logged, country from the phone's region (the profile
+ * has no country). Only the buckets leave the device.
+ */
+export function currentGroups(
+  today: string,
+  profile: { birth_date?: string | null; sex?: string | null } | null | undefined,
+  body: readonly { weightKg: number | null }[] | undefined,
+): CommunityGroups {
+  let weightKg: number | null = null;
+  for (const e of body ?? []) if (e.weightKg != null) weightKg = e.weightKg; // oldest first
+  let region: string | null = null;
+  try {
+    region = getLocales()[0]?.regionCode ?? null;
+  } catch {
+    region = null;
+  }
+  return communityGroups({
+    today,
+    birthDate: profile?.birth_date,
+    sex: profile?.sex,
+    weightKg,
+    country: region,
+  });
+}
+
 /** When this device last sent scores, per account (at most every 10 minutes). */
 const lastSubmit = new Map<string, number>();
 const SUBMIT_EVERY_MS = 10 * 60 * 1000;
@@ -230,10 +288,18 @@ export function useCommunitySubmit() {
   const exercises = useExercises();
   const plan = useActivePlan();
   const goals = useGoals();
+  const profile = useProfile();
+  const body = useBodyEntries();
   const queryClient = useQueryClient();
   const member = me.data != null;
   const ready =
-    member && game != null && exercises.data != null && !plan.isPending && goals.data != null;
+    member &&
+    game != null &&
+    exercises.data != null &&
+    !plan.isPending &&
+    goals.data != null &&
+    !profile.isPending &&
+    !body.isPending;
 
   const submit = async (force = false) => {
     if (!userId || !game || !exercises.data) return;
@@ -257,6 +323,21 @@ export function useCommunitySubmit() {
         p_badges: game.badges.filter((b) => b.earned).map((b) => b.id),
         p_scores: scores,
       });
+      // The country / class boards (DECISIONS 117): buckets only, sent when they changed.
+      const groups = currentGroups(today, profile.data, body.data);
+      const sent = me.data;
+      if (
+        sent &&
+        (groups.country !== (sent.country ?? null) ||
+          groups.age_group !== (sent.age_group ?? null) ||
+          groups.weight_class !== (sent.weight_class ?? null))
+      )
+        // A refusal here does not undo the scores (tried again with the next ones).
+        await rpc<CommunityMe>('community_set_groups', {
+          p_country: groups.country,
+          p_age_group: groups.age_group,
+          p_weight_class: groups.weight_class,
+        }).catch(() => undefined);
       await queryClient.invalidateQueries({ queryKey: communityKeys.all });
     } catch {
       // Refused or offline: tried again on the next visit (the leaderboard keeps the last ones).

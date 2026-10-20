@@ -1164,6 +1164,7 @@
     "leaveOffline": "Leave offline mode",
     "ai": "AI plans & import",
     "premium": "Premium",
+    "supporter": "Supporter",
     "settings": "Settings",
     "goal": {
       "lose_fat": "Lose fat",
@@ -2346,8 +2347,8 @@
     "whatToCompare": "What to compare",
     "subjects": "Which strength score",
     "overall": "Overall",
-    "compareA11y": "Who you compare with: {{who}}. Change",
-    "periodA11y": "Period: {{period}}. Change",
+    "compareA11y": "Compare with: {{who}}",
+    "periodA11y": "Period: {{period}}",
     "period": {
       "week": "This week",
       "month": "This month"
@@ -2369,13 +2370,30 @@
       "class": "Your age group and weight class"
     },
     "supporterTag": "Supporter",
-    "supporterA11y": "{{name}}. Supporter, coming soon",
+    "supporterA11y": "{{name}}. Needs Supporter, opens the plans",
     "filters": {
       "title": "Compare with",
       "period": "Period",
-      "note": "Supporter filters are coming soon. Everything competitive stays free.",
-      "what": "What is Supporter?",
-      "show": "Show leaderboard"
+      "note": "Friends, country and class come with Supporter. Everything competitive stays free.",
+      "notePaid": "Places are counted among the people you pick.",
+      "what": "What is Supporter?"
+    },
+    "classLine": "{{age}} · {{weight}}",
+    "weightClass": {
+      "range": "{{from}}–{{to}} kg",
+      "upTo": "Up to {{to}} kg",
+      "over": "Over {{from}} kg"
+    },
+    "empty": {
+      "friendsBody": "None of your friends has a score yet. Add friends to compare with people you know.",
+      "no_country": {
+        "title": "No country yet",
+        "body": "Your country comes from your phone's region. Set it in the phone's settings, then open Progress again."
+      },
+      "no_class": {
+        "title": "Age group or weight class unknown",
+        "body": "Add your birth date and sex in Personal info and log your weight to compare with your class."
+      }
     },
     "board": {
       "title": {
