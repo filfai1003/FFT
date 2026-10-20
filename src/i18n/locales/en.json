@@ -360,11 +360,33 @@
     "thisCycle": "Cycle {{n}}",
     "explore": "Explore",
     "yourPlans": "Your plans",
-    "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done"
+    "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done",
+    "cycleDone": "{{done}} of {{total}} done",
+    "cycleLabel": "Cycle {{n}}, {{done}} of {{total}} days done",
+    "dayState": {
+      "next": "Up next",
+      "done": "Done",
+      "doneOn": "Done {{weekday}}",
+      "todo": "To do"
+    },
+    "moreExercises": "+{{count}} more",
+    "ago": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "days_one": "{{count}} day ago",
+      "days_other": "{{count}} days ago",
+      "date": "on {{date}}"
+    },
+    "lastWorkout": "Last workout {{when}}",
+    "lastTime": "last time {{when}}",
+    "neverDone": "first time"
   },
   "plan": {
     "more": "More options: rename, duplicate, archive, delete",
     "anyDay": "Any day can be trained at any time",
+    "anyDayShort": "any day can be trained at any time",
+    "exerciseCount_one": "{{count}} exercise",
+    "exerciseCount_other": "{{count}} exercises",
     "tagUpNext": "Up next",
     "tagDone": "Done · {{weekday}}",
     "tagDoneOut": "Done · {{weekday}} · Out of order",
@@ -437,7 +459,8 @@
     "create": "Create exercise",
     "mine": "Mine",
     "inDay": "In day",
-    "noResults": "No exercises found.",
+    "noResults": "No exercises found",
+    "noResultsBody": "Try another word or filter, or create your own exercise.",
     "notLogged": "Not logged yet",
     "recordWeight": "Max {{max}} {{unit}}",
     "recordWeightEst": "Max {{max}} {{unit}} · Est. 1RM {{est}} {{unit}}",
@@ -514,6 +537,8 @@
     "change_one": "{{delta}} {{unit}} · {{count}} session",
     "change_other": "{{delta}} {{unit}} · {{count}} sessions",
     "chartLabel": "Rising from {{from}} to {{to}} {{unit}}",
+    "chartLabelDown": "Falling from {{from}} to {{to}} {{unit}}",
+    "chartEmpty": "Do it on two days to see the trend here",
     "best": "Best",
     "recent": "Recent sessions",
     "edit": "Edit exercise",
@@ -528,6 +553,9 @@
     "inProgress": "Workout in progress",
     "resume": "Resume",
     "resumeLabel": "Resume {{name}}",
+    "resumeLabelFull": "Resume {{name}}: {{done}} of {{total}} sets done, {{time}}",
+    "setsDoneShort": "{{done}}/{{total}} sets",
+    "setsProgress": "Sets done",
     "header": "{{name}} · In progress",
     "minimize": "Minimize session (keeps running)",
     "finish": "Finish",
@@ -663,9 +691,7 @@
     "notes": "Workout notes",
     "notesPlaceholder": "Notes (optional)",
     "seeSets": "See all sets",
-    "hideSets": "Hide sets",
-    "minutes_one": "{{count}} minute of training",
-    "minutes_other": "{{count}} minutes of training"
+    "hideSets": "Hide sets"
   },
   "history": {
     "title": "History",

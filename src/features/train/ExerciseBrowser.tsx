@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { KeyboardAwareScrollView } from '@/components/ui/keyboard';
 import { ListRow } from '@/components/ui/ListRow';
 import { Section } from '@/components/ui/Section';
-import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { formatClock } from '@/features/session/logic';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
@@ -108,7 +108,13 @@ export function ExerciseBrowser({
         showsVerticalScrollIndicator={false}
       >
         {exercises.isPending ? null : groups.length === 0 ? (
-          <Text muted>{t('library.noResults')}</Text>
+          <EmptyState
+            compact
+            icon="search"
+            area="training"
+            title={t('library.noResults')}
+            body={t('library.noResultsBody')}
+          />
         ) : (
           groups.map((g) => (
             <Section key={g.muscle} title={t(`library.muscle.${g.muscle}`)}>

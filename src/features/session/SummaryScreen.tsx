@@ -5,7 +5,9 @@ import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { IconTile } from '@/components/ui/IconTile';
+import { EmptyState } from '@/components/ui/EmptyState';
+import type { IconName } from '@/components/ui/Icon';
+import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -18,6 +20,7 @@ import { useActivity, useTimeZone } from '@/features/gamification/data';
 import { NextBadgeCard } from '@/features/gamification/MeCards';
 import { useToday } from '@/features/profile/use-today';
 import { gameWithWorkout } from './summary-game';
+import { formatInt } from '@/domain/numbers';
 import { displayWeight } from '@/domain/units';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { formatClock, trimNumber } from './logic';
@@ -51,8 +54,13 @@ export function SummaryScreen() {
   if (!finished) {
     return (
       <Screen gap={16}>
-        <Text variant="screenTitle">{t('session.noneTitle')}</Text>
-        <Button label={t('session.backToTrain')} onPress={() => router.replace('/train')} />
+        <EmptyState
+          icon="dumbbell"
+          area="training"
+          title={t('session.noneTitle')}
+          action={{ label: t('session.backToTrain'), onPress: () => router.replace('/train') }}
+          actionVariant="primary"
+        />
       </Screen>
     );
   }
@@ -77,17 +85,37 @@ export function SummaryScreen() {
     (b) => b.metric === 'streak' && b.target === game?.nextStreak,
   );
   const volume = displayWeight(sum.volumeKg, unit);
-  const minutes = Math.max(1, Math.round(sum.durationS / 60));
 
-  const stats = [
+  // Canvas "Workout summary": each number with its tile (training purple, records orange).
+  const stats: { label: string; value: string; unit: string; icon: IconName; area: Area }[] = [
     {
       label: t('summary.duration'),
       value: formatClock(sum.durationS),
       unit: t('summary.min'),
+      icon: 'clock',
+      area: 'training',
     },
-    { label: t('summary.volume'), value: String(Math.round(volume)), unit: unit },
-    { label: t('summary.sets'), value: String(sum.setsDone), unit: `/ ${sum.setsTotal}` },
-    { label: t('summary.records'), value: String(records.length), unit: t('summary.new') },
+    {
+      label: t('summary.volume'),
+      value: formatInt(volume),
+      unit: unit,
+      icon: 'dumbbell',
+      area: 'training',
+    },
+    {
+      label: t('summary.sets'),
+      value: String(sum.setsDone),
+      unit: `/ ${sum.setsTotal}`,
+      icon: 'check',
+      area: 'training',
+    },
+    {
+      label: t('summary.records'),
+      value: String(records.length),
+      unit: t('summary.new'),
+      icon: 'trophy',
+      area: 'streak',
+    },
   ];
 
   // Leave right away: the upload goes on in the background (and is retried when back online).
@@ -122,10 +150,13 @@ export function SummaryScreen() {
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {stats.map((s) => (
-            <Card key={s.label} size="small" gap={6} style={{ width: '48%', flexGrow: 1 }}>
-              <Text variant="bodyS" muted>
-                {s.label}
-              </Text>
+            <Card key={s.label} size="small" gap={8} style={{ width: '48%', flexGrow: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <IconTile icon={s.icon} area={s.area} size={30} />
+                <Text variant="bodyS" semibold>
+                  {s.label}
+                </Text>
+              </View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text variant="displayM" numeric>
                   {s.value}
@@ -169,9 +200,19 @@ export function SummaryScreen() {
                         })}
                   </Text>
                 </View>
-                <Text variant="label">
-                  {r.kind === 'max' ? t('summary.newMax') : t('summary.newEst')}
-                </Text>
+                <View
+                  style={{
+                    minHeight: 24,
+                    paddingHorizontal: 9,
+                    borderRadius: 12,
+                    backgroundColor: colors.text,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text variant="label" semibold style={{ color: colors.bg }}>
+                    {r.kind === 'max' ? t('summary.newMax') : t('summary.newEst')}
+                  </Text>
+                </View>
               </View>
             ))}
           </Card>
@@ -283,9 +324,6 @@ export function SummaryScreen() {
             {showSets ? t('summary.hideSets') : t('summary.seeSets')}
           </Text>
         </Pressable>
-        <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
-          {t('summary.minutes', { count: minutes })}
-        </Text>
       </Screen>
       <BottomActionBar>
         <Button size="large" label={t('summary.done')} onPress={close} />

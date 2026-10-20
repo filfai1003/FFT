@@ -3,7 +3,7 @@ import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
-import { touch } from '@/design/tokens';
+import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import type { WeightUnit } from '@/domain/units';
 import { trimNumber, type SessionExercise } from './logic';
@@ -63,14 +63,37 @@ export function SuggestionCard({
         ? `${why}: ${t('session.suggest.short')}`
         : `${why}: ${t('session.suggest.oneMore')}`;
 
+  // A step up (and not kept back) is progress: green panel with a filled arrow (canvas). Going
+  // down or staying is neutral: never red, it is the right call when the target was missed.
+  const up = g.kind === 'up' && !g.kept;
   return (
-    <Card size="small" gap={0}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <Icon
-          name={g.kind === 'down' ? 'arrowDown' : g.kind === 'up' ? 'arrowUp' : 'check'}
-          size={20}
-          color={colors.text}
-        />
+    <View
+      testID="suggestion"
+      style={{
+        borderRadius: radius.cardSmall,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: up ? colors.successSoft : colors.surfaceAlt,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View
+          aria-hidden
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: up ? colors.success : colors.surface,
+          }}
+        >
+          <Icon
+            name={g.kind === 'down' ? 'arrowDown' : g.kind === 'up' ? 'arrowUp' : 'check'}
+            size={20}
+            color={up ? colors.bg : colors.text}
+          />
+        </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="body" numeric style={{ fontWeight: '600' }}>
             {title}
@@ -109,6 +132,6 @@ export function SuggestionCard({
           </Pressable>
         ) : null}
       </View>
-    </Card>
+    </View>
   );
 }

@@ -2,20 +2,22 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import type { Translate } from '@/i18n';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
+import { IconTile } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { deviceTimeZone, localDay, weekdayName } from '@/domain/day';
+import { useTimeZone } from '@/features/gamification/data';
 import { useStartWorkout } from '@/features/session/start';
+import { cycleDays, exerciseChips, type CycleDay } from './cycle';
+import { CycleBar, DayBadge, ExerciseChips } from './CycleDay';
 import {
-  dayPreview,
   useDeletePlan,
   useDuplicatePlan,
   usePlan,
@@ -24,7 +26,6 @@ import {
   useUpdatePlan,
   type PlanDayView,
   type PlanView,
-  type Rotation,
 } from './plans';
 import { goBack, useBack } from '@/lib/navigation';
 
@@ -40,22 +41,21 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
   const rotation = useRotation(plan.data);
   const { startDay, startEmpty } = useStartWorkout();
   const [sheet, setSheet] = useState<SheetKind>(null);
+  const tz = useTimeZone();
 
   if (!plan.data) return <Screen>{null}</Screen>;
   const p = plan.data;
   const active = p.status === 'active';
+  const days = cycleDays(p.days, active ? rotation : null, tz);
 
-  const tagFor = (d: PlanDayView): string => {
-    if (rotation?.state.upNextDayId === d.id) return t('plan.tagUpNext');
-    const done = rotation?.doneThisCycle.get(d.id);
-    if (done) {
-      const weekday = weekdayName(localDay(new Date(done.started_at), deviceTimeZone())).slice(
-        0,
-        3,
-      );
-      return done.out_of_order ? t('plan.tagDoneOut', { weekday }) : t('plan.tagDone', { weekday });
-    }
-    return active ? t('plan.tagThisCycle') : t('plan.tagNotDone');
+  const tagFor = (d: PlanDayView, c: CycleDay): string => {
+    const count = t('plan.exerciseCount', { count: d.exercises.length });
+    if (c.state === 'next') return `${t('plan.tagUpNext')} · ${count}`;
+    if (c.state === 'done')
+      return c.outOfOrder
+        ? t('plan.tagDoneOut', { weekday: c.weekday ?? '' })
+        : t('plan.tagDone', { weekday: c.weekday ?? '' });
+    return active ? `${t('plan.tagThisCycle')} · ${count}` : count;
   };
 
   return (
@@ -73,29 +73,50 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
           }
         />
 
-        <View style={{ gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {active ? (
-              <View
-                style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }}
+        {/* Canvas "Plan detail": training tile, the name, then its state as chips. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <IconTile icon="dumbbell" area={active ? 'training' : 'neutral'} size={56} />
+          <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
+            <Text variant="screenTitle" accessibilityRole="header">
+              {p.name}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              <StatusChip
+                label={t(`train.status.${p.status}`)}
+                area={active ? 'training' : 'neutral'}
               />
-            ) : null}
+              <StatusChip label={t('plan.daysCount', { count: p.days.length })} />
+              {active && rotation ? (
+                <StatusChip label={t('train.cycle', { n: rotation.state.cycle })} />
+              ) : null}
+            </View>
+          </View>
+        </View>
+
+        {active && rotation && p.days.length > 0 ? (
+          <View style={{ gap: 6 }}>
+            <CycleBar
+              cycle={rotation.state.cycle}
+              done={rotation.state.doneCount}
+              total={rotation.state.totalDays}
+            />
             <Text variant="bodyS" muted>
-              {headerLine(p, rotation, t as Translate)}
+              {`${t('train.cycleDone', {
+                done: rotation.state.doneCount,
+                total: rotation.state.totalDays,
+              })} · ${t('plan.anyDayShort')}`}
             </Text>
           </View>
-          <Text variant="screenTitle" accessibilityRole="header">
-            {p.name}
-          </Text>
+        ) : (
           <Text variant="bodyS" muted>
             {t('plan.anyDay')}
           </Text>
-        </View>
+        )}
 
         <View style={{ gap: 10 }}>
           {p.days.map((d, index) => {
-            const isNext = rotation?.state.upNextDayId === d.id;
-            const preview = dayPreview(d);
+            const c = days[index];
+            const isNext = c.state === 'next';
             return (
               <View
                 key={d.id}
@@ -107,15 +128,13 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                   backgroundColor: colors.surface,
                   paddingTop: isNext ? 11 : 12,
                   paddingBottom: isNext ? 11 : 12,
-                  paddingLeft: isNext ? 15 : 16,
+                  paddingLeft: isNext ? 13 : 14,
                   paddingRight: isNext ? 7 : 8,
                   gap: 10,
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text variant="displayS" numeric style={{ width: 24 }}>
-                    {index + 1}
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <DayBadge n={c.n} state={c.state} size={36} />
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t('plan.editDay', { name: d.name })}
@@ -127,18 +146,15 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                     }
                     style={{ flex: 1, gap: 2, minHeight: 44, justifyContent: 'center' }}
                   >
-                    <Text variant="bodyL" medium>
+                    <Text variant="bodyL" semibold>
                       {d.name}
                     </Text>
-                    <Text variant="bodyS" muted>
-                      {tagFor(d)}
-                    </Text>
-                    <Text variant="bodyS" muted numberOfLines={2}>
-                      {d.exercises.length === 0
-                        ? t('plan.noExercises')
-                        : preview.more > 0
-                          ? `${preview.names.join(', ')}, +${preview.more}`
-                          : preview.names.join(', ')}
+                    <Text
+                      variant="label"
+                      semibold
+                      style={{ color: isNext ? colors.trainingInk : colors.textMuted }}
+                    >
+                      {tagFor(d, c)}
                     </Text>
                   </Pressable>
                   <IconButton
@@ -162,6 +178,13 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
                     />
                   ) : null}
                 </View>
+                {d.exercises.length === 0 ? (
+                  <Text variant="bodyS" muted>
+                    {t('plan.noExercises')}
+                  </Text>
+                ) : (
+                  <ExerciseChips {...exerciseChips(d)} />
+                )}
                 {isNext ? (
                   <Button
                     label={t('plan.startDay', { name: d.name })}
@@ -201,14 +224,6 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
       <PlanSheets plan={p} sheet={sheet} setSheet={setSheet} />
     </>
   );
-}
-
-function headerLine(p: PlanView, rotation: Rotation | null, t: Translate) {
-  const status = t(`train.status.${p.status}`);
-  const days = t('plan.daysCount', { count: p.days.length });
-  return p.status === 'active' && rotation
-    ? `${status} · ${days} · ${t('train.cycle', { n: rotation.state.cycle })}`
-    : `${status} · ${days}`;
 }
 
 /** Options of a plan (set active, rename, duplicate, archive, delete), as bottom sheets. */

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Sheet } from '@/components/ui/Sheet';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -77,9 +78,28 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
             />
           </>
         ) : (
-          <Text muted>
-            {t('session.finishBody', { done: sum.exercisesDone, total: sum.exercisesTotal })}
-          </Text>
+          // Canvas "Finish now?": how many exercises are done, big in a training tile.
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View
+              aria-hidden
+              style={{
+                minWidth: 52,
+                height: 52,
+                paddingHorizontal: 6,
+                borderRadius: 16,
+                backgroundColor: colors.trainingSoft,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text variant="body" semibold numeric style={{ color: colors.trainingInk }}>
+                {`${sum.exercisesDone}/${sum.exercisesTotal}`}
+              </Text>
+            </View>
+            <Text muted style={{ flex: 1 }}>
+              {t('session.finishBody', { done: sum.exercisesDone, total: sum.exercisesTotal })}
+            </Text>
+          </View>
         )}
 
         {!nothingDone && left.length > 0 ? (
@@ -97,16 +117,24 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  gap: 8,
+                  paddingVertical: 4,
                   borderBottomWidth: 1,
                   borderColor: colors.borderDecorative,
                 }}
               >
-                <Text variant="bodyS">{e.name}</Text>
-                <Text variant="label" muted>
-                  {e.done === 0
-                    ? t('session.notStarted')
-                    : t('session.setsOf', { done: e.done, total: e.total })}
+                <Text variant="bodyS" style={{ flex: 1 }}>
+                  {e.name}
                 </Text>
+                {/* Started = training purple chip with the sets; not started = neutral. */}
+                <StatusChip
+                  area={e.done === 0 ? 'neutral' : 'training'}
+                  label={
+                    e.done === 0
+                      ? t('session.notStarted')
+                      : t('session.setsOf', { done: e.done, total: e.total })
+                  }
+                />
               </View>
             ))}
           </View>

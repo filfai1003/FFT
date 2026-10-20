@@ -64,5 +64,7 @@ describe('Finish sheet', () => {
     expect(screen.getByText('Overhead press')).toBeTruthy();
     expect(screen.getByText('Not started')).toBeTruthy();
     expect(screen.getByText('Finish and save')).toBeTruthy();
+    // Exercises done at a glance: 0 of 2 finished, in a training tile.
+    expect(screen.getByText('0/2', { includeHiddenElements: true })).toBeTruthy();
   });
 });

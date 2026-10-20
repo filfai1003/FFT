@@ -8,6 +8,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -122,41 +123,44 @@ export function HistoryScreen({
                 }
                 style={{
                   width: `${100 / 7}%`,
-                  height: 36,
+                  height: 42,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 3,
                 }}
               >
+                {/* A trained day is a filled purple disc (training colour); today has a 2px
+                    ring in the text colour. The label says "trained" too. */}
                 {day ? (
-                  <>
+                  <View
+                    testID={trained ? 'trained-day' : undefined}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: trained ? colors.training : 'transparent',
+                      borderWidth: isToday ? 2 : 0,
+                      borderColor: trained ? colors.text : colors.borderSelected,
+                    }}
+                  >
                     <Text
                       variant="label"
+                      semibold={trained || isToday}
+                      numeric
                       style={{
-                        color: future
-                          ? colors.textPlaceholderIcon
-                          : isToday
-                            ? colors.text
-                            : colors.textMuted,
+                        color: trained
+                          ? colors.bg
+                          : future
+                            ? colors.textPlaceholderIcon
+                            : isToday
+                              ? colors.text
+                              : colors.textMuted,
                       }}
                     >
                       {dayOfMonth(day)}
                     </Text>
-                    <View
-                      style={{
-                        width: 9,
-                        height: 9,
-                        borderRadius: 5,
-                        backgroundColor: trained
-                          ? colors.dotOn
-                          : future
-                            ? 'transparent'
-                            : colors.dotOff,
-                        borderWidth: isToday ? 2 : future ? 1 : 0,
-                        borderColor: isToday ? colors.accent : colors.dotOff,
-                      }}
-                    />
-                  </>
+                  </View>
                 ) : null}
               </View>
             );
@@ -235,19 +239,7 @@ function SessionRow({
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Text variant="body">{s.name || t('train.emptyWorkout')}</Text>
-          {s.outOfOrder ? (
-            <View
-              style={{
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: colors.textPlaceholderIcon,
-              }}
-            >
-              <Text variant="label">{t('history.outOfOrder')}</Text>
-            </View>
-          ) : null}
+          {s.outOfOrder ? <StatusChip label={t('history.outOfOrder')} /> : null}
         </View>
         <Text variant="bodyS" muted>
           {t('history.info', {

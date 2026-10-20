@@ -53,6 +53,8 @@ type Props = {
   columns: ColumnSpec[];
   /** One-hand mode: taller inputs and a bigger check button. */
   large: boolean;
+  /** The set the big "Done set" button ticks: lit in training purple, its number too. */
+  current?: boolean;
   onChange: (index: number, field: SetField, value: string) => void;
   onToggle: (index: number) => void;
   /** Typing in drop `k` of this set (drop set). */
@@ -64,6 +66,7 @@ export const SetRow = memo(function SetRow({
   set,
   columns,
   large,
+  current = false,
   onChange,
   onToggle,
   onDropChange,
@@ -74,16 +77,26 @@ export const SetRow = memo(function SetRow({
   const check = large ? 56 : 44;
   const row = (
     <View
+      testID={current ? 'current-set' : undefined}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         paddingVertical: 6,
         borderTopWidth: 1,
-        borderColor: colors.borderDecorative,
+        borderColor: current ? 'transparent' : colors.borderDecorative,
+        // The next set to do stands out from the rest: found at a glance between two sets.
+        marginHorizontal: -8,
+        paddingHorizontal: 8,
+        borderRadius: current ? 12 : 0,
+        backgroundColor: current ? colors.trainingSoft : 'transparent',
       }}
     >
-      <Text variant="displayS" numeric style={{ width: 30 }}>
+      <Text
+        variant="displayS"
+        numeric
+        style={{ width: 30, color: current ? colors.trainingInk : colors.text }}
+      >
         {n}
       </Text>
       <Text variant="label" muted style={{ flex: 1 }} numberOfLines={1}>
