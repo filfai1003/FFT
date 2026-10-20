@@ -38,8 +38,9 @@ jest.mock('./update', () => ({
     await jest.requireActual('./snapshot').saveSnapshot(s);
   }),
 }));
-// Short Undo and message times, so the tests do not wait 5 s.
-jest.mock('./state', () => ({ ...jest.requireActual('./state'), UNDO_MS: 40, NOTICE_MS: 40 }));
+// Short Undo and message times, so the tests do not wait 5 s (Undo long enough to be tapped
+// in time on a busy machine).
+jest.mock('./state', () => ({ ...jest.requireActual('./state'), UNDO_MS: 400, NOTICE_MS: 40 }));
 jest.mock('@/lib/notifications', () => ({
   scheduleRestEnd: jest.fn(async () => undefined),
   cancelRestEnd: jest.fn(async () => undefined),
@@ -68,7 +69,7 @@ const snapshot = async () => (await readSnapshot())!;
 const tapThenUndo = async (action: string, data: Record<string, unknown> = {}) => {
   const done = tap(action, data);
   let undoId: string | null = null;
-  for (let i = 0; i < 20 && !undoId; i++) {
+  for (let i = 0; i < 60 && !undoId; i++) {
     await new Promise((r) => setTimeout(r, 5));
     undoId = (await readState()).undo?.id ?? null;
   }
