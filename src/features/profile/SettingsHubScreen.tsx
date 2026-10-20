@@ -56,7 +56,8 @@ export function SettingsHubScreen() {
           onPress: () => router.push('/profile-edit'),
         },
         {
-          icon: 'flame',
+          icon: 'bowl',
+          area: 'nutrition',
           label: t('profile.links.goals'),
           value: goal
             ? goal.kcal != null
@@ -84,6 +85,7 @@ export function SettingsHubScreen() {
         : [
             {
               icon: 'trophy',
+              area: 'streak',
               label: t('premium.plansTitle'),
               help: t('settings.premiumHelp'),
               value: t(`profile.${plan}`),

@@ -1,5 +1,6 @@
 import '@/i18n';
 import { fireEvent, screen } from '@testing-library/react-native';
+import { palettes } from '@/design/tokens';
 import { renderUI } from '@/test/render';
 
 import { ProfileScreen, initialsOf } from './ProfileScreen';
@@ -101,6 +102,17 @@ describe('Profile (your own page)', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/progress');
     await fireEvent.press(screen.getByLabelText('Goals and diet mode, 2,600 kcal'));
     expect(mockPush).toHaveBeenLastCalledWith('/diet-goals');
+  });
+
+  it('speaks the colour code: streak and badges orange, strength purple (DECISIONS 115)', async () => {
+    await renderUI(<ProfileScreen />);
+    const bg = (label: string) =>
+      JSON.stringify(screen.getByLabelText(label).props.style).match(
+        /"backgroundColor":"(#[0-9A-F]+)"/,
+      )?.[1];
+    expect(bg('12 Day streak')).toBe(palettes.light.streakSoft);
+    expect(bg('4 Badges')).toBe(palettes.light.streakSoft);
+    expect(bg('+3.5% Strength, 4 wk')).toBe(palettes.light.trainingSoft);
   });
 
   it('initials', () => {

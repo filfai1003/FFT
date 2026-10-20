@@ -1,8 +1,10 @@
 import { type Href, useNavigation, useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import type { IconName } from '@/components/ui/Icon';
+import type { Area } from '@/components/ui/IconTile';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useTheme } from '@/design/use-theme';
 
 export type ToggleRowItem = {
@@ -11,33 +13,28 @@ export type ToggleRowItem = {
   value: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  /** Optional tile in an area's colour (data categories: Diet, Training…). */
+  icon?: IconName;
+  area?: Area;
 };
 
-/** Rows of a settings card: a name, a short help line and a switch, hairline between them. */
+/**
+ * Rows of a settings card: a name, a short help line and a switch, hairline between them. Each
+ * row is a switch as a whole (`ToggleRow`, DECISIONS 115).
+ */
 export function ToggleRows({ items }: { items: ToggleRowItem[] }) {
-  const { colors } = useTheme();
   return items.map((r, i) => (
-    <View
+    <ToggleRow
       key={r.name}
-      style={{
-        minHeight: 56,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        borderTopWidth: i === 0 ? 0 : 1,
-        borderColor: colors.borderDecorative,
-        opacity: r.disabled ? 0.5 : 1,
-      }}
-    >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyS">{r.name}</Text>
-        <Text variant="bodyS" muted>
-          {r.detail}
-        </Text>
-      </View>
-      <Toggle value={r.value} onValueChange={r.onChange} accessibilityLabel={r.name} />
-    </View>
+      name={r.name}
+      detail={r.detail}
+      value={r.value}
+      onValueChange={r.onChange}
+      disabled={r.disabled}
+      icon={r.icon}
+      area={r.area}
+      divider={i > 0}
+    />
   ));
 }
 
@@ -48,6 +45,7 @@ export function ActionRow({
   label,
   onPress,
   disabled,
+  loading,
   divider,
 }: {
   name: string;
@@ -55,6 +53,8 @@ export function ActionRow({
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  /** The action is running: a spinner in its button. */
+  loading?: boolean;
   divider?: boolean;
 }) {
   const { colors } = useTheme();
@@ -71,7 +71,7 @@ export function ActionRow({
       }}
     >
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyS">{name}</Text>
+        <Text variant="body">{name}</Text>
         <Text variant="bodyS" muted>
           {detail}
         </Text>
@@ -81,6 +81,7 @@ export function ActionRow({
         block={false}
         variant="secondary"
         disabled={disabled}
+        loading={loading}
         onPress={onPress}
         accessibilityLabel={`${label}, ${name}`}
       />

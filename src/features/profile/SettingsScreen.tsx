@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { Icon } from '@/components/ui/Icon';
 import { Screen } from '@/components/ui/Screen';
-import { SectionLabel } from '@/components/ui/MenuList';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
 import { TopBar } from '@/components/ui/TopBar';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { readableOn } from '@/design/contrast';
@@ -39,7 +39,6 @@ function SettingsPage({ title, children }: { title: string; children: React.Reac
 /** The content of the units page, also a section of "Units, look and reminders". */
 export function UnitsSection() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const prefs = usePreferencesStore();
   return (
     <>
@@ -77,30 +76,15 @@ export function UnitsSection() {
             ]}
           />
         </UnitRow>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            paddingVertical: 10,
-            borderTopWidth: 1,
-            borderColor: colors.divider,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text>{t('settings.smallPlates')}</Text>
-            <Text variant="bodyS" muted>
-              {t('settings.smallPlatesDetail', {
-                step: prefs.weightUnit === 'kg' ? '1.25 kg' : '2.5 lb',
-              })}
-            </Text>
-          </View>
-          <Toggle
-            value={prefs.smallPlates}
-            onValueChange={(v) => prefs.set('smallPlates', v)}
-            accessibilityLabel={t('settings.smallPlates')}
-          />
-        </View>
+        <ToggleRow
+          divider
+          name={t('settings.smallPlates')}
+          detail={t('settings.smallPlatesDetail', {
+            step: prefs.weightUnit === 'kg' ? '1.25 kg' : '2.5 lb',
+          })}
+          value={prefs.smallPlates}
+          onValueChange={(v) => prefs.set('smallPlates', v)}
+        />
         <UnitRow label={t('settings.weekStarts')} last>
           <Segmented
             accessibilityLabel={t('settings.weekStarts')}
@@ -226,31 +210,16 @@ export function NotificationsSection() {
   return (
     <>
       <Card gap={0}>
-        <View
-          style={{
-            minHeight: 56,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="bodyS" medium>
-              {t('settings.notification.rest_timer.name')}
-            </Text>
-            <Text variant="bodyS" muted>
-              {prefs.notifications.rest_timer
-                ? t('settings.notification.rest_timer.detail')
-                : t('settings.off')}
-            </Text>
-          </View>
-          <Toggle
-            value={prefs.notifications.rest_timer}
-            onValueChange={(v) => void toggleRestTimer(v)}
-            accessibilityLabel={t('settings.notification.rest_timer.name')}
-          />
-        </View>
+        <ToggleRow
+          name={t('settings.notification.rest_timer.name')}
+          detail={
+            prefs.notifications.rest_timer
+              ? t('settings.notification.rest_timer.detail')
+              : t('settings.off')
+          }
+          value={prefs.notifications.rest_timer}
+          onValueChange={(v) => void toggleRestTimer(v)}
+        />
         {(['workout', 'checkin', 'meals'] as const).map((kind) => (
           <View
             key={kind}
@@ -316,16 +285,17 @@ export function PreferencesScreen() {
   const { t } = useTranslation();
   return (
     <SettingsPage title={t('settings.preferences')}>
-      <View style={{ gap: 6 }}>
-        <SectionLabel>{t('settings.units')}</SectionLabel>
+      {/* Canvas: each section under a small tile and its name, so the three read apart. */}
+      <View style={{ gap: 2 }}>
+        <CardTitle icon="scale" title={t('settings.units')} />
         <UnitsSection />
       </View>
-      <View style={{ gap: 6 }}>
-        <SectionLabel>{t('settings.look')}</SectionLabel>
+      <View style={{ gap: 2 }}>
+        <CardTitle icon="palette" title={t('settings.look')} />
         <LookSection />
       </View>
-      <View style={{ gap: 6 }}>
-        <SectionLabel>{t('settings.reminders')}</SectionLabel>
+      <View style={{ gap: 2 }}>
+        <CardTitle icon="bell" title={t('settings.reminders')} />
         <NotificationsSection />
       </View>
     </SettingsPage>
