@@ -11,7 +11,7 @@ import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useTheme } from '@/design/use-theme';
 import { signOut } from '@/features/auth/api';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -483,29 +483,21 @@ export function EncryptionSection({ web }: { web: boolean }) {
     <View
       style={{ gap: 8, paddingTop: 8, borderTopWidth: 1, borderColor: colors.borderDecorative }}
     >
-      <View
-        style={{
-          minHeight: 60,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyS">{t('vault.title')}</Text>
+      {web ? (
+        <View style={{ minHeight: 60, gap: 2, justifyContent: 'center' }}>
+          <Text variant="body">{t('vault.title')}</Text>
           <Text variant="bodyS" muted>
             {encrypted ? t('vault.onDetail') : t('vault.offDetail')}
           </Text>
         </View>
-        {web ? null : (
-          <Toggle
-            value={encrypted}
-            onValueChange={(v) => setSheet(v ? 'on' : 'off')}
-            accessibilityLabel={t('vault.title')}
-          />
-        )}
-      </View>
+      ) : (
+        <ToggleRow
+          name={t('vault.title')}
+          detail={encrypted ? t('vault.onDetail') : t('vault.offDetail')}
+          value={encrypted}
+          onValueChange={(v) => setSheet(v ? 'on' : 'off')}
+        />
+      )}
       {web ? (
         <Text variant="bodyS" muted>
           {t('vault.webNote')}

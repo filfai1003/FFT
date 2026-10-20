@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
+import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
@@ -25,6 +26,34 @@ const PLANS = [
   { tier: 'supporter', perks: ['freeAll', 'filters', 'history', 'badge', 'cosmetics'] },
   { tier: 'premium', perks: ['supporterAll', 'aiIncluded', 'aiCredit'] },
 ] as const satisfies readonly { tier: Plan | 'supporter'; perks: readonly string[] }[];
+
+/** Tile per tier (canvas "Plans"): Supporter is the community / badge tier, so streak orange. */
+const LOOK = {
+  free: { icon: 'check', area: 'neutral' },
+  supporter: { icon: 'star', area: 'streak' },
+  premium: { icon: 'sparkle', area: 'neutral' },
+} as const satisfies Record<Plan | 'supporter', { icon: IconName; area: Area }>;
+
+/** "Your plan": a small dark pill, as on the canvas (the 2px border says it too). */
+function YourPlanPill({ label }: { label: string }) {
+  const { colors } = useTheme();
+  return (
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        minHeight: 24,
+        paddingHorizontal: 9,
+        borderRadius: 12,
+        backgroundColor: colors.text,
+        justifyContent: 'center',
+      }}
+    >
+      <Text variant="label" semibold style={{ color: colors.bg }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
 
 /**
  * The plans and the one this account has. `gate`: the web app for an account without online data
@@ -55,7 +84,8 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
             accessibilityLabel={`${t(`premium.plan.${plan}`)}${mine ? `, ${t('premium.yourPlan')}` : ''}`}
             style={{
               gap: 12,
-              padding: 16,
+              // The 2px border of your plan takes its pixel from the padding: nothing moves.
+              padding: mine ? 15 : 16,
               borderRadius: 20,
               // The plan you have: the selection border of the design (2px, text colour).
               borderWidth: mine ? 2 : 1,
@@ -63,23 +93,35 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
               backgroundColor: colors.surface,
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text variant="titleM" style={{ flex: 1 }}>
+            {/* Canvas "Plans": a tile per tier, the name big, the price on the right. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <IconTile icon={LOOK[plan].icon} area={LOOK[plan].area} size={40} />
+              <Text variant="displayS" semibold style={{ flex: 1 }}>
                 {t(`premium.plan.${plan}`)}
               </Text>
-              <Text variant="titleM" numeric>
+              <Text variant="titleM" semibold numeric muted={plan !== 'free'}>
                 {plan === 'free' ? t('premium.priceFree') : t('premium.comingSoon')}
               </Text>
             </View>
-            {mine ? (
-              <Text variant="bodyS" muted>
-                {t('premium.yourPlan')}
-              </Text>
-            ) : null}
+            {mine ? <YourPlanPill label={t('premium.yourPlan')} /> : null}
             {perks.map((p) => (
               <View key={p} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-                <Icon name="check" size={18} color={colors.text} />
-                <Text variant="bodyS" style={{ flex: 1 }}>
+                {/* A filled dot with a check: each perk reads as "included" at a glance. */}
+                <View
+                  aria-hidden
+                  style={{
+                    width: 20,
+                    height: 20,
+                    marginTop: 1,
+                    borderRadius: 10,
+                    backgroundColor: LOOK[plan].area === 'streak' ? colors.streak : colors.text,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="check" size={13} color={colors.surface} />
+                </View>
+                <Text variant="body" style={{ flex: 1 }}>
                   {t(`premium.perks.${p}`)}
                 </Text>
               </View>

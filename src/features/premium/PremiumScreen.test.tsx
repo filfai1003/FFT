@@ -20,5 +20,8 @@ describe('Plans page (DECISIONS 100)', () => {
     expect(screen.getByText('Everything in Supporter')).toBeTruthy();
     // Nothing is on sale yet.
     expect(screen.getAllByText('Coming soon')).toHaveLength(2);
+    // Your plan is marked by a pill as well as by its border (DECISIONS 115).
+    expect(screen.getByText('Your plan')).toBeTruthy();
+    expect(screen.getByLabelText('Free, Your plan')).toBeTruthy();
   });
 });
