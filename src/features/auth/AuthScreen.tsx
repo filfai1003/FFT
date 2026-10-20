@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { IconTile } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
@@ -57,7 +58,14 @@ export function AuthScreen() {
   return (
     <>
       <Screen scroll bottomBarHeight={barHeight + 24} gap={20}>
-        <View style={{ gap: 6, paddingTop: 24 }}>
+        {/* Canvas "Welcome": what the app does, read before a word: train, eat, weigh, keep going. */}
+        <View aria-hidden style={{ flexDirection: 'row', gap: 10, paddingTop: 16 }}>
+          <IconTile icon="dumbbell" area="training" size={56} />
+          <IconTile icon="bowl" area="nutrition" size={56} />
+          <IconTile icon="scale" area="neutral" size={56} />
+          <IconTile icon="flame" area="streak" size={56} />
+        </View>
+        <View style={{ gap: 6 }}>
           <Text variant="label" muted>
             {t('auth.kicker')}
           </Text>
@@ -133,7 +141,7 @@ export function AuthScreen() {
         <Button
           label={mode === 'signIn' ? t('auth.continueSignIn') : t('auth.continueSignUp')}
           size="large"
-          disabled={busy}
+          loading={busy}
           onPress={submit}
         />
       </BottomActionBar>

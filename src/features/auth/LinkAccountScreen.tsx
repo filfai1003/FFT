@@ -88,7 +88,7 @@ export function LinkAccountScreen() {
         <Button
           size="large"
           label={busy ? t('link.working') : t('link.submit')}
-          disabled={busy}
+          loading={busy}
           onPress={() => void submit()}
         />
       </BottomActionBar>

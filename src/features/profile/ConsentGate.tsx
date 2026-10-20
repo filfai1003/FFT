@@ -66,7 +66,7 @@ export function ConsentGate({
       <Button
         variant="secondary"
         label={t('privacy.downloadAll')}
-        disabled={busy}
+        loading={busy}
         onPress={async () => {
           setBusy(true);
           try {
