@@ -596,8 +596,8 @@ async function peoplePage() {
             render: (row) =>
               h(
                 'span',
-                { class: `chip${row.plan === 'premium' ? ' premium' : ''}` },
-                row.plan === 'premium' ? 'Premium' : 'Free',
+                { class: `chip${row.plan === 'free' || !row.plan ? '' : ' premium'}` },
+                PLAN_NAMES[row.plan] ?? 'Free',
               ),
           },
           { key: 'created_at', label: 'Joined', render: (row) => dateOnly(row.created_at) },
@@ -627,30 +627,36 @@ async function peoplePage() {
   return [h('div', { class: 'row' }, search, count), list];
 }
 
+/** The plans an account can be on (DECISIONS 100, 117). */
+const PLAN_NAMES = { free: 'Free', supporter: 'Supporter', premium: 'Premium' };
+
 async function personPage(id) {
   const p = await api(`/api/user?id=${encodeURIComponent(id)}`);
   header(p.name || p.email, '', 'People');
   const connections = p.connections ?? [];
   const changePlan = async () => {
     if (!(await needEditing())) return;
-    const next = p.plan === 'premium' ? 'free' : 'premium';
     const result = await openDialog((close) => {
       const note = h('input', {
         placeholder: 'For example: friend, beta tester',
         value: p.note ?? '',
       });
+      const choice = h(
+        'select',
+        {},
+        ...Object.entries(PLAN_NAMES).map(([value, name]) =>
+          h('option', { value, ...(value === (p.plan ?? 'free') ? { selected: true } : {}) }, name),
+        ),
+      );
       return [
-        h('h2', {}, next === 'premium' ? 'Give Premium' : 'Move back to Free'),
+        h('h2', {}, 'Change plan'),
         h(
           'p',
           { class: 'muted' },
-          next === 'premium'
-            ? `${p.email} gets the AI coach included in the app, with 10 € of AI a month.`
-            : `${p.email} keeps all their data; only the AI coach included in the app stops.`,
+          'Supporter unlocks the community filters. Premium adds the AI coach included in the app (10 € of AI a month). Moving to Free keeps all their data.',
         ),
-        next === 'premium'
-          ? h('label', { class: 'field' }, h('span', {}, 'A note for yourself (optional)'), note)
-          : null,
+        h('label', { class: 'field' }, h('span', {}, 'Plan'), choice),
+        h('label', { class: 'field' }, h('span', {}, 'A note for yourself (optional)'), note),
         h(
           'div',
           { class: 'row end' },
@@ -660,16 +666,16 @@ async function personPage(id) {
             {
               class: 'btn primary',
               type: 'button',
-              onclick: () => close({ note: note.value.trim() || null }),
+              onclick: () => close({ plan: choice.value, note: note.value.trim() || null }),
             },
-            next === 'premium' ? 'Give Premium' : 'Move to Free',
+            'Save',
           ),
         ),
       ];
     });
     if (!result) return;
-    await api('/api/plan', { userId: p.id, plan: next, note: result.note });
-    toast(next === 'premium' ? `${p.email} is now on Premium` : `${p.email} is now on Free`);
+    await api('/api/plan', { userId: p.id, plan: result.plan, note: result.note });
+    toast(`${p.email} is now on ${PLAN_NAMES[result.plan]}`);
     route();
   };
   const resetPassword = async () => {
@@ -729,8 +735,8 @@ async function personPage(id) {
             {},
             h(
               'span',
-              { class: `chip${p.plan === 'premium' ? ' premium' : ''}` },
-              p.plan === 'premium' ? 'Premium' : 'Free',
+              { class: `chip${p.plan === 'free' || !p.plan ? '' : ' premium'}` },
+              PLAN_NAMES[p.plan] ?? 'Free',
             ),
           ),
           p.note ? [h('dt', {}, 'Note'), h('dd', {}, p.note)] : null,
@@ -761,7 +767,7 @@ async function personPage(id) {
               type: 'button',
               onclick: () => void changePlan().catch((e) => toast(e.message)),
             },
-            p.plan === 'premium' ? 'Move to Free' : 'Give Premium',
+            'Change plan',
           ),
           h(
             'button',

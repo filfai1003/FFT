@@ -388,11 +388,11 @@ async function api(req, res, url) {
   }
 
   if (route === 'POST /api/plan') {
-    // free / premium (DECISIONS 42, 47). Old VIP rows are cleared: plans replace them.
+    // free / supporter / premium (DECISIONS 42, 47, 100, 117). Old VIP rows are cleared: plans replace them.
     needSudo();
     const { userId, plan, note } = await readBody(req);
     if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
-    if (!['free', 'premium'].includes(plan)) throw new HttpError(400, 'Bad plan');
+    if (!['free', 'supporter', 'premium'].includes(plan)) throw new HttpError(400, 'Bad plan');
     const out =
       plan === 'free'
         ? await db.run(
