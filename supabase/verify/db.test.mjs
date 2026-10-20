@@ -689,7 +689,7 @@ describe('plans and AI credit', () => {
     assert.equal((await one('select public.my_plan() as p')).p, 'free');
     await admin();
     await rejects(
-      `insert into public.user_plans (user_id, plan) values ('${S}', 'supporter')`,
+      `insert into public.user_plans (user_id, plan) values ('${S}', 'gold')`,
       '23514',
     );
   });
@@ -3340,10 +3340,150 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     await db.query(`select public.community_add_friend(null, $1)`, [beaId]);
   });
 
+  it('audiences (DECISIONS 117): Supporter / Premium only, places counted within the audience', async () => {
+    const SU = '11700000-0000-0000-0000-00000000000a'; // supporter
+    const FR = '11700000-0000-0000-0000-00000000000b'; // free
+    const NG = '11700000-0000-0000-0000-00000000000c'; // supporter without groups
+    await admin();
+    for (const [id, mail] of [
+      [SU, 'su@test.dev'],
+      [FR, 'fr@test.dev'],
+      [NG, 'ng@test.dev'],
+    ])
+      await db.query(
+        `insert into auth.users (id, instance_id, aud, role, email)
+         values ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', $2)`,
+        [id, mail],
+      );
+    await db.exec(
+      `insert into public.user_plans (user_id, plan) values ('${SU}', 'supporter'), ('${NG}', 'supporter')`,
+    );
+    for (const [id, name] of [
+      [SU, 'Sara'],
+      [FR, 'Fred'],
+      [NG, 'Nina'],
+    ]) {
+      await as(id);
+      await db.query(`select public.community_join($1)`, [name]);
+    }
+    await unthrottle();
+    await submit(SU, 1, [{ period: 'month', metric: 'workouts', value: 2 }]);
+    await submit(FR, 1, [{ period: 'month', metric: 'workouts', value: 6 }]);
+    await submit(NG, 1, [{ period: 'month', metric: 'workouts', value: 4 }]);
+
+    // Groups: only the buckets, validated.
+    await as(SU);
+    for (const bad of [
+      `'Italy', null, null`,
+      `'XX', null, null`,
+      `null, '30', null`,
+      `null, '18-25', null`,
+      `null, null, 'm80'`,
+      `null, null, '83'`,
+    ])
+      await rejects(`select public.community_set_groups(${bad})`, '22023');
+    const me = (await one(`select public.community_set_groups('it', '25-34', 'm83') as m`)).m;
+    assert.deepEqual([me.country, me.age_group, me.weight_class], ['IT', '25-34', 'm83']);
+    await as(FR);
+    await db.query(`select public.community_set_groups('IT', '25-34', 'f63')`);
+    await as(A);
+    await db.query(`select public.community_set_groups('FR', '25-34', 'm83')`);
+
+    const aboard = async (uid, audience) => {
+      await as(uid);
+      return (
+        await one(
+          `select public.community_leaderboard('month', ${month}, 'workouts', '', 8, $1) as b`,
+          [audience],
+        )
+      ).b;
+    };
+    const names = (b) => b.rows.map((r) => [r.name, r.place]);
+
+    // Free accounts: Everyone only (also through the old five-argument call); the rest 42501.
+    assert.ok((await aboard(FR, 'everyone')).total >= 4);
+    await as(FR);
+    await one(`select public.community_leaderboard('month', ${month}, 'workouts', '', 8) as b`);
+    for (const a of ['friends', 'country', 'class']) {
+      await as(FR);
+      await rejects(
+        `select public.community_leaderboard('month', ${month}, 'workouts', '', 8, '${a}')`,
+        '42501',
+      );
+    }
+    await as(SU);
+    await rejects(
+      `select public.community_leaderboard('month', ${month}, 'workouts', '', 8, 'city')`,
+      '22023',
+    );
+
+    // Friends: the caller and accepted friends only (a pending request does not count).
+    let b = await aboard(SU, 'friends');
+    assert.deepEqual(names(b), [['Sara', 1]]);
+    assert.equal(b.total, 1);
+    await as(SU);
+    const suId = (await one(`select public.community_me() as m`)).m.public_id;
+    await as(FR);
+    await db.query(`select public.community_add_friend(null, $1)`, [suId]);
+    const frId = (await one(`select public.community_me() as m`)).m.public_id;
+    assert.deepEqual(names(await aboard(SU, 'friends')), [['Sara', 1]]);
+    await as(SU);
+    await db.query(`select public.community_answer_friend($1, true)`, [frId]);
+    b = await aboard(SU, 'friends');
+    assert.deepEqual(names(b), [
+      ['Fred', 1],
+      ['Sara', 2],
+    ]);
+    assert.equal(b.audience, 'friends');
+
+    // Country: same country only (Anna is in France), places within it.
+    b = await aboard(SU, 'country');
+    assert.deepEqual(names(b), [
+      ['Fred', 1],
+      ['Sara', 2],
+    ]);
+    assert.equal(b.country, 'IT');
+    // Class: same age group and weight class (Fred is in a women's class, Anna in Sara's).
+    b = await aboard(SU, 'class');
+    // Anna: 3 workouts this month, Sara 2.
+    assert.deepEqual(names(b), [
+      ['Anna', 1],
+      ['Sara', 2],
+    ]);
+    assert.equal(b.total, 2);
+    assert.deepEqual([b.age_group, b.weight_class], ['25-34', 'm83']);
+    // Premium works too (Anna is VIP); her country board is her alone.
+    b = await aboard(A, 'country');
+    assert.deepEqual(
+      b.rows.map((r) => [r.name, r.place, r.is_me]),
+      [['Anna', 1, true]],
+    );
+    // No groups sent: an empty board with the reason.
+    b = await aboard(NG, 'country');
+    assert.deepEqual([b.total, b.rows, b.reason], [0, [], 'no_country']);
+    b = await aboard(NG, 'class');
+    assert.equal(b.reason, 'no_class');
+    // Never anything but the board's fields.
+    assert.ok(!JSON.stringify(await aboard(SU, 'class')).includes(SU));
+
+    // Clearing the groups takes the member off those boards; leaving deletes them with the row.
+    await as(FR);
+    await db.query(`select public.community_set_groups(null, null, null)`);
+    assert.deepEqual(names(await aboard(SU, 'country')), [['Sara', 1]]);
+    for (const id of [SU, FR, NG]) {
+      await as(id);
+      await db.query(`select public.community_leave()`);
+    }
+  });
+
   it('the export lists the community data; leaving deletes member, scores and friendships', async () => {
     await as(A);
     const exp = (await one(`select public.community_export() as e`)).e;
     assert.equal(exp.member.name, 'Anna');
+    assert.deepEqual(
+      [exp.member.country, exp.member.age_group, exp.member.weight_class],
+      ['FR', '25-34', 'm83'],
+    );
     assert.ok(exp.scores.length > 0);
     assert.equal(exp.friends.length, 1);
     await db.query(`select public.community_leave()`);
