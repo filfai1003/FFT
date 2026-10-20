@@ -180,6 +180,10 @@ describe('Community profile', () => {
     expect(screen.getByText('This is how others see you')).toBeTruthy();
     expect(screen.getByText('Filippo')).toBeTruthy();
     expect(screen.getByLabelText('Top 5%, Days on target, This week · place 2 of 40')).toBeTruthy();
+    // Scores as rings in their area colours; one without a score says so instead of a dash.
+    expect(screen.getByLabelText('Workouts this month: 3')).toBeTruthy();
+    expect(screen.getByLabelText('Days on diet target: No score yet')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
     expect(screen.getByText('My code')).toBeTruthy();
     await fireEvent.press(screen.getByText('Leave the community'));
     expect(screen.getByText('Leave the community?')).toBeTruthy();

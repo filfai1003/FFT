@@ -6,11 +6,13 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Gauge } from '@/components/ui/Gauge';
+import { useAreaColors } from '@/components/ui/IconTile';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { QrCode } from '@/components/ui/QrCode';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
+import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
@@ -81,6 +83,16 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
             </Text>
           </Card>
         ) : null}
+        {!p && (profile.isLoading || me.isLoading) ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            <View style={{ alignItems: 'center', gap: 10 }}>
+              <Skeleton width={112} height={112} round />
+              <Skeleton width={160} height={24} />
+            </View>
+            <SkeletonCard lines={1} />
+            <SkeletonCard lines={1} />
+          </SkeletonGroup>
+        ) : null}
         {own && p ? (
           <View
             accessibilityRole="text"
@@ -113,11 +125,13 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
           <>
             <View style={{ alignItems: 'center', gap: 8 }}>
               <View style={{ width: 112, height: 112 }}>
+                {/* The level is an achievement: orange (DECISIONS 107). */}
                 <Gauge
                   value={level.progress}
                   size={112}
                   stroke={6}
-                  track={colors.borderDecorative}
+                  color={colors.streak}
+                  track={colors.streakSoft}
                   accessibilityLabel={t('game.levelRingA11y', {
                     level: p.level,
                     pct: Math.round(level.progress * 100),
@@ -136,7 +150,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
                     minWidth: 36,
                     paddingHorizontal: 8,
                     borderRadius: 13,
-                    backgroundColor: colors.dotOn,
+                    backgroundColor: colors.streakInk,
                     borderWidth: 2,
                     borderColor: colors.bg,
                     alignItems: 'center',
@@ -203,48 +217,9 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
 
             <SectionHead title={t('community.profile.thisMonth')} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {(['workouts', 'diet', 'training', 'strength'] as const).map((m) => {
-                const s = scoreOf(m);
-                const label = t(`community.profile.stat.${m}`);
-                const value = s ? formatScore(m, s.value) : '—';
-                const share = !s
-                  ? 0
-                  : m === 'workouts'
-                    ? Math.min(1, s.value / 20)
-                    : m === 'strength'
-                      ? Math.min(1, Math.abs(s.value) / 10)
-                      : s.value / 100;
-                return (
-                  <Card
-                    key={m}
-                    gap={12}
-                    style={{
-                      flexBasis: '47%',
-                      flexGrow: 1,
-                      padding: 14,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Gauge
-                      value={share}
-                      size={48}
-                      stroke={5}
-                      accessibilityLabel={t('community.profile.statA11y', { label, value })}
-                    >
-                      <Icon name={statIcon[m]} size={20} color={colors.text} />
-                    </Gauge>
-                    <View style={{ flex: 1, minWidth: 0 }} aria-hidden>
-                      <Text variant="displayS" numeric numberOfLines={1}>
-                        {value}
-                      </Text>
-                      <Text variant="label" muted>
-                        {label}
-                      </Text>
-                    </View>
-                  </Card>
-                );
-              })}
+              {(['workouts', 'diet', 'training', 'strength'] as const).map((m) => (
+                <StatCard key={m} metric={m} score={scoreOf(m)?.value ?? null} />
+              ))}
             </View>
 
             {places.length > 0 ? (
@@ -287,7 +262,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
                         })}
                       </Text>
                     </View>
-                    <Icon name="trophy" size={18} color={colors.textMuted} />
+                    <Icon name="trophy" size={18} color={colors.streakInk} />
                   </View>
                 ))}
               </Card>
@@ -373,6 +348,71 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
         </>
       ) : null}
     </>
+  );
+}
+
+/**
+ * One of this month's scores as a ring in its area's colour (DECISIONS 107, 114): training
+ * purple, diet teal; a strength loss in red. Without a score, an empty ring and "No score yet".
+ */
+function StatCard({ metric, score }: { metric: CommunityMetric; score: number | null }) {
+  const { t } = useTranslation();
+  const c = useAreaColors(
+    metric === 'diet'
+      ? 'nutrition'
+      : metric === 'strength' && (score ?? 0) < 0
+        ? 'worse'
+        : 'training',
+  );
+  const label = t(`community.profile.stat.${metric}`);
+  const value = score != null ? formatScore(metric, score) : null;
+  const share =
+    score == null
+      ? 0
+      : metric === 'workouts'
+        ? Math.min(1, score / 20)
+        : metric === 'strength'
+          ? Math.min(1, Math.abs(score) / 10)
+          : score / 100;
+  return (
+    <Card
+      gap={12}
+      style={{
+        flexBasis: '47%',
+        flexGrow: 1,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}
+    >
+      <Gauge
+        value={share}
+        size={48}
+        stroke={5}
+        color={c.fill}
+        track={c.soft}
+        accessibilityLabel={t('community.profile.statA11y', {
+          label,
+          value: value ?? t('community.friends.noScore'),
+        })}
+      >
+        <Icon name={statIcon[metric]} size={20} color={c.ink} />
+      </Gauge>
+      <View style={{ flex: 1, minWidth: 0 }} aria-hidden>
+        {value != null ? (
+          <Text variant="displayS" numeric numberOfLines={1}>
+            {value}
+          </Text>
+        ) : (
+          <Text variant="bodyS" semibold muted numberOfLines={1}>
+            {t('community.friends.noScore')}
+          </Text>
+        )}
+        <Text variant="label" muted>
+          {label}
+        </Text>
+      </View>
+    </Card>
   );
 }
 
