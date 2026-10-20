@@ -80,6 +80,21 @@ describe('changeArea', () => {
     expect(changeArea(null, 'lose_fat')).toBe('neutral');
   });
 
+  it('with a target: green toward it, red away from it, whatever the general rule', () => {
+    // 98.75 kg now (up 0.25), target 90 kg: further away.
+    expect(changeArea(0.25, 'build_muscle', 0.05, { latest: 98.75, target: 90 })).toBe('worse');
+    // Losing fat but the target is 60 kg at 55 kg: going up is the right way.
+    expect(changeArea(1, 'lose_fat', 0.05, { latest: 56, target: 60 })).toBe('better');
+    // Body fat 24 % falling toward 15 %: better; rising: worse.
+    expect(changeArea(-0.5, 'smallerIsBetter', 0.05, { latest: 24, target: 15 })).toBe('better');
+    expect(changeArea(0.5, 'smallerIsBetter', 0.05, { latest: 24, target: 15 })).toBe('worse');
+    // Overshooting past the target counts by distance: 14 -> 13 with 15 % as the goal is away.
+    expect(changeArea(-1, 'smallerIsBetter', 0.05, { latest: 13, target: 15 })).toBe('worse');
+    // No target: the general rule.
+    expect(changeArea(-1, 'lose_fat', 0.05, { latest: 80, target: null })).toBe('better');
+    expect(changeArea(0.02, 'lose_fat', 0.05, { latest: 80, target: 70 })).toBe('neutral');
+  });
+
   it('body fat and waist: smaller is better', () => {
     expect(changeArea(-0.5, 'smallerIsBetter')).toBe('better');
     expect(changeArea(1, 'smallerIsBetter')).toBe('worse');

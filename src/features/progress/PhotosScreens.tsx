@@ -28,6 +28,7 @@ import { useToastStore } from '@/lib/toast-store';
 import {
   poses,
   useBodyEntries,
+  useBodyGoal,
   useDeletePhoto,
   usePhotos,
   usePhotoUrl,
@@ -260,8 +261,15 @@ export function ComparePhotosScreen() {
   const hidden = blur && !revealed;
 
   // The change between the two dates, green when it goes the right way (DECISIONS 107, 114).
-  const item = (delta: number, l: string, rule: string | null | undefined) => {
-    const area = changeArea(delta, rule);
+  const bodyGoal = useBodyGoal().data;
+  const item = (
+    delta: number,
+    l: string,
+    rule: string | null | undefined,
+    /** The later value and the target, in the unit of delta (green = closer to the target). */
+    toward?: { latest: number | null; target: number | null },
+  ) => {
+    const area = changeArea(delta, rule, 0.05, toward);
     return {
       v: signed(delta),
       l,
@@ -271,10 +279,17 @@ export function ComparePhotosScreen() {
   };
   const diff = [
     a?.weightKg != null && b?.weightKg != null
-      ? item(displayWeight(b.weightKg, unit) - displayWeight(a.weightKg, unit), unit, goal)
+      ? item(displayWeight(b.weightKg, unit) - displayWeight(a.weightKg, unit), unit, goal, {
+          latest: displayWeight(b.weightKg, unit),
+          target:
+            bodyGoal?.targetWeightKg != null ? displayWeight(bodyGoal.targetWeightKg, unit) : null,
+        })
       : null,
     a?.bodyFatPct != null && b?.bodyFatPct != null
-      ? item(b.bodyFatPct - a.bodyFatPct, t('photos.bfPts'), 'smallerIsBetter')
+      ? item(b.bodyFatPct - a.bodyFatPct, t('photos.bfPts'), 'smallerIsBetter', {
+          latest: b.bodyFatPct,
+          target: bodyGoal?.targetBodyFatPct ?? null,
+        })
       : null,
     a?.measures.waist != null && b?.measures.waist != null
       ? item(b.measures.waist - a.measures.waist, t('photos.waistCm'), 'smallerIsBetter')

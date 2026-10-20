@@ -200,8 +200,15 @@ export function BodyScreen() {
     p.weight.deltaKg != null
       ? shown(Math.abs(p.weight.deltaKg)) * Math.sign(p.weight.deltaKg)
       : null;
-  const weightArea = changeArea(weightDelta, profileGoal);
-  const fatArea = changeArea(b.deltaPts, 'smallerIsBetter');
+  // Green toward the target when one is set (in kg, the unit the target is kept in).
+  const weightArea = changeArea(p.weight.deltaKg, profileGoal, 0.05, {
+    latest: p.weight.latestKg,
+    target: goal.data?.targetWeightKg ?? null,
+  });
+  const fatArea = changeArea(b.deltaPts, 'smallerIsBetter', 0.05, {
+    latest: b.latestPct,
+    target: goal.data?.targetBodyFatPct ?? null,
+  });
   const weightChange: Change | null =
     weightDelta != null
       ? {

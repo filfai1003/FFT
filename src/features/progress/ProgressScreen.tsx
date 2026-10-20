@@ -31,7 +31,7 @@ import { useProgressView, type ProgressView } from '@/features/gamification/prog
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
-import { poses, useBodyEntries, usePhotos } from './data';
+import { poses, useBodyEntries, useBodyGoal, usePhotos } from './data';
 import { EmptyLine } from './EmptyLine';
 import { PhotoTile } from './PhotoTile';
 import { bodyProgress, changeArea, useProgressPeriod } from './series';
@@ -230,9 +230,17 @@ function MeNumbers({ records }: { records: ReactNode }) {
     body.weight.deltaKg != null
       ? displayWeight(Math.abs(body.weight.deltaKg), unit) * Math.sign(body.weight.deltaKg)
       : null;
-  const weightArea: Area = changeArea(weightDelta, goal);
+  const bodyGoal = useBodyGoal().data;
+  // Green toward the target when one is set (kg, like the target).
+  const weightArea: Area = changeArea(body.weight.deltaKg, goal, 0.05, {
+    latest: body.weight.latestKg,
+    target: bodyGoal?.targetWeightKg ?? null,
+  });
   const fatDelta = body.bodyFat.deltaPts;
-  const fatArea: Area = changeArea(fatDelta, 'smallerIsBetter');
+  const fatArea: Area = changeArea(fatDelta, 'smallerIsBetter', 0.05, {
+    latest: body.bodyFat.latestPct,
+    target: bodyGoal?.targetBodyFatPct ?? null,
+  });
   // A line needs two values logged in the period (the buckets carry the last one forward).
   const weightLine =
     body.weight.points.length > 1 ? body.weight.buckets.filter((v): v is number => v != null) : [];

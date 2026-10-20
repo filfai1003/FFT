@@ -23,7 +23,7 @@ export const useProgressPeriod = create<{ period: Period; setPeriod: (p: Period)
 const lastOf = <T>(list: readonly T[]) => list[list.length - 1];
 
 /**
- * Whether a change is better or worse (DECISIONS 107): weight by the profile goal (lose fat: down,
+ * Whether a change is better or worse (DECISIONS 107): toward the target when one is set; else weight by the profile goal (lose fat: down,
  * build muscle: up; maintain or none: neutral), and `smallerIsBetter` for body fat and the waist.
  * Under `steady` the change counts as none.
  */
@@ -32,8 +32,21 @@ export function changeArea(
   /** A profile goal (`lose_fat`, `maintain`, `build_muscle`) or `smallerIsBetter`. */
   rule: string | null | undefined,
   steady = 0.05,
+  /**
+   * The value now and the user's target, in the same unit as `delta`. With a target, green means
+   * closer to it and red further away, whatever the general rule says (a 60 kg goal at 55 kg: up
+   * is better, even when losing fat).
+   */
+  toward?: { latest: number | null; target: number | null },
 ): 'better' | 'worse' | 'neutral' {
   if (delta == null || Math.abs(delta) < steady) return 'neutral';
+  if (toward && toward.latest != null && toward.target != null) {
+    const before = Math.abs(toward.latest - delta - toward.target);
+    const now = Math.abs(toward.latest - toward.target);
+    if (now < before) return 'better';
+    if (now > before) return 'worse';
+    return 'neutral';
+  }
   if (rule === 'build_muscle') return delta > 0 ? 'better' : 'worse';
   if (rule === 'lose_fat' || rule === 'smallerIsBetter') return delta < 0 ? 'better' : 'worse';
   return 'neutral';

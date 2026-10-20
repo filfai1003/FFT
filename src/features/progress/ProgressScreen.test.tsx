@@ -28,6 +28,7 @@ jest.mock('./data', () => ({
   usePhotos: () => ({ isPending: false, isSuccess: true, data: mockData.photos }),
   useDailyE1rm: () => ({ isPending: false, data: [] }),
   usePhotoUrl: () => ({ data: null }),
+  useBodyGoal: () => ({ data: null }),
 }));
 
 const entry = (day: string, e: Partial<BodyEntry>): BodyEntry => ({

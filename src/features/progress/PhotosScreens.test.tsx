@@ -19,6 +19,7 @@ jest.mock('./data', () => ({
   useBodyEntries: () => ({ isPending: false, isSuccess: true, data: mockData.entries }),
   useDeletePhoto: () => mockMutation,
   usePhotoUrl: () => ({ data: null }),
+  useBodyGoal: () => ({ data: null }),
 }));
 
 const photo = (day: string, pose: Photo['pose']): Photo => ({
