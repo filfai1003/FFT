@@ -111,7 +111,7 @@ describe('Profile (your own page)', () => {
         /"backgroundColor":"(#[0-9A-F]+)"/,
       )?.[1];
     expect(bg('12 Day streak')).toBe(palettes.light.streakSoft);
-    expect(bg('4 Badges')).toBe(palettes.light.streakSoft);
+    expect(bg('5 Badges')).toBe(palettes.light.streakSoft);
     expect(bg('+3.5% Strength, 4 wk')).toBe(palettes.light.trainingSoft);
   });
 
