@@ -191,6 +191,8 @@ describe('area colours (DECISIONS 118)', () => {
     expect(json.color.domain.training).toBe(areaFamilies.purple.light.main);
     expect(json.color.domain.nutrition).toBe(areaFamilies.teal.light.main);
     expect(json.color.domain.streak).toBe(areaFamilies.orange.light.main);
+    const { note: _note, ...hues } = json.color.areaHues;
+    expect(hues).toEqual(Object.fromEntries(areaHues.map((h) => [h, areaFamilies[h].light.main])));
     // The default theme is unchanged by the new option.
     expect(buildTheme({ accent: 'red', highContrast: false }).training).toBe(color.training);
   });
