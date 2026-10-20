@@ -833,6 +833,7 @@
     "removePortion": "Remove portion",
     "addPortion": "+ Add portion",
     "privacy": "Only visible to you. You'll find it under Mine.",
+    "macrosMismatch": "These macros come to about {{macros}} kcal, not {{kcal}}. Check the label.",
     "save": "Save food",
     "saveChanges": "Save changes",
     "labelPhoto": "Fill from a photo of the label",

@@ -18,7 +18,9 @@ import { usePlanStore } from '@/lib/plan';
 import { aiReady, effectiveAiSettings } from '@/features/ai/included';
 import { useAiSettings } from '@/features/ai/settings-store';
 import { useAiConsent } from '@/features/ai/AiConsent';
+import { Card } from '@/components/ui/Card';
 import { CameraModal, type CapturedPhoto } from './CameraModal';
+import { MacroValues } from './MacroValues';
 import { readLabel } from './label-photo';
 
 type FieldKey = 'kcal' | 'protein' | 'carbs' | 'sugars' | 'fat' | 'saturates' | 'fiber' | 'salt';
@@ -34,6 +36,39 @@ const fields: { key: FieldKey; unit: string; sub?: boolean; required?: boolean }
 ];
 
 const text = (n: number | null | undefined) => (n == null ? '' : String(n));
+
+/**
+ * The typed values at a glance (DECISIONS 112): the macros in their colours and, when the
+ * calories they bring (4 / 4 / 9 kcal per gram) are far from the energy typed, a quiet hint to
+ * check the label: a typo shows before the food is saved. Never blocks saving.
+ */
+export function LabelCheck({
+  kcal,
+  protein,
+  carbs,
+  fat,
+}: {
+  kcal: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+}) {
+  const { t } = useTranslation();
+  if (protein == null && carbs == null && fat == null) return null;
+  const macros = { protein: protein ?? 0, carbs: carbs ?? 0, fat: fat ?? 0 };
+  const fromMacros = Math.round(macros.protein * 4 + macros.carbs * 4 + macros.fat * 9);
+  const off = kcal != null && kcal > 0 && Math.abs(fromMacros - kcal) > Math.max(20, kcal * 0.2);
+  return (
+    <Card size="small" gap={8}>
+      <MacroValues macros={macros} />
+      {off ? (
+        <Text variant="bodyS" muted accessibilityRole="alert">
+          {t('createFood.macrosMismatch', { macros: fromMacros, kcal: Math.round(kcal) })}
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
 
 /** Create your own food ("Mine"), or edit one when opened with `editId`. */
 export function CreateFoodScreen() {
@@ -264,6 +299,12 @@ function FoodForm({ initial }: { initial?: Food }) {
               </View>
             ))}
           </View>
+          <LabelCheck
+            kcal={num('kcal')}
+            protein={num('protein')}
+            carbs={num('carbs')}
+            fat={num('fat')}
+          />
         </View>
 
         <View style={{ gap: 8 }}>
