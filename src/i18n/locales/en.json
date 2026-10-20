@@ -1215,6 +1215,36 @@
       "blue": "Blue",
       "white": "Mono"
     },
+    "areaColors": {
+      "title": "Area colours",
+      "rowHelp": "Training, nutrition and streak",
+      "intro": "Give training, nutrition and streak a colour of your own. Better green and worse red never change, and neither do the macro colours.",
+      "preview": "Preview",
+      "previewRing": "Training ring, 70%",
+      "previewChip": "On track",
+      "area": {
+        "training": "Training",
+        "nutrition": "Nutrition",
+        "streak": "Streak and achievements"
+      },
+      "hue": {
+        "purple": "Purple",
+        "blue": "Blue",
+        "plum": "Plum",
+        "pink": "Pink",
+        "teal": "Teal",
+        "orange": "Orange"
+      },
+      "swatchA11y": "{{color}}, {{area}}",
+      "takenA11y": "{{color}}, used by {{other}}",
+      "lockedA11y": "{{color}}. Needs Supporter, opens the plans",
+      "pinkNote": "Nutrition is never pink: protein is pink on every nutrition card.",
+      "reset": "Reset to default",
+      "resetDone": "Area colours back to default",
+      "supporterNote": "Area colours come with Supporter and Premium. You can look around; the app keeps the default colours.",
+      "seePlans": "What is Supporter?",
+      "keptNote": "Your colours are kept and come back with Supporter or Premium."
+    },
     "notifications": "Notifications",
     "off": "Off",
     "notification": {
@@ -1793,7 +1823,7 @@
       "filters": "Compare with friends, country, age and weight class",
       "history": "Deeper stats history",
       "badge": "Supporter badge on your profile and on leaderboards",
-      "cosmetics": "Profile colours and frames",
+      "cosmetics": "Profile colours and frames, and your own app colours",
       "supporterAll": "Everything in Supporter"
     },
     "howToGet": "Supporter and Premium are not available yet. Coming soon."

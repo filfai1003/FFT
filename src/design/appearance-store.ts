@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { AreaColorChoice } from './area-colors';
 import { defaultTextScaleStep } from './theme';
 import type { AccentName } from './tokens';
 
@@ -16,6 +17,11 @@ export type AppearanceState = {
   haptics: boolean;
   oneHandMode: boolean;
   spokenCountdown: boolean;
+  /**
+   * Area colours the user picked (DECISIONS 118), only the changed areas. Kept when the plan goes
+   * back to Free; useTheme() shows them only for Supporter and Premium.
+   */
+  areaColors: AreaColorChoice;
 };
 
 export const defaultAppearance: AppearanceState = {
@@ -28,6 +34,7 @@ export const defaultAppearance: AppearanceState = {
   haptics: true,
   oneHandMode: false,
   spokenCountdown: false,
+  areaColors: {},
 };
 
 type Actions = {

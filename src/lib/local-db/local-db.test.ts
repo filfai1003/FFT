@@ -49,6 +49,20 @@ describe('offline database', () => {
     expect(settings.data).toMatchObject({ weight_unit: 'kg', water_glass_ml: 250 });
   });
 
+  it('keeps the area colours with the settings (DECISIONS 118)', async () => {
+    const { kv, db, c } = setup();
+    const before = await c.from('user_settings').select('area_colors').maybeSingle();
+    expect(before.data).toEqual({ area_colors: {} });
+    await c
+      .from('user_settings')
+      .update({ area_colors: { training: 'blue' } })
+      .eq('user_id', LOCAL_USER_ID);
+    await db.save();
+    const again = createLocalClient(new LocalDb(kv, LOCAL_USER_ID));
+    const after = await again.from('user_settings').select('area_colors').maybeSingle();
+    expect(after.data).toEqual({ area_colors: { training: 'blue' } });
+  });
+
   it('saves to the device and reads it back', async () => {
     const { kv, db, c } = setup();
     await c.from('water_logs').upsert({ id: id(1), day: '2026-10-09', ml: 250 });

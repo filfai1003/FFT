@@ -16,6 +16,45 @@ export type ThemeMode = 'light' | 'dark';
 /** The mono accent on the dark theme. */
 export const monoAccentDark = '#F4F3F0';
 
+/**
+ * The colours an area of the colour code can take (DECISIONS 107, 118). Each is a full family per
+ * theme: `main` (fills, rings, bars, calendar dots), `soft` (tile and chip grounds), `ink` (text
+ * and icons on soft and on cards). `mainHighContrast` replaces `main` with high contrast when
+ * `main` is under 3:1 on the page (the default streak orange). Green and red are not here on
+ * purpose: they mean better and worse. Every family passes the contrast rules of tokens.test.ts.
+ */
+export const areaHues = ['purple', 'blue', 'plum', 'pink', 'teal', 'orange'] as const;
+export type AreaHue = (typeof areaHues)[number];
+export type AreaFamily = { main: string; soft: string; ink: string; mainHighContrast?: string };
+
+export const areaFamilies: Record<AreaHue, Record<ThemeMode, AreaFamily>> = {
+  purple: {
+    light: { main: '#5B3CC4', soft: '#ECE7FA', ink: '#4527A0' },
+    dark: { main: '#9D86F0', soft: '#241D3A', ink: '#B9A8F5' },
+  },
+  blue: {
+    light: { main: '#2563EB', soft: '#E0EAFD', ink: '#1A47B8' },
+    dark: { main: '#6B9BF5', soft: '#142542', ink: '#9DBDF8' },
+  },
+  plum: {
+    light: { main: '#9333B5', soft: '#F4E4FA', ink: '#74208F' },
+    dark: { main: '#CE82E8', soft: '#2E1937', ink: '#DDA6EF' },
+  },
+  pink: {
+    light: { main: '#C2185B', soft: '#FBE3EC', ink: '#9C1149' },
+    dark: { main: '#F06BA0', soft: '#3A1729', ink: '#F59AC0' },
+  },
+  teal: {
+    light: { main: '#0F9488', soft: '#D6F1EE', ink: '#0B6B63' },
+    dark: { main: '#2DC2B4', soft: '#11302D', ink: '#5ED6CA' },
+  },
+  orange: {
+    // 2.4:1 on the page: the default look of 107, always with ink text; darker with high contrast.
+    light: { main: '#E8890C', soft: '#FBEBD3', ink: '#9A5800', mainHighContrast: '#B86A00' },
+    dark: { main: '#F0A23B', soft: '#2B2114', ink: '#F0B45C' },
+  },
+};
+
 const light = {
   bg: '#F6F5F2',
   surface: '#FFFFFF',

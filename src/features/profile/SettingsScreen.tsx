@@ -19,6 +19,7 @@ import { accentOptions, type AccentName } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { ensurePermission } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
+import { SupporterTag, useCanChooseAreaColors } from '@/features/settings/AreaColorsScreen';
 import { ReminderRow } from '@/features/settings/ReminderRow';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 
@@ -185,8 +186,66 @@ export function LookSection() {
             options={themeOptions}
           />
         </View>
+        <AreaColorsRow />
       </Card>
     </>
+  );
+}
+
+/** "Area colours" (DECISIONS 118): the three colours in use and, on Free, the Supporter tag. */
+function AreaColorsRow() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { colors } = useTheme();
+  const canChoose = useCanChooseAreaColors();
+  const swatches = [colors.training, colors.nutrition, colors.streak];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        canChoose
+          ? t('settings.areaColors.title')
+          : `${t('settings.areaColors.title')}, ${t('community.supporterTag')}`
+      }
+      accessibilityHint={t('settings.areaColors.rowHelp')}
+      onPress={() => router.push('/profile/area-colors')}
+      style={({ pressed }) => ({
+        minHeight: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        borderTopWidth: 1,
+        borderColor: colors.divider,
+        paddingTop: 10,
+        marginBottom: -4,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text>{t('settings.areaColors.title')}</Text>
+        <Text variant="bodyS" muted>
+          {t('settings.areaColors.rowHelp')}
+        </Text>
+      </View>
+      {canChoose ? null : <SupporterTag />}
+      <View aria-hidden style={{ flexDirection: 'row' }}>
+        {swatches.map((c, i) => (
+          <View
+            key={i}
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: 9,
+              marginLeft: i === 0 ? 0 : -5,
+              backgroundColor: c,
+              borderWidth: 2,
+              borderColor: colors.surface,
+            }}
+          />
+        ))}
+      </View>
+      <Icon name="chevronRight" size={18} color={colors.textPlaceholderIcon} />
+    </Pressable>
   );
 }
 

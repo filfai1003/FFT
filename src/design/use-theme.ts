@@ -1,7 +1,9 @@
 import { createContext, createElement, useContext, useMemo, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { usePlanStore } from '@/lib/plan';
 import { useAppearanceStore } from './appearance-store';
+import { effectiveAreaColors } from './area-colors';
 import { useOsReduceMotion, watchOsReduceMotion } from './os-motion';
 import { buildTheme, resolveMode, textScaleFor } from './theme';
 
@@ -41,17 +43,31 @@ export function useTheme() {
   const osReduceMotion = useOsReduceMotion((s) => s.value);
   const reduceMotion = reduceMotionSetting || osReduceMotion;
   const oneHandMode = useAppearanceStore((s) => s.oneHandMode);
+  const areaChoice = useAppearanceStore((s) => s.areaColors);
+  // Supporter and Premium only (DECISIONS 118): back on Free the defaults return, the choice stays.
+  const plan = usePlanStore((s) => s.plan);
+  const areas = useMemo(() => effectiveAreaColors(areaChoice, plan), [areaChoice, plan]);
 
   return useMemo(
     () => ({
       mode,
-      colors: buildTheme({ accent, highContrast, mode }),
+      colors: buildTheme({ accent, highContrast, mode, areas }),
       textScale: textScaleFor(textScaleStep),
       boldText,
       dotNumbers,
       reduceMotion,
       oneHandMode,
     }),
-    [mode, accent, highContrast, textScaleStep, boldText, dotNumbers, reduceMotion, oneHandMode],
+    [
+      mode,
+      accent,
+      highContrast,
+      areas,
+      textScaleStep,
+      boldText,
+      dotNumbers,
+      reduceMotion,
+      oneHandMode,
+    ],
   );
 }

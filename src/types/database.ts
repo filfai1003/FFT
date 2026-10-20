@@ -924,6 +924,7 @@ export type Database = {
       user_settings: {
         Row: {
           accent: string;
+          area_colors: NonNullable<Json>;
           bold_text: boolean;
           created_at: string;
           deleted_at: string | null;
@@ -950,6 +951,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           accent?: string;
+          area_colors?: NonNullable<Json>;
           bold_text?: boolean;
           created_at?: string;
           deleted_at?: string | null;
@@ -975,6 +977,7 @@ export type Database = {
         };
         Update: {
           accent?: string;
+          area_colors?: NonNullable<Json>;
           bold_text?: boolean;
           created_at?: string;
           deleted_at?: string | null;

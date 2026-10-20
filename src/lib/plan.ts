@@ -90,6 +90,23 @@ export async function loadPlan(userId: string): Promise<PlanState> {
   return state;
 }
 
+/**
+ * An account's plan as this device knows it, without touching the store (the widget task, which
+ * may run with the app closed: DECISIONS 118).
+ */
+export async function planOf(userId: string): Promise<Plan | null> {
+  const s = usePlanStore.getState();
+  if (s.userId === userId) return s.plan;
+  try {
+    const saved = JSON.parse((await AsyncStorage.getItem(key(userId))) ?? '{}') as {
+      plan?: unknown;
+    };
+    return isPlan(saved.plan) ? saved.plan : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function savePlan(userId: string, patch: Partial<Omit<PlanState, 'userId'>>) {
   const next = { ...usePlanStore.getState(), ...patch, userId };
   usePlanStore.setState(next);

@@ -47,6 +47,7 @@ function lookOf(s: WidgetSnapshot | null, mode: ThemeMode): Look {
       accent: look?.accent ?? 'red',
       highContrast: look?.highContrast ?? false,
       mode,
+      areas: look?.areas,
     }),
     // Bigger text as in the app, up to what still fits a widget.
     scale: Math.min(textScaleFor(look?.textScaleStep ?? 3), 1.15),

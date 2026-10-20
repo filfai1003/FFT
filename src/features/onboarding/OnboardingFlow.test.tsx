@@ -8,7 +8,10 @@ jest.mock('@/lib/mode', () => ({ getMode: () => 'local' }));
 jest.mock('@/features/auth/api', () => ({ signOut: jest.fn() }));
 jest.mock('@/features/premium/ConnectAiButtons', () => ({ ConnectAiButtons: () => null }));
 jest.mock('@/features/premium/ServerCopy', () => ({ SyncNeededCard: () => null }));
-jest.mock('@/lib/plan', () => ({ useSyncChoice: () => 'off' }));
+jest.mock('@/lib/plan', () => ({
+  ...jest.requireActual('@/lib/plan'),
+  useSyncChoice: () => 'off',
+}));
 jest.mock('@/features/legal/LegalLinks', () => ({ LegalLinks: () => null }));
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),

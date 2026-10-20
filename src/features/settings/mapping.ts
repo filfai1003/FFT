@@ -1,4 +1,5 @@
 import { defaultAppearance, type AppearanceState } from '@/design/appearance-store';
+import { toAreaColorChoice } from '@/design/area-colors';
 import type { AccentName } from '@/design/tokens';
 import type { Row, Update } from '@/types/db';
 import { defaultPreferences, type Preferences } from './preferences-store';
@@ -22,6 +23,8 @@ export function rowToState(row: SettingsRow): {
       haptics: row.haptics,
       oneHandMode: row.one_hand_mode,
       spokenCountdown: row.spoken_countdown,
+      // Rows saved before DECISIONS 118 have none: the default look.
+      areaColors: toAreaColorChoice(row.area_colors),
     },
     prefs: {
       weightUnit: row.weight_unit as Preferences['weightUnit'],
@@ -54,6 +57,7 @@ export function stateToRow(
     haptics: appearance.haptics,
     one_hand_mode: appearance.oneHandMode,
     spoken_countdown: appearance.spokenCountdown,
+    area_colors: appearance.areaColors,
     weight_unit: prefs.weightUnit,
     length_unit: prefs.lengthUnit,
     energy_unit: prefs.energyUnit,
