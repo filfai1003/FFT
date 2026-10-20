@@ -903,7 +903,6 @@
     "matches": "Matches your daily target",
     "dayTotal": "Your day adds up to",
     "differs": "Differs from your daily target by {{kcal}} kcal",
-    "sumLine": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
     "autoSplit": "Auto-split",
     "mealName": "Meal name",
     "deleteMeal": "Delete {{name}}",

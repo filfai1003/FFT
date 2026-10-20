@@ -6,10 +6,16 @@ import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { IconTile } from '@/components/ui/IconTile';
 import { Input } from '@/components/ui/Input';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
+import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { mealForPosition } from '@/domain/diet';
+import { MacroValues } from './MacroValues';
+import { mealIcon } from './meal-icon';
 import {
   macroKcal,
   rebalanceMeals,
@@ -18,7 +24,7 @@ import {
   type MealRole,
   type Totals,
 } from '@/domain/nutrition';
-import { parseDecimal } from '@/domain/numbers';
+import { formatInt, parseDecimal } from '@/domain/numbers';
 import { newId } from '@/lib/uuid';
 
 export type MealDraft = {
@@ -203,39 +209,39 @@ export function MealPlanEditor({
         accessibilityLabel={m.isMain ? `${m.name}, ${t('fixed.mainBadge')}` : m.name}
         onPress={() => setOpen(m.id)}
         style={({ pressed }) => ({
-          minHeight: 60,
-          justifyContent: 'center',
-          gap: 2,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          borderRadius: 16,
+          minHeight: 64,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          borderRadius: radius.cardSmall,
           borderWidth: 1,
           borderColor: colors.borderDecorative,
-          backgroundColor: colors.surfaceAlt,
+          backgroundColor: colors.surface,
           opacity: pressed ? 0.8 : 1,
         })}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text variant="body">{m.name}</Text>
-          {m.isMain ? (
-            <Text variant="bodyS" muted>
-              {t('fixed.mainBadge')}
+        {/* The tile it has on the Diet tab (the first meal of the day is breakfast). */}
+        <IconTile icon={mealIcon(mealForPosition(index))} area="nutrition" />
+        <View style={{ flex: 1, gap: 3 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <Text variant="body" semibold>
+              {m.name}
             </Text>
-          ) : null}
-        </View>
-        <Text variant="bodyS" muted>
-          {t('diet.mealLine', {
-            kcal: m.kcal,
-            p: Math.round(m.proteinG),
-            c: Math.round(m.carbsG),
-            f: Math.round(m.fatG),
-          })}
-        </Text>
-        {role ? (
-          <Text variant="bodyS" muted>
-            {t(`fixed.${role}`)}
+            {m.isMain ? <StatusChip label={t('fixed.mainBadge')} /> : null}
+          </View>
+          <Text variant="bodyS" muted numeric>
+            {t('diet.mealLine', {
+              kcal: m.kcal,
+              p: Math.round(m.proteinG),
+              c: Math.round(m.carbsG),
+              f: Math.round(m.fatG),
+            })}
           </Text>
-        ) : null}
+          {role ? <StatusChip area="training" label={t(`fixed.${role}`)} /> : null}
+        </View>
+        <Icon name="chevronRight" size={18} color={colors.textMuted} />
       </Pressable>
     );
   };
@@ -256,20 +262,25 @@ export function MealPlanEditor({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          borderRadius: 14,
-          borderWidth: 1,
-          borderColor: colors.borderControl,
+          borderRadius: radius.row,
+          // The workout in training's colour (DECISIONS 107), between the meals around it.
+          backgroundColor: colors.trainingSoft,
         }}
       >
-        <Icon name="train" size={16} color={colors.text} />
-        <Text variant="label">{t('fixed.workoutRow')}</Text>
+        <Icon name="dumbbell" size={16} color={colors.trainingInk} />
+        <Text variant="label" semibold style={{ color: colors.trainingInk }}>
+          {t('fixed.workoutRow')}
+        </Text>
       </View>
     );
   };
 
   return (
     <View style={{ gap: 14 }}>
-      <Card size="small" gap={8}>
+      {/* The day the meals add up to (DECISIONS 112): its kcal big, whether it matches the
+          target as a chip (green with a tick when it does, the difference in words otherwise)
+          and the macros in their colours. */}
+      <Card size="small" gap={10}>
         <View
           style={{
             flexDirection: 'row',
@@ -280,20 +291,16 @@ export function MealPlanEditor({
         >
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="bodyS" muted>
-              {!goal
-                ? t('fixed.dayTotal')
-                : matches
-                  ? t('fixed.matches')
-                  : t('fixed.differs', { kcal: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` })}
+              {t('fixed.dayTotal')}
             </Text>
-            <Text variant="label">
-              {t('fixed.sumLine', {
-                kcal: Math.round(sum.kcal),
-                p: Math.round(sum.p),
-                c: Math.round(sum.c),
-                f: Math.round(sum.f),
-              })}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              <Text variant="displayS" numeric>
+                {formatInt(sum.kcal)}
+              </Text>
+              <Text variant="bodyS" muted>
+                {t('common.kcal')}
+              </Text>
+            </View>
           </View>
           {goal ? (
             <Button
@@ -304,6 +311,18 @@ export function MealPlanEditor({
             />
           ) : null}
         </View>
+        {goal ? (
+          <StatusChip
+            area={matches ? 'better' : 'neutral'}
+            icon={matches ? 'check' : undefined}
+            label={
+              matches
+                ? t('fixed.matches')
+                : t('fixed.differs', { kcal: `${diff > 0 ? '+' : '−'}${Math.abs(diff)}` })
+            }
+          />
+        ) : null}
+        <MacroValues macros={{ protein: sum.p, carbs: sum.c, fat: sum.f }} />
       </Card>
 
       <ChipGroup
