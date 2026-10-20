@@ -40,7 +40,6 @@
     "strengthBody": "Do the same exercise on two different days to see how much stronger you get.",
     "photosTitle": "No photos yet",
     "photosBody": "Front, side and back photos at each check-in show changes the scale misses. They stay private.",
-    "photosShort": "Add them at your next check-in.",
     "recordsTitle": "No new records yet",
     "chatsBody": "Ask the coach about your training, your meals or your progress.",
     "friendsTitle": "No friends yet",
@@ -2093,8 +2092,6 @@
       "today": "{{day}}, today, not logged yet",
       "future": "{{day}}, still to come"
     },
-    "weekSummary": "{{count}} of {{total}} days logged this week",
-    "todayToLog": "today still to log",
     "weekA11y": "This week: {{count}} of {{total}} days logged",
     "weekA11yToday": "This week: {{count}} of {{total}} days logged, today not logged yet",
     "nextBadge": "Next badge",

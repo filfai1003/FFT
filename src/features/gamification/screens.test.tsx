@@ -53,7 +53,9 @@ describe('Progress · Me cards', () => {
     expect(screen.getByLabelText('Mon 12 Oct, logged')).toBeTruthy();
     expect(screen.getByLabelText('Tue 13 Oct, logged')).toBeTruthy();
     expect(screen.getByLabelText('Wed 14 Oct, today, not logged yet')).toBeTruthy();
-    expect(screen.getByText('2 of 7 days logged this week · today still to log')).toBeTruthy();
+    // The strip shows the week; the line under it says what to do, not the count again.
+    expect(screen.getByText('Log today to keep it going')).toBeTruthy();
+    expect(screen.queryByText(/days logged this week/)).toBeNull();
   });
 
   it('next badge and new records with the gain; a record opens its exercise', async () => {
