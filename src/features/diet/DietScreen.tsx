@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconTile } from '@/components/ui/IconTile';
@@ -13,15 +12,18 @@ import { radius, touch } from '@/design/tokens';
 import { formatInt } from '@/domain/numbers';
 import { useTheme } from '@/design/use-theme';
 import { meals, sumMacros, type Meal } from '@/domain/diet';
-import { addDays, monthYearLabel, weekOf } from '@/domain/day';
+import { addDays, shortDateLabel, weekOf } from '@/domain/day';
 import { useProfile } from '@/features/profile/api';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { AddButton } from './AddButton';
+import { mealIcon } from './meal-icon';
 import { DayPickerSheet } from './DayPickerSheet';
 import { DayStrip } from './DayStrip';
 import { DaySummaryCard } from './DaySummaryCard';
 import { PickDayLabel } from './PickDayLabel';
 import { FixedMealsLog } from './FixedMealsLog';
 import { useDietDay, useDayTarget } from './day-hooks';
+import { useStripStatuses } from './week-status';
 import { useToastStore } from '@/lib/toast-store';
 import { useCopyEntries, useDayLog, useDayTotals, useSetLogDeleted, type LogEntry } from './log';
 
@@ -43,7 +45,7 @@ function DietSkeleton() {
       </Text>
       <SkeletonGroup accessibilityLabel={t('common.loading')}>
         <Skeleton height={64} style={{ borderRadius: radius.card }} />
-        <SkeletonCard tile={false} lines={1} height={120} />
+        <SkeletonCard tile={false} lines={1} height={190} />
         {meals.map((m) => (
           <SkeletonCard key={m} lines={0} />
         ))}
@@ -62,6 +64,8 @@ function FoodLog() {
   const before = useDayLog(addDays(day, -1));
   const totals = useDayTotals(day);
   const target = useDayTarget(day);
+  const week = weekOf(day, weekStart);
+  const statuses = useStripStatuses(week, today);
   const copy = useCopyEntries();
   const setDeleted = useSetLogDeleted();
   const showToast = useToastStore((s) => s.show);
@@ -83,6 +87,7 @@ function FoodLog() {
     });
   };
   const eaten = totals.data ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const mealsWithFood = meals.filter((m) => byMeal(m).length > 0).length;
 
   return (
     <>
@@ -91,10 +96,8 @@ function FoodLog() {
           style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
         >
           <View style={{ gap: 4 }}>
-            <PickDayLabel
-              label={monthYearLabel(`${day.slice(0, 7)}-01`)}
-              onPress={() => setCalendar(true)}
-            />
+            {/* The day itself (not only the month): which day the log shows, at a glance. */}
+            <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
             <Text variant="screenTitle" accessibilityRole="header">
               {t('nav.diet')}
             </Text>
@@ -106,24 +109,20 @@ function FoodLog() {
           />
         </View>
 
-        <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
+        <DayStrip days={week} selected={day} onSelect={setDay} statuses={statuses} />
 
+        {/* A day with nothing logged is the same card, unfilled: no separate empty message. */}
         <DaySummaryCard
           eaten={eaten}
           target={target}
-          caption={target ? t('diet.targetLine', { kcal: formatInt(target.kcal) }) : undefined}
+          loading={totals.isPending}
+          caption={
+            log.isSuccess
+              ? t('diet.mealsCount', { done: mealsWithFood, total: meals.length })
+              : undefined
+          }
           onSetTarget={() => router.push('/diet-goals')}
         />
-
-        {log.isSuccess && entries.length === 0 ? (
-          <EmptyState
-            compact
-            icon="bowl"
-            area="nutrition"
-            title={day === today ? t('empty.dietToday') : t('empty.dietDay')}
-            body={t('empty.dietBody')}
-          />
-        ) : null}
 
         <View style={{ gap: 10 }}>
           {meals.map((meal) => (
@@ -183,7 +182,9 @@ function MealSection({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const kcal = sumMacros(entries.map((e) => e.macros)).kcal;
+  const yesterdayKcal = Math.round(sumMacros(yesterday.map((e) => e.macros)).kcal);
   const name = t(`diet.meal.${meal}`);
+  const empty = !loading && entries.length === 0;
   return (
     <View
       accessibilityRole="summary"
@@ -192,7 +193,8 @@ function MealSection({
         borderWidth: 1,
         borderColor: colors.borderDecorative,
         backgroundColor: colors.surface,
-        paddingVertical: 8,
+        paddingTop: 10,
+        paddingBottom: 6,
         paddingLeft: 12,
         paddingRight: 8,
       }}
@@ -201,65 +203,70 @@ function MealSection({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          minHeight: touch.minTarget,
+          gap: 12,
+          minHeight: touch.minTarget + 4,
         }}
       >
-        <View style={{ marginRight: 12 }}>
-          <IconTile icon="bowl" area="nutrition" />
-        </View>
-        <Text variant="titleM" accessibilityRole="header" style={{ flex: 1 }}>
-          {name}
-        </Text>
-        {loading ? (
-          <SkeletonGroup accessibilityLabel={t('common.loading')} style={{ marginRight: 8 }}>
-            <Skeleton width={56} height={12} />
-          </SkeletonGroup>
-        ) : (
-          <Text variant="bodyS" muted numeric style={{ marginRight: 8 }}>
-            {entries.length > 0
-              ? t('diet.kcalValue', { kcal: Math.round(kcal) })
-              : t('diet.nothingYet')}
+        <IconTile icon={mealIcon(meal)} area="nutrition" />
+        <View style={{ flex: 1 }}>
+          <Text variant="titleM" accessibilityRole="header">
+            {name}
           </Text>
-        )}
-        <IconButton
-          look="soft"
-          icon="plus"
+          {loading ? (
+            <SkeletonGroup accessibilityLabel={t('common.loading')} style={{ paddingTop: 4 }}>
+              <Skeleton width={96} height={12} />
+            </SkeletonGroup>
+          ) : (
+            <Text variant="bodyS" muted numeric>
+              {entries.length > 0
+                ? t('diet.mealSummary', { kcal: formatInt(kcal), count: entries.length })
+                : t('diet.nothingYet')}
+            </Text>
+          )}
+        </View>
+        {/* Filled while the meal is empty: adding is the next step there. */}
+        <AddButton
+          filled={empty}
           accessibilityLabel={t('diet.addTo', { meal: name })}
           onPress={onAdd}
         />
       </View>
-      {entries.length === 0 && yesterday.length > 0 ? (
+      {empty && yesterday.length > 0 ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('diet.sameAsYesterdayLabel', {
             meal: name,
             count: yesterday.length,
-            kcal: Math.round(sumMacros(yesterday.map((e) => e.macros)).kcal),
+            kcal: yesterdayKcal,
           })}
           onPress={onSameAsYesterday}
           style={({ pressed }) => ({
             minHeight: 52,
+            marginTop: 6,
+            marginBottom: 4,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
-            borderTopWidth: 1,
-            borderColor: colors.divider,
-            paddingRight: 8,
+            paddingHorizontal: 12,
+            borderRadius: radius.row,
+            borderWidth: 1.5,
+            borderStyle: 'dashed',
+            borderColor: colors.borderControl,
+            backgroundColor: colors.surfaceAlt,
             opacity: pressed ? 0.7 : 1,
           })}
         >
           <Icon name="copy" size={18} color={colors.text} />
           <View style={{ flex: 1, gap: 1, paddingVertical: 4 }}>
-            <Text variant="body">{t('diet.sameAsYesterday')}</Text>
+            <Text variant="body" semibold>
+              {t('diet.sameAsYesterday')}
+            </Text>
             <Text variant="bodyS" muted numberOfLines={1}>
               {yesterday.map((e) => e.name).join(', ')}
             </Text>
           </View>
-          <Text variant="bodyS" muted numeric>
-            {t('diet.kcalValue', {
-              kcal: Math.round(sumMacros(yesterday.map((e) => e.macros)).kcal),
-            })}
+          <Text variant="bodyS" semibold numeric>
+            {t('diet.kcalValue', { kcal: formatInt(yesterdayKcal) })}
           </Text>
         </Pressable>
       ) : null}
@@ -272,6 +279,8 @@ function MealSection({
           onPress={() => onOpen(e)}
           style={({ pressed }) => ({
             minHeight: 52,
+            // Under the meal's name, past its tile.
+            marginLeft: 52,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -286,12 +295,14 @@ function MealSection({
             <Text variant="body" medium numberOfLines={1}>
               {e.name}
             </Text>
-            <Text variant="bodyS" muted>
-              {e.quantityLabel ?? ''}
-            </Text>
+            {e.quantityLabel ? (
+              <Text variant="bodyS" muted>
+                {e.quantityLabel}
+              </Text>
+            ) : null}
           </View>
-          <Text variant="bodyS" semibold numeric>
-            {String(Math.round(e.macros.kcal))}
+          <Text variant="body" semibold numeric>
+            {formatInt(e.macros.kcal)}
           </Text>
         </Pressable>
       ))}

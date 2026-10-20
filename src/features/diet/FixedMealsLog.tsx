@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { CheckFill } from '@/components/ui/CheckFill';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { IconTile } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
+import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
+import { StatusChip } from '@/components/ui/StatusChip';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
@@ -14,6 +18,7 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import {
   checkAsPlanned,
   eatenFromChecks,
+  mealForPosition,
   mealsDone,
   nextFixedMeal,
   sumMacros,
@@ -25,6 +30,7 @@ import { AdjustMealSheet } from './AdjustMealSheet';
 import { DayPickerSheet } from './DayPickerSheet';
 import { DayStrip } from './DayStrip';
 import { DaySummaryCard } from './DaySummaryCard';
+import { mealIcon } from './meal-icon';
 import { PickDayLabel } from './PickDayLabel';
 import { useDayTarget, useDietDay } from './day-hooks';
 import {
@@ -35,15 +41,17 @@ import {
   type StoredCheck,
 } from './fixed';
 import { useDayLog } from './log';
+import { useStripStatuses } from './week-status';
 
 /** Diet tab in "Fixed meals" mode: tick the meals you ate; tap a meal to adjust it for today. */
 export function FixedMealsLog() {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const router = useRouter();
   const barHeight = useTabBarHeight();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const { day, today, setDay } = useDietDay();
+  const week = weekOf(day, weekStart);
+  const statuses = useStripStatuses(week, today);
   const plan = useFixedPlan();
   const checks = useFixedChecks(day);
   const foodLog = useDayLog(day);
@@ -67,6 +75,7 @@ export function FixedMealsLog() {
   const sheetMeal = adjusting ?? linkedMeal;
   // Foods logged "instead of" a meal count too (they are food_logs rows).
   const eaten = sumMacros([eatenFromChecks(stored), ...(foodLog.data ?? []).map((e) => e.macros)]);
+  const loading = plan.isPending || checks.isPending;
 
   const toggle = (meal: FixedMeal) => {
     const before = checkOf(meal.id);
@@ -119,137 +128,60 @@ export function FixedMealsLog() {
               {t('nav.diet')}
             </Text>
           </View>
+          {/* Same button as in the count-foods mode: it opens the same page. */}
           <IconButton
-            icon="more"
+            icon="gear"
             accessibilityLabel={t('diet.goalsAndMode')}
             onPress={() => router.push('/diet-goals')}
           />
         </View>
 
-        <DayStrip days={weekOf(day, weekStart)} selected={day} onSelect={setDay} />
+        <DayStrip days={week} selected={day} onSelect={setDay} statuses={statuses} />
 
         <DaySummaryCard
           eaten={eaten}
           target={target}
-          caption={t('diet.mealsCount', {
-            done: mealsDone(stored as FixedCheck[]),
-            total: meals.length,
-          })}
+          loading={loading}
+          caption={
+            meals.length > 0
+              ? t('diet.mealsCount', {
+                  done: mealsDone(stored as FixedCheck[]),
+                  total: meals.length,
+                })
+              : undefined
+          }
           onSetTarget={() => router.push('/diet-goals')}
         />
 
-        <View style={{ gap: 8 }}>
-          {meals.map((m) => {
-            const check = checkOf(m.id);
-            const done = check?.status === 'done' || check?.status === 'adjusted';
-            const skipped = check?.status === 'skipped';
-            const isNext = next === m.id;
-            const planned = check?.status === 'adjusted' ? check : m;
-            return (
-              <View
+        {loading ? (
+          <SkeletonGroup accessibilityLabel={t('common.loading')}>
+            {[0, 1, 2].map((i) => (
+              <SkeletonCard key={i} lines={1} />
+            ))}
+          </SkeletonGroup>
+        ) : meals.length === 0 ? (
+          <EmptyState
+            compact
+            icon="bowl"
+            area="nutrition"
+            title={t('diet.noMealsTitle')}
+            body={t('diet.noMealsBody')}
+            action={{ label: t('diet.setUpMeals'), onPress: () => router.push('/diet-goals') }}
+          />
+        ) : (
+          <View style={{ gap: 8 }}>
+            {meals.map((m) => (
+              <FixedMealRow
                 key={m.id}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingVertical: 12,
-                  paddingLeft: 16,
-                  paddingRight: 12,
-                  borderRadius: radius.cardSmall,
-                  borderWidth: 1,
-                  borderColor: isNext ? colors.borderControl : colors.borderDecorative,
-                  backgroundColor: colors.surfaceAlt,
-                }}
-              >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t('diet.adjust', { name: m.name })}
-                  onPress={() => setAdjusting(m)}
-                  style={{ flex: 1, gap: 3, minHeight: touch.minTarget, justifyContent: 'center' }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text
-                      variant="bodyL"
-                      medium
-                      style={{ color: done || skipped ? colors.textMuted : colors.text }}
-                    >
-                      {m.name}
-                    </Text>
-                    {isNext ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                        <View
-                          style={{
-                            width: 5,
-                            height: 5,
-                            borderRadius: 3,
-                            backgroundColor: colors.accent,
-                          }}
-                        />
-                        <Text variant="bodyS" muted>
-                          {t('diet.upNext')}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {done ? (
-                      <Text variant="bodyS" muted>
-                        {check?.status === 'adjusted' ? t('diet.adjusted') : t('diet.done')}
-                      </Text>
-                    ) : null}
-                    {skipped ? (
-                      <Text variant="bodyS" muted>
-                        {t('diet.skipped')}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text variant="bodyS" muted>
-                    {t('diet.mealLine', {
-                      kcal: 'kcal' in planned ? planned.kcal : 0,
-                      p: Math.round(planned.proteinG),
-                      c: Math.round(planned.carbsG),
-                      f: Math.round(planned.fatG),
-                    })}
-                  </Text>
-                  {m.description ? (
-                    <Text variant="bodyS" muted>
-                      {m.description}
-                    </Text>
-                  ) : null}
-                </Pressable>
-                <Pressable
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: done }}
-                  aria-checked={done}
-                  accessibilityLabel={
-                    done
-                      ? t('diet.doneUndo', { name: m.name })
-                      : t('diet.markDone', { name: m.name })
-                  }
-                  onPress={() => toggle(m)}
-                  style={{
-                    width: touch.checkButton,
-                    height: touch.checkButton,
-                    borderRadius: touch.checkButton / 2,
-                    borderWidth: done ? 0 : 1,
-                    borderStyle: 'dashed',
-                    borderColor: colors.borderControl,
-                    overflow: 'hidden',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {/* Eaten = filled in the nutrition colour, with a short animation. */}
-                  <CheckFill
-                    done={done}
-                    size={touch.checkButton}
-                    fill={colors.nutrition}
-                    iconOn={colors.bg}
-                    iconOff={colors.textPlaceholderIcon}
-                  />
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
+                meal={m}
+                check={checkOf(m.id)}
+                isNext={next === m.id}
+                onAdjust={() => setAdjusting(m)}
+                onToggle={() => toggle(m)}
+              />
+            ))}
+          </View>
+        )}
       </Screen>
 
       <DayPickerSheet
@@ -269,5 +201,133 @@ export function FixedMealsLog() {
         }}
       />
     </>
+  );
+}
+
+/**
+ * One planned meal (canvas "Diet, fixed meals"): its tile, name and state as a chip ("Up next"
+ * dark, "Done" / "Adjusted" green, "Skipped" neutral), the planned values, and the round tick.
+ * The next meal has the 2px selection border.
+ */
+function FixedMealRow({
+  meal: m,
+  check,
+  isNext,
+  onAdjust,
+  onToggle,
+}: {
+  meal: FixedMeal;
+  check: StoredCheck | undefined;
+  isNext: boolean;
+  onAdjust: () => void;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const done = check?.status === 'done' || check?.status === 'adjusted';
+  const skipped = check?.status === 'skipped';
+  const planned = check?.status === 'adjusted' ? check : m;
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: radius.cardSmall,
+        borderWidth: isNext ? 2 : 1,
+        borderColor: isNext ? colors.borderSelected : colors.borderDecorative,
+        backgroundColor: colors.surface,
+      }}
+    >
+      <IconTile icon={mealIcon(mealForPosition(m.position))} area="nutrition" />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('diet.adjust', { name: m.name })}
+        onPress={onAdjust}
+        style={{ flex: 1, gap: 3, minHeight: touch.minTarget, justifyContent: 'center' }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <Text
+            variant="bodyL"
+            medium
+            style={{ color: done || skipped ? colors.textMuted : colors.text }}
+          >
+            {m.name}
+          </Text>
+          {isNext ? <UpNextChip /> : null}
+          {done ? (
+            <StatusChip
+              area="better"
+              label={check?.status === 'adjusted' ? t('diet.adjusted') : t('diet.done')}
+            />
+          ) : null}
+          {skipped ? <StatusChip label={t('diet.skipped')} /> : null}
+        </View>
+        <Text variant="bodyS" muted numeric>
+          {t('diet.mealLine', {
+            kcal: 'kcal' in planned ? planned.kcal : 0,
+            p: Math.round(planned.proteinG),
+            c: Math.round(planned.carbsG),
+            f: Math.round(planned.fatG),
+          })}
+        </Text>
+        {m.description ? (
+          <Text variant="bodyS" muted>
+            {m.description}
+          </Text>
+        ) : null}
+      </Pressable>
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: done }}
+        aria-checked={done}
+        accessibilityLabel={
+          done ? t('diet.doneUndo', { name: m.name }) : t('diet.markDone', { name: m.name })
+        }
+        onPress={onToggle}
+        style={{
+          width: touch.checkButton,
+          height: touch.checkButton,
+          borderRadius: touch.checkButton / 2,
+          borderWidth: done ? 0 : 1,
+          borderStyle: 'dashed',
+          borderColor: colors.borderControl,
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Eaten = filled in the nutrition colour, with a short animation. */}
+        <CheckFill
+          done={done}
+          size={touch.checkButton}
+          fill={colors.nutrition}
+          iconOn={colors.bg}
+          iconOff={colors.textPlaceholderIcon}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
+/** "Up next": a dark pill (no accent: that stays the one main action of the page). */
+function UpNextChip() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  return (
+    <View
+      style={{
+        minHeight: 22,
+        paddingHorizontal: 8,
+        borderRadius: 11,
+        backgroundColor: colors.text,
+        justifyContent: 'center',
+      }}
+    >
+      <Text variant="label" semibold style={{ color: colors.bg }}>
+        {t('diet.upNext')}
+      </Text>
+    </View>
   );
 }
