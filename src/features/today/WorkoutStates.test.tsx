@@ -1,5 +1,6 @@
 import '@/i18n';
 import { fireEvent, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { renderUI } from '@/test/render';
 import { WorkoutWidget } from './Widgets';
 
@@ -71,6 +72,9 @@ describe('Home · workout card states', () => {
     expect(screen.getByText('Workout done today')).toBeTruthy();
     expect(screen.getByText('Push A · 18 sets')).toBeTruthy();
     expect(screen.queryByText('Start')).toBeNull();
+    // The filled check sits in a box of its own size: it never spills over the words.
+    const fill = screen.getByTestId('check-fill', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(fill.parent!.props.style)).toMatchObject({ width: 44, height: 44 });
     await renderUI(<WorkoutWidget size="small" />);
     expect(screen.getByText('Workout done today')).toBeTruthy();
   });

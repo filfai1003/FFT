@@ -64,6 +64,10 @@ const HEAD_TILE = 32;
  * A widget box: a full-width card, or a small tile that shares the row with another. Every card
  * has the same header: its area's icon tile and its title (colour code, DECISIONS 107).
  */
+/** The box a CheckFill sits in: its own size, the check centred on the fill. */
+const checkBox = (size: number) =>
+  ({ width: size, height: size, alignItems: 'center', justifyContent: 'center' }) as const;
+
 function Frame({
   size,
   label,
@@ -460,7 +464,7 @@ export function NutritionWidget({ size }: Props) {
             </>
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View aria-hidden>
+              <View aria-hidden style={checkBox(28)}>
                 <CheckFill
                   done
                   size={28}
@@ -555,7 +559,8 @@ export function WorkoutWidget({ size }: Props) {
             gap: small ? 8 : 12,
           }}
         >
-          <View aria-hidden>
+          {/* The fill is absolute: the box gives it its size, or it spills over the words. */}
+          <View aria-hidden style={checkBox(small ? 36 : 44)}>
             <CheckFill
               done
               size={small ? 36 : 44}
