@@ -80,7 +80,7 @@ describe('Profile (your own page)', () => {
     expect(screen.getByText(/^Build muscle · [0-9,]+ XP to level [0-9]+$/)).toBeTruthy();
     // Streak, badges, strength; the level ring, records and badges (canvas Profile).
     expect(screen.getByLabelText('12 Day streak')).toBeTruthy();
-    expect(screen.getByLabelText('4 Badges')).toBeTruthy();
+    expect(screen.getByLabelText('5 Badges')).toBeTruthy();
     expect(
       screen.getByLabelText(/^Level [0-9]+, [0-9]+% of the way to level [0-9]+$/),
     ).toBeTruthy();

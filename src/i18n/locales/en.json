@@ -2117,6 +2117,10 @@
       "more_other": "You also earned {{count}} more badges.",
       "seeBadges": "See badges",
       "nice": "Nice"
+    },
+    "rarity": {
+      "rare": "Rare",
+      "epic": "Epic"
     }
   },
   "badges": {
@@ -2183,6 +2187,46 @@
     "early_bird": {
       "name": "Early bird",
       "how": "Start 5 workouts before 8:00"
+    },
+    "night_owl": {
+      "name": "Night owl",
+      "how": "Start 5 workouts after 9 pm"
+    },
+    "train_run_7": {
+      "name": "Iron week",
+      "how": "Train 7 days in a row"
+    },
+    "diet_run_7": {
+      "name": "Clean week",
+      "how": "Stay on your calorie target 7 days in a row"
+    },
+    "diet_run_30": {
+      "name": "Clean month",
+      "how": "Stay on your calorie target 30 days in a row"
+    },
+    "supplement_run_7": {
+      "name": "Steady stack",
+      "how": "Take all your supplements 7 days in a row"
+    },
+    "supplement_run_30": {
+      "name": "Never miss a dose",
+      "how": "Take all your supplements 30 days in a row"
+    },
+    "water_run_7": {
+      "name": "Well hydrated",
+      "how": "Reach your water goal 7 days in a row"
+    },
+    "perfect_run_7": {
+      "name": "Perfect week",
+      "how": "7 days in a row with diet on target, all supplements, water goal, and never two days without training"
+    },
+    "workouts_250": {
+      "name": "250 workouts",
+      "how": "Finish 250 workouts"
+    },
+    "streak_365": {
+      "name": "A whole year",
+      "how": "Log something 365 days in a row"
     }
   },
   "community": {

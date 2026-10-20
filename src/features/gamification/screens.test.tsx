@@ -18,7 +18,8 @@ jest.mock('@/features/train/exercises', () => ({
 }));
 
 const day = (n: number) => `2026-10-${String(n).padStart(2, '0')}`;
-// Logged 2–13 Oct: a 12-day streak still alive on the 14th (today not logged yet).
+// Logged 2–13 Oct: a 12-day streak still alive on the 14th (today not logged yet). Trained 1–7 Oct:
+// seven days in a row (Iron week).
 const activity = {
   loggedDays: new Set(Array.from({ length: 12 }, (_, i) => day(i + 2))),
   workouts: Array.from({ length: 7 }, (_, i) => ({
@@ -83,7 +84,7 @@ describe('Progress · Me cards', () => {
 
   it('badge grid: earned, in progress and locked with how to unlock', async () => {
     await renderUI(<BadgeGrid badges={mockGame.badges} />);
-    expect(screen.getByText(`3 of ${mockGame.badges.length} earned`)).toBeTruthy();
+    expect(screen.getByText(`4 of ${mockGame.badges.length} earned`)).toBeTruthy();
     expect(screen.getByLabelText('First workout: earned 1 Oct')).toBeTruthy();
     expect(screen.getByLabelText('10 workouts: 7 of 10')).toBeTruthy();
     expect(screen.getByLabelText('Early bird: locked. Start 5 workouts before 8:00')).toBeTruthy();

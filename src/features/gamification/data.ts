@@ -34,22 +34,27 @@ const num = (v: unknown) => (v == null ? null : Number(v));
 /** Reads the device's own database (never the server): a few queries over the user's history. */
 export async function fetchActivity(tz: string): Promise<Activity> {
   const db = getSupabase();
-  const [food, checks, body, sessions, sets, totals, daily, goals] = await Promise.all([
-    db.from('food_logs').select('day').is('deleted_at', null),
-    db.from('fixed_meal_checks').select('day, status').is('deleted_at', null),
-    db.from('body_metrics').select('day').is('deleted_at', null),
-    db
-      .from('workout_sessions')
-      .select('id, plan_id, started_at')
-      .eq('status', 'done')
-      .is('deleted_at', null),
-    db.from('session_sets').select('session_id, completed_at').is('deleted_at', null),
-    db.from('daily_nutrition_totals').select('day, kcal'),
-    db
-      .from('exercise_e1rm_daily')
-      .select('exercise_id, day, best_e1rm_kg, best_weight_kg, sets, volume_kg'),
-    fetchGoals(),
-  ]);
+  const [food, checks, body, sessions, sets, totals, daily, goals, supps, suppLogs, water] =
+    await Promise.all([
+      db.from('food_logs').select('day').is('deleted_at', null),
+      db.from('fixed_meal_checks').select('day, status').is('deleted_at', null),
+      db.from('body_metrics').select('day').is('deleted_at', null),
+      db
+        .from('workout_sessions')
+        .select('id, plan_id, started_at')
+        .eq('status', 'done')
+        .is('deleted_at', null),
+      db.from('session_sets').select('session_id, completed_at').is('deleted_at', null),
+      db.from('daily_nutrition_totals').select('day, kcal'),
+      db
+        .from('exercise_e1rm_daily')
+        .select('exercise_id, day, best_e1rm_kg, best_weight_kg, sets, volume_kg'),
+      fetchGoals(),
+      // Deleted supplements too: a day only asks for the supplements the user had on that day.
+      db.from('supplements').select('id, created_at, deleted_at'),
+      db.from('supplement_logs').select('day, supplement_id').is('deleted_at', null),
+      db.from('water_logs').select('day, ml').is('deleted_at', null),
+    ]);
 
   // A finished workout counts only with at least one completed set.
   const withSets = new Set(
@@ -83,6 +88,34 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     if (dietDayStatus(Number(t.kcal), target.kcal) === 'onTarget') dietOnTargetDays.add(t.day);
   }
 
+  // Supplements: a day counts when every supplement the user had that day was ticked.
+  const supplementList = rowsOf<{ id: string; created_at: string; deleted_at: string | null }>(
+    supps as Rows,
+  ).map((r) => ({
+    id: r.id,
+    from: localDay(new Date(r.created_at), tz),
+    until: r.deleted_at ? localDay(new Date(r.deleted_at), tz) : null,
+  }));
+  const takenByDay = new Map<string, Set<string>>();
+  for (const r of rowsOf<{ day: string; supplement_id: string }>(suppLogs as Rows))
+    takenByDay.set(r.day, (takenByDay.get(r.day) ?? new Set()).add(r.supplement_id));
+  const supplementDays = new Set<string>();
+  for (const [day, taken] of takenByDay) {
+    const due = supplementList.filter((x) => x.from <= day && (x.until == null || x.until > day));
+    if (due.length > 0 && due.every((x) => taken.has(x.id))) supplementDays.add(day);
+  }
+  const noSupplements = !supplementList.some((x) => x.until == null);
+
+  // Water: the day's glasses reach that day's goal.
+  const waterByDay = new Map<string, number>();
+  for (const r of rowsOf<{ day: string; ml: number | string }>(water as Rows))
+    waterByDay.set(r.day, (waterByDay.get(r.day) ?? 0) + Number(r.ml));
+  const waterGoalDays = new Set<string>();
+  for (const [day, ml] of waterByDay) {
+    const goalMl = goalForDay(goals, day)?.waterMl ?? 2000;
+    if (goalMl > 0 && ml >= goalMl) waterGoalDays.add(day);
+  }
+
   type DailyRow = {
     exercise_id: string;
     day: string;
@@ -105,6 +138,9 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     dietOnTargetDays,
     checkInDays,
     exerciseDays,
+    supplementDays,
+    waterGoalDays,
+    noSupplements,
     daily: dailyRows.map((r) => ({
       exerciseId: r.exercise_id,
       day: r.day,

@@ -29,6 +29,12 @@ export type GamificationInput = {
   dietOnTargetDays: ReadonlySet<string>;
   /** Days with a body entry (weight, body fat or a measurement). */
   checkInDays: ReadonlySet<string>;
+  /** Days on which every supplement the user had then was ticked (none if they have none). */
+  supplementDays?: ReadonlySet<string>;
+  /** Days on which the water goal was reached. */
+  waterGoalDays?: ReadonlySet<string>;
+  /** True when the user has no supplements: perfect days do not ask for them. */
+  noSupplements?: boolean;
   exerciseDays: readonly ExerciseDay[];
 };
 
@@ -252,8 +258,35 @@ export function levelFor(xp: number): LevelInfo {
 
 // --- badges ------------------------------------------------------------------------------------
 
-export type BadgeGlyph = 'dumbbell' | 'medal' | 'flame' | 'trophy' | 'bowl' | 'scale' | 'sun';
-type BadgeMetric = 'workouts' | 'streak' | 'records' | 'diet' | 'checkIns' | 'earlyWorkouts';
+export type BadgeGlyph =
+  | 'dumbbell'
+  | 'medal'
+  | 'flame'
+  | 'trophy'
+  | 'bowl'
+  | 'scale'
+  | 'sun'
+  | 'pill'
+  | 'droplet'
+  | 'star'
+  | 'clock';
+type BadgeMetric =
+  | 'workouts'
+  | 'streak'
+  | 'records'
+  | 'diet'
+  | 'checkIns'
+  | 'earlyWorkouts'
+  | 'lateWorkouts'
+  /** Runs of consecutive days (the badge is earned when a run reaches the target). */
+  | 'trainRun'
+  | 'dietRun'
+  | 'supplementRun'
+  | 'waterRun'
+  | 'perfectRun';
+
+/** How hard a badge is: common ones come with normal use, rare and epic ones ask for discipline. */
+export type BadgeRarity = 'common' | 'rare' | 'epic';
 
 export type BadgeDef = {
   id: string;
@@ -261,29 +294,64 @@ export type BadgeDef = {
   target: number;
   glyph: BadgeGlyph;
   xp: number;
+  rarity: BadgeRarity;
 };
 
 /** Hour before which a workout counts for "Early bird". */
 export const EARLY_HOUR = 8;
+/** Hour from which a workout counts for "Night owl". */
+export const LATE_HOUR = 21;
 
 /** The catalogue, in the order of the grid. Names and how-to texts are in i18n (`badges.<id>`). */
 export const badgeCatalogue: readonly BadgeDef[] = [
-  { id: 'first_workout', metric: 'workouts', target: 1, glyph: 'dumbbell', xp: 25 },
-  { id: 'workouts_10', metric: 'workouts', target: 10, glyph: 'medal', xp: 50 },
-  { id: 'workouts_25', metric: 'workouts', target: 25, glyph: 'medal', xp: 75 },
-  { id: 'workouts_50', metric: 'workouts', target: 50, glyph: 'medal', xp: 100 },
-  { id: 'workouts_100', metric: 'workouts', target: 100, glyph: 'medal', xp: 200 },
-  { id: 'streak_7', metric: 'streak', target: 7, glyph: 'flame', xp: 50 },
-  { id: 'streak_14', metric: 'streak', target: 14, glyph: 'flame', xp: 75 },
-  { id: 'streak_30', metric: 'streak', target: 30, glyph: 'flame', xp: 100 },
-  { id: 'streak_100', metric: 'streak', target: 100, glyph: 'flame', xp: 250 },
-  { id: 'first_record', metric: 'records', target: 1, glyph: 'trophy', xp: 25 },
-  { id: 'records_10', metric: 'records', target: 10, glyph: 'trophy', xp: 75 },
-  { id: 'records_50', metric: 'records', target: 50, glyph: 'trophy', xp: 150 },
-  { id: 'diet_7', metric: 'diet', target: 7, glyph: 'bowl', xp: 50 },
-  { id: 'diet_30', metric: 'diet', target: 30, glyph: 'bowl', xp: 100 },
-  { id: 'checkins_10', metric: 'checkIns', target: 10, glyph: 'scale', xp: 50 },
-  { id: 'early_bird', metric: 'earlyWorkouts', target: 5, glyph: 'sun', xp: 50 },
+  {
+    id: 'first_workout',
+    metric: 'workouts',
+    target: 1,
+    glyph: 'dumbbell',
+    xp: 25,
+    rarity: 'common',
+  },
+  { id: 'workouts_10', metric: 'workouts', target: 10, glyph: 'medal', xp: 50, rarity: 'common' },
+  { id: 'workouts_25', metric: 'workouts', target: 25, glyph: 'medal', xp: 75, rarity: 'common' },
+  { id: 'workouts_50', metric: 'workouts', target: 50, glyph: 'medal', xp: 100, rarity: 'common' },
+  { id: 'workouts_100', metric: 'workouts', target: 100, glyph: 'medal', xp: 200, rarity: 'rare' },
+  { id: 'streak_7', metric: 'streak', target: 7, glyph: 'flame', xp: 50, rarity: 'common' },
+  { id: 'streak_14', metric: 'streak', target: 14, glyph: 'flame', xp: 75, rarity: 'common' },
+  { id: 'streak_30', metric: 'streak', target: 30, glyph: 'flame', xp: 100, rarity: 'common' },
+  { id: 'streak_100', metric: 'streak', target: 100, glyph: 'flame', xp: 250, rarity: 'rare' },
+  { id: 'first_record', metric: 'records', target: 1, glyph: 'trophy', xp: 25, rarity: 'common' },
+  { id: 'records_10', metric: 'records', target: 10, glyph: 'trophy', xp: 75, rarity: 'common' },
+  { id: 'records_50', metric: 'records', target: 50, glyph: 'trophy', xp: 150, rarity: 'rare' },
+  { id: 'diet_7', metric: 'diet', target: 7, glyph: 'bowl', xp: 50, rarity: 'common' },
+  { id: 'diet_30', metric: 'diet', target: 30, glyph: 'bowl', xp: 100, rarity: 'common' },
+  { id: 'checkins_10', metric: 'checkIns', target: 10, glyph: 'scale', xp: 50, rarity: 'common' },
+  { id: 'early_bird', metric: 'earlyWorkouts', target: 5, glyph: 'sun', xp: 50, rarity: 'common' },
+  { id: 'night_owl', metric: 'lateWorkouts', target: 5, glyph: 'clock', xp: 50, rarity: 'common' },
+  // In a row (rare and epic): one missed day starts the run again.
+  { id: 'train_run_7', metric: 'trainRun', target: 7, glyph: 'dumbbell', xp: 150, rarity: 'epic' },
+  { id: 'diet_run_7', metric: 'dietRun', target: 7, glyph: 'bowl', xp: 100, rarity: 'rare' },
+  { id: 'diet_run_30', metric: 'dietRun', target: 30, glyph: 'bowl', xp: 250, rarity: 'epic' },
+  {
+    id: 'supplement_run_7',
+    metric: 'supplementRun',
+    target: 7,
+    glyph: 'pill',
+    xp: 75,
+    rarity: 'rare',
+  },
+  {
+    id: 'supplement_run_30',
+    metric: 'supplementRun',
+    target: 30,
+    glyph: 'pill',
+    xp: 150,
+    rarity: 'epic',
+  },
+  { id: 'water_run_7', metric: 'waterRun', target: 7, glyph: 'droplet', xp: 75, rarity: 'rare' },
+  { id: 'perfect_run_7', metric: 'perfectRun', target: 7, glyph: 'star', xp: 300, rarity: 'epic' },
+  { id: 'workouts_250', metric: 'workouts', target: 250, glyph: 'medal', xp: 400, rarity: 'epic' },
+  { id: 'streak_365', metric: 'streak', target: 365, glyph: 'flame', xp: 500, rarity: 'epic' },
 ];
 
 export type BadgeState = BadgeDef & {
@@ -296,10 +364,39 @@ export type BadgeState = BadgeDef & {
   share: number;
 };
 
+/**
+ * A perfect day: diet on target, every supplement ticked (when the user has any), the water goal
+ * reached, and trained that day or the day before (a rest day is fine, two in a row are not).
+ */
+export function perfectDays(input: GamificationInput): Set<string> {
+  const trained = new Set(input.workouts.map((w) => w.day));
+  const out = new Set<string>();
+  for (const d of input.dietOnTargetDays) {
+    if (!input.noSupplements && !input.supplementDays?.has(d)) continue;
+    if (!input.waterGoalDays?.has(d)) continue;
+    if (!trained.has(d) && !trained.has(addDays(d, -1))) continue;
+    out.add(d);
+  }
+  return out;
+}
+
+/** The day sets that "in a row" badges count runs over. */
+function runDays(input: GamificationInput): Partial<Record<BadgeMetric, ReadonlySet<string>>> {
+  return {
+    streak: input.loggedDays,
+    trainRun: new Set(input.workouts.map((w) => w.day)),
+    dietRun: input.dietOnTargetDays,
+    supplementRun: input.supplementDays ?? new Set(),
+    waterRun: input.waterGoalDays ?? new Set(),
+    perfectRun: perfectDays(input),
+  };
+}
+
 /** Days on which each metric's events happened, oldest first (one entry per event). */
 function metricEvents(input: GamificationInput): Record<BadgeMetric, string[]> {
   const { today } = input;
   const upTo = (days: Iterable<string>) => [...days].filter((d) => d <= today).sort();
+  const runs = runDays(input);
   return {
     workouts: upTo(input.workouts.map((w) => w.day)),
     streak: streakMilestones(input.loggedDays, today),
@@ -307,19 +404,28 @@ function metricEvents(input: GamificationInput): Record<BadgeMetric, string[]> {
     diet: upTo(input.dietOnTargetDays),
     checkIns: upTo(input.checkInDays),
     earlyWorkouts: upTo(input.workouts.filter((w) => w.hour < EARLY_HOUR).map((w) => w.day)),
+    lateWorkouts: upTo(input.workouts.filter((w) => w.hour >= LATE_HOUR).map((w) => w.day)),
+    trainRun: streakMilestones(runs.trainRun!, today),
+    dietRun: streakMilestones(runs.dietRun!, today),
+    supplementRun: streakMilestones(runs.supplementRun!, today),
+    waterRun: streakMilestones(runs.waterRun!, today),
+    perfectRun: streakMilestones(runs.perfectRun!, today),
   };
 }
 
 export function badgeStates(input: GamificationInput): BadgeState[] {
   const events = metricEvents(input);
-  // A streak badge not earned yet shows the CURRENT streak (a broken one starts again).
-  const streakNow = loggingStreak(input.loggedDays, input.today);
+  // A streak badge not earned yet shows the CURRENT run (a broken one starts again).
+  const runs = runDays(input);
   return badgeCatalogue.map((b) => {
     const list = events[b.metric];
     const earned = list.length >= b.target;
     const current = earned
       ? b.target
-      : Math.min(b.target, b.metric === 'streak' ? streakNow : list.length);
+      : Math.min(
+          b.target,
+          runs[b.metric] ? loggingStreak(runs[b.metric]!, input.today) : list.length,
+        );
     return {
       ...b,
       current,

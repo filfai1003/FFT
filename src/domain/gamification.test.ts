@@ -10,6 +10,7 @@ import {
   levelFor,
   nextBadges,
   nextStreakTarget,
+  perfectDays,
   personalRecords,
   recordDays,
   streakWeek,
@@ -196,5 +197,62 @@ describe('badges', () => {
     // 50 for the workout + 25 for "First workout" (earned today).
     expect(g.level.xp).toBe(XP.workout + 25);
     expect(g.xpToday).toBe(XP.workout + 25);
+  });
+});
+
+describe('in a row badges (rare and epic)', () => {
+  const find = (input: GamificationInput, id: string) =>
+    badgeStates(input).find((b) => b.id === id)!;
+  const workouts = (days: string[]) => days.map((day, i) => ({ id: `w${i}`, day, hour: 18 }));
+
+  it('Iron week: 7 training days in a row; a gap starts the run again', () => {
+    const seven = run('2026-10-01', 7);
+    expect(find(empty({ workouts: workouts(seven) }), 'train_run_7')).toMatchObject({
+      earned: true,
+      earnedOn: '2026-10-07',
+      rarity: 'epic',
+    });
+    const broken = [...run('2026-10-01', 6), ...run('2026-10-12', 3)];
+    expect(find(empty({ workouts: workouts(broken) }), 'train_run_7')).toMatchObject({
+      earned: false,
+      current: 3,
+    });
+  });
+
+  it('diet, supplements and water runs count consecutive days only', () => {
+    const input = empty({
+      dietOnTargetDays: new Set(run('2026-10-02', 7)),
+      supplementDays: new Set(run('2026-10-08', 7)),
+      waterGoalDays: new Set([...run('2026-10-01', 5), ...run('2026-10-10', 4)]),
+    });
+    expect(find(input, 'diet_run_7').earned).toBe(true);
+    expect(find(input, 'supplement_run_7')).toMatchObject({ earned: true, earnedOn: '2026-10-14' });
+    expect(find(input, 'water_run_7')).toMatchObject({ earned: false, current: 4 });
+    expect(find(input, 'diet_run_30').rarity).toBe('epic');
+  });
+
+  it('a perfect day needs diet, supplements, water and training that day or the day before', () => {
+    const days = run('2026-10-08', 7);
+    const base = {
+      dietOnTargetDays: new Set(days),
+      supplementDays: new Set(days),
+      waterGoalDays: new Set(days),
+      // Every other day: a rest day always follows a training day.
+      workouts: workouts(days.filter((_, i) => i % 2 === 0)),
+    };
+    expect(perfectDays(empty(base)).size).toBe(7);
+    expect(find(empty(base), 'perfect_run_7')).toMatchObject({ earned: true, rarity: 'epic' });
+    // Two rest days in a row break it.
+    const lazy = empty({ ...base, workouts: workouts([days[0]!, days[3]!, days[6]!]) });
+    expect(find(lazy, 'perfect_run_7').earned).toBe(false);
+    // A missed supplement breaks it, unless the user has no supplements at all.
+    const missed = { ...base, supplementDays: new Set(days.slice(1)) };
+    expect(find(empty(missed), 'perfect_run_7').earned).toBe(false);
+    expect(find(empty({ ...missed, noSupplements: true }), 'perfect_run_7').earned).toBe(true);
+  });
+
+  it('Night owl: 5 workouts started from 9 pm', () => {
+    const late = run('2026-10-01', 5).map((day, i) => ({ id: `n${i}`, day, hour: 21 }));
+    expect(find(empty({ workouts: late }), 'night_owl').earned).toBe(true);
   });
 });

@@ -139,3 +139,28 @@ describe('badge sheet: which badge to celebrate', () => {
     expect(badgeToCelebrate(earned, new Set(earned.map((b) => b.id)))).toBeNull();
   });
 });
+
+describe('supplement and water days', () => {
+  it('a day counts when every supplement of that day is ticked, water when it reaches the goal', async () => {
+    await seed();
+    await mockClient.from('supplements').insert([
+      { id: id(500), name: 'Creatine', created_at: '2026-10-01T08:00:00Z' },
+      { id: id(501), name: 'Vitamin D', created_at: '2026-10-13T08:00:00Z' },
+    ]);
+    await mockClient.from('supplement_logs').insert([
+      { id: id(510), day: '2026-10-12', supplement_id: id(500) },
+      { id: id(511), day: '2026-10-13', supplement_id: id(500) },
+    ]);
+    await mockClient.from('water_logs').insert([
+      { id: id(520), day: '2026-10-12', ml: 2000 },
+      { id: id(521), day: '2026-10-12', ml: 500 },
+      { id: id(522), day: '2026-10-13', ml: 2000 },
+    ]);
+    const a = await fetchActivity('UTC');
+    // The 13th also needed Vitamin D (added that day).
+    expect([...a.supplementDays!]).toEqual(['2026-10-12']);
+    expect(a.noSupplements).toBe(false);
+    // Goal 2,500 ml: only the 12th reached it.
+    expect([...a.waterGoalDays!]).toEqual(['2026-10-12']);
+  });
+});
