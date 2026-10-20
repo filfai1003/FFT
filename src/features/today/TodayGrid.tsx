@@ -51,8 +51,6 @@ type GridProps = {
   onChange: (widgets: readonly WidgetItem[]) => void;
   aiDock: boolean;
   onAiDock: (visible: boolean) => void;
-  /** Where each card sits in the grid (Home scrolls to a card from its day ring). */
-  onBoxes?: (boxes: ReadonlyMap<WidgetId, CardBox>) => void;
 };
 
 /** The rows and row places when a drag started: every drop is worked out from them. */
@@ -75,7 +73,6 @@ export function TodayGrid({
   onChange,
   aiDock,
   onAiDock,
-  onBoxes,
 }: GridProps) {
   const { t } = useTranslation();
   const { colors, reduceMotion } = useTheme();
@@ -136,11 +133,6 @@ export function TodayGrid({
     setPreview(null);
     setDrag(null);
   };
-
-  const boxes = geometry.boxes;
-  useEffect(() => {
-    onBoxes?.(boxes);
-  }, [onBoxes, boxes]);
 
   const target = drag ? geometry.boxes.get(drag.id) : undefined;
 

@@ -175,21 +175,7 @@
     "summaryWorkoutDone": "Workout done",
     "summaryKcalLeft": "{{kcal}} kcal left",
     "summaryKcalOver": "{{kcal}} kcal over",
-    "summaryKcalEaten": "{{kcal}} kcal eaten",
-    "ringPercent": "{{n}}%",
-    "ringKcal": "{{kcal}} kcal",
-    "ringWorkout": "Workout",
-    "ringWorkoutDone": "Done",
-    "ringWorkoutToDo": "To do",
-    "ringWorkoutNoPlan": "No plan",
-    "ringStreak": "Streak",
-    "ringCaloriesA11y": "Calories: {{eaten}} of {{target}} kcal eaten",
-    "ringCaloriesNoTargetA11y": "Calories: {{eaten}} kcal eaten",
-    "ringWorkoutDoneA11y": "Workout: done today",
-    "ringWorkoutToDoA11y": "Workout: {{name}} not done yet",
-    "ringWorkoutNoPlanA11y": "Workout: no plan yet",
-    "ringWaterA11y": "Water: {{l}} of {{goal}} litres",
-    "ringHint": "Shows its card"
+    "summaryKcalEaten": "{{kcal}} kcal eaten"
   },
   "app": {
     "loadErrorTitle": "Can't load your data",

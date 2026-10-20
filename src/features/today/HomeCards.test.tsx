@@ -2,7 +2,7 @@ import '@/i18n';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { renderUI } from '@/test/render';
-import { DayRings, DaySummaryLine, Greeting } from './DayOverview';
+import { DaySummaryLine, Greeting } from './DayOverview';
 import { SupplementsWidget, WaterGlass, WaterWidget } from './Widgets';
 
 const mockSetTaken = jest.fn();
@@ -110,7 +110,7 @@ describe('Home · water glass', () => {
   });
 });
 
-describe('Home · greeting and day rings', () => {
+describe('Home · greeting', () => {
   it('greets by first name with a summary line', async () => {
     mockWorkout = { kind: 'next', name: 'Workout B' };
     await renderUI(
@@ -123,18 +123,5 @@ describe('Home · greeting and day rings', () => {
       /^Good (morning|afternoon|evening), Filippo$/,
     );
     expect(screen.getByText('Workout B today · 1,650 kcal left')).toBeTruthy();
-  });
-
-  it('four rings with labels for screen readers; a tap asks for its card', async () => {
-    const onRing = jest.fn();
-    mockWorkout = { kind: 'done' };
-    await renderUI(<DayRings onRing={onRing} />);
-    expect(screen.getByRole('button', { name: 'Calories: 750 of 2,400 kcal eaten' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Workout: done today' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Water: 1.3 of 2.0 litres' })).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('day-ring-water'));
-    expect(onRing).toHaveBeenCalledWith('water');
-    await fireEvent.press(screen.getByTestId('day-ring-streak'));
-    expect(onRing).toHaveBeenCalledWith('streak');
   });
 });

@@ -2,8 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BackHandler, Pressable, View, type ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackHandler, Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
@@ -33,9 +32,8 @@ import {
   startTodayEdit,
   useTodayEdit,
 } from './edit-store';
-import { DayRings, DaySummaryLine, Greeting } from './DayOverview';
-import type { CardBox } from './edit-grid';
-import { useHomeLayout, type WidgetId, type WidgetItem } from './layout-store';
+import { DaySummaryLine, Greeting } from './DayOverview';
+import { useHomeLayout, type WidgetItem } from './layout-store';
 import { dockHiddenAfterScroll } from './dock-scroll';
 import { useHint, useHintsStore } from './hints-store';
 import { TodayGrid } from './TodayGrid';
@@ -47,14 +45,6 @@ const EDIT_BAR_PADDING = 12;
 const EDIT_BAR_HEIGHT = touch.primaryButtonHeight + EDIT_BAR_PADDING * 2;
 
 /** Where a day ring goes when its card is hidden. */
-const ringFallback: Record<WidgetId, '/diet' | '/train' | '/progress'> = {
-  nutrition: '/diet',
-  water: '/diet',
-  supplements: '/diet',
-  workout: '/train',
-  weight: '/progress',
-  streak: '/progress',
-};
 
 /** Initials for the profile button ("Filippo Faiella" -> "FF"). */
 export function initials(name: string | null | undefined): string {
@@ -241,12 +231,6 @@ export function TodayScreen() {
   // The coach bar steps aside while scrolling down, comes back on the way up.
   const [dockHidden, setDockHidden] = useState(false);
   const lastY = useRef(0);
-  // A day ring scrolls to its card: where the grid starts in the page and each card in the grid.
-  const scrollRef = useRef<ScrollView>(null);
-  const gridY = useRef(0);
-  const boxes = useRef<ReadonlyMap<WidgetId, CardBox>>(new Map());
-  const insets = useSafeAreaInsets();
-  const { reduceMotion } = useTheme();
 
   const enterEdit = () => {
     tick();
@@ -294,19 +278,6 @@ export function TodayScreen() {
     });
   }, [userId, queryClient]);
 
-  // A hidden card has no place on the page: its ring opens the matching tab instead.
-  const showCard = (id: WidgetId) => {
-    const box = widgets.some((w) => w.id === id && w.visible) ? boxes.current.get(id) : undefined;
-    if (box) {
-      scrollRef.current?.scrollTo({
-        y: Math.max(0, gridY.current + box.y - insets.top - 12),
-        animated: !reduceMotion,
-      });
-      return;
-    }
-    router.navigate(ringFallback[id]);
-  };
-
   const change = (next: readonly WidgetItem[]) =>
     changeTodayDraft((d) => ({ ...d, widgets: next }));
 
@@ -318,7 +289,6 @@ export function TodayScreen() {
         // The coach bar floats over the page: the last card scrolls clear of it (and its shadow).
         bottomBarHeight={editing ? EDIT_BAR_HEIGHT + 16 : aiDock ? AI_DOCK_CLEARANCE : 24}
         gap={14}
-        scrollRef={scrollRef}
         onScroll={(e) => {
           const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
           const y = contentOffset.y;
@@ -385,13 +355,12 @@ export function TodayScreen() {
 
         {/* The summary line belongs to the greeting: closer to it than the page gap. */}
         {editing ? null : <DaySummaryLine style={{ marginTop: -8 }} />}
-        {editing ? null : <DayRings onRing={showCard} />}
         {editing ? null : <WeekStrip onLongPress={() => setLegend((v) => !v)} />}
         {!editing && legend && !tips ? <WeekLegend /> : null}
         {!editing && tips ? <TodayTips onDismiss={() => dismissHint('todayTips')} /> : null}
         {editing ? null : <ActiveSessionBanner />}
 
-        <View onLayout={(e) => (gridY.current = e.nativeEvent.layout.y)}>
+        <View>
           <TodayGrid
             widgets={widgets}
             editing={editing}
@@ -399,7 +368,6 @@ export function TodayScreen() {
             onChange={change}
             aiDock={aiDock}
             onAiDock={(visible) => changeTodayDraft((d) => ({ ...d, aiDock: visible }))}
-            onBoxes={(b) => (boxes.current = b)}
             renderWidget={(w, n) => {
               const Widget = widgetComponents[w.id];
               return (
