@@ -1445,6 +1445,7 @@
     "includedTitle": "AI included with Premium",
     "seePlans": "See the plans",
     "creditLeft": "{{percent}}% of this month's AI left",
+    "creditLeftLabel": "of this month's AI left",
     "creditRule": "Back to 100% on {{date}}. What you do not use carries over, up to {{cap}}%.",
     "useIncluded": "Use the included AI",
     "title": "AI coach",

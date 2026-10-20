@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
+import { DotBar } from '@/components/ui/DotBar';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
@@ -191,18 +193,37 @@ function IncludedCard() {
     );
 
   const inUse = effectiveAiSettings(settings, plan).provider === 'included';
+  const percent = credit ? creditPercent(credit.balanceMicros, credit.monthlyMicros) : 0;
   return (
     <Card gap={10}>
-      <Text variant="bodyS" muted>
-        {t('ai.includedTitle')}
-      </Text>
-      <Text variant="titleM" numeric>
-        {credit
-          ? t('ai.creditLeft', {
-              percent: creditPercent(credit.balanceMicros, credit.monthlyMicros),
-            })
-          : '—'}
-      </Text>
+      <CardTitle icon="sparkle" title={t('ai.includedTitle')} />
+      {credit ? (
+        // Canvas "AI coach": the share left as a big number and a filled bar, the words beside.
+        <>
+          <View
+            accessible
+            accessibilityLabel={t('ai.creditLeft', { percent })}
+            style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}
+          >
+            <Text variant="displayL" numeric aria-hidden>
+              {`${percent}%`}
+            </Text>
+            <Text muted aria-hidden style={{ flexShrink: 1 }}>
+              {t('ai.creditLeftLabel')}
+            </Text>
+          </View>
+          <DotBar
+            total={100}
+            on={Math.min(100, percent)}
+            size={12}
+            accessibilityLabel={t('ai.creditLeft', { percent })}
+          />
+        </>
+      ) : (
+        <Text variant="titleM" numeric>
+          {'—'}
+        </Text>
+      )}
       {credit ? (
         <Text variant="bodyS" muted>
           {t('ai.creditRule', {
