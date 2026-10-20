@@ -109,6 +109,29 @@ describe('theme', () => {
     },
   );
 
+  it.each(['light', 'dark'] as const)(
+    '%s: the ink of every area is readable on its soft colour (StatusChip, tiles; >= 4.5:1)',
+    (mode) => {
+      for (const highContrast of [false, true]) {
+        const th = buildTheme({ accent: 'red', highContrast, mode });
+        const pairs: [string, string, string][] = [
+          ['training', th.trainingInk, th.trainingSoft],
+          ['nutrition', th.nutritionInk, th.nutritionSoft],
+          ['water', th.waterInk, th.waterSoft],
+          ['better', th.successText, th.successSoft],
+          ['streak', th.streakInk, th.streakSoft],
+          ['worse', th.danger, th.dangerSoft],
+          ['neutral', th.text, th.surfaceAlt],
+          ['protein', th.macroInk.protein, th.macroSoft.protein],
+          ['carbs', th.macroInk.carbs, th.macroSoft.carbs],
+          ['fat', th.macroInk.fat, th.macroSoft.fat],
+        ];
+        for (const [area, ink, soft] of pairs)
+          expect([area, contrast(ink, soft) >= 4.5]).toEqual([area, true]);
+      }
+    },
+  );
+
   it('text on every accent colour is readable (>= 4.5:1), in both themes', () => {
     for (const mode of ['light', 'dark'] as const)
       for (const name of Object.keys(accentOptions) as (keyof typeof accentOptions)[]) {
