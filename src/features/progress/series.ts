@@ -22,6 +22,23 @@ export const useProgressPeriod = create<{ period: Period; setPeriod: (p: Period)
 
 const lastOf = <T>(list: readonly T[]) => list[list.length - 1];
 
+/**
+ * Whether a change is better or worse (DECISIONS 107): weight by the profile goal (lose fat: down,
+ * build muscle: up; maintain or none: neutral), and `smallerIsBetter` for body fat and the waist.
+ * Under `steady` the change counts as none.
+ */
+export function changeArea(
+  delta: number | null,
+  /** A profile goal (`lose_fat`, `maintain`, `build_muscle`) or `smallerIsBetter`. */
+  rule: string | null | undefined,
+  steady = 0.05,
+): 'better' | 'worse' | 'neutral' {
+  if (delta == null || Math.abs(delta) < steady) return 'neutral';
+  if (rule === 'build_muscle') return delta > 0 ? 'better' : 'worse';
+  if (rule === 'lose_fat' || rule === 'smallerIsBetter') return delta < 0 ? 'better' : 'worse';
+  return 'neutral';
+}
+
 export type BodyProgress = {
   from: string;
   to: string;
@@ -36,6 +53,8 @@ export type BodyProgress = {
   };
   bodyFat: {
     latestPct: number | null;
+    /** Values logged in the period (the buckets carry the last one forward). */
+    count: number;
     buckets: (number | null)[];
     deltaPts: number | null;
     leanKg: number | null;
@@ -109,6 +128,7 @@ export function bodyProgress(
     },
     bodyFat: {
       latestPct: latestBf?.bodyFatPct ?? null,
+      count: bfPoints.length,
       buckets: bfBuckets,
       deltaPts: change(bfPoints.map((p) => p.value)),
       leanKg: lastMass?.leanKg ?? null,

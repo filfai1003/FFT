@@ -20,7 +20,7 @@ import { displayWeight } from '@/domain/units';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { ExerciseThumb } from '@/features/train/exercise-image';
 import { goBack } from '@/lib/navigation';
-import { chartValues, signed } from './ProgressScreen';
+import { chartValues, signed, useChangeInk } from './ProgressScreen';
 import { useProgressPeriod } from './series';
 import { groupDetail, useStrength } from './strength';
 
@@ -33,6 +33,8 @@ export function StrengthScreen() {
   const [tab, setTab] = useState<'groups' | 'exercises'>('groups');
   const unit = usePreferencesStore((st) => st.weightUnit);
 
+  const { colors } = useTheme();
+  const ink = useChangeInk();
   const exercises = [...s.changes].sort((a, b) => b.pctChange - a.pctChange);
   const maxPct = Math.max(1, ...s.groups.map((g) => Math.abs(g.pctChange)));
 
@@ -76,7 +78,11 @@ export function StrengthScreen() {
                     justifyContent: 'space-between',
                   }}
                 >
-                  <Text variant="displayL" numeric>{`${signed(s.overall)}%`}</Text>
+                  <Text
+                    variant="displayL"
+                    numeric
+                    style={{ color: ink(s.overall) }}
+                  >{`${signed(s.overall)}%`}</Text>
                   <Text variant="bodyS" muted>
                     {t('progress.overall')}
                   </Text>
@@ -85,6 +91,8 @@ export function StrengthScreen() {
                   values={chartValues(s.series)}
                   rows={10}
                   stretch
+                  color={colors.trainingSoft}
+                  lastColor={colors.training}
                   accessibilityLabel={t('progress.strengthChart', { pct: signed(s.overall) })}
                 />
               </>
@@ -100,7 +108,8 @@ export function StrengthScreen() {
             )}
           </Card>
 
-          {tab === 'groups' ? (
+          {/* Nothing to list before the first change: the card above says how to get one. */}
+          {s.changes.length === 0 ? null : tab === 'groups' ? (
             <Section title={t('progress.byGroup')}>
               {s.groups.map((g) => (
                 <GroupRow
@@ -132,7 +141,7 @@ export function StrengthScreen() {
                       unit: unit,
                     })}
                     leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
-                    right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}
+                    right={<Pct value={c.pctChange} />}
                     onPress={() =>
                       router.push({
                         pathname: '/progress/exercise/[exerciseId]',
@@ -180,21 +189,32 @@ function GroupRow(props: {
           {t('progress.setsCount', { count: props.sets })}
         </Text>
       </View>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }} aria-hidden>
+        {/* Gains fill the bar in green; a loss leaves it empty and the number says it in red. */}
         <DotBar
           shape="segment"
           total={12}
           on={props.on}
           size={6}
           gap={3}
+          color={colors.success}
           accessibilityLabel={props.name}
         />
       </View>
-      <Text
-        variant="label"
-        style={{ width: 52, textAlign: 'right' }}
-      >{`${signed(props.pct)}%`}</Text>
+      <View style={{ width: 56, alignItems: 'flex-end' }}>
+        <Pct value={props.pct} />
+      </View>
     </Pressable>
+  );
+}
+
+/** A signed percentage in the colour of its change (the sign says it too). */
+function Pct({ value, digits = 1 }: { value: number; digits?: number }) {
+  const ink = useChangeInk();
+  return (
+    <Text variant="label" semibold numeric style={{ color: ink(value) }}>
+      {`${signed(value, digits)}%`}
+    </Text>
   );
 }
 
@@ -212,14 +232,19 @@ export function MuscleGroupScreen() {
   const s = useStrength(period);
   const d = groupDetail(s, g);
 
+  const ink = useChangeInk();
+  // Only the numbers there are: the volume change needs a few weeks to compare.
   const stats = [
-    { value: String(d.sets), label: t('progress.stat.sets') },
-    { value: String(d.setsPerWeek), label: t('progress.stat.perWeek') },
-    {
-      value: d.volumeChange != null ? `${signed(d.volumeChange, 0)}%` : '—',
-      label: t('progress.stat.volume'),
-    },
-  ];
+    { value: String(d.sets), label: t('progress.stat.sets'), color: colors.text },
+    { value: String(d.setsPerWeek), label: t('progress.stat.perWeek'), color: colors.text },
+    d.volumeChange != null
+      ? {
+          value: `${signed(d.volumeChange, 0)}%`,
+          label: t('progress.stat.volume'),
+          color: ink(d.volumeChange),
+        }
+      : null,
+  ].filter((x) => x != null);
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
@@ -245,15 +270,19 @@ export function MuscleGroupScreen() {
         {d.score != null ? (
           <>
             <View style={{ gap: 4 }}>
-              <Text variant="displayL" numeric>{`${signed(d.score)}%`}</Text>
+              <Text variant="displayL" numeric style={{ color: ink(d.score) }}>
+                {`${signed(d.score)}%`}
+              </Text>
               <Text variant="bodyS" muted>
                 {t('progress.avgChange')}
               </Text>
             </View>
             <DotColumnChart
-              values={chartValues(s.series)}
+              values={chartValues(d.series)}
               rows={10}
               stretch
+              color={colors.trainingSoft}
+              lastColor={colors.training}
               accessibilityLabel={t('progress.groupChart', {
                 name: t(`progress.group.${g}`),
                 pct: signed(d.score),
@@ -261,9 +290,14 @@ export function MuscleGroupScreen() {
             />
           </>
         ) : (
-          <Text variant="displayL" numeric muted>
-            {'—'}
-          </Text>
+          <EmptyState
+            card={false}
+            compact
+            icon="chart"
+            area="training"
+            title={t('empty.strengthTitle')}
+            body={t('empty.strengthBody')}
+          />
         )}
         <View
           style={{
@@ -275,7 +309,7 @@ export function MuscleGroupScreen() {
         >
           {stats.map((x) => (
             <View key={x.label} style={{ flex: 1, gap: 2 }}>
-              <Text variant="displayS" numeric>
+              <Text variant="displayS" numeric style={{ color: x.color }}>
                 {x.value}
               </Text>
               <Text variant="bodyS" muted>
@@ -286,30 +320,32 @@ export function MuscleGroupScreen() {
         </View>
       </Card>
 
-      <Section title={t('progress.exercisesEst')}>
-        {d.changes.map((c) => {
-          const ex = s.exerciseName(c.exerciseId);
-          return (
-            <ListRow
-              key={c.exerciseId}
-              title={ex?.name ?? ''}
-              info={t('progress.fromTo', {
-                from: Math.round(displayWeight(c.firstKg, unit)),
-                to: Math.round(displayWeight(c.lastKg, unit)),
-                unit: unit,
-              })}
-              leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
-              right={<Text variant="label">{`${signed(c.pctChange)}%`}</Text>}
-              onPress={() =>
-                router.push({
-                  pathname: '/progress/exercise/[exerciseId]',
-                  params: { exerciseId: c.exerciseId },
-                })
-              }
-            />
-          );
-        })}
-      </Section>
+      {d.changes.length === 0 ? null : (
+        <Section title={t('progress.exercisesEst')}>
+          {d.changes.map((c) => {
+            const ex = s.exerciseName(c.exerciseId);
+            return (
+              <ListRow
+                key={c.exerciseId}
+                title={ex?.name ?? ''}
+                info={t('progress.fromTo', {
+                  from: Math.round(displayWeight(c.firstKg, unit)),
+                  to: Math.round(displayWeight(c.lastKg, unit)),
+                  unit: unit,
+                })}
+                leading={ex ? <ExerciseThumb exercise={ex} size={40} /> : undefined}
+                right={<Pct value={c.pctChange} />}
+                onPress={() =>
+                  router.push({
+                    pathname: '/progress/exercise/[exerciseId]',
+                    params: { exerciseId: c.exerciseId },
+                  })
+                }
+              />
+            );
+          })}
+        </Section>
+      )}
     </Screen>
   );
 }

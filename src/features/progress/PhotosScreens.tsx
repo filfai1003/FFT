@@ -19,6 +19,7 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
 import { displayWeight } from '@/domain/units';
+import { useProfile } from '@/features/profile/api';
 import { usePrivacyStore } from '@/features/profile/privacy-store';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { authenticate } from '@/lib/biometrics';
@@ -36,6 +37,7 @@ import {
 } from './data';
 import { PhotoTile } from './PhotoTile';
 import { signed } from './ProgressScreen';
+import { changeArea } from './series';
 
 const infoFor = (e: BodyEntry | undefined, unit: 'kg' | 'lb') =>
   e
@@ -185,12 +187,23 @@ export function PhotosScreen() {
         })}
       </View>
 
-      <Button
-        label={t('photos.compare')}
-        variant="secondary"
-        disabled={days.length < 2}
-        onPress={() => router.push('/progress/photos/compare')}
-      />
+      {/* Before any photo the empty state invites them; with one date, say why compare waits. */}
+      {days.length === 0 ? null : (
+        <View style={{ gap: 6 }}>
+          <Button
+            label={t('photos.compare')}
+            variant="secondary"
+            icon="swap"
+            disabled={days.length < 2}
+            onPress={() => router.push('/progress/photos/compare')}
+          />
+          {days.length < 2 ? (
+            <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
+              {t('photos.compareHint')}
+            </Text>
+          ) : null}
+        </View>
+      )}
 
       <Sheet
         visible={deleting != null && toDelete.length > 0}
@@ -228,6 +241,7 @@ export function ComparePhotosScreen() {
   const lock = usePrivacyStore((s) => s.lockPhotos);
   const photos = usePhotos();
   const entries = useBodyEntries();
+  const goal = useProfile().data?.goal;
   const [mode, setMode] = useState<View2>('side');
   const [pose, setPose] = useState<Pose>('front');
   const [picking, setPicking] = useState<'left' | 'right' | null>(null);
@@ -245,20 +259,27 @@ export function ComparePhotosScreen() {
   const b = entryOf(right);
   const hidden = blur && !revealed;
 
+  // The change between the two dates, green when it goes the right way (DECISIONS 107, 114).
+  const item = (delta: number, l: string, rule: string | null | undefined) => {
+    const area = changeArea(delta, rule);
+    return {
+      v: signed(delta),
+      l,
+      color:
+        area === 'better' ? colors.successText : area === 'worse' ? colors.danger : colors.text,
+    };
+  };
   const diff = [
     a?.weightKg != null && b?.weightKg != null
-      ? {
-          v: signed(displayWeight(b.weightKg, unit) - displayWeight(a.weightKg, unit)),
-          l: unit,
-        }
+      ? item(displayWeight(b.weightKg, unit) - displayWeight(a.weightKg, unit), unit, goal)
       : null,
     a?.bodyFatPct != null && b?.bodyFatPct != null
-      ? { v: signed(b.bodyFatPct - a.bodyFatPct), l: t('photos.bfPts') }
+      ? item(b.bodyFatPct - a.bodyFatPct, t('photos.bfPts'), 'smallerIsBetter')
       : null,
     a?.measures.waist != null && b?.measures.waist != null
-      ? { v: signed(b.measures.waist - a.measures.waist), l: t('photos.waistCm') }
+      ? item(b.measures.waist - a.measures.waist, t('photos.waistCm'), 'smallerIsBetter')
       : null,
-  ].filter((x): x is { v: string; l: string } => x != null);
+  ].filter((x) => x != null);
 
   const show = async () => {
     if (lock && !(await authenticate(t('photos.unlock')))) return;
@@ -298,7 +319,22 @@ export function ComparePhotosScreen() {
         ))}
       </View>
 
-      {days.length < 2 ? null : (
+      {days.length < 2 ? (
+        photos.isSuccess ? (
+          <EmptyState
+            icon="camera"
+            title={t('photos.compareEmptyTitle')}
+            body={t('photos.compareEmptyBody', {
+              pose: t(`photos.pose.${pose}`).toLowerCase(),
+            })}
+            action={{
+              label: t('photos.add'),
+              icon: 'plus',
+              onPress: () => router.push('/check-in'),
+            }}
+          />
+        ) : null
+      ) : (
         <>
           {mode === 'side' ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -358,7 +394,7 @@ export function ComparePhotosScreen() {
               <View style={{ flexDirection: 'row' }}>
                 {diff.map((d) => (
                   <View key={d.l} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-                    <Text variant="displayS" numeric>
+                    <Text variant="displayS" numeric style={{ color: d.color }}>
                       {d.v}
                     </Text>
                     <Text variant="bodyS" muted>

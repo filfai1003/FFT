@@ -2,7 +2,7 @@ import '@/i18n';
 import { fireEvent, screen } from '@testing-library/react-native';
 import { useToastStore } from '@/lib/toast-store';
 import { renderUI } from '@/test/render';
-import { CommunityView, formatScore } from './CommunityView';
+import { CommunityView, formatScore, nextTarget } from './CommunityView';
 import { PublicProfileScreen } from './PublicProfileScreen';
 
 const mockPush = jest.fn();
@@ -63,7 +63,10 @@ jest.mock('./api', () => {
     }),
     useBoard: () => ({ isPending: false, isError: false, data: { total: 40, rows } }),
     useFriends: () => ({
-      data: [{ public_id: 'p9', name: 'Marta', level: 3, status: 'asked_you', value: null }],
+      data: [
+        { public_id: 'p9', name: 'Marta', level: 3, status: 'asked_you', value: null },
+        { public_id: 'p8', name: 'Sam', level: 2, status: 'friends', value: 5 },
+      ],
     }),
     usePublicProfile: () => ({
       isError: false,
@@ -117,10 +120,15 @@ describe('Community: leaderboard', () => {
     expect(screen.getByLabelText('4. Kenji, 8, Up 2')).toBeTruthy();
     expect(screen.getByText('Wants to be your friend')).toBeTruthy();
     expect(screen.getByLabelText('Accept Marta')).toBeTruthy();
+    // A friend next to you: how far ahead, in words and as two bars.
+    expect(screen.getByLabelText('Sam, 2 ahead of you')).toBeTruthy();
     expect(
       screen.getByLabelText('Your place: 12 of 40, Up 3 places since yesterday, 3'),
     ).toBeTruthy();
-    expect(screen.getByText('You · top 30%')).toBeTruthy();
+    expect(screen.getByText('of 40 · top 30%')).toBeTruthy();
+    // The next place on the board as a goal with a fill (DECISIONS 114).
+    expect(screen.getByText('5 more to reach #4')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'On the way to place 4' })).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('1: Noor, 12'));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/progress/community-profile',
@@ -138,6 +146,25 @@ describe('Community: leaderboard', () => {
     expect(mockPush).toHaveBeenCalledWith('/profile/premium');
   });
 
+  it('the next place: the row just above, the gap and the share of the way', () => {
+    const row = (place: number, value: number, is_me = false) => ({
+      public_id: `p${place}`,
+      name: `N${place}`,
+      level: 1,
+      value,
+      place,
+      place_before: place,
+      is_me,
+    });
+    const me = row(5, 4.5, true);
+    const next = nextTarget([row(1, 9), row(3, 6), row(4, 5), me], me);
+    expect(next?.row.place).toBe(4);
+    expect(next?.gap).toBe(0.5);
+    expect(next?.share).toBeCloseTo(0.9);
+    // First place: nobody to pass.
+    expect(nextTarget([row(1, 9, true), row(2, 6)], row(1, 9, true))).toBeNull();
+  });
+
   it('scores read as counts and signed percentages', () => {
     expect(formatScore('workouts', 12)).toBe('12');
     expect(formatScore('diet', 82.5)).toBe('82.5%');
@@ -153,6 +180,10 @@ describe('Community profile', () => {
     expect(screen.getByText('This is how others see you')).toBeTruthy();
     expect(screen.getByText('Filippo')).toBeTruthy();
     expect(screen.getByLabelText('Top 5%, Days on target, This week · place 2 of 40')).toBeTruthy();
+    // Scores as rings in their area colours; one without a score says so instead of a dash.
+    expect(screen.getByLabelText('Workouts this month: 3')).toBeTruthy();
+    expect(screen.getByLabelText('Days on diet target: No score yet')).toBeTruthy();
+    expect(screen.queryByText('—')).toBeNull();
     expect(screen.getByText('My code')).toBeTruthy();
     await fireEvent.press(screen.getByText('Leave the community'));
     expect(screen.getByText('Leave the community?')).toBeTruthy();

@@ -45,7 +45,6 @@ export function StreakCard({ game }: { game: GameData }) {
   const week = streakWeek(game.activity.loggedDays, today, weekStart);
   const target = nextStreakTarget(game.streak);
   const targetBadge = badgeCatalogue.find((b) => b.metric === 'streak' && b.target === target);
-  const logged = week.filter((d) => d.state === 'done').length;
   const todayOpen = week.some((d) => d.state === 'today');
   const title =
     game.streak === 0
@@ -107,15 +106,13 @@ export function StreakCard({ game }: { game: GameData }) {
           gap: 10,
         }}
       >
+        {/* The strip shows the week; the line under it only says what to do (DECISIONS 114). */}
         <WeekStrip week={week} />
-        <Text variant="bodyS" muted>
-          {[
-            t('game.weekSummary', { count: logged, total: 7 }),
-            todayOpen ? t('game.todayToLog') : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </Text>
+        {todayOpen && game.streak > 0 ? (
+          <Text variant="bodyS" semibold style={{ color: colors.streakInk }}>
+            {t('game.logToday')}
+          </Text>
+        ) : null}
       </View>
     </Card>
   );
