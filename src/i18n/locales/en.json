@@ -362,11 +362,33 @@
     "thisCycle": "Cycle {{n}}",
     "explore": "Explore",
     "yourPlans": "Your plans",
-    "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done"
+    "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done",
+    "cycleDone": "{{done}} of {{total}} done",
+    "cycleLabel": "Cycle {{n}}, {{done}} of {{total}} days done",
+    "dayState": {
+      "next": "Up next",
+      "done": "Done",
+      "doneOn": "Done {{weekday}}",
+      "todo": "To do"
+    },
+    "moreExercises": "+{{count}} more",
+    "ago": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "days_one": "{{count}} day ago",
+      "days_other": "{{count}} days ago",
+      "date": "on {{date}}"
+    },
+    "lastWorkout": "Last workout {{when}}",
+    "lastTime": "last time {{when}}",
+    "neverDone": "first time"
   },
   "plan": {
     "more": "More options: rename, duplicate, archive, delete",
     "anyDay": "Any day can be trained at any time",
+    "anyDayShort": "any day can be trained at any time",
+    "exerciseCount_one": "{{count}} exercise",
+    "exerciseCount_other": "{{count}} exercises",
     "tagUpNext": "Up next",
     "tagDone": "Done · {{weekday}}",
     "tagDoneOut": "Done · {{weekday}} · Out of order",
