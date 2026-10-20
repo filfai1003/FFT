@@ -5,17 +5,21 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
 import { KeyboardAwareScrollView } from '@/components/ui/keyboard';
 import { Screen } from '@/components/ui/Screen';
+import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { mealForHour, meals, type Meal } from '@/domain/diet';
 import { useToday } from '@/features/profile/use-today';
+import { AddButton } from './AddButton';
 import { MealSheet } from './MealSheet';
+import { VerifiedTick } from './VerifiedTick';
 import { QuickAddSheet } from './QuickAddSheet';
 import { useFoodSearch, useMyFoods, useRecentFoods, type Food } from './foods';
 import { mergeFoods, useOffSearch } from './off';
@@ -61,6 +65,7 @@ export function FoodSearchScreen() {
   const loading =
     tab === 'results' && q.length >= 2 && (local.isFetching || off.isFetching) && list.length === 0;
 
+  const createFood = () => router.push({ pathname: '/food/new', params: { meal, day } });
   const open = (food: Food) =>
     router.push({
       pathname: '/food/[foodId]',
@@ -138,65 +143,51 @@ export function FoodSearchScreen() {
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          {loading ? <Text muted>{t('diet.searching')}</Text> : null}
-          {!loading && list.length === 0 ? (
-            <Text muted>
-              {tab === 'results' && q.length < 2 ? t('diet.typeToSearch') : t('diet.noFoods')}
-            </Text>
+          {loading ? (
+            <SkeletonGroup accessibilityLabel={t('diet.searching')}>
+              <SkeletonRows count={5} />
+            </SkeletonGroup>
           ) : null}
-          {list.map((f) => (
-            <View
-              key={f.id}
-              style={{
-                minHeight: 64,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                borderBottomWidth: 1,
-                borderColor: colors.borderDecorative,
-              }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${f.name}, ${Math.round(f.per100.kcal)} ${t('common.kcal')}`}
-                onPress={() => open(f)}
-                style={{ flex: 1, minHeight: 64, justifyContent: 'center', gap: 3 }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text variant="body" numberOfLines={1} style={{ flexShrink: 1 }}>
-                    {f.name}
-                  </Text>
-                  {f.verified ? (
-                    <View
-                      accessibilityLabel={t('diet.verified')}
-                      style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.text }}
-                    />
-                  ) : null}
-                </View>
-                <Text variant="bodyS" muted>
-                  {t('diet.per100', {
-                    p: round(f.per100.protein),
-                    c: round(f.per100.carbs),
-                    f: round(f.per100.fat),
-                  })}
-                </Text>
-              </Pressable>
-              <Text variant="displayS" numeric>
-                {Math.round(f.per100.kcal)}
-              </Text>
-              <IconButton
-                icon="plus"
-                accessibilityLabel={t('diet.chooseAmount', { name: f.name })}
-                onPress={() => setQuick(f)}
+          {!loading && list.length === 0 ? (
+            // Each empty list says why and offers the way on (create the food).
+            <View style={{ paddingTop: 12 }}>
+              <EmptyState
+                compact
+                icon={tab === 'mine' ? 'edit' : 'search'}
+                area="nutrition"
+                title={
+                  tab === 'mine'
+                    ? t('diet.noMineTitle')
+                    : tab === 'recent'
+                      ? t('diet.noRecentTitle')
+                      : q.length < 2
+                        ? t('diet.searchTitle')
+                        : t('diet.noResultsTitle')
+                }
+                body={
+                  tab === 'mine'
+                    ? t('diet.noMineBody')
+                    : tab === 'recent'
+                      ? t('diet.noRecentBody')
+                      : q.length < 2
+                        ? t('diet.typeToSearch')
+                        : t('diet.noResultsBody')
+                }
+                action={{ label: t('diet.createFood'), onPress: createFood }}
               />
             </View>
+          ) : null}
+          {list.map((f) => (
+            <FoodRow key={f.id} food={f} onOpen={() => open(f)} onAdd={() => setQuick(f)} />
           ))}
-          <Button
-            label={t('diet.createFood')}
-            variant="ghost"
-            onPress={() => router.push({ pathname: '/food/new', params: { meal, day } })}
-            style={{ marginTop: 14 }}
-          />
+          {list.length > 0 ? (
+            <Button
+              label={t('diet.createFood')}
+              variant="ghost"
+              onPress={createFood}
+              style={{ marginTop: 14 }}
+            />
+          ) : null}
         </KeyboardAwareScrollView>
       </Screen>
 
@@ -208,6 +199,85 @@ export function FoodSearchScreen() {
       />
       <QuickAddSheet food={quick} meal={meal} day={day} onClose={() => setQuick(null)} />
     </>
+  );
+}
+
+/**
+ * One result (canvas "Food search"): a tile with the food's initial, its name with a green tick
+ * when verified, the macros per 100 g, the kcal per 100 g, and "+" to pick an amount here.
+ */
+function FoodRow({
+  food: f,
+  onOpen,
+  onAdd,
+}: {
+  food: Food;
+  onOpen: () => void;
+  onAdd: () => void;
+}) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const initial = f.name.trim().charAt(0).toUpperCase() || '?';
+  return (
+    <View
+      style={{
+        minHeight: 68,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        borderBottomWidth: 1,
+        borderColor: colors.borderDecorative,
+      }}
+    >
+      <View
+        aria-hidden
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 14,
+          backgroundColor: colors.nutritionSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Text variant="body" semibold style={{ color: colors.nutritionInk }}>
+          {initial}
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${f.name}${f.verified ? `, ${t('diet.verified')}` : ''}, ${Math.round(f.per100.kcal)} ${t('common.kcal')}`}
+        onPress={onOpen}
+        style={{ flex: 1, minHeight: 64, justifyContent: 'center', gap: 3 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text variant="body" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {f.name}
+          </Text>
+          {f.verified ? <VerifiedTick /> : null}
+        </View>
+        <Text variant="bodyS" muted numberOfLines={1}>
+          {t('diet.per100', {
+            p: round(f.per100.protein),
+            c: round(f.per100.carbs),
+            f: round(f.per100.fat),
+          })}
+        </Text>
+      </Pressable>
+      <View aria-hidden style={{ alignItems: 'flex-end' }}>
+        <Text variant="displayS" numeric>
+          {Math.round(f.per100.kcal)}
+        </Text>
+        <Text variant="label" muted>
+          {t('common.kcal')}
+        </Text>
+      </View>
+      <AddButton
+        filled
+        accessibilityLabel={t('diet.chooseAmount', { name: f.name })}
+        onPress={onAdd}
+      />
+    </View>
   );
 }
 

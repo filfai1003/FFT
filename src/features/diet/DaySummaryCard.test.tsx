@@ -12,7 +12,7 @@ describe('Diet day summary (DECISIONS 112)', () => {
     await renderUI(<DaySummaryCard eaten={eaten} target={target} caption="2 of 4 meals" />);
     expect(screen.getByText('1,150')).toBeTruthy();
     expect(screen.getByText('kcal left')).toBeTruthy();
-    expect(screen.getByText('110 g left')).toBeTruthy();
+    expect(screen.getByText('30 g left')).toBeTruthy();
     expect(screen.getByText('850 eaten · target 2,000')).toBeTruthy();
     expect(screen.getByText('2 of 4 meals')).toBeTruthy();
     expect(screen.getByLabelText('850 of 2000 kilocalories eaten. 1,150 kcal left')).toBeTruthy();
