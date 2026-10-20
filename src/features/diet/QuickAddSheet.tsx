@@ -10,6 +10,7 @@ import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import type { Food } from './foods';
 import { useLogFood, useSetLogDeleted } from './log';
+import { MacroValues } from './MacroValues';
 
 type Props = {
   food: Food | null;
@@ -66,17 +67,9 @@ function Body({ food, meal, day, onClose }: Props & { food: Food }) {
         />
       }
     >
-      <View
-        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}
-      >
-        <Text variant="bodyS" muted>
-          {t('diet.macroLine', {
-            p: Math.round(values.protein),
-            c: Math.round(values.carbs),
-            f: Math.round(values.fat),
-          })}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+      {/* The portion at a glance: its kcal big, then the macros in their colours. */}
+      <View style={{ gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
           <Text variant="displayM" numeric>
             {Math.round(values.kcal)}
           </Text>
@@ -84,6 +77,7 @@ function Body({ food, meal, day, onClose }: Props & { food: Food }) {
             {t('common.kcal')}
           </Text>
         </View>
+        <MacroValues macros={values} />
       </View>
       <Stepper
         variant="amount"
