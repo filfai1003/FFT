@@ -27,6 +27,8 @@ import {
 } from '@/domain/community';
 import { useGamification } from '@/features/gamification/data';
 import { Avatar, dayMonth } from '@/features/gamification/components';
+import { cleanLook } from '@/domain/community-look';
+import { LookLine, MemberAvatar, useLookA11y } from './MemberAvatar';
 import { usePlanStore } from '@/lib/plan';
 import { SectionHead } from '@/features/gamification/MeCards';
 import { useProfile } from '@/features/profile/api';
@@ -695,7 +697,7 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
             style={{ flex: 1, alignItems: 'center', gap: 6 }}
           >
             {first ? <Icon name="trophy" size={24} color={colors.streakInk} /> : null}
-            <Avatar name={r.name} size={size} ring={first} />
+            <MemberAvatar name={r.name} look={cleanLook(r.look)} size={size} ring={first} />
             <Text semibold numberOfLines={1} style={{ fontSize: 14 }}>
               {r.name}
             </Text>
@@ -775,12 +777,14 @@ function PlaceRow({
   const { colors } = useTheme();
   const router = useRouter();
   const moveText = useMoveText();
+  const lookA11y = useLookA11y();
+  const look = cleanLook(row.look);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={t('community.board.rowA11y', {
         place: row.place,
-        name: row.name,
+        name: `${row.name}${lookA11y(look)}`,
         value: formatScore(metric, row.value),
         move: moveText(row),
       })}
@@ -800,11 +804,14 @@ function PlaceRow({
       <Text semibold numeric style={{ width: 28, color: colors.textMuted }}>
         {row.place}
       </Text>
-      <Avatar name={row.name} />
+      <MemberAvatar name={row.name} look={look} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text medium numberOfLines={1}>
-          {row.name}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text medium numberOfLines={1} style={{ flexShrink: 1 }}>
+            {row.name}
+          </Text>
+          <LookLine look={look} size={16} />
+        </View>
         <MoveLine row={row} />
       </View>
       <Text semibold numeric>
@@ -814,7 +821,13 @@ function PlaceRow({
   );
 }
 
-type FriendRow = { public_id: string; name: string; status: string; value: number | null };
+type FriendRow = {
+  public_id: string;
+  name: string;
+  status: string;
+  value: number | null;
+  look?: unknown;
+};
 
 /**
  * A friend's score next to yours as two bars (canvas ProgressCommunity, DECISIONS 114): theirs in
@@ -876,6 +889,7 @@ function FriendsCard({
   const router = useRouter();
   const answer = useAnswerFriend();
   const showToast = useToastStore((s) => s.show);
+  const lookA11y = useLookA11y();
   // What a friend's line says: a request, no score, or how far ahead / behind you they are.
   const subtitle = (f: FriendRow): string => {
     if (f.status === 'asked_you') return t('community.friends.askedYou');
@@ -919,7 +933,10 @@ function FriendsCard({
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={[f.name, f.status === 'friends' ? subtitle(f) : null]
+            accessibilityLabel={[
+              `${f.name}${lookA11y(cleanLook(f.look))}`,
+              f.status === 'friends' ? subtitle(f) : null,
+            ]
               .filter(Boolean)
               .join(', ')}
             onPress={() => {
@@ -935,11 +952,14 @@ function FriendsCard({
               paddingVertical: 8,
             }}
           >
-            <Avatar name={f.name} size={38} />
+            <MemberAvatar name={f.name} look={cleanLook(f.look)} size={38} />
             <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-              <Text semibold numberOfLines={1}>
-                {f.name}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text semibold numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {f.name}
+                </Text>
+                <LookLine look={cleanLook(f.look)} size={16} />
+              </View>
               <Text variant="bodyS" muted>
                 {subtitle(f)}
               </Text>
@@ -1203,7 +1223,7 @@ export function CommunityAvatarButton() {
       }}
       style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Avatar name={me.data.name} size={44} />
+      <MemberAvatar name={me.data.name} look={cleanLook(me.data.look)} size={44} />
     </Pressable>
   );
 }

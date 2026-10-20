@@ -11,6 +11,7 @@ import {
   type CommunityMetric,
   type CommunityPeriod,
 } from '@/domain/community';
+import type { Frame, ProfileColour, Title } from '@/domain/community-look';
 import { goalForDay, hasTarget } from '@/domain/diet';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useGoals } from '@/features/diet/log';
@@ -22,6 +23,7 @@ import { useExercises } from '@/features/train/exercises';
 import { useActivePlan } from '@/features/train/plans';
 import { getMode } from '@/lib/mode';
 import { getAuthClient } from '@/lib/supabase';
+import { removeAvatarFile, setAvatar, setPhotoPath } from './avatar-photo';
 
 /**
  * The community lives on the server only (DECISIONS 90), like the relay: shared leaderboards are
@@ -44,6 +46,14 @@ export type CommunityMe = {
   badges: string[];
   joined_at: string;
   submitted_at: string | null;
+  // The member's own look (DECISIONS 119), kept even while hidden from others (plan ended).
+  profile_colour?: string | null;
+  frame?: string | null;
+  title?: string | null;
+  showcase_badge?: string | null;
+  photo_path?: string | null;
+  /** What others see now (null: defaults, or no longer Supporter / Premium). */
+  look?: unknown;
 } & Partial<CommunityGroups>;
 
 export type BoardRow = {
@@ -54,6 +64,8 @@ export type BoardRow = {
   place: number;
   place_before: number;
   is_me: boolean;
+  /** The member's look (DECISIONS 119): read with `cleanLook`; absent from older servers. */
+  look?: unknown;
 };
 /**
  * A board within an audience (DECISIONS 117). `reason`: why a country / class board is empty
@@ -76,6 +88,7 @@ export type Friend = {
   level: number;
   status: FriendStatus;
   value: number | null;
+  look?: unknown;
 };
 
 export type PublicProfile = {
@@ -85,6 +98,7 @@ export type PublicProfile = {
   badges: string[];
   joined_at: string;
   is_me: boolean;
+  look?: unknown;
   friend: FriendStatus | null;
   scores: {
     period: CommunityPeriod;
@@ -210,11 +224,58 @@ export function useSetCommunityName() {
 export function useLeaveCommunity() {
   const invalidate = useInvalidateCommunity();
   return useMutation({
-    mutationFn: () => rpc<void>('community_leave'),
+    mutationFn: async () => {
+      // The photo's file goes at once (the server also queues it when the row goes).
+      const me = await rpc<CommunityMe | null>('community_me').catch(() => null);
+      await removeAvatarFile(me?.photo_path);
+      return rpc<void>('community_leave');
+    },
     onSuccess: () => {
       lastSubmit.clear();
       return invalidate();
     },
+  });
+}
+
+export type Cosmetics = {
+  colour: ProfileColour | null;
+  frame: Frame | null;
+  title: Title | null;
+  badge: string | null;
+};
+
+/** Colour, frame, title and showcase badge (Supporter / Premium; all null always allowed). */
+export function useSetCosmetics() {
+  const invalidate = useInvalidateCommunity();
+  return useMutation({
+    mutationFn: (c: Cosmetics) =>
+      rpc<CommunityMe>('community_set_cosmetics', {
+        p_colour: c.colour,
+        p_frame: c.frame,
+        p_title: c.title,
+        p_badge: c.badge,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * A new photo (`localUri`: a local JPEG already squared and shrunk), a stored one back (`path`,
+ * undo), or none (both null). Returns the photo path now in use.
+ */
+export function useSetAvatar() {
+  const invalidate = useInvalidateCommunity();
+  return useMutation({
+    mutationFn: async (a: {
+      publicId: string;
+      localUri?: string | null;
+      path?: string | null;
+    }): Promise<string | null> => {
+      if (a.localUri) return setAvatar(a.publicId, a.localUri);
+      await setPhotoPath(a.path ?? null);
+      return a.path ?? null;
+    },
+    onSuccess: invalidate,
   });
 }
 

@@ -689,6 +689,19 @@ async function personPage(id) {
     const r = await api('/api/user/temp-password', { userId: p.id });
     await showTempPassword(r.email, r.password);
   };
+  // Community photo (DECISIONS 119): other members see it, so it can be taken down here.
+  const removePhoto = async () => {
+    if (!(await needEditing())) return;
+    const ok = await confirmDialog(
+      'Remove their community photo?',
+      `Other members will see ${p.name || p.email}'s initial instead. The file is deleted from storage at the next clean-up. They can upload another one.`,
+      { confirm: 'Remove photo', danger: true },
+    );
+    if (!ok) return;
+    await api('/api/community/remove-photo', { userId: p.id });
+    toast('Community photo removed');
+    route();
+  };
   return [
     h(
       'div',
@@ -756,6 +769,8 @@ async function personPage(id) {
           h('dd', {}, p.onboarded_at ? dateOnly(p.onboarded_at) : 'Not yet'),
           h('dt', {}, 'Last seen'),
           h('dd', {}, ago(p.last_sign_in_at)),
+          h('dt', {}, 'Community photo'),
+          h('dd', {}, p.community_photo ? `community-avatars/${p.community_photo}` : 'None'),
         ),
         h(
           'div',
@@ -778,6 +793,17 @@ async function personPage(id) {
             },
             'Temporary password',
           ),
+          p.community_photo
+            ? h(
+                'button',
+                {
+                  class: 'btn',
+                  type: 'button',
+                  onclick: () => void removePhoto().catch((e) => toast(e.message)),
+                },
+                'Remove community photo',
+              )
+            : null,
         ),
       ),
       h(
@@ -1979,6 +2005,7 @@ const ACTIONS = {
   'sudo.enter': 'Unlocked editing',
   'plan.set': 'Changed a plan',
   'password.temporary': 'Gave a temporary password',
+  'community.photo.remove': 'Removed a community photo',
   'password.dismiss': 'Dismissed a password request',
   'errors.clear': 'Marked a problem as fixed',
   'ai.model': 'Changed the AI coach model',
@@ -2007,6 +2034,7 @@ function describe(action, d) {
   if (action === 'read.user') return d.id ? `${String(d.id).slice(0, 8)}…` : '';
   if (action === 'plan.set')
     return `${d.plan === 'premium' ? 'Premium' : 'Free'}${d.userId ? ` · ${d.userId.slice(0, 8)}…` : ''}`;
+  if (action === 'community.photo.remove') return d.userId ? `${d.userId.slice(0, 8)}…` : '';
   if (action === 'password.temporary')
     return d.email ?? (d.userId ? `${d.userId.slice(0, 8)}…` : '');
   if (action === 'ai.model') return d.model || 'back to the default';

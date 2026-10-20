@@ -18,7 +18,9 @@ import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { badgeCatalogue, levelFor, xpForLevel } from '@/domain/gamification';
 import { type CommunityMetric } from '@/domain/community';
-import { Avatar, BadgeDisc, badgeName } from '@/features/gamification/components';
+import { cleanLook } from '@/domain/community-look';
+import { BadgeDisc, badgeName } from '@/features/gamification/components';
+import { LookLine, MemberAvatar } from './MemberAvatar';
 import { SectionHead } from '@/features/gamification/MeCards';
 import { useGamification } from '@/features/gamification/data';
 import { goBack } from '@/lib/navigation';
@@ -71,6 +73,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
   const scoreOf = (m: CommunityMetric) => monthScores.find((s) => s.metric === m);
   const places = [...(p?.scores ?? [])].sort((a, b) => a.top_pct - b.top_pct).slice(0, 2);
   const badges = badgeCatalogue.filter((b) => p?.badges.includes(b.id));
+  const look = cleanLook(p?.look);
 
   return (
     <>
@@ -138,7 +141,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
                     next: p.level + 1,
                   })}
                 >
-                  <Avatar name={p.name} size={88} />
+                  <MemberAvatar name={p.name} look={look} size={88} />
                 </Gauge>
                 <View
                   aria-hidden
@@ -169,6 +172,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
               >
                 {p.name}
               </Text>
+              <LookLine look={look} size={20} />
               <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
                 {`${t('community.profile.since', { date: monthYear(p.joined_at) })} · ${t(
                   'community.profile.badges',
@@ -176,6 +180,15 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
                 )}`}
               </Text>
             </View>
+
+            {own ? (
+              <Button
+                variant="secondary"
+                icon="palette"
+                label={t('look.entry')}
+                onPress={() => router.push('/profile/customize')}
+              />
+            ) : null}
 
             {!own ? (
               p.friend === 'friends' ? (

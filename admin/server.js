@@ -561,6 +561,8 @@ async function api(req, res, url) {
               (select s.categories from public.account_sync s where s.user_id = u.id) as categories,
               coalesce((select s.encrypted from public.account_sync s where s.user_id = u.id), false) as encrypted,
               (select count(*) from public.vault_rows vr where vr.user_id = u.id and not vr.deleted) as encrypted_items,
+              -- Community photo (DECISIONS 119): public to members, so an admin can remove it.
+              (select m.photo_path from public.community_members m where m.user_id = u.id) as community_photo,
               (select coalesce(round(sum(a.cost_micros) / 1000000.0, 2), 0) from public.ai_usage a
                  where a.user_id = u.id and a.created_at > now() - interval '30 days') as ai_cost_30d,
               (select coalesce(json_agg(json_build_object('name', t.name, 'app', t.client_id is not null,
@@ -576,6 +578,26 @@ async function api(req, res, url) {
     );
     if (!out.rows[0]) throw new HttpError(404, 'No such account');
     return send(res, 200, Object.fromEntries(out.columns.map((c, i) => [c, out.rows[0][i]])));
+  }
+
+  if (route === 'POST /api/community/remove-photo') {
+    // Takes down a member's community photo (DECISIONS 119). The row's trigger queues the file
+    // in files_to_delete; the api service removes it from storage at its next clean-up.
+    needSudo();
+    const { userId } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
+    const out = await db.run(
+      `update public.community_members set photo_path = null, updated_at = now()
+       where user_id = $1 and photo_path is not null returning user_id`,
+      {
+        sudo: true,
+        commit: true,
+        params: [userId],
+        audit: { action: 'community.photo.remove', detail: { userId } },
+      },
+    );
+    if (!out.rows[0]) throw new HttpError(404, 'No community photo');
+    return send(res, 200, { removed: true });
   }
 
   if (route === 'POST /api/user/temp-password') {

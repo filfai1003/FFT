@@ -13,6 +13,9 @@ import { dayOfMonth, shortDateLabel, weekOf, weekdayLetter } from '@/domain/day'
 import { AI_DOCK_CLEARANCE, AiDock } from '@/features/ai/AiDock';
 import { Card } from '@/components/ui/Card';
 import { useCalendarData } from '@/features/progress/CalendarGrid';
+import { cleanLook } from '@/domain/community-look';
+import { useCommunityMe } from '@/features/community/api';
+import { MemberAvatar } from '@/features/community/MemberAvatar';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
@@ -215,6 +218,8 @@ export function TodayScreen() {
   const router = useRouter();
   const today = useToday();
   const profile = useProfile();
+  const member = useCommunityMe();
+  const look = cleanLook(member.data?.look);
   const saved = useHomeLayout();
   const { loaded, load } = saved;
   const draft = useTodayEdit((s) => s.draft);
@@ -325,7 +330,10 @@ export function TodayScreen() {
                 justifyContent: 'center',
               }}
             >
-              {initials(profile.data?.name) ? (
+              {look ? (
+                // The community look (DECISIONS 119): the photo or colour others see.
+                <MemberAvatar name={profile.data?.name ?? '?'} look={look} size={44} />
+              ) : initials(profile.data?.name) ? (
                 <Text variant="body" medium>
                   {initials(profile.data?.name)}
                 </Text>

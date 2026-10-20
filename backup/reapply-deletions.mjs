@@ -19,6 +19,8 @@ const env = (name) => {
   return v;
 };
 
+// Community photos (DECISIONS 119) are filed by public id, not account id: deleting the member
+// row again (reapply_deletions) queues the photo in files_to_delete, emptied by the api service.
 const BUCKETS = ['progress-photos', 'user-exercise-images', 'vault-files'];
 
 async function storage(path, init = {}) {
