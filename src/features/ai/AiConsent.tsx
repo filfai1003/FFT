@@ -4,8 +4,10 @@ import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
-import { useTheme } from '@/design/use-theme';
+import { CardTitle } from '@/components/ui/CardTitle';
+import type { IconName } from '@/components/ui/Icon';
+import type { Area } from '@/components/ui/IconTile';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useSessionStore } from '@/features/auth/session-store';
 import { activeConsent, useConsents, useSetConsent } from '@/features/profile/account';
 import { usePlanStore } from '@/lib/plan';
@@ -41,38 +43,31 @@ function AccessRows({
   onChange: (category: AiCategory, on: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   return (
     <View>
       {AI_CATEGORIES.map((c, i) => (
-        <View
+        <ToggleRow
           key={c}
-          style={{
-            minHeight: 56,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            borderTopWidth: i === 0 ? 0 : 1,
-            borderColor: colors.borderDecorative,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="bodyS">{t(`ai.access.${c}`)}</Text>
-            <Text variant="bodyS" muted>
-              {t(`ai.access.${c}Detail`)}
-            </Text>
-          </View>
-          <Toggle
-            value={value[c]}
-            onValueChange={(on) => onChange(c, on)}
-            accessibilityLabel={t(`ai.access.${c}`)}
-          />
-        </View>
+          name={t(`ai.access.${c}`)}
+          detail={t(`ai.access.${c}Detail`)}
+          value={value[c]}
+          onValueChange={(on) => onChange(c, on)}
+          icon={ACCESS_LOOK[c].icon}
+          area={ACCESS_LOOK[c].area}
+          divider={i > 0}
+        />
       ))}
     </View>
   );
 }
+
+/** Each category's tile (canvas "AI coach"): diet teal, training purple, the rest neutral. */
+const ACCESS_LOOK: Record<AiCategory, { icon: IconName; area: Area }> = {
+  profile: { icon: 'scale', area: 'neutral' },
+  diet: { icon: 'bowl', area: 'nutrition' },
+  training: { icon: 'dumbbell', area: 'training' },
+  photos: { icon: 'camera', area: 'neutral' },
+};
 
 /** "What the coach can see", saved at once (AI coach settings). */
 export function AiAccessCard() {
@@ -83,9 +78,7 @@ export function AiAccessCard() {
   if (!userId) return null;
   return (
     <Card size="small" gap={4}>
-      <Text variant="bodyS" muted>
-        {t('ai.access.title')}
-      </Text>
+      <CardTitle icon="eye" title={t('ai.access.title')} />
       <Text variant="bodyS" muted>
         {t('ai.access.detail')}
       </Text>

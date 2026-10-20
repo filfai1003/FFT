@@ -5,13 +5,14 @@ import { Platform, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { FormHeader } from '@/components/ui/FormHeader';
 import { Icon } from '@/components/ui/Icon';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { Toggle } from '@/components/ui/Toggle';
 import { useTheme } from '@/design/use-theme';
 import { signOut } from '@/features/auth/api';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -364,9 +365,7 @@ function CategoriesOnServer({ web }: { web: boolean }) {
 
   return (
     <View style={{ gap: 6, paddingTop: 4 }}>
-      <Text variant="bodyS" muted>
-        {t('serverCopy.categoriesTitle')}
-      </Text>
+      <CardTitle icon="shield" title={t('serverCopy.categoriesTitle')} />
       <SyncCategoryList value={shared} readOnly={web} onToggle={(c, on) => void toggle(c, on)} />
       {failed ? (
         <Text variant="bodyS" danger accessibilityRole="alert">
@@ -390,29 +389,21 @@ export function ServerCopyCard() {
   return (
     <>
       <Card size="small" gap={6}>
-        <View
-          style={{
-            minHeight: 60,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="bodyS">{t('serverCopy.title')}</Text>
+        {web ? (
+          <View style={{ minHeight: 60, gap: 2, justifyContent: 'center' }}>
+            <Text variant="body">{t('serverCopy.title')}</Text>
             <Text variant="bodyS" muted>
               {on ? t('serverCopy.onDetail') : t('serverCopy.offDetail')}
             </Text>
           </View>
-          {web ? null : (
-            <Toggle
-              value={on}
-              onValueChange={(v) => setSheet(v ? 'on' : 'off')}
-              accessibilityLabel={t('serverCopy.title')}
-            />
-          )}
-        </View>
+        ) : (
+          <ToggleRow
+            name={t('serverCopy.title')}
+            detail={on ? t('serverCopy.onDetail') : t('serverCopy.offDetail')}
+            value={on}
+            onValueChange={(v) => setSheet(v ? 'on' : 'off')}
+          />
+        )}
         {web ? (
           <Text variant="bodyS" muted>
             {t('serverCopy.webNote')}

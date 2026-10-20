@@ -55,7 +55,7 @@ export function ForgotPasswordSheet({
           <Button
             size="large"
             label={busy ? t('auth.forgot.sending') : t('auth.forgot.send')}
-            disabled={busy}
+            loading={busy}
             onPress={() => void send()}
           />
         )

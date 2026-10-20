@@ -3,12 +3,15 @@ import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
+import { IconTile, type Area } from './IconTile';
 import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
 import { Skeleton } from './Skeleton';
 import { Text } from './Text';
 
 export type MenuItem = {
   icon: IconName;
+  /** The tile's colour (DECISIONS 107): the area the row leads to. Default neutral. */
+  area?: Area;
   label: string;
   /** One muted line under the label ("Connect AI apps and your own tools"). */
   help?: string;
@@ -20,7 +23,8 @@ export type MenuItem = {
 };
 
 /**
- * A card of navigation rows (Profile, Settings), as in the canvas: icon in a soft tile, label (and
+ * A card of navigation rows (Profile, Settings), as in the canvas: icon in a tile of its area's colour
+ * (neutral by default), label (and
  * an optional help line), value, chevron. Rows are 56 high with a hairline divider between them;
  * `title` puts a small heading over the card ("Account", "Data").
  */
@@ -80,18 +84,7 @@ function MenuRow({ item: r, first }: { item: MenuItem; first: boolean }) {
         press.style,
       ]}
     >
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: radius.tile,
-          backgroundColor: colors.surfaceAlt,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Icon name={r.icon} size={18} color={colors.text} />
-      </View>
+      <IconTile icon={r.icon} area={r.area ?? 'neutral'} size={36} />
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text medium>{r.label}</Text>
         {r.help ? (

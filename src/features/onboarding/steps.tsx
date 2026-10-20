@@ -11,7 +11,6 @@ import { OptionCard } from '@/components/ui/OptionCard';
 import { Segmented } from '@/components/ui/Segmented';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
-import { useTheme } from '@/design/use-theme';
 import { MacroSplitCard } from '@/features/diet/MacroSplitCard';
 import { MealPlanEditor } from '@/features/diet/MealPlanEditor';
 import { LegalLinks } from '@/features/legal/LegalLinks';
@@ -22,23 +21,23 @@ type StepProps = { draft: OnboardingDraft; patch: (p: Partial<OnboardingDraft>) 
 
 export function GoalStep({ draft, patch }: StepProps) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
-  // Glyph and tint per goal, as in the canvas "Onboarding · goal".
+  // Glyph per goal, as in the canvas "Onboarding · goal": neutral tiles (a goal is no area of the
+  // colour code, DECISIONS 107; the arrow says it).
   const goals = [
-    ['lose_fat', 'loseFat', 'arrowDown', colors.warningSoft, colors.warningText],
-    ['maintain', 'maintain', 'minus', colors.waterSoft, colors.macroSplit.protein],
-    ['build_muscle', 'buildMuscle', 'arrowUp', colors.successSoft, colors.successText],
+    ['lose_fat', 'loseFat', 'arrowDown'],
+    ['maintain', 'maintain', 'minus'],
+    ['build_muscle', 'buildMuscle', 'arrowUp'],
   ] as const;
   return (
     <View style={{ gap: 10 }} accessibilityRole="radiogroup">
-      {goals.map(([value, key, icon, tint, ink]) => (
+      {goals.map(([value, key, icon]) => (
         <OptionCard
           key={value}
           title={t(`onboarding.goal.${key}`)}
           description={t(`onboarding.goal.${key}Detail`)}
           selected={draft.goal === value}
           onPress={() => patch({ goal: value })}
-          icon={{ name: icon, tint, ink }}
+          icon={{ name: icon }}
         />
       ))}
     </View>
@@ -301,12 +300,14 @@ export function ModeStep({ draft, patch }: StepProps) {
         description={t('onboarding.mode.trackingDetail')}
         selected={draft.dietMode === 'tracking'}
         onPress={() => patch({ dietMode: 'tracking' })}
+        icon={{ name: 'search', area: 'nutrition' }}
       />
       <OptionCard
         title={t('onboarding.mode.fixed')}
         description={t('onboarding.mode.fixedDetail')}
         selected={draft.dietMode === 'fixed_meals'}
         onPress={() => patch({ dietMode: 'fixed_meals' })}
+        icon={{ name: 'list', area: 'nutrition' }}
       />
     </View>
   );

@@ -7,6 +7,7 @@ import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { Gauge } from '@/components/ui/Gauge';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
+import { IconTile, useAreaColors, type Area } from '@/components/ui/IconTile';
 import { MenuList } from '@/components/ui/MenuList';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -130,16 +131,19 @@ export function ProfileScreen() {
   };
   const level = game?.level;
   const badgeLabel = useBadgeLabel();
+  const firstBadge = game ? nextBadges(game.badges, 1)[0] : undefined;
 
   const pills: {
     key: string;
     icon: IconName;
+    area: Area;
     value: string;
     label: string;
     onPress: () => void;
   }[] = [
     {
       key: 'streak',
+      area: 'streak',
       icon: 'flame',
       value: game ? formatInt(game.streak) : stats.data ? formatInt(stats.data.streak) : none,
       label: t('profile.stats.dayStreak'),
@@ -147,6 +151,7 @@ export function ProfileScreen() {
     },
     {
       key: 'badges',
+      area: 'streak',
       icon: 'medal',
       value: game ? formatInt(earned.length) : none,
       label: t('profile.stats.badges'),
@@ -154,6 +159,7 @@ export function ProfileScreen() {
     },
     {
       key: 'strength',
+      area: 'training',
       icon: 'chart',
       value: score == null ? none : `${score > 0 ? '+' : ''}${score}%`,
       label: t('profile.stats.strength'),
@@ -164,6 +170,7 @@ export function ProfileScreen() {
   const rings: {
     key: string;
     icon: IconName;
+    area: Area;
     value: string;
     label: string;
     share: number;
@@ -171,6 +178,7 @@ export function ProfileScreen() {
   }[] = [
     {
       key: 'logged',
+      area: 'streak',
       icon: 'calendar',
       value: stats.data
         ? t('profile.stats.ofDays', { n: stats.data.loggedThisMonth, total: daysSoFar })
@@ -184,6 +192,7 @@ export function ProfileScreen() {
     },
     {
       key: 'trained',
+      area: 'training',
       icon: 'dumbbell',
       value: month.data ? t('profile.stats.ofDays', { n: trainingDays, total: daysSoFar }) : none,
       label: t('profile.stats.trainingDays'),
@@ -215,7 +224,9 @@ export function ProfileScreen() {
             value={level?.progress ?? 0}
             size={112}
             stroke={6}
-            track={colors.borderDecorative}
+            // The level is an achievement: streak orange (DECISIONS 107), as on the canvas.
+            color={colors.streak}
+            track={colors.streakSoft}
             accessibilityLabel={
               level
                 ? t('game.levelRingA11y', {
@@ -232,7 +243,7 @@ export function ProfileScreen() {
                 width: 88,
                 height: 88,
                 borderRadius: 44,
-                backgroundColor: colors.borderDecorative,
+                backgroundColor: colors.surfaceAlt,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -292,26 +303,8 @@ export function ProfileScreen() {
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {pills.map((s) => (
-          <Card
-            key={s.key}
-            size="small"
-            gap={2}
-            onPress={() => {
-              tick();
-              s.onPress();
-            }}
-            accessibilityLabel={`${s.value} ${s.label}`}
-            style={{ flex: 1, flexBasis: 0, paddingVertical: 10, paddingHorizontal: 12 }}
-          >
-            <Icon name={s.icon} size={18} color={colors.text} />
-            <Text variant="displayS" numeric numberOfLines={1}>
-              {s.value}
-            </Text>
-            <Text variant="bodyS" muted numberOfLines={2}>
-              {s.label}
-            </Text>
-          </Card>
+        {pills.map(({ key, ...s }) => (
+          <StatPill key={key} {...s} />
         ))}
       </View>
 
@@ -323,30 +316,8 @@ export function ProfileScreen() {
         {t('profile.stats.thisMonth')}
       </Text>
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        {rings.map((r) => (
-          <Card
-            key={r.key}
-            gap={10}
-            style={{
-              flex: 1,
-              flexBasis: 0,
-              padding: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <Gauge value={r.share} size={48} stroke={5} accessibilityLabel={r.a11y}>
-              <Icon name={r.icon} size={20} color={colors.text} />
-            </Gauge>
-            <View style={{ flex: 1, minWidth: 0 }} aria-hidden>
-              <Text variant="displayS" numeric numberOfLines={1}>
-                {r.value}
-              </Text>
-              <Text variant="bodyS" muted>
-                {r.label}
-              </Text>
-            </View>
-          </Card>
+        {rings.map(({ key, ...r }) => (
+          <MonthRing key={key} {...r} />
         ))}
       </View>
 
@@ -380,18 +351,7 @@ export function ProfileScreen() {
                   borderTopColor: colors.divider,
                 }}
               >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: colors.surfaceAlt,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon name="trophy" size={17} color={colors.text} />
-                </View>
+                <IconTile icon="trophy" area="streak" size={36} />
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text medium numberOfLines={1}>
                     {x.name}
@@ -426,9 +386,24 @@ export function ProfileScreen() {
       />
       <Card style={{ paddingVertical: 14, paddingHorizontal: 8, flexDirection: 'row' }} gap={4}>
         {earned.length === 0 ? (
-          <Text variant="bodyS" muted style={{ flex: 1, paddingHorizontal: 6 }}>
-            {game ? badgeHow(t, nextBadges(game.badges, 1)[0]?.id ?? 'first_workout') : none}
-          </Text>
+          // No badge yet: the first one to earn, drawn as a soft (not yet orange) disc, and how.
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingHorizontal: 6,
+            }}
+          >
+            <IconTile icon={firstBadge?.glyph ?? 'medal'} area="streak" size={48} />
+            <View style={{ flex: 1, gap: 2 }}>
+              {firstBadge ? <Text medium>{badgeName(t, firstBadge.id)}</Text> : null}
+              <Text variant="bodyS" muted>
+                {game ? badgeHow(t, firstBadge?.id ?? 'first_workout') : none}
+              </Text>
+            </View>
+          </View>
         ) : (
           earned.slice(0, 4).map((b) => (
             <View
@@ -453,16 +428,19 @@ export function ProfileScreen() {
         items={[
           {
             icon: 'chart',
+            area: 'training',
             label: t('profile.links.progress'),
             onPress: () => router.push('/progress'),
           },
           {
             icon: 'clock',
+            area: 'training',
             label: t('profile.links.history'),
             onPress: () => router.push('/train/history'),
           },
           {
-            icon: 'flame',
+            icon: 'bowl',
+            area: 'nutrition',
             label: t('profile.links.goals'),
             value: goal
               ? goal.kcal != null
@@ -498,5 +476,97 @@ export function ProfileScreen() {
         </Pressable>
       ) : null}
     </Screen>
+  );
+}
+
+/**
+ * One of the three numbers under the name (canvas "Your profile"): a tile in the area's soft
+ * colour (streak and badges orange, strength purple, DECISIONS 107), its icon and label in the
+ * area's ink, so the three read apart before their words.
+ */
+function StatPill({
+  icon,
+  area,
+  value,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  area: Area;
+  value: string;
+  label: string;
+  onPress: () => void;
+}) {
+  const c = useAreaColors(area);
+  return (
+    <Card
+      size="small"
+      gap={2}
+      onPress={() => {
+        tick();
+        onPress();
+      }}
+      accessibilityLabel={`${value} ${label}`}
+      style={{
+        flex: 1,
+        flexBasis: 0,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: c.soft,
+        borderColor: c.soft,
+      }}
+    >
+      <Icon name={icon} size={20} color={c.ink} />
+      <Text variant="displayS" numeric numberOfLines={1}>
+        {value}
+      </Text>
+      <Text variant="label" semibold numberOfLines={2} style={{ color: c.ink }}>
+        {label}
+      </Text>
+    </Card>
+  );
+}
+
+/** "This month": a ring filled in the area's colour around its icon, the count beside it. */
+function MonthRing({
+  icon,
+  area,
+  value,
+  label,
+  share,
+  a11y,
+}: {
+  icon: IconName;
+  area: Area;
+  value: string;
+  label: string;
+  share: number;
+  a11y: string;
+}) {
+  const c = useAreaColors(area);
+  return (
+    <Card
+      gap={10}
+      style={{ flex: 1, flexBasis: 0, padding: 12, flexDirection: 'row', alignItems: 'center' }}
+    >
+      <Gauge
+        value={share}
+        size={48}
+        stroke={5}
+        color={c.fill}
+        track={c.soft}
+        accessibilityLabel={a11y}
+      >
+        <Icon name={icon} size={20} color={c.ink} />
+      </Gauge>
+      <View style={{ flex: 1, minWidth: 0 }} aria-hidden>
+        <Text variant="displayS" numeric numberOfLines={1}>
+          {value}
+        </Text>
+        <Text variant="bodyS" muted>
+          {label}
+        </Text>
+      </View>
+    </Card>
   );
 }

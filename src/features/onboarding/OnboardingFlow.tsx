@@ -143,7 +143,8 @@ export function OnboardingFlow() {
         <Button
           size="large"
           label={last ? t('onboarding.finish') : t('common.continue')}
-          disabled={busy || !canContinue(id, draft, today)}
+          disabled={!canContinue(id, draft, today)}
+          loading={busy}
           disabledReason={reason ? t(`onboarding.reason.${reason}`) : undefined}
           onPress={last ? finish : next}
         />

@@ -36,7 +36,8 @@ const light = {
   chartDotOff: '#E7E4DE',
   danger: '#B3261E',
   success: '#1F9D63',
-  successText: '#1A7F51',
+  // Darker than the fill so it stays >= 4.5:1 on successSoft too (StatusChip "better", DECISIONS 115).
+  successText: '#15744A',
   successSoft: '#DDF1E7',
   warning: '#E8890C',
   warningText: '#9A5800',

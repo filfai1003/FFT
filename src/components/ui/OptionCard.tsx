@@ -3,6 +3,7 @@ import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 import { Icon, type IconName } from './Icon';
+import { useAreaColors, type Area } from './IconTile';
 import { AnimatedPressable, pressFeedback, usePressScale } from './motion';
 import { Text } from './Text';
 
@@ -13,8 +14,11 @@ export type OptionCardProps = {
   onPress: () => void;
   /** `radio` (single choice, default) or `checkbox`. */
   role?: 'radio' | 'checkbox';
-  /** Optional glyph in a soft tile on the left (onboarding goal), with its tile and ink colours. */
-  icon?: { name: IconName; tint: string; ink: string };
+  /**
+   * Optional glyph in a soft tile on the left (onboarding), in an area's colours (DECISIONS 107;
+   * neutral by default). `tint` / `ink` still override them.
+   */
+  icon?: { name: IconName; area?: Area; tint?: string; ink?: string };
 };
 
 /**
@@ -31,6 +35,7 @@ export function OptionCard({
 }: OptionCardProps) {
   const { colors } = useTheme();
   const press = usePressScale(pressFeedback.surface);
+  const area = useAreaColors(icon?.area ?? 'neutral');
   return (
     <AnimatedPressable
       accessibilityRole={role}
@@ -65,13 +70,13 @@ export function OptionCard({
           style={{
             width: 44,
             height: 44,
-            borderRadius: 12,
-            backgroundColor: icon.tint,
+            borderRadius: 15,
+            backgroundColor: icon.tint ?? area.soft,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon name={icon.name} size={22} color={icon.ink} />
+          <Icon name={icon.name} size={22} color={icon.ink ?? area.ink} />
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>

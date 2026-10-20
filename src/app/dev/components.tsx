@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
 import { Chip } from '@/components/ui/Chip';
 import { DotBar } from '@/components/ui/DotBar';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
@@ -16,6 +17,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { Stepper } from '@/components/ui/Stepper';
 import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
+import { ToggleRow } from '@/components/ui/ToggleRow';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { dotsOn } from '@/domain/dots';
 import { accentOptions, type AccentName } from '@/design/tokens';
@@ -140,6 +142,7 @@ function Catalogue() {
           <Button label="Train a different day" variant="ghost" onPress={() => undefined} />
           <Button label="Discard workout" variant="danger" onPress={() => undefined} />
           <Button label="Disabled" disabled onPress={() => undefined} />
+          <Button label="Signing in" loading size="large" onPress={() => undefined} />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <IconButton icon="bell" accessibilityLabel="Notifications" onPress={() => undefined} />
             <IconButton icon="plus" accessibilityLabel="Add" onPress={() => undefined} />
@@ -185,6 +188,29 @@ function Catalogue() {
           <Row label="Rest timer done">
             <Toggle value={toggle} onValueChange={setToggle} accessibilityLabel="Rest timer done" />
           </Row>
+          <Row label="Disabled">
+            <Toggle value onValueChange={() => undefined} accessibilityLabel="Disabled" disabled />
+          </Row>
+          <Card size="small" gap={0}>
+            <CardTitle icon="shield" title="What is kept on the server" />
+            <ToggleRow
+              name="Diet"
+              detail="Foods you logged, meal plans and targets"
+              icon="bowl"
+              area="nutrition"
+              value={toggle}
+              onValueChange={setToggle}
+            />
+            <ToggleRow
+              divider
+              name="Training"
+              detail="Workouts, plans and sets"
+              icon="dumbbell"
+              area="training"
+              value={!toggle}
+              onValueChange={(v) => setToggle(!v)}
+            />
+          </Card>
         </Section>
 
         <Section title="INPUTS">
@@ -197,6 +223,7 @@ function Catalogue() {
           />
           <Input label="WEIGHT" variant="compact" defaultValue="26" keyboardType="decimal-pad" />
           <Input label="NAME" value="" onChangeText={() => undefined} error="Name is required" />
+          <Input label="Password" secureTextEntry defaultValue="secret" />
           <Text variant="label" muted>
             SETS
           </Text>

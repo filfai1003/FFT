@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
 import { Icon } from '@/components/ui/Icon';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
@@ -59,9 +60,7 @@ export function PhonePrivacyScreen() {
       {/* Lock and screen protection of this phone (DECISIONS 95): phones only. */}
       {Platform.OS !== 'web' ? (
         <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('phonePrivacy.lock')}
-          </Text>
+          <CardTitle icon="lock" title={t('phonePrivacy.lock')} />
           <ToggleRows
             items={[
               {
@@ -108,9 +107,7 @@ export function PhonePrivacyScreen() {
       ) : null}
 
       <Card size="small" gap={0}>
-        <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-          {t('privacy.photos')}
-        </Text>
+        <CardTitle icon="camera" title={t('privacy.photos')} />
         <ToggleRows
           items={[
             {

@@ -2,6 +2,7 @@ import { Pressable, View } from 'react-native';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
+import { pressFeedback } from './motion';
 import { Text } from './Text';
 
 export type SegmentedOption<T extends string> = { value: T; label: string; disabled?: boolean };
@@ -49,15 +50,16 @@ export function Segmented<T extends string>({
               tick();
               onChange(o.value);
             }}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
               minHeight: touch.minTarget - 6,
               borderRadius: 10,
               backgroundColor: selected ? colors.surfaceRaised : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: o.disabled ? 0.35 : 1,
-            }}
+              // Pressed: the same dimming as every other control (DECISIONS 110).
+              opacity: o.disabled ? 0.35 : pressed && !selected ? pressFeedback.opacity : 1,
+            })}
           >
             <Text
               variant="body"

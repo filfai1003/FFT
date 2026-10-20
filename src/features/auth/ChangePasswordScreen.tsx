@@ -101,7 +101,7 @@ export function ChangePasswordScreen() {
         <Button
           size="large"
           label={busy ? t('password.saving') : t('password.save')}
-          disabled={busy}
+          loading={busy}
           onPress={() => void submit()}
         />
       </BottomActionBar>

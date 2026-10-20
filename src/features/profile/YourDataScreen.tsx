@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { ListRow } from '@/components/ui/ListRow';
@@ -121,9 +122,7 @@ export function YourDataScreen() {
         </Text>
 
         <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.consents')}
-          </Text>
+          <CardTitle icon="check" title={t('privacy.consents')} />
           <ActionRow
             name={t('privacy.consent')}
             detail={
@@ -175,14 +174,14 @@ export function YourDataScreen() {
         {userId ? <SyncCard userId={userId} /> : null}
 
         <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('privacy.exportImport')}
-          </Text>
+          <CardTitle icon="download" title={t('privacy.exportImport')} />
           <ActionRow
             name={t('privacy.downloadAll')}
             detail={t('privacy.downloadAllDetail')}
             label={t('privacy.export')}
-            disabled={busy != null}
+            // The running one spins; the others wait, greyed.
+            disabled={busy != null && busy !== 'full'}
+            loading={busy === 'full'}
             onPress={() => void runExport('full')}
           />
           <ActionRow
@@ -190,7 +189,8 @@ export function YourDataScreen() {
             name={t('privacy.workoutsOnly')}
             detail={t('privacy.workoutsOnlyDetail')}
             label={t('privacy.export')}
-            disabled={busy != null}
+            disabled={busy != null && busy !== 'workouts'}
+            loading={busy === 'workouts'}
             onPress={() => void runExport('workouts')}
           />
           <ActionRow
@@ -198,7 +198,8 @@ export function YourDataScreen() {
             name={t('privacy.importTitle')}
             detail={t('privacy.importDetail')}
             label={t('privacy.import')}
-            disabled={busy != null}
+            disabled={busy != null && busy !== 'import'}
+            loading={busy === 'import'}
             onPress={() => void runImport()}
           />
           {busy ? (
@@ -214,9 +215,7 @@ export function YourDataScreen() {
         </Card>
 
         <Card size="small" gap={0}>
-          <Text variant="bodyS" muted style={{ paddingBottom: 4 }}>
-            {t('legal.title')}
-          </Text>
+          <CardTitle icon="book" title={t('legal.title')} />
           {(['privacy', 'terms', 'deleteAccount'] as const).map((page, i) => (
             <ListRow
               key={page}

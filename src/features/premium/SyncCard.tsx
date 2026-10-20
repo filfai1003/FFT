@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { CardTitle } from '@/components/ui/CardTitle';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
@@ -49,10 +50,8 @@ export function SyncCard({ userId }: { userId: string }) {
 
   return (
     <Card size="small" gap={10}>
-      <Text variant="bodyS" muted>
-        {t('sync.title')}
-      </Text>
-      <Text variant="bodyS">
+      <CardTitle icon="swap" title={t('sync.title')} />
+      <Text variant="body" medium>
         {minutes == null
           ? t('sync.never')
           : minutes < 1
@@ -107,7 +106,7 @@ export function SyncCard({ userId }: { userId: string }) {
         variant="secondary"
         icon="swap"
         label={busy ? t('sync.checking') : t('sync.check')}
-        disabled={busy}
+        loading={busy}
         onPress={() => void run(checkSync)}
       />
     </Card>

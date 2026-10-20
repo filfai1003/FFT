@@ -72,6 +72,12 @@ const shapes = {
   book: ['M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z', 'M5 17a3 3 0 0 1 3-3h10'],
   clock: [[12, 12, 8.5], 'M12 7.5V12l3 2'],
   eye: ['M2.5 12s3.8-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.8 6.5-9.5 6.5S2.5 12 2.5 12z', [12, 12, 3]],
+  /** The eye struck through: "hide" (password fields). */
+  eyeOff: [
+    'M2.5 12s3.8-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.8 6.5-9.5 6.5S2.5 12 2.5 12z',
+    [12, 12, 3],
+    'M4 4l16 16',
+  ],
   flame: ['M12 3c1 4 5.5 5.5 5.5 10.5a5.5 5.5 0 0 1-11 0c0-3 2-4.3 2.4-6.5 1.8 1 2.6 2.6 2.6 4.5'],
   skip: ['M6 6l9 6-9 6z', 'M18 6v12'],
   /** Scanner torch: lit (beam lines) and off (crossed out), so the state is not colour alone. */
