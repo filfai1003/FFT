@@ -175,7 +175,13 @@
     "summaryWorkoutDone": "Workout done",
     "summaryKcalLeft": "{{kcal}} kcal left",
     "summaryKcalOver": "{{kcal}} kcal over",
-    "summaryKcalEaten": "{{kcal}} kcal eaten"
+    "summaryKcalEaten": "{{kcal}} kcal eaten",
+    "past": {
+      "workoutDone": "Workout done",
+      "noWorkout": "No workout this day",
+      "noWorkoutInfo": "Trained and forgot to log it? Mark it as done.",
+      "noWeight": "No weight logged by then"
+    }
   },
   "app": {
     "loadErrorTitle": "Can't load your data",
@@ -690,7 +696,9 @@
     "trained": "trained",
     "sessions": "Sessions",
     "outOfOrder": "Out of order",
-    "info": "{{min}} min · {{tonnes}} {{unit}} · {{sets}} sets"
+    "info": "{{min}} min · {{tonnes}} {{unit}} · {{sets}} sets",
+    "wholeMonth": "Whole month",
+    "dayEmpty": "No workout on this day"
   },
   "detail": {
     "minutes": "Minutes",
@@ -1055,7 +1063,9 @@
     "steady": "Steady",
     "downBy": "down {{value}}",
     "upBy": "up {{value}}",
-    "firstBefore": "Your first photos become your before"
+    "firstBefore": "Your first photos become your before",
+    "calendarLink": "Calendar",
+    "calendarLinkInfo": "Workouts, diet and supplements, day by day"
   },
   "balance": {
     "title": "Training balance",
@@ -2794,5 +2804,20 @@
     "closest": "Closest badges",
     "card": "This week",
     "cardA11y": "This week: {{summary}}. Opens your weekly summary"
+  },
+  "days": {
+    "strip": "Days of the week",
+    "today": "today",
+    "future": "not yet",
+    "dayHint": "Shows this day. Hold to see what the marks mean.",
+    "backToToday": "Back to today",
+    "openCalendar": "Open the calendar",
+    "calendarTitle": "Pick a day",
+    "goToToday": "Go to today",
+    "legendOn": "On target",
+    "legendOff": "Off target",
+    "legendLogged": "Logged",
+    "legendNone": "Nothing logged",
+    "lookingBack": "Looking back"
   }
 }

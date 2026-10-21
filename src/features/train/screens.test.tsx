@@ -1,6 +1,6 @@
 import '@/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { color } from '@/design/tokens';
 import { renderUI as renderBare } from '@/test/render';
@@ -165,11 +165,21 @@ describe('Train', () => {
 });
 
 describe('History', () => {
-  it('a trained day is a filled training disc and says "trained"', async () => {
+  it('uses the shared month grid: a trained day has the training dot and says "trained"', async () => {
     await renderUI(<HistoryScreen sessionRoute="/train/history/[sessionId]" />);
-    expect(screen.getByLabelText('15, trained')).toBeTruthy();
-    expect(screen.getByTestId('trained-day')).toHaveStyle({ backgroundColor: color.training });
-    expect(screen.getAllByTestId('trained-day')).toHaveLength(1);
+    expect(screen.getByLabelText('Thursday 15, trained')).toBeTruthy();
+    expect(screen.getByTestId('trained-2026-10-15', { includeHiddenElements: true })).toHaveStyle({
+      backgroundColor: color.training,
+    });
+    expect(screen.getByText('Out of order')).toBeTruthy();
+  });
+
+  it('a tap on a day shows that day only; Whole month brings the month back', async () => {
+    await renderUI(<HistoryScreen sessionRoute="/train/history/[sessionId]" />);
+    await fireEvent.press(screen.getByLabelText('Friday 16'));
+    expect(screen.getByText('No workout on this day')).toBeTruthy();
+    expect(screen.getByLabelText('Friday 16')).toBeSelected();
+    await fireEvent.press(screen.getByRole('button', { name: 'Whole month' }));
     expect(screen.getByText('Out of order')).toBeTruthy();
   });
 });

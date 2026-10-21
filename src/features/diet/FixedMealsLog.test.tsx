@@ -32,7 +32,7 @@ jest.mock('./fixed', () => ({
 }));
 jest.mock('./log', () => ({ useDayLog: () => ({ data: [] }) }));
 jest.mock('./week-status', () => ({ useStripStatuses: () => null }));
-jest.mock('./DayPickerSheet', () => ({ DayPickerSheet: () => null }));
+jest.mock('@/features/progress/calendar-data', () => ({ DayCalendarSheet: () => null }));
 jest.mock('./AdjustMealSheet', () => ({ AdjustMealSheet: () => null }));
 
 describe('Diet tab · fixed meals', () => {

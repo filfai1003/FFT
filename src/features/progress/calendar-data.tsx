@@ -1,12 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { CalendarSheet } from '@/components/ui/CalendarSheet';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { dayOfMonth, deviceTimeZone, localDay } from '@/domain/day';
+import { deviceTimeZone, localDay } from '@/domain/day';
 import { dietDayStatus, goalForDay, targetForDay, type DietDayStatus } from '@/domain/diet';
 import { useGoals } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
+import { useToday } from '@/features/profile/use-today';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions, type SessionView } from '@/features/train/history';
 import {
   supplementDay,
@@ -76,111 +80,6 @@ export function useCalendarData(yms: readonly [string, string]): CalendarData {
   return { sessionsByDay, statusOf, supplementsOf };
 }
 
-/** Rows of 7 days (null = empty cell) with the weekday letters on top. */
-export function CalendarGrid({
-  cells,
-  today,
-  selected,
-  onSelect,
-  weekStart,
-  data,
-}: {
-  cells: readonly (string | null)[];
-  today: string;
-  selected: string;
-  onSelect: (day: string) => void;
-  weekStart: 'mon' | 'sun';
-  data: CalendarData;
-}) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const letters =
-    weekStart === 'mon' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-  const dot = trackDot(colors);
-
-  return (
-    <>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {letters.map((l, i) => (
-          <View key={i} style={{ width: `${100 / 7}%`, alignItems: 'center', paddingBottom: 4 }}>
-            <Text variant="label" muted>
-              {l}
-            </Text>
-          </View>
-        ))}
-        {cells.map((day, i) => {
-          const future = day != null && day > today;
-          const trained = day != null && data.sessionsByDay.has(day);
-          const status = day != null && !future ? data.statusOf(day) : 'none';
-          const supps = day != null && !future ? data.supplementsOf(day) : 'none';
-          const isSelected = day === selected;
-          const isToday = day === today;
-          return (
-            <View key={i} style={{ width: `${100 / 7}%`, alignItems: 'center', padding: 1 }}>
-              {day ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={[
-                    String(dayOfMonth(day)),
-                    trained ? t('calendar.trained') : null,
-                    status === 'onTarget'
-                      ? t('calendar.dietOnTarget')
-                      : status === 'off'
-                        ? t('calendar.dietOff')
-                        : null,
-                    supps === 'all'
-                      ? t('calendar.supplementsAll')
-                      : supps === 'some'
-                        ? t('calendar.supplementsSome')
-                        : null,
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}
-                  aria-selected={isSelected}
-                  accessibilityState={{ selected: isSelected, disabled: future }}
-                  aria-disabled={future}
-                  disabled={future}
-                  onPress={() => onSelect(day)}
-                  style={{
-                    width: 44,
-                    height: 48,
-                    borderRadius: 14,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                    borderWidth: isSelected || isToday ? 1 : 0,
-                    borderColor: isSelected ? colors.borderSelected : colors.accent,
-                    backgroundColor: isSelected ? colors.surfaceSelected : 'transparent',
-                    opacity: future ? 0.35 : 1,
-                  }}
-                >
-                  <Text variant="label">{dayOfMonth(day)}</Text>
-                  <View style={{ flexDirection: 'row', gap: 3 }}>
-                    <View style={dot(colors.track.workout, trained ? 'full' : 'empty')} />
-                    <View
-                      style={dot(
-                        colors.track.diet,
-                        status === 'onTarget' ? 'full' : status === 'off' ? 'ring' : 'empty',
-                      )}
-                    />
-                    <View
-                      style={dot(
-                        colors.success,
-                        supps === 'all' ? 'full' : supps === 'some' ? 'ring' : 'empty',
-                      )}
-                    />
-                  </View>
-                </Pressable>
-              ) : null}
-            </View>
-          );
-        })}
-      </View>
-    </>
-  );
-}
-
 /**
  * One calendar dot: `full` = done / on target, `ring` = off target / only part, `empty` = nothing.
  * The shape always tells the state; the colour only tells which of the three it is.
@@ -194,6 +93,66 @@ function trackDot(colors: { dotOff: string }) {
     borderWidth: state === 'full' ? 0 : 1.5,
     borderColor: state === 'ring' ? color : colors.dotOff,
   });
+}
+
+/**
+ * What a day of a month grid shows and says (DECISIONS 114, 123): three dots, training, diet and
+ * supplements, in their areas' colours, the shape telling the state. `only: 'training'` keeps the
+ * training dot alone (the training history).
+ */
+export function useCalendarMarks(data: CalendarData, only?: 'training') {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const dot = trackDot(colors);
+  const renderMarks = (day: string, future: boolean) => {
+    const trained = data.sessionsByDay.has(day);
+    const status = future ? 'none' : data.statusOf(day);
+    const supps = future ? 'none' : data.supplementsOf(day);
+    return (
+      <View aria-hidden style={{ flexDirection: 'row', gap: 3 }}>
+        <View
+          testID={trained ? `trained-${day}` : undefined}
+          style={dot(colors.track.workout, trained ? 'full' : 'empty')}
+        />
+        {only === 'training' ? null : (
+          <>
+            <View
+              style={dot(
+                colors.track.diet,
+                status === 'onTarget' ? 'full' : status === 'off' ? 'ring' : 'empty',
+              )}
+            />
+            <View
+              style={dot(
+                colors.success,
+                supps === 'all' ? 'full' : supps === 'some' ? 'ring' : 'empty',
+              )}
+            />
+          </>
+        )}
+      </View>
+    );
+  };
+  const describe = (day: string) => {
+    const trained = data.sessionsByDay.has(day) ? t('calendar.trained') : null;
+    if (only === 'training') return [trained];
+    const status = data.statusOf(day);
+    const supps = data.supplementsOf(day);
+    return [
+      trained,
+      status === 'onTarget'
+        ? t('calendar.dietOnTarget')
+        : status === 'off'
+          ? t('calendar.dietOff')
+          : null,
+      supps === 'all'
+        ? t('calendar.supplementsAll')
+        : supps === 'some'
+          ? t('calendar.supplementsSome')
+          : null,
+    ];
+  };
+  return { renderMarks, describe };
 }
 
 export function CalendarLegend() {
@@ -217,5 +176,45 @@ export function CalendarLegend() {
         </View>
       ))}
     </View>
+  );
+}
+
+/**
+ * The calendar sheet of the pages with days (Today, Diet), with the same three dots as the
+ * Progress calendar: one component, one look (DECISIONS 123).
+ */
+export function DayCalendarSheet({
+  visible,
+  onClose,
+  selected,
+  onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  selected: string;
+  onSelect: (day: string) => void;
+}) {
+  const today = useToday();
+  const weekStart = usePreferencesStore((s) => s.weekStart);
+  const [month, setMonth] = useState<string | null>(null);
+  const ym = month ?? selected.slice(0, 7);
+  const data = useCalendarData([ym, ym]);
+  const marks = useCalendarMarks(data);
+  return (
+    <CalendarSheet
+      visible={visible}
+      onClose={() => {
+        setMonth(null);
+        onClose();
+      }}
+      selected={selected}
+      today={today}
+      weekStart={weekStart}
+      onSelect={onSelect}
+      onMonthShown={setMonth}
+      renderMarks={marks.renderMarks}
+      describe={marks.describe}
+      legend={<CalendarLegend />}
+    />
   );
 }

@@ -1,4 +1,3 @@
-import { IconButton } from '@/components/ui/IconButton';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,8 +12,6 @@ import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { shortDateLabel, weekOf } from '@/domain/day';
-import { usePreferencesStore } from '@/features/settings/preferences-store';
 import {
   checkAsPlanned,
   eatenFromChecks,
@@ -27,11 +24,9 @@ import {
 import { confirm } from '@/lib/haptics';
 import { useToastStore } from '@/lib/toast-store';
 import { AdjustMealSheet } from './AdjustMealSheet';
-import { DayPickerSheet } from './DayPickerSheet';
-import { DayStrip } from './DayStrip';
+import { DietDayHeader } from './DietDayHeader';
 import { DaySummaryCard } from './DaySummaryCard';
 import { mealIcon } from './meal-icon';
-import { PickDayLabel } from './PickDayLabel';
 import { useDayTarget, useDietDay } from './day-hooks';
 import {
   useFixedChecks,
@@ -41,24 +36,19 @@ import {
   type StoredCheck,
 } from './fixed';
 import { useDayLog } from './log';
-import { useStripStatuses } from './week-status';
 
 /** Diet tab in "Fixed meals" mode: tick the meals you ate; tap a meal to adjust it for today. */
 export function FixedMealsLog() {
   const { t } = useTranslation();
   const router = useRouter();
   const barHeight = useTabBarHeight();
-  const weekStart = usePreferencesStore((s) => s.weekStart);
   const { day, today, setDay } = useDietDay();
-  const week = weekOf(day, weekStart);
-  const statuses = useStripStatuses(week, today);
   const plan = useFixedPlan();
   const checks = useFixedChecks(day);
   const foodLog = useDayLog(day);
   const target = useDayTarget(day);
   const setCheck = useSetCheck();
   const showToast = useToastStore((s) => s.show);
-  const [calendar, setCalendar] = useState(false);
   const [adjusting, setAdjusting] = useState<FixedMeal | null>(null);
   // fft://diet?adjust=<meal id>: "Different" on the Diet widget opens that meal's sheet (today).
   const { adjust: adjustLink } = useLocalSearchParams<{ adjust?: string }>();
@@ -119,24 +109,7 @@ export function FixedMealsLog() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={12}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ gap: 4 }}>
-            <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
-            <Text variant="screenTitle" accessibilityRole="header">
-              {t('nav.diet')}
-            </Text>
-          </View>
-          {/* Same button as in the count-foods mode: it opens the same page. */}
-          <IconButton
-            icon="gear"
-            accessibilityLabel={t('diet.goalsAndMode')}
-            onPress={() => router.push('/diet-goals')}
-          />
-        </View>
-
-        <DayStrip days={week} selected={day} onSelect={setDay} statuses={statuses} />
+        <DietDayHeader day={day} today={today} setDay={setDay} />
 
         <DaySummaryCard
           eaten={eaten}
@@ -184,13 +157,6 @@ export function FixedMealsLog() {
         )}
       </Screen>
 
-      <DayPickerSheet
-        visible={calendar}
-        onClose={() => setCalendar(false)}
-        selected={day}
-        today={today}
-        onSelect={setDay}
-      />
       <AdjustMealSheet
         meal={sheetMeal}
         day={day}

@@ -2,9 +2,10 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { IconButton } from '@/components/ui/IconButton';
+import { MonthGrid, MonthSwitcher } from '@/components/ui/MonthGrid';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
@@ -13,62 +14,54 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import {
-  addDays,
   dayOfMonth,
   deviceTimeZone,
   localDay,
-  monthYearLabel,
+  monthGrid,
+  shortDateLabel,
   weekdayName,
 } from '@/domain/day';
 import { displayWeight } from '@/domain/units';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
+import { useCalendarMarks } from '@/features/progress/calendar-data';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions, type SessionView } from './history';
 import { goBack } from '@/lib/navigation';
 
-/** Days of a month as a grid (Monday or Sunday first), with leading blanks. */
-export function monthGrid(ym: string, weekStart: 'mon' | 'sun'): (string | null)[] {
-  const first = `${ym}-01`;
-  const [y, m] = ym.split('-').map(Number);
-  const dow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
-  const blanks = weekStart === 'mon' ? (dow + 6) % 7 : dow;
-  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return [
-    ...Array<null>(blanks).fill(null),
-    ...Array.from({ length: count }, (_, i) => addDays(first, i)),
-  ];
-}
-
-export function shiftMonth(ym: string, delta: number): string {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
+/**
+ * Training history: the month in the shared month grid (DECISIONS 123: the same day cells as the
+ * calendar, a purple dot under a trained day) and its sessions. A tap on a day shows that day's
+ * sessions only ("Whole month" brings the month back).
+ */
 export function HistoryScreen({
   sessionRoute,
 }: {
   sessionRoute: '/train/history/[sessionId]' | '/progress/history/[sessionId]';
 }) {
   const { t } = useTranslation();
-  const { colors } = useTheme();
   const router = useRouter();
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const unit = usePreferencesStore((s) => s.weightUnit);
   const tz = useProfile().data?.timezone ?? deviceTimeZone();
   const [ym, setYm] = useState(today.slice(0, 7));
+  const [day, setDay] = useState<string | null>(null);
   const sessions = useMonthSessions(ym);
 
   const inMonth = (sessions.data ?? []).filter(
     (s) => localDay(new Date(s.startedAt), tz).slice(0, 7) === ym,
   );
-  const trainedDays = new Set(inMonth.map((s) => localDay(new Date(s.startedAt), tz)));
-  const cells = monthGrid(ym, weekStart);
-  const letters =
-    weekStart === 'mon' ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  const isCurrent = ym === today.slice(0, 7);
+  const sessionsByDay = new Map<string, SessionView[]>();
+  for (const s of inMonth) {
+    const d = localDay(new Date(s.startedAt), tz);
+    sessionsByDay.set(d, [...(sessionsByDay.get(d) ?? []), s]);
+  }
+  const marks = useCalendarMarks(
+    { sessionsByDay, statusOf: () => 'none', supplementsOf: () => 'none' },
+    'training',
+  );
+  const shown = day ? (sessionsByDay.get(day) ?? []) : inMonth;
 
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
@@ -76,113 +69,59 @@ export function HistoryScreen({
         onBack={() => goBack(router, sessionRoute.startsWith('/progress') ? '/progress' : '/train')}
         backLabel={t('common.back')}
       />
-      <Text variant="screenTitle">{t('history.title')}</Text>
+      <Text variant="screenTitle" accessibilityRole="header">
+        {t('history.title')}
+      </Text>
 
       <Card size="small" gap={10}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        <MonthSwitcher
+          month={ym}
+          today={today}
+          onChange={(m) => {
+            setYm(m);
+            setDay(null);
+          }}
         >
-          <IconButton
-            icon="chevronLeft"
-            accessibilityLabel={t('history.prevMonth')}
-            onPress={() => setYm(shiftMonth(ym, -1))}
-          />
-          <View style={{ alignItems: 'center', gap: 2 }}>
-            <Text variant="label">{monthYearLabel(`${ym}-01`)}</Text>
-            <Text variant="bodyS" muted>
-              {t('history.workouts', { count: inMonth.length })}
-            </Text>
-          </View>
-          <IconButton
-            icon="chevronRight"
-            accessibilityLabel={t('history.nextMonth')}
-            disabled={isCurrent}
-            onPress={() => setYm(shiftMonth(ym, 1))}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {letters.map((l, i) => (
-            <View key={i} style={{ width: `${100 / 7}%`, alignItems: 'center', paddingBottom: 4 }}>
-              <Text variant="bodyS" muted>
-                {l}
-              </Text>
-            </View>
-          ))}
-          {cells.map((day, i) => {
-            const trained = day != null && trainedDays.has(day);
-            const future = day != null && day > today;
-            const isToday = day === today;
-            return (
-              <View
-                key={i}
-                accessible={day != null}
-                accessibilityLabel={
-                  day
-                    ? `${dayOfMonth(day)}${trained ? `, ${t('history.trained')}` : ''}`
-                    : undefined
-                }
-                style={{
-                  width: `${100 / 7}%`,
-                  height: 42,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {/* A trained day is a filled purple disc (training colour); today has a 2px
-                    ring in the text colour. The label says "trained" too. */}
-                {day ? (
-                  <View
-                    testID={trained ? 'trained-day' : undefined}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: trained ? colors.training : 'transparent',
-                      borderWidth: isToday ? 2 : 0,
-                      borderColor: trained ? colors.text : colors.borderSelected,
-                    }}
-                  >
-                    <Text
-                      variant="label"
-                      semibold={trained || isToday}
-                      numeric
-                      style={{
-                        color: trained
-                          ? colors.bg
-                          : future
-                            ? colors.textPlaceholderIcon
-                            : isToday
-                              ? colors.text
-                              : colors.textMuted,
-                      }}
-                    >
-                      {dayOfMonth(day)}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            );
-          })}
-        </View>
+          <Text variant="bodyS" muted>
+            {t('history.workouts', { count: inMonth.length })}
+          </Text>
+        </MonthSwitcher>
+        <MonthGrid
+          cells={monthGrid(ym, weekStart)}
+          weekStart={weekStart}
+          today={today}
+          selected={day}
+          onSelect={(d) => setDay(d === day ? null : d)}
+          renderMarks={marks.renderMarks}
+          describe={marks.describe}
+        />
       </Card>
 
-      <Section title={t('history.sessions')}>
+      <Section title={day ? shortDateLabel(day) : t('history.sessions')}>
+        {day ? (
+          <Button
+            variant="secondary"
+            size="small"
+            block={false}
+            label={t('history.wholeMonth')}
+            onPress={() => setDay(null)}
+            style={{ alignSelf: 'flex-start' }}
+          />
+        ) : null}
         {sessions.isPending ? (
           <SkeletonGroup accessibilityLabel={t('common.loading')}>
             <SkeletonRows count={3} leading={false} />
           </SkeletonGroup>
-        ) : inMonth.length === 0 ? (
+        ) : shown.length === 0 ? (
           <EmptyState
             compact
             icon="clock"
             area="training"
-            title={t('empty.historyTitle')}
+            title={day ? t('history.dayEmpty') : t('empty.historyTitle')}
             body={t('empty.historyBody')}
           />
         ) : (
-          inMonth.map((s) => (
+          shown.map((s) => (
             <SessionRow
               key={s.id}
               s={s}

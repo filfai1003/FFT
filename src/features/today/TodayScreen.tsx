@@ -9,10 +9,13 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { dayOfMonth, shortDateLabel, weekOf, weekdayLetter } from '@/domain/day';
+import { longDateLabel, shortDateLabel, weekOf } from '@/domain/day';
+import { DayMarkLegend, DayStrip } from '@/components/ui/DayStrip';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { DayCalendarSheet } from '@/features/progress/calendar-data';
+import { useStripStatuses } from '@/features/diet/week-status';
 import { AI_DOCK_CLEARANCE, AiDock } from '@/features/ai/AiDock';
 import { Card } from '@/components/ui/Card';
-import { useCalendarData } from '@/features/progress/CalendarGrid';
 import { cleanLook } from '@/domain/community-look';
 import { useCommunityMe } from '@/features/community/api';
 import { MemberAvatar } from '@/features/community/MemberAvatar';
@@ -40,7 +43,7 @@ import { useHomeLayout, type WidgetItem } from './layout-store';
 import { dockHiddenAfterScroll } from './dock-scroll';
 import { useHint, useHintsStore } from './hints-store';
 import { TodayGrid } from './TodayGrid';
-import { weekDotShape, type WeekDotShape } from './week-dots';
+import { HomeDayContext } from './home-day';
 import { widgetComponents } from './Widgets';
 
 const EDIT_BAR_PADDING = 12;
@@ -56,111 +59,6 @@ export function initials(name: string | null | undefined): string {
     .slice(0, 2)
     .map((p) => p[0]!.toUpperCase())
     .join('');
-}
-
-/**
- * This week at a glance: a mark under each day says if the diet was on target. Opens the calendar;
- * a long press shows what the marks mean.
- */
-function WeekStrip({ onLongPress }: { onLongPress: () => void }) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const router = useRouter();
-  const today = useToday();
-  const weekStart = usePreferencesStore((s) => s.weekStart);
-  const days = weekOf(today, weekStart);
-  const data = useCalendarData([days[0]!.slice(0, 7), days[6]!.slice(0, 7)]);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('calendar.open')}
-      accessibilityHint={t('today.weekHint')}
-      onPress={() => {
-        tick();
-        router.push('/calendar');
-      }}
-      onLongPress={() => {
-        tick();
-        onLongPress();
-      }}
-      style={{ flexDirection: 'row', gap: 4 }}
-    >
-      {days.map((d) => {
-        const isToday = d === today;
-        const shape = weekDotShape(d <= today ? data.statusOf(d) : 'none', isToday);
-        return (
-          <View
-            key={d}
-            style={{
-              flex: 1,
-              alignItems: 'center',
-              gap: 3,
-              paddingVertical: 6,
-              borderRadius: 12,
-              backgroundColor: isToday ? colors.text : 'transparent',
-            }}
-          >
-            <Text variant="label" style={{ color: isToday ? colors.bg : colors.textMuted }}>
-              {weekdayLetter(d)}
-            </Text>
-            <Text
-              variant="body"
-              numeric
-              style={{ fontWeight: '600', fontSize: 16, color: isToday ? colors.bg : colors.text }}
-            >
-              {dayOfMonth(d)}
-            </Text>
-            <WeekDot shape={shape} testID={`week-dot-${d}`} />
-          </View>
-        );
-      })}
-    </Pressable>
-  );
-}
-
-/**
- * The diet mark of a day: filled dot = on target, empty ring = off target, small neutral dot on
- * today (not judged yet). Shape first, colour second.
- */
-function WeekDot({ shape, testID }: { shape: WeekDotShape; testID?: string }) {
-  const { colors } = useTheme();
-  const size = 7;
-  return (
-    <View
-      testID={testID ? `${testID}-${shape}` : undefined}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor:
-          shape === 'full' ? colors.success : shape === 'today' ? colors.bg : 'transparent',
-        borderWidth: shape === 'ring' ? 1.5 : 0,
-        borderColor: colors.danger,
-      }}
-    />
-  );
-}
-
-/** What the week strip's marks mean (one-time tips, and a long press on the strip). */
-function WeekLegend() {
-  const { t } = useTranslation();
-  return (
-    <View
-      accessible
-      accessibilityLabel={`${t('today.legendOn')}. ${t('today.legendOff')}.`}
-      style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 }}
-    >
-      {(['full', 'ring'] as const).map((shape) => (
-        <View key={shape} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <WeekDot shape={shape} />
-          <Text variant="bodyS" muted>
-            {shape === 'full' ? t('today.legendOn') : t('today.legendOff')}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
 }
 
 /**
@@ -198,7 +96,7 @@ function TodayTips({ onDismiss }: { onDismiss: () => void }) {
       {row('sliders', t('today.tipEdit'))}
       {row('sparkle', t('today.tipCoach'))}
       <Text variant="bodyS">{t('today.tipWeek')}</Text>
-      <WeekLegend />
+      <DayMarkLegend />
       <Button
         label={t('today.tipsDone')}
         variant="secondary"
@@ -231,14 +129,24 @@ export function TodayScreen() {
   const showToast = useToastStore((s) => s.show);
   const tips = useHint('todayTips');
   const dismissHint = useHintsStore((s) => s.dismiss);
-  // The week strip's legend, opened by a long press on the strip.
-  const [legend, setLegend] = useState(false);
+  // The day the page shows (DECISIONS 123): null = today; a past day picked on the row or in
+  // the calendar shows what was logged that day.
+  const [picked, setPicked] = useState<string | null>(null);
+  const day = picked && picked < today ? picked : today;
+  const past = day < today;
+  const [calendar, setCalendar] = useState(false);
+  const weekStart = usePreferencesStore((s) => s.weekStart);
+  const week = weekOf(day, weekStart);
+  const marks = useStripStatuses(week, today);
+  const pick = (d: string) => setPicked(d >= today ? null : d);
   // The coach bar steps aside while scrolling down, comes back on the way up.
   const [dockHidden, setDockHidden] = useState(false);
   const lastY = useRef(0);
 
   const enterEdit = () => {
     tick();
+    // Edit mode arranges the cards of today.
+    setPicked(null);
     startTodayEdit();
   };
   const done = () => {
@@ -313,62 +221,80 @@ export function TodayScreen() {
             </Text>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('nav.profile')}
-              onPress={() => {
-                tick();
-                router.push('/profile');
-              }}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: colors.dotOff,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {look ? (
-                // The community look (DECISIONS 119): the photo or colour others see.
-                <MemberAvatar name={profile.data?.name ?? '?'} look={look} size={44} />
-              ) : initials(profile.data?.name) ? (
-                <Text variant="body" medium>
-                  {initials(profile.data?.name)}
+          <PageHeader
+            leading={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('nav.profile')}
+                onPress={() => {
+                  tick();
+                  router.push('/profile');
+                }}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: colors.dotOff,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {look ? (
+                  // The community look (DECISIONS 119): the photo or colour others see.
+                  <MemberAvatar name={profile.data?.name ?? '?'} look={look} size={44} />
+                ) : initials(profile.data?.name) ? (
+                  <Text variant="body" medium>
+                    {initials(profile.data?.name)}
+                  </Text>
+                ) : (
+                  <Icon name="user" size={22} color={colors.text} />
+                )}
+              </Pressable>
+            }
+            overline={past ? t('days.lookingBack') : shortDateLabel(today)}
+            titleNode={
+              past ? (
+                <Text
+                  variant="screenTitle"
+                  accessibilityRole="header"
+                  numberOfLines={2}
+                  style={{ fontSize: 24, lineHeight: 28 }}
+                >
+                  {longDateLabel(day)}
                 </Text>
               ) : (
-                <Icon name="user" size={22} color={colors.text} />
-              )}
-            </Pressable>
-            <View style={{ flex: 1 }}>
-              <Text variant="bodyS" muted>
-                {shortDateLabel(today)}
-              </Text>
-              <Greeting name={profile.data?.name} />
-            </View>
-            {/* Where "Customize" was: the way into edit mode (also: hold any card). */}
-            <IconButton
-              icon="sliders"
-              accessibilityLabel={t('today.editLabel')}
-              onPress={enterEdit}
-            />
-            <IconButton
-              icon="sparkle"
-              accessibilityLabel={t('ai.chatScreenTitle')}
-              onPress={() => router.push('/ai-chat')}
-            />
-          </View>
+                <Greeting name={profile.data?.name} />
+              )
+            }
+            actions={
+              <>
+                {/* Where "Customize" was: the way into edit mode (also: hold any card). */}
+                <IconButton
+                  icon="sliders"
+                  accessibilityLabel={t('today.editLabel')}
+                  onPress={enterEdit}
+                />
+                <IconButton
+                  icon="sparkle"
+                  accessibilityLabel={t('ai.chatScreenTitle')}
+                  onPress={() => router.push('/ai-chat')}
+                />
+              </>
+            }
+            onCalendar={() => setCalendar(true)}
+          />
         )}
 
         {/* The summary line belongs to the greeting: closer to it than the page gap. */}
-        {editing ? null : <DaySummaryLine style={{ marginTop: -8 }} />}
-        {editing ? null : <WeekStrip onLongPress={() => setLegend((v) => !v)} />}
-        {!editing && legend && !tips ? <WeekLegend /> : null}
+        {editing || past ? null : <DaySummaryLine style={{ marginTop: -8 }} />}
+        {/* The shared row of days: a tap shows that day here (DECISIONS 123). */}
+        {editing ? null : (
+          <DayStrip days={week} selected={day} today={today} onSelect={pick} marks={marks} />
+        )}
         {!editing && tips ? <TodayTips onDismiss={() => dismissHint('todayTips')} /> : null}
         {editing ? null : <ActiveSessionBanner />}
 
-        <View>
+        <HomeDayContext.Provider value={past ? day : null}>
           <TodayGrid
             widgets={widgets}
             editing={editing}
@@ -385,8 +311,14 @@ export function TodayScreen() {
               );
             }}
           />
-        </View>
+        </HomeDayContext.Provider>
       </Screen>
+      <DayCalendarSheet
+        visible={calendar}
+        onClose={() => setCalendar(false)}
+        selected={day}
+        onSelect={pick}
+      />
 
       {editing ? (
         <View

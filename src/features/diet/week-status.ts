@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import type { DayMark } from '@/components/ui/DayStrip';
 import { dietDayStatus, goalForDay, targetForDay, type Goal } from '@/domain/diet';
 import { getSupabase } from '@/lib/supabase';
 import { useGoals, useTrainedDays } from './log';
@@ -7,7 +8,7 @@ import { useGoals, useTrainedDays } from './log';
  * What the dot under a day of the Diet strip says (DECISIONS 112): on target, off target,
  * logged (today so far, or a day without a target), nothing logged, or nothing to say (future).
  */
-export type StripDayStatus = 'onTarget' | 'off' | 'logged' | 'none' | 'future';
+export type StripDayStatus = DayMark;
 
 /** Pure: the status of each day from its calories, its target and whether it is over. */
 export function stripStatuses(

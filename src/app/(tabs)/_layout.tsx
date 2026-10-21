@@ -27,10 +27,10 @@ function AppTabBar({ state, navigation, position }: SwipeTabBarProps) {
         key: route.key,
         label: t(tab.label),
         icon: tab.icon,
-        // The calendar is a page of Today, so Today stays lit while it is open.
+        // The calendar is opened from Progress (DECISIONS 123), so Progress stays lit while it is open.
         active:
           state.index === index ||
-          (route.name === 'index' && state.routes[state.index]?.name === 'calendar'),
+          (route.name === 'progress' && state.routes[state.index]?.name === 'calendar'),
         onPress: () => {
           const event = navigation.emit({
             type: 'tabPress',

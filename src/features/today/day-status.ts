@@ -10,9 +10,13 @@ import { useMonthSessions } from '@/features/train/history';
 import { useActivePlan, useRotation } from '@/features/train/plans';
 import { waterGoal, type WorkoutToday } from './day-logic';
 
-/** Today's workouts already done, the plan and the day up next (Home workout card, greeting). */
-export function useTodayWorkout() {
-  const today = useToday();
+/**
+ * Today's workouts already done, the plan and the day up next (Home workout card, greeting).
+ * `day` = a past day shown on Home: the workouts done that day.
+ */
+export function useTodayWorkout(day?: string) {
+  const now = useToday();
+  const today = day ?? now;
   const profile = useProfile();
   const { plan } = useActivePlan();
   const rotation = useRotation(plan);
