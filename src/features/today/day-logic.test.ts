@@ -147,6 +147,12 @@ describe('summary line', () => {
     ).toBe('Workout B today · 1,650 kcal left');
   });
 
+  it('calories left from the rounded eaten value, as the cards show it', () => {
+    expect(
+      daySummary(t, formatInt, { workout: { kind: 'none' }, eatenKcal: 90.5, targetKcal: 2000 }),
+    ).toBe('1,909 kcal left');
+  });
+
   it('workout done, calories over', () => {
     expect(
       daySummary(t, formatInt, { workout: { kind: 'done' }, eatenKcal: 2600, targetKcal: 2400 }),

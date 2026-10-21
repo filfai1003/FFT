@@ -23,6 +23,12 @@ describe('diet summary logic (DECISIONS 112)', () => {
     expect(calorieStatus(0, 2000)).toMatchObject({ fill: 0, amount: 2000, over: false });
   });
 
+  it('left = target - eaten as shown: 90.5 kcal ("91 of 2,000") is 1,909 left everywhere', () => {
+    expect(calorieStatus(90.5, 2000)).toMatchObject({ amount: 1909, over: false });
+    expect(calorieStatus(2000.4, 2000)).toMatchObject({ amount: 0, over: false });
+    expect(calorieStatus(2000.5, 2000)).toMatchObject({ amount: 1, over: true });
+  });
+
   it('grams left of a macro, or over', () => {
     expect(macroLeft(40, 150)).toEqual({ grams: 110, over: false });
     expect(macroLeft(160, 150)).toEqual({ grams: 10, over: true });
