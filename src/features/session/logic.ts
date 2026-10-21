@@ -35,6 +35,11 @@ export type SessionSet = {
   previous: string | null;
   /** The drops after this set (drop set), done with it: weight and reps of each. */
   drops?: DropEntry[];
+  /**
+   * Fields filled in from the set ticked before it (`from` = that set's id) because they were
+   * empty: an UNDO or untick of that set empties them again (unless typed over since).
+   */
+  carried?: { from: string; fields: SetField[] };
 };
 
 export type DropEntry = {
@@ -388,8 +393,61 @@ export function setField(
 ): ActiveSession {
   return mapExercise(s, exerciseIndex, (e) => ({
     ...e,
-    sets: e.sets.map((x, i) => (i === setIndex ? { ...x, [field]: value } : x)),
+    sets: e.sets.map((x, i) =>
+      i === setIndex ? withoutCarried({ ...x, [field]: value }, [field]) : x,
+    ),
   }));
+}
+
+const CARRIED_FIELDS: readonly SetField[] = ['weight', 'reps', 'duration', 'distance'];
+
+/** Drops `fields` from what a set carries over from another set (typed over: it stays). */
+function withoutCarried(x: SessionSet, fields: readonly SetField[]): SessionSet {
+  if (!x.carried) return x;
+  const left = x.carried.fields.filter((f) => !fields.includes(f));
+  const { carried, ...rest } = x;
+  return left.length ? { ...rest, carried: { from: carried.from, fields: left } } : rest;
+}
+
+/**
+ * After a set is ticked, the sets after it in the exercise that are not done take its values in
+ * the fields that are still empty (60 kg x 8 ticked: the empty sets below show 60 and 8). Values
+ * already there (from last time, DECISIONS 108, or typed) never change.
+ */
+function carryForward(sets: SessionSet[], setIndex: number): SessionSet[] {
+  const source = sets[setIndex];
+  if (!source) return sets;
+  return sets.map((x, i) => (i <= setIndex || x.done ? x : carryInto(x, source)));
+}
+
+/** `x` takes `source`'s values in its empty fields (and in those an earlier tick filled). */
+function carryInto(x: SessionSet, source: SessionSet): SessionSet {
+  const before = x.carried?.fields ?? [];
+  const fields = CARRIED_FIELDS.filter(
+    (f) => (x[f].trim() === '' || before.includes(f)) && source[f].trim() !== '',
+  );
+  if (fields.length === 0) return x;
+  const filled = { ...x };
+  for (const f of fields) filled[f] = source[f];
+  return { ...filled, carried: { from: source.id, fields } };
+}
+
+/**
+ * Undoes `carryForward` of the set `fromId`: the fields it filled are empty again, or take the
+ * values of the set done before them when there is one.
+ */
+function uncarry(sets: SessionSet[], fromId: string): SessionSet[] {
+  return sets.map((x, i) => {
+    if (x.carried?.from !== fromId || x.done) return x;
+    const cleared = { ...x };
+    for (const f of x.carried.fields) cleared[f] = '';
+    const emptied = withoutCarried(cleared, x.carried.fields);
+    const doneBefore = sets
+      .slice(0, i)
+      .reverse()
+      .find((y) => y.done && y.id !== fromId);
+    return doneBefore ? carryInto(emptied, doneBefore) : emptied;
+  });
 }
 
 /** Checks a set off (or back). Returns the new session and whether it was just completed. */
@@ -406,19 +464,23 @@ export function toggleSet(
     completed && current.reps.trim() === ''
       ? quickSetValues(s.exercises[exerciseIndex], setIndex)
       : null;
-  const session = mapExercise(s, exerciseIndex, (e) => ({
-    ...e,
-    sets: e.sets.map((x, i) =>
+  const session = mapExercise(s, exerciseIndex, (e) => {
+    const sets = e.sets.map((x, i) =>
       i === setIndex
-        ? {
-            ...x,
-            ...(quick ? { reps: quick.reps } : null),
-            done: completed,
-            completedAt: completed ? now.toISOString() : null,
-          }
+        ? withoutCarried(
+            {
+              ...x,
+              ...(quick ? { reps: quick.reps } : null),
+              done: completed,
+              completedAt: completed ? now.toISOString() : null,
+            },
+            // Ticked: what it shows is its own now.
+            completed ? CARRIED_FIELDS : [],
+          )
         : x,
-    ),
-  }));
+    );
+    return { ...e, sets: completed ? carryForward(sets, setIndex) : uncarry(sets, current.id) };
+  });
   return { session, completed };
 }
 
@@ -866,17 +928,21 @@ export function toMeters(km: string): number | null {
   return n == null ? null : Math.round(n * 1000 * 10) / 10;
 }
 
-/** UNDO of "set saved": un-checks that set (found by id) and stops the rest timer. */
+/**
+ * UNDO of "set saved": un-checks that set (found by id), empties what its tick filled in the sets
+ * below, and stops the rest timer.
+ */
 export function undoSetDone(s: ActiveSession, setId: string): ActiveSession {
   let found = false;
-  const exercises = s.exercises.map((e) => ({
-    ...e,
-    sets: e.sets.map((x) => {
+  const exercises = s.exercises.map((e) => {
+    const sets = e.sets.map((x) => {
       if (x.id !== setId || !x.done) return x;
       found = true;
       return { ...x, done: false, completedAt: null };
-    }),
-  }));
+    });
+    // What its tick filled in the sets below is emptied again.
+    return { ...e, sets: sets.some((x) => x.id === setId) ? uncarry(sets, setId) : sets };
+  });
   return found ? { ...s, exercises, rest: null } : s;
 }
 
