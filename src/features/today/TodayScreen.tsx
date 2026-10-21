@@ -107,7 +107,8 @@ function WeekStrip({ onLongPress }: { onLongPress: () => void }) {
             <Text
               variant="body"
               numeric
-              style={{ fontWeight: '600', fontSize: 16, color: isToday ? colors.bg : colors.text }}
+              semibold
+              style={{ fontSize: 16, color: isToday ? colors.bg : colors.text }}
             >
               {dayOfMonth(d)}
             </Text>

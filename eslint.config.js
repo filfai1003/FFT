@@ -5,7 +5,21 @@ const prettier = require('eslint-config-prettier/flat');
 module.exports = defineConfig([
   expo,
   prettier,
-  { ignores: ['dist/*', '.expo/*', 'node_modules/*', 'supabase/*', 'server/*', 'admin/*', 'site/*', 'tools/*', 'build/*', 'backup/*', '.claude/*'] },
+  {
+    ignores: [
+      'dist/*',
+      '.expo/*',
+      'node_modules/*',
+      'supabase/*',
+      'server/*',
+      'admin/*',
+      'site/*',
+      'tools/*',
+      'build/*',
+      'backup/*',
+      '.claude/*',
+    ],
+  },
   { files: ['jest.setup.js'], languageOptions: { globals: { jest: 'readonly' } } },
   {
     // UI copy must go through i18n: no literal text inside JSX.
@@ -15,6 +29,16 @@ module.exports = defineConfig([
       'react/jsx-no-literals': [
         'error',
         { noStrings: false, allowedStrings: ['/', '·', '—', '×'] },
+      ],
+      // Figtree comes as one font file per weight: a fontWeight on it makes Android fall back to
+      // the system font (Roboto). Use the Text props (medium, semibold) or a fontFamily token.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "Property[key.name='fontWeight']",
+          message:
+            'Use <Text semibold|medium> or fontFamily tokens, not fontWeight (Android falls back to Roboto).',
+        },
       ],
     },
   },

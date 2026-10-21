@@ -106,7 +106,7 @@ export function ToastHost() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text variant="body" style={{ color: colors.bg, fontWeight: '700' }}>
+            <Text variant="body" semibold style={{ color: colors.bg }}>
               {toast.actionLabel}
             </Text>
           </Pressable>

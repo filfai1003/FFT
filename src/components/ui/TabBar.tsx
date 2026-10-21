@@ -188,7 +188,7 @@ function Tab({
           <Icon name={item.icon} size={24} color={colors.text} />
         </Animated.View>
       </Animated.View>
-      <Text variant="label" style={{ color, fontWeight: item.active ? '600' : '500' }}>
+      <Text variant="label" semibold={item.active} medium={!item.active} style={{ color }}>
         {item.label}
       </Text>
     </Pressable>

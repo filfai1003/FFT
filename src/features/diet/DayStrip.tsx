@@ -55,11 +55,8 @@ export function DayStrip({
             <Text
               variant="body"
               numeric
-              style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: isSelected ? colors.bg : colors.text,
-              }}
+              semibold
+              style={{ fontSize: 16, color: isSelected ? colors.bg : colors.text }}
             >
               {dayOfMonth(day)}
             </Text>

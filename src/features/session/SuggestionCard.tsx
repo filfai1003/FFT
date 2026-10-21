@@ -95,7 +95,7 @@ export function SuggestionCard({
           />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="body" numeric style={{ fontWeight: '600' }}>
+          <Text variant="body" numeric semibold>
             {title}
           </Text>
           <Text variant="label" muted numeric>

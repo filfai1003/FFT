@@ -458,7 +458,7 @@ export function SessionScreen() {
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text variant="bodyL" style={{ color: colors.onAccent, fontWeight: '700' }}>
+          <Text variant="bodyL" semibold style={{ color: colors.onAccent }}>
             {primary.label}
           </Text>
           {primary.info ? (
