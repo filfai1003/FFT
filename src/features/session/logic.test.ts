@@ -331,6 +331,71 @@ describe('undo', () => {
   });
 });
 
+describe('a ticked set fills the empty sets after it', () => {
+  const fresh: NewExercise = { ...incline, exerciseId: 'fresh', targetSets: 3, previous: [] };
+
+  function ticked() {
+    let s = session('kg', [fresh]);
+    s = setField(s, 0, 0, 'weight', '60');
+    s = setField(s, 0, 0, 'reps', '8');
+    return toggleSet(s, 0, 0, now).session;
+  }
+
+  it('60 kg x 8 ticked: the empty sets below show 60 and 8', () => {
+    const sets = ticked().exercises[0].sets;
+    expect(sets.map((x) => [x.weight, x.reps])).toEqual([
+      ['60', '8'],
+      ['60', '8'],
+      ['60', '8'],
+    ]);
+  });
+
+  it('never overwrites a value already there (typed or from last time)', () => {
+    let s = session('kg', [fresh]);
+    s = setField(s, 0, 2, 'weight', '70');
+    s = setField(s, 0, 0, 'weight', '60');
+    s = setField(s, 0, 0, 'reps', '8');
+    s = toggleSet(s, 0, 0, now).session;
+    expect(s.exercises[0].sets[2]).toMatchObject({ weight: '70', reps: '8' });
+    // With history (DECISIONS 108) the sets keep last time's values.
+    const h = toggleSet(setField(session(), 0, 0, 'weight', '30'), 0, 0, now).session;
+    expect(h.exercises[0].sets.map((x) => x.weight)).toEqual(['30', '24', '24', '22']);
+  });
+
+  it('UNDO of the tick empties what it filled, keeping what was typed since', () => {
+    let s = ticked();
+    const setId = s.exercises[0].sets[0].id;
+    s = setField(s, 0, 2, 'reps', '6');
+    const undone = undoSetDone(s, setId).exercises[0].sets;
+    expect(undone[0]).toMatchObject({ weight: '60', reps: '8', done: false });
+    expect(undone[1]).toMatchObject({ weight: '', reps: '' });
+    expect(undone[2]).toMatchObject({ weight: '', reps: '6' });
+    expect(undone[1].carried).toBeUndefined();
+  });
+
+  it('unticking the set also empties them; a set ticked since keeps its values', () => {
+    let s = ticked();
+    s = toggleSet(s, 0, 0, now).session;
+    expect(s.exercises[0].sets.map((x) => x.weight)).toEqual(['60', '', '']);
+    s = toggleSet(s, 0, 0, now).session;
+    s = toggleSet(setField(s, 0, 1, 'weight', '62.5'), 0, 1, now).session;
+    s = toggleSet(s, 0, 0, now).session;
+    const sets = s.exercises[0].sets;
+    expect(sets[1]).toMatchObject({ weight: '62.5', reps: '8', done: true });
+    expect(sets[2]).toMatchObject({ weight: '62.5', reps: '8' });
+  });
+
+  it('a later tick updates what an earlier one filled; its UNDO goes back to the set before', () => {
+    let s = ticked();
+    s = setField(s, 0, 1, 'weight', '65');
+    const id = s.exercises[0].sets[1].id;
+    s = toggleSet(s, 0, 1, now).session;
+    expect(s.exercises[0].sets[2]).toMatchObject({ weight: '65', reps: '8' });
+    s = undoSetDone(s, id);
+    expect(s.exercises[0].sets[2]).toMatchObject({ weight: '60', reps: '8' });
+  });
+});
+
 describe('next weight suggestion', () => {
   const bench: NewExercise = {
     exerciseId: 'bench',

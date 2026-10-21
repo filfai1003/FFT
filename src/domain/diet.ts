@@ -123,7 +123,8 @@ export function targetForDay(goal: Goal | null | undefined, trained: boolean): M
 
 /** Calories left today (never shown negative: over the goal is "0 left"). */
 export function kcalLeft(target: number, eaten: number): number {
-  return Math.max(0, Math.round(target - eaten));
+  // Rounded as shown ("91 of 2,000" = 1,909 left), as `calorieStatus` in features/diet/summary.ts.
+  return Math.max(0, Math.round(target) - Math.round(eaten));
 }
 
 // --- fixed meals -----------------------------------------------------------------------------

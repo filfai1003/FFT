@@ -97,6 +97,9 @@ describe('Workout summary', () => {
     // The workout just finished counts for the streak (two days before + today).
     expect(screen.getByText('3 day streak')).toBeTruthy();
     expect(screen.getByText('Next badge', { includeHiddenElements: true })).toBeTruthy();
+    // The streak badge is said once (on the streak card); the badge card shows another one.
+    expect(screen.getByText('4 more days for the 7-day streak badge.')).toBeTruthy();
+    expect(screen.queryByText('7-day streak', { includeHiddenElements: true })).toBeNull();
 
     await fireEvent.press(screen.getByText('Done'));
     expect(mockReplace).toHaveBeenCalledWith('/(tabs)');

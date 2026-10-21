@@ -40,6 +40,10 @@ export function Gauge({
   const c = 2 * Math.PI * r;
   const arc = c * sweep;
   const filled = arc * Math.max(0, Math.min(1, value));
+  // A ring (nearly) full: round ends would overlap across the small gap and dent it, so the ends
+  // are cut square instead.
+  const closing = sweep >= 1 && arc - filled < stroke;
+  const ringCap = closing ? 'butt' : 'round';
   // A gauge opens at the bottom: start at 90° + half the gap.
   const rotation = sweep >= 1 ? -90 : 90 + ((1 - sweep) * 360) / 2;
   const height =
@@ -94,12 +98,18 @@ export function Gauge({
         {filled > 0 && segments?.length
           ? (() => {
               const shown = segments.filter((s) => s.share > 0);
-              if (shown.length === 0) return null;
+              if (shown.length === 0 || closing) return null;
               const dot = Math.min(0.01, filled / 2);
-              return [
-                { at: 0, color: shown[0]!.color },
-                { at: filled - dot, color: shown[shown.length - 1]!.color },
-              ].map((cap, i) => (
+              // Very little filled: two round ends of different colours would overlap as two
+              // blobs, so one round piece in the first colour covers the whole fill.
+              const caps =
+                filled < 2 * stroke
+                  ? [{ at: 0, len: filled, color: shown[0]!.color }]
+                  : [
+                      { at: 0, len: dot, color: shown[0]!.color },
+                      { at: filled - dot, len: dot, color: shown[shown.length - 1]!.color },
+                    ];
+              return caps.map((cap, i) => (
                 <Circle
                   key={`cap${i}`}
                   testID={`gauge-cap-${i}`}
@@ -110,7 +120,7 @@ export function Gauge({
                   stroke={cap.color}
                   strokeWidth={stroke}
                   strokeLinecap="round"
-                  strokeDasharray={`${dot} ${c}`}
+                  strokeDasharray={`${cap.len} ${c}`}
                   strokeDashoffset={-cap.at}
                   transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
                 />
@@ -119,13 +129,14 @@ export function Gauge({
           : null}
         {filled > 0 && !segments?.length ? (
           <Circle
+            testID="gauge-fill"
             cx={size / 2}
             cy={size / 2}
             r={r}
             fill="none"
             stroke={color ?? colors.dotOn}
             strokeWidth={stroke}
-            strokeLinecap="round"
+            strokeLinecap={ringCap}
             strokeDasharray={`${filled} ${c}`}
             transform={`rotate(${rotation} ${size / 2} ${size / 2})`}
           />

@@ -60,6 +60,34 @@ describe('Food search (DECISIONS 112)', () => {
     });
   });
 
+  it('opens with the search field focused', async () => {
+    await renderUI(<FoodSearchScreen />);
+    expect(screen.getByLabelText('Search food').props.autoFocus).toBe(true);
+  });
+
+  it('nothing typed: Recent is selected when there are recents; typing switches to Results', async () => {
+    mockRecent = [yogurt];
+    await renderUI(<FoodSearchScreen />);
+    expect(screen.getByRole('radio', { name: 'Recent' }).props.accessibilityState.checked).toBe(
+      true,
+    );
+    await fireEvent.changeText(screen.getByLabelText('Search food'), 'yo');
+    expect(screen.getByRole('radio', { name: 'Results' }).props.accessibilityState.checked).toBe(
+      true,
+    );
+    await fireEvent.changeText(screen.getByLabelText('Search food'), '');
+    expect(screen.getByRole('radio', { name: 'Recent' }).props.accessibilityState.checked).toBe(
+      true,
+    );
+  });
+
+  it('no recents yet: Results is selected, asking to type', async () => {
+    await renderUI(<FoodSearchScreen />);
+    expect(screen.getByRole('radio', { name: 'Results' }).props.accessibilityState.checked).toBe(
+      true,
+    );
+  });
+
   it('an empty "Mine" tab explains where your own foods come from', async () => {
     await renderUI(<FoodSearchScreen />);
     await fireEvent.press(screen.getByText('Mine'));

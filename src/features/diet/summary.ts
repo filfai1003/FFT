@@ -28,9 +28,13 @@ export type CalorieStatus = {
   wellOver: boolean;
 };
 
+/**
+ * The one place "kcal left / over" is worked out (Today card, greeting line, Diet): from the eaten
+ * and target values as they are shown (rounded), so "91 of 2,000" always reads "1,909 left".
+ */
 export function calorieStatus(eatenKcal: number, targetKcal: number): CalorieStatus {
   const target = Math.max(1, targetKcal);
-  const diff = Math.round(eatenKcal - target);
+  const diff = Math.round(eatenKcal) - Math.round(target);
   const over = diff > 0;
   return {
     fill: Math.min(1, Math.max(0, eatenKcal / target)),

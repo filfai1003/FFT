@@ -28,6 +28,7 @@ import { addDays, compactDateLabel, shortDateLabel } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
+import { calorieStatus } from '@/features/diet/summary';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
 import {
   useAddWater,
@@ -160,9 +161,10 @@ export function NutritionWidget({ size }: Props) {
   const setDeleted = useSetLogDeleted();
   const target = useDayTarget(today);
   const eaten = totals.data ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 };
-  const left = target ? Math.max(0, Math.round(target.kcal - eaten.kcal)) : 0;
+  const status = target ? calorieStatus(eaten.kcal, target.kcal) : null;
+  const left = status && !status.over ? status.amount : 0;
   // Past the target the middle says how much over, never "0 kcal left".
-  const overBy = target ? Math.max(0, Math.round(eaten.kcal - target.kcal)) : 0;
+  const overBy = status?.over ? status.amount : 0;
 
   const fixed = profile.data?.diet_mode === 'fixed_meals';
   const plannedMeals = useFixedPlan();

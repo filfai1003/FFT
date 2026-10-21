@@ -43,12 +43,15 @@ export function FoodSearchScreen() {
   const day = params.day ?? today;
 
   const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<Tab>('results');
+  // null = picked for you: Recent while nothing is typed (and there are recents), else Results.
+  const [chosen, setTab] = useState<Tab | null>(null);
   const [mealSheet, setMealSheet] = useState(false);
   const [quick, setQuick] = useState<Food | null>(null);
 
   const local = useFoodSearch(query);
   const recent = useRecentFoods();
+  const tab: Tab =
+    chosen ?? (query.trim() === '' && (recent.data?.length ?? 0) > 0 ? 'recent' : 'results');
   const mine = useMyFoods();
   const off = useOffSearch(query, tab === 'results' && (local.data?.length ?? 0) < 8);
 
@@ -107,9 +110,12 @@ export function FoodSearchScreen() {
               value={query}
               onChangeText={(v) => {
                 setQuery(v);
-                if (tab !== 'results') setTab('results');
+                // Typing shows Results (and clearing the field goes back to Recent).
+                setTab(null);
               }}
               autoCorrect={false}
+              // Opened to add a food: the keyboard is up, ready to type.
+              autoFocus
             />
           </View>
           <IconButton

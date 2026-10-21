@@ -1,5 +1,6 @@
 import { addDays } from '@/domain/day';
 import type { Goal } from '@/domain/nutrition';
+import { calorieStatus } from '@/features/diet/summary';
 
 /** Part of the day for the greeting (local time): 5–11 morning, 12–17 afternoon, else evening. */
 export type DayPart = 'morning' | 'afternoon' | 'evening';
@@ -97,11 +98,11 @@ export function daySummary(
     parts.push(t('today.summaryWorkout', { name: input.workout.name }));
   const eaten = Math.round(input.eatenKcal);
   if (input.targetKcal != null && input.targetKcal > 0) {
-    const left = Math.round(input.targetKcal) - eaten;
+    const status = calorieStatus(input.eatenKcal, input.targetKcal);
     parts.push(
-      left >= 0
-        ? t('today.summaryKcalLeft', { kcal: formatInt(left) })
-        : t('today.summaryKcalOver', { kcal: formatInt(-left) }),
+      status.over
+        ? t('today.summaryKcalOver', { kcal: formatInt(status.amount) })
+        : t('today.summaryKcalLeft', { kcal: formatInt(status.amount) }),
     );
   } else if (eaten > 0) parts.push(t('today.summaryKcalEaten', { kcal: formatInt(eaten) }));
   return parts.length ? parts.join(' · ') : null;
