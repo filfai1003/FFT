@@ -98,14 +98,10 @@ export function OnboardingFlow() {
           on={step + 1}
           accessibilityLabel={t('onboarding.progress', { current: step + 1, total: steps.length })}
         />
-        <View style={{ gap: 6 }}>
-          <Text variant="bodyS" semibold muted>
-            {t('onboarding.progress', { current: step + 1, total: steps.length })}
-          </Text>
-          <Text variant="screenTitle" accessibilityRole="header">
-            {t(`onboarding.${id}.title`)}
-          </Text>
-        </View>
+        {/* The bar is the progress (read as "Step 2 of 6"): no second "Step x of y" line. */}
+        <Text variant="screenTitle" accessibilityRole="header">
+          {t(`onboarding.${id}.title`)}
+        </Text>
 
         {id === 'goal' ? <GoalStep draft={draft} patch={patch} /> : null}
         {id === 'body' ? <BodyStep draft={draft} patch={patch} today={today} /> : null}

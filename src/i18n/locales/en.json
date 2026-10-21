@@ -1095,7 +1095,6 @@
     "show": "Show photos",
     "unlock": "Unlock your progress photos",
     "bfPts": "Body fat pts",
-    "waistCm": "Waist cm",
     "sliderLabel": "Drag to compare the two photos",
     "photo": "photo",
     "hidden": "hidden, tap to show",
@@ -1110,7 +1109,8 @@
     "needCamera": "Allow the camera to take your check-in photos.",
     "library": "Library",
     "shutter": "Take photo",
-    "unlockToEnable": "Confirm it's you to lock your photos"
+    "unlockToEnable": "Confirm it's you to lock your photos",
+    "waistIn": "Waist {{unit}}"
   },
   "profile": {
     "you": "You",

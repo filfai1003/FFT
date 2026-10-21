@@ -18,7 +18,7 @@ import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
 import { periods } from '@/domain/progress';
-import { displayWeight } from '@/domain/units';
+import { displayLength, displayWeight } from '@/domain/units';
 import {
   CommunityAvatarButton,
   CommunityView,
@@ -206,6 +206,9 @@ function MeNumbers({ records }: { records: ReactNode }) {
   const router = useRouter();
   const today = useToday();
   const unit = usePreferencesStore((s) => s.weightUnit);
+  const lengthUnit = usePreferencesStore((s) => s.lengthUnit);
+  // The waist in the user's length unit (cm or inches).
+  const inLength = (cm: number) => displayLength(cm, lengthUnit);
   const goal = useProfile().data?.goal;
   const { period } = useProgressPeriod();
   const strength = useStrength(period);
@@ -404,8 +407,8 @@ function MeNumbers({ records }: { records: ReactNode }) {
         <HalfStat
           label={t('progress.waist')}
           icon="list"
-          value={waist ? String(waist.value) : null}
-          unit="cm"
+          value={waist ? String(inLength(waist.value).value) : null}
+          unit={inLength(0).unit}
           line={waistLine}
           lineLabel={t('progress.waistLine')}
           color={lineColor(waistArea)}
@@ -415,7 +418,10 @@ function MeNumbers({ records }: { records: ReactNode }) {
               : {
                   area: waistArea,
                   delta: waist.delta,
-                  label: waist.delta === 0 ? t('progress.steady') : `${Math.abs(waist.delta)} cm`,
+                  label:
+                    waist.delta === 0
+                      ? t('progress.steady')
+                      : `${inLength(Math.abs(waist.delta)).value} ${inLength(0).unit}`,
                 }
           }
           onPress={() => open(waist != null, '/progress/body')}
