@@ -31,6 +31,7 @@ import { useProgressView, type ProgressView } from '@/features/gamification/prog
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { BalanceCard } from './BalanceScreens';
 import { poses, useBodyEntries, useBodyGoal, usePhotos } from './data';
 import { EmptyLine } from './EmptyLine';
 import { PhotoTile } from './PhotoTile';
@@ -505,6 +506,8 @@ function MeNumbers({ records }: { records: ReactNode }) {
           </>
         )}
       </Card>
+
+      <BalanceCard />
 
       {records}
 

@@ -273,6 +273,19 @@ describe('offline database', () => {
       .not('completed_at', 'is', null)
       .eq('workout_sessions.status', 'done');
     expect((history.data as unknown[]).length).toBe(2);
+    // the training balance query (DECISIONS 121) also bounds the embedded session's start
+    const recent = await c
+      .from('session_sets')
+      .select('id, workout_sessions!inner(started_at, status)')
+      .not('completed_at', 'is', null)
+      .eq('workout_sessions.status', 'done')
+      .gte('workout_sessions.started_at', '2026-10-05T00:00:00.000Z');
+    expect(recent.data).toEqual([
+      {
+        id: id(131),
+        workout_sessions: { started_at: '2026-10-08T10:00:00.000Z', status: 'done' },
+      },
+    ]);
   });
 
   it('drops (drop set) count in volume only, and last_sets says which rows are drops', async () => {

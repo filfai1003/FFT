@@ -1057,6 +1057,57 @@
     "upBy": "up {{value}}",
     "firstBefore": "Your first photos become your before"
   },
+  "balance": {
+    "title": "Training balance",
+    "rangeA11y": "Weeks shown",
+    "range": {
+      "this": "This week",
+      "last": "Last week",
+      "avg4": "4-week avg"
+    },
+    "when": {
+      "this": "this week",
+      "last": "last week",
+      "avg4": "a week on average"
+    },
+    "guide": "Guideline: {{min}} to {{max}} hard sets per muscle group a week",
+    "guideNote": "A common evidence-based range for building muscle. It is a guide, not a rule: what suits you depends on your goal, experience and recovery.",
+    "status": {
+      "under": "Below",
+      "within": "Within",
+      "over": "Above"
+    },
+    "statusLong": {
+      "under": "below the {{min}} to {{max}} guideline",
+      "within": "within the {{min}} to {{max}} guideline",
+      "over": "above the {{min}} to {{max}} guideline"
+    },
+    "rowA11y": "{{name}}, {{sets}} {{when}}, {{status}}",
+    "sets_one": "{{value}} set",
+    "sets_other": "{{value}} sets",
+    "setsUnit_one": "set",
+    "setsUnit_other": "sets",
+    "behind": "{{name}}: {{sets}} {{when}}",
+    "behindTitle": "Most behind",
+    "volume": "{{value}} {{unit}} volume",
+    "ofTotal": "{{within}} of {{total}}",
+    "cardWithin": "{{within}} of {{total}} muscle groups within the guideline",
+    "cardWithinShort": "muscle groups within {{min}}–{{max}} sets this week",
+    "movement": {
+      "push": "Push",
+      "pull": "Pull",
+      "legs": "Legs",
+      "core": "Core"
+    },
+    "emptyTitle": {
+      "this": "No sets this week yet",
+      "last": "No sets last week",
+      "avg4": "No sets in the 4 weeks before this one"
+    },
+    "emptyBody": "Finish a workout and your sets per muscle group show here.",
+    "howTitle": "How sets are counted",
+    "howBody": "A hard set is a completed working set of a finished workout. Warm-ups (lighter than 60% of your heaviest set of that exercise in the workout) and drop sets are left out. The main muscle of an exercise gets 1 set, each helping muscle half a set. Volume is weight × reps of every completed set, shared the same way."
+  },
   "checkIn": {
     "title": "Check-in",
     "optional": "Every field is optional · fill what you have",
