@@ -3,19 +3,25 @@ import { Animated, Easing, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
-import { TOAST_DURATION_MS, useToastStore } from '@/lib/toast-store';
+import { TOAST_DURATION_MS, useBottomBars, useToastStore } from '@/lib/toast-store';
+import { useTabBarHeight } from './TabBar';
 import { Text } from './Text';
 
 /**
  * Renders the current toast: surfaceRaised pill pinned above the bottom bar, text + action
- * (UNDO), gone after 5 s. Mount once, at the root, after the navigator.
+ * (UNDO), gone after 5 s. Mount once, at the root, after the navigator. It sits just above the
+ * page's bottom bar, the same everywhere (DECISIONS 123): a BottomActionBar on screen, else the
+ * tab bar when a tab page is shown (`overTabs`), else the safe area.
  */
-export function ToastHost() {
+export function ToastHost({ overTabs = false }: { overTabs?: boolean }) {
   const toast = useToastStore((s) => s.toast);
   const runAction = useToastStore((s) => s.runAction);
   const dismiss = useToastStore((s) => s.dismiss);
   const { colors, reduceMotion } = useTheme();
-  const { bottom } = useSafeAreaInsets();
+  const { bottom, top } = useSafeAreaInsets();
+  const tabBar = useTabBarHeight();
+  const bars = useBottomBars((s) => s.heights);
+  const barOffset = bars.length > 0 ? bars[bars.length - 1]! : overTabs ? tabBar : 0;
   const [opacity] = useState(() => new Animated.Value(0));
   // The time left to undo, drained by a thin line along the bottom of the toast.
   const [left] = useState(() => new Animated.Value(1));
@@ -52,7 +58,10 @@ export function ToastHost() {
         position: 'absolute',
         left: space.screenX,
         right: space.screenX,
-        bottom: bottom + (toast.bottomOffset ?? 0) + space.gapM,
+        ...(toast.placement === 'top'
+          ? { top: top + space.gapM }
+          : { bottom: (toast.bottomOffset ?? barOffset) || bottom }),
+        marginBottom: toast.placement === 'top' ? 0 : space.gapM,
         opacity,
       }}
     >

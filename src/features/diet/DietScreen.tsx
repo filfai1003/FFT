@@ -190,12 +190,7 @@ function MealSection({
             </Text>
           )}
         </View>
-        {/* Filled while the meal is empty: adding is the next step there. */}
-        <AddButton
-          filled={empty}
-          accessibilityLabel={t('diet.addTo', { meal: name })}
-          onPress={onAdd}
-        />
+        <AddButton accessibilityLabel={t('diet.addTo', { meal: name })} onPress={onAdd} />
       </View>
       {empty && yesterday.length > 0 ? (
         <Pressable

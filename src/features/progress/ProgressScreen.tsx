@@ -100,9 +100,10 @@ export function ProgressScreen() {
           title={t('nav.progress')}
           actions={
             view === 'me' ? (
-              // Canvas "Progress": a dark "Check-in" pill (the accent stays for the main actions).
+              // A header action: outlined like the round header buttons (DECISIONS 123; the accent stays
+              // for the page's main action).
               <Button
-                variant="dark"
+                variant="secondary"
                 size="small"
                 block={false}
                 icon="plus"

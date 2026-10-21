@@ -127,7 +127,8 @@ export function SessionScreen() {
           ? t('session.setSavedIn', { n: setIndex + 1, label: labels[at] })
           : t('session.setSaved', { n: setIndex + 1 }),
         actionLabel: t('common.undo'),
-        bottomOffset: BOTTOM_NAV_HEIGHT,
+        // The bottom is the work area right now (rest timer, next set): the toast goes on top.
+        placement: 'top',
         onAction: () => update((s) => undoSetDone(s, setId)),
       });
     }

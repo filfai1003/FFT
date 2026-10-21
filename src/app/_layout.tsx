@@ -1,6 +1,6 @@
 import '@/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack, usePathname } from 'expo-router';
+import { Stack, usePathname, useSegments } from 'expo-router';
 import { KeyboardProvider } from '@/components/ui/keyboard';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -91,12 +91,18 @@ export default function RootLayout() {
           {/* Optional app lock (DECISIONS 95): covers everything, the screens stay mounted. */}
           <AppLockGate>
             <AppNavigator />
-            <ToastHost />
+            <ToastOverPages />
           </AppLockGate>
         </QueryClientProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** The toast, above the tab bar while a tab page is on screen (DECISIONS 123). */
+function ToastOverPages() {
+  const segments = useSegments() as string[];
+  return <ToastHost overTabs={segments[0] === '(tabs)'} />;
 }
 
 /**
