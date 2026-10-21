@@ -293,6 +293,7 @@ const ICONS = {
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   archive: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4',
+  flag: 'M4 22V4M4 4h13l-2 4 2 4H4',
 };
 const icon = (name) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -324,6 +325,14 @@ const PAGES = [
     badge: 'errors',
     render: problemsPage,
   },
+  {
+    id: 'photos',
+    group: null,
+    icon: 'flag',
+    label: 'Reported photos',
+    badge: 'photos',
+    render: photosPage,
+  },
   { id: 'ai', group: null, icon: 'sparkle', label: 'AI coach', render: aiPage },
   { id: 'data', group: 'Advanced', icon: 'table', label: 'All data', render: dataPage },
   { id: 'ask', group: 'Advanced', icon: 'search', label: 'Ask the database', render: askPage },
@@ -336,7 +345,7 @@ const PAGES = [
     render: backupPage,
   },
 ];
-const badges = { resets: 0, errors: 0 };
+const badges = { resets: 0, errors: 0, photos: 0 };
 
 function renderNav() {
   const current = location.hash.slice(1).split('/')[0] || 'overview';
@@ -398,10 +407,12 @@ async function route() {
 }
 
 async function refreshBadges() {
-  const [resets, errors] = await Promise.all([
+  const [resets, errors, photos] = await Promise.all([
     api('/api/password-resets').catch(() => null),
     api('/api/errors?days=1').catch(() => null),
+    api('/api/community/reports').catch(() => null),
   ]);
+  badges.photos = photos ? photos.rows.length : 0;
   badges.resets = resets ? resets.rows.filter((r) => r[4] === null).length : 0;
   badges.errors = errors ? errors.rows.length : 0;
   renderNav();
@@ -702,6 +713,19 @@ async function personPage(id) {
     toast('Community photo removed');
     route();
   };
+  // 3 photos judged inappropriate = no more photos (DECISIONS 120); given back here.
+  const restorePhoto = async () => {
+    if (!(await needEditing())) return;
+    const ok = await confirmDialog(
+      'Let them add a community photo again?',
+      `${p.name || p.email} lost the right after 3 photos were judged inappropriate. Their strikes go back to 0.`,
+      { confirm: 'Give the right back' },
+    );
+    if (!ok) return;
+    await api('/api/community/photo-restore', { userId: p.id });
+    toast('They can add a community photo again');
+    route();
+  };
   return [
     h(
       'div',
@@ -771,6 +795,20 @@ async function personPage(id) {
           h('dd', {}, ago(p.last_sign_in_at)),
           h('dt', {}, 'Community photo'),
           h('dd', {}, p.community_photo ? `community-avatars/${p.community_photo}` : 'None'),
+          p.community_member
+            ? [
+                h('dt', {}, 'Photo strikes'),
+                h(
+                  'dd',
+                  {},
+                  `${num(p.photo_strikes)} of 3${p.photo_banned ? ' · can no longer add a photo' : ''}${
+                    Number(p.photo_reports_open)
+                      ? ` · ${num(p.photo_reports_open)} open reports`
+                      : ''
+                  }`,
+                ),
+              ]
+            : null,
         ),
         h(
           'div',
@@ -802,6 +840,17 @@ async function personPage(id) {
                   onclick: () => void removePhoto().catch((e) => toast(e.message)),
                 },
                 'Remove community photo',
+              )
+            : null,
+          p.photo_banned
+            ? h(
+                'button',
+                {
+                  class: 'btn',
+                  type: 'button',
+                  onclick: () => void restorePhoto().catch((e) => toast(e.message)),
+                },
+                'Allow a photo again',
               )
             : null,
         ),
@@ -978,6 +1027,205 @@ async function requestsPage() {
           }),
         )
       : null,
+  ];
+}
+
+// ---------------------------------------------------------------- reported photos
+const REASONS = {
+  nudity: 'Nudity',
+  violence: 'Violence',
+  hateful: 'Hateful',
+  spam: 'Spam',
+  other: 'Other',
+};
+const RESOLUTIONS = {
+  appropriate: 'Judged appropriate',
+  inappropriate: 'Judged inappropriate',
+  removed: 'Removed (no strike)',
+};
+
+/** "Nudity ×2, Spam" from the reasons given (a report may give none). */
+function reasonsText(reasons, total) {
+  const counts = new Map();
+  for (const r of reasons ?? []) counts.set(r, (counts.get(r) ?? 0) + 1);
+  const parts = [...counts].map(([r, n]) => `${REASONS[r] ?? r}${n > 1 ? ` ×${n}` : ''}`);
+  const none = total - (reasons ?? []).length;
+  if (none > 0) parts.push(`no reason ×${none}`);
+  return parts.join(', ');
+}
+
+/** The photo itself, loaded through the panel (img-src 'self'), or why it cannot be shown. */
+function photoThumb(path) {
+  const box = h('div', { class: 'photo-missing muted' }, 'Loading…');
+  const img = h('img', {
+    class: 'photo-thumb',
+    alt: 'Reported community photo',
+    src: `/api/community/photo?path=${encodeURIComponent(path)}`,
+  });
+  img.addEventListener('load', () => box.replaceWith(img));
+  img.addEventListener('error', () => {
+    box.textContent = 'Not available (file gone, or SUPABASE_URL not set)';
+  });
+  return box;
+}
+
+async function photosPage(which) {
+  const closed = which === 'all';
+  header(
+    'Reported photos',
+    'Community profile photos other members reported. 3 open reports from 3 members hide the photo from everyone else until you decide. Appropriate: it shows again. Inappropriate: it is deleted and the member gets a strike; after 3 strikes they can no longer add a photo. Who reported is never shown.',
+  );
+  const rows = asObjects(await api(`/api/community/reports${closed ? '?closed=1' : ''}`));
+  if (!closed) {
+    badges.photos = rows.length;
+    renderNav();
+  }
+  const decide = async (r, verdict) => {
+    if (!(await needEditing())) return;
+    const bad = verdict === 'inappropriate';
+    const ok = await confirmDialog(
+      bad ? 'Judge this photo inappropriate?' : 'Judge this photo appropriate?',
+      bad
+        ? `The photo of ${r.name} is deleted and they get a strike (${Number(r.strikes) + 1} of 3${Number(r.strikes) + 1 >= 3 ? ': they can no longer add a photo' : ''}). Its reports are closed.`
+        : `The photo of ${r.name} shows again to everyone and they can change it. Its reports are closed; the same members cannot report it again.`,
+      { confirm: bad ? 'Inappropriate' : 'Appropriate', danger: bad },
+    );
+    if (!ok) return;
+    const out = await api('/api/community/report-decision', {
+      userId: r.user_id,
+      path: r.photo_path,
+      verdict,
+    });
+    toast(
+      bad
+        ? `Photo deleted · ${out.strikes} of 3 strikes${out.banned ? ' · no more photos' : ''}`
+        : 'Photo visible again',
+    );
+    route();
+  };
+  const status = (r) =>
+    r.open_reports === 0
+      ? (RESOLUTIONS[r.resolution] ?? 'Closed')
+      : r.under_review
+        ? r.in_use
+          ? 'Under review: hidden from others'
+          : 'Under review: removed by the member, file kept'
+        : r.in_use
+          ? 'Visible (under 3 reports)'
+          : 'No longer in use';
+  return [
+    h(
+      'div',
+      { class: 'row' },
+      h(
+        'button',
+        {
+          class: `btn small${closed ? ' ghost' : ' primary'}`,
+          type: 'button',
+          onclick: () => go('photos'),
+        },
+        'Open',
+      ),
+      h(
+        'button',
+        {
+          class: `btn small${closed ? ' primary' : ' ghost'}`,
+          type: 'button',
+          onclick: () => go('photos', 'all'),
+        },
+        'Closed too',
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card flat' },
+      table(rows, {
+        empty: closed ? 'No photo was reported.' : 'No open reports. All good.',
+        columns: [
+          { key: 'photo', label: 'Photo', render: (r) => photoThumb(r.photo_path) },
+          {
+            key: 'name',
+            label: 'Member',
+            render: (r) =>
+              h(
+                'div',
+                {},
+                h(
+                  'button',
+                  {
+                    class: 'link',
+                    type: 'button',
+                    title: r.user_id,
+                    onclick: () => go('person', r.user_id),
+                  },
+                  r.name,
+                ),
+                r.email ? h('div', { class: 'muted' }, r.email) : null,
+              ),
+          },
+          {
+            key: 'open_reports',
+            label: 'Reports',
+            render: (r) =>
+              r.open_reports === r.reports
+                ? String(r.reports)
+                : `${r.open_reports} open of ${r.reports}`,
+          },
+          {
+            key: 'reasons',
+            label: 'Reasons',
+            wrap: true,
+            render: (r) => reasonsText(r.reasons, r.reports),
+          },
+          {
+            key: 'last_at',
+            label: 'Reported',
+            render: (r) =>
+              r.first_at === r.last_at
+                ? dateTime(r.last_at)
+                : `${dateOnly(r.first_at)} – ${dateTime(r.last_at)}`,
+          },
+          { key: 'status', label: 'Status', wrap: true, render: status },
+          {
+            key: 'strikes',
+            label: 'Strikes',
+            render: (r) => `${r.strikes} of 3${r.banned ? ' · no more photos' : ''}`,
+          },
+          {
+            key: 'actions',
+            label: '',
+            actions: true,
+            render: (r) =>
+              r.open_reports > 0
+                ? [
+                    h(
+                      'button',
+                      {
+                        class: 'btn small',
+                        type: 'button',
+                        onclick: () => void decide(r, 'appropriate').catch((e) => toast(e.message)),
+                      },
+                      'Appropriate',
+                    ),
+                    ' ',
+                    h(
+                      'button',
+                      {
+                        class: 'btn danger small',
+                        type: 'button',
+                        onclick: () =>
+                          void decide(r, 'inappropriate').catch((e) => toast(e.message)),
+                      },
+                      'Inappropriate',
+                    ),
+                  ]
+                : r.resolved_at
+                  ? dateTime(r.resolved_at)
+                  : '',
+          },
+        ],
+      }),
+    ),
   ];
 }
 
@@ -2006,6 +2254,8 @@ const ACTIONS = {
   'plan.set': 'Changed a plan',
   'password.temporary': 'Gave a temporary password',
   'community.photo.remove': 'Removed a community photo',
+  'community.photo.decide': 'Decided on a reported photo',
+  'community.photo.restore': 'Gave back the right to a community photo',
   'password.dismiss': 'Dismissed a password request',
   'errors.clear': 'Marked a problem as fixed',
   'ai.model': 'Changed the AI coach model',
@@ -2034,7 +2284,10 @@ function describe(action, d) {
   if (action === 'read.user') return d.id ? `${String(d.id).slice(0, 8)}…` : '';
   if (action === 'plan.set')
     return `${d.plan === 'premium' ? 'Premium' : 'Free'}${d.userId ? ` · ${d.userId.slice(0, 8)}…` : ''}`;
-  if (action === 'community.photo.remove') return d.userId ? `${d.userId.slice(0, 8)}…` : '';
+  if (action === 'community.photo.remove' || action === 'community.photo.restore')
+    return d.userId ? `${d.userId.slice(0, 8)}…` : '';
+  if (action === 'community.photo.decide')
+    return `${d.verdict === 'inappropriate' ? 'Inappropriate' : 'Appropriate'}${d.userId ? ` · ${d.userId.slice(0, 8)}…` : ''}`;
   if (action === 'password.temporary')
     return d.email ?? (d.userId ? `${d.userId.slice(0, 8)}…` : '');
   if (action === 'ai.model') return d.model || 'back to the default';

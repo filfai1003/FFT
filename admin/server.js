@@ -45,6 +45,12 @@ class HttpError extends Error {
 }
 
 const quote = (id) => `"${String(id).replace(/"/g, '""')}"`;
+
+// Community photos (DECISIONS 119, 120): "<public_id>/<name>.jpg|webp" in the public bucket.
+const PHOTO_PATH = /^[0-9a-f-]{36}\/[a-z0-9-]{8,64}\.(jpg|webp)$/;
+// The bucket is public-read, so the panel loads a photo by its public address on the backend
+// (SUPABASE_URL, the same variable as the api service): no storage key needed here.
+const STORAGE_BASE = (process.env.SUPABASE_URL ?? '').trim().replace(/\/+$/, '');
 const SCHEMAS = ['public', 'auth', 'storage'];
 // Same as DEFAULT_MODEL in supabase/functions/ai/index.ts (used when no model is set here).
 const AI_DEFAULT_MODEL = 'deepseek/deepseek-v4.1-flash';
@@ -563,6 +569,12 @@ async function api(req, res, url) {
               (select count(*) from public.vault_rows vr where vr.user_id = u.id and not vr.deleted) as encrypted_items,
               -- Community photo (DECISIONS 119): public to members, so an admin can remove it.
               (select m.photo_path from public.community_members m where m.user_id = u.id) as community_photo,
+              -- Photo reports (DECISIONS 120): strikes, no more photos after 3, open reports.
+              (select m.user_id is not null from public.community_members m where m.user_id = u.id) as community_member,
+              (select m.photo_strikes from public.community_members m where m.user_id = u.id) as photo_strikes,
+              (select m.photo_banned from public.community_members m where m.user_id = u.id) as photo_banned,
+              (select count(*) from public.community_photo_reports r
+                 where r.member_id = u.id and r.resolved_at is null) as photo_reports_open,
               (select coalesce(round(sum(a.cost_micros) / 1000000.0, 2), 0) from public.ai_usage a
                  where a.user_id = u.id and a.created_at > now() - interval '30 days') as ai_cost_30d,
               (select coalesce(json_agg(json_build_object('name', t.name, 'app', t.client_id is not null,
@@ -581,14 +593,26 @@ async function api(req, res, url) {
   }
 
   if (route === 'POST /api/community/remove-photo') {
-    // Takes down a member's community photo (DECISIONS 119). The row's trigger queues the file
-    // in files_to_delete; the api service removes it from storage at its next clean-up.
+    // Takes down a member's community photo (DECISIONS 119). The file is queued in files_to_delete
+    // (here too, as the row's trigger keeps a photo under review, DECISIONS 120); the api service
+    // removes it from storage at its next clean-up. Its open reports close as 'removed' (no strike).
     needSudo();
     const { userId } = await readBody(req);
     if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
     const out = await db.run(
-      `update public.community_members set photo_path = null, updated_at = now()
-       where user_id = $1 and photo_path is not null returning user_id`,
+      `with m as (
+         select user_id, photo_path from public.community_members
+         where user_id = $1 and photo_path is not null),
+       q as (
+         insert into public.files_to_delete (bucket, path)
+         select 'community-avatars', photo_path from m
+         on conflict (bucket, path) do nothing),
+       r as (
+         update public.community_photo_reports
+         set resolved_at = now(), resolution = 'removed', updated_at = now()
+         where member_id = $1 and resolved_at is null and photo_path in (select photo_path from m))
+       update public.community_members set photo_path = null, updated_at = now()
+       where user_id in (select user_id from m) returning user_id`,
       {
         sudo: true,
         commit: true,
@@ -598,6 +622,90 @@ async function api(req, res, url) {
     );
     if (!out.rows[0]) throw new HttpError(404, 'No community photo');
     return send(res, 200, { removed: true });
+  }
+
+  if (route === 'GET /api/community/reports') {
+    // Reported community photos (DECISIONS 120), one line per photo: open ones first (under
+    // review = 3 or more open reports), closed ones too with ?closed=1. Never who reported.
+    const closed = url.searchParams.get('closed') === '1';
+    const out = await db.run(
+      `select r.member_id as user_id, r.photo_path, m.display_name as name, u.email,
+              count(*) filter (where r.resolved_at is null)::int as open_reports,
+              count(*)::int as reports,
+              count(*) filter (where r.resolved_at is null) >= 3 as under_review,
+              m.photo_path is not distinct from r.photo_path as in_use,
+              coalesce(json_agg(r.reason) filter (where r.reason is not null), '[]') as reasons,
+              min(r.created_at) as first_at, max(r.created_at) as last_at,
+              max(r.resolved_at) as resolved_at,
+              (array_agg(r.resolution order by r.resolved_at desc nulls last))[1] as resolution,
+              m.photo_strikes as strikes, m.photo_banned as banned
+       from public.community_photo_reports r
+       join public.community_members m on m.user_id = r.member_id
+       left join auth.users u on u.id = r.member_id
+       group by r.member_id, r.photo_path, m.display_name, u.email, m.photo_path,
+                m.photo_strikes, m.photo_banned
+       having $1 or count(*) filter (where r.resolved_at is null) > 0
+       order by count(*) filter (where r.resolved_at is null) >= 3 desc,
+                count(*) filter (where r.resolved_at is null) desc, max(r.created_at) desc
+       limit 300`,
+      { params: [closed] },
+    );
+    return send(res, 200, out);
+  }
+
+  if (route === 'GET /api/community/photo') {
+    // The image of a reported photo, for the Reported photos page (img-src 'self'). Only a photo
+    // that was reported or is a member's current one: not a way to browse the bucket.
+    const photo = url.searchParams.get('path') ?? '';
+    if (!PHOTO_PATH.test(photo)) throw new HttpError(400, 'Bad photo path');
+    const known = await db.run(
+      `select 1 from public.community_photo_reports where photo_path = $1
+       union all select 1 from public.community_members where photo_path = $1 limit 1`,
+      { params: [photo] },
+    );
+    if (!known.rows.length) throw new HttpError(404, 'Not a reported photo');
+    if (!STORAGE_BASE)
+      throw new HttpError(404, 'Set SUPABASE_URL on the admin service to see the photos');
+    const r = await fetch(`${STORAGE_BASE}/storage/v1/object/public/community-avatars/${photo}`);
+    if (!r.ok) throw new HttpError(404, 'The file is no longer in storage');
+    const type = (r.headers.get('content-type') ?? '').split(';')[0].trim();
+    if (!['image/jpeg', 'image/webp'].includes(type)) throw new HttpError(415, 'Not a photo');
+    const body = Buffer.from(await r.arrayBuffer());
+    if (body.length > 300 * 1024) throw new HttpError(413, 'Too big');
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    return void res.end(body);
+  }
+
+  if (route === 'POST /api/community/report-decision') {
+    // Appropriate: visible again, reports closed. Inappropriate: photo deleted (files_to_delete),
+    // reports closed, a strike; 3 strikes = no more photos (community_photo_decide, DECISIONS 120).
+    needSudo();
+    const { userId, path: photo, verdict } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
+    if (!PHOTO_PATH.test(String(photo))) throw new HttpError(400, 'Bad photo path');
+    if (!['appropriate', 'inappropriate'].includes(verdict))
+      throw new HttpError(400, 'Bad verdict');
+    const out = await db.run(`select public.community_photo_decide($1, $2, $3) as d`, {
+      sudo: true,
+      commit: true,
+      params: [userId, photo, verdict],
+      audit: { action: 'community.photo.decide', detail: { userId, path: photo, verdict } },
+    });
+    return send(res, 200, out.rows[0]?.[0] ?? {});
+  }
+
+  if (route === 'POST /api/community/photo-restore') {
+    // Gives back the right to set a community photo after 3 strikes (DECISIONS 120).
+    needSudo();
+    const { userId } = await readBody(req);
+    if (!/^[0-9a-f-]{36}$/i.test(String(userId))) throw new HttpError(400, 'Bad user id');
+    const out = await db.run(`select public.community_photo_restore($1) as d`, {
+      sudo: true,
+      commit: true,
+      params: [userId],
+      audit: { action: 'community.photo.restore', detail: { userId } },
+    });
+    return send(res, 200, out.rows[0]?.[0] ?? {});
   }
 
   if (route === 'POST /api/user/temp-password') {
