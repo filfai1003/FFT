@@ -28,7 +28,9 @@ export function ExerciseImage({ uri, size = 52 }: ExerciseImageProps) {
         width: size,
         height: size,
         borderRadius: Math.round(size * 0.28),
-        backgroundColor: colors.surfaceSelected,
+        // The pictures have a transparent background (tools/exercise-images/transparent.mjs): they
+        // sit on the neutral tile of the theme, never on a black square.
+        backgroundColor: hasImage ? colors.surfaceAlt : colors.surfaceSelected,
         borderWidth: 1,
         borderStyle: hasImage ? 'solid' : 'dashed',
         borderColor: hasImage ? colors.exerciseBorder : colors.exerciseBorderEmpty,
