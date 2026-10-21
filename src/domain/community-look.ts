@@ -44,6 +44,11 @@ export type Title = (typeof TITLES)[number];
 
 /** What others see (null fields = the default). */
 export type Look = {
+  /**
+   * Supporter or Premium (DECISIONS 120): the Supporter badge next to the name. Set by the server
+   * from the plan at read time, never by the app.
+   */
+  supporter?: true;
   colour?: ProfileColour;
   frame?: Frame;
   title?: Title;
@@ -74,6 +79,7 @@ export function cleanLook(raw: unknown): Look | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const look: Look = {};
+  if (r.supporter === true) look.supporter = true;
   if (isProfileColour(r.colour)) look.colour = r.colour;
   if (isFrame(r.frame)) look.frame = r.frame;
   if (isTitle(r.title)) look.title = r.title;
@@ -81,6 +87,10 @@ export function cleanLook(raw: unknown): Look | null {
   if (typeof r.photo === 'string' && PHOTO.test(r.photo)) look.photo = r.photo;
   return Object.keys(look).length ? look : null;
 }
+
+/** Why a member may report a profile photo (DECISIONS 120; the server checks the same list). */
+export const REPORT_REASONS = ['nudity', 'violence', 'hateful', 'spam', 'other'] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
 
 /** A new photo's path: the member's folder and a random name (a new name busts every cache). */
 export function avatarPath(publicId: string, random: string): string {

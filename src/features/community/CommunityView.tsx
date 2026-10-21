@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View, type PressableProps } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { DotBar } from '@/components/ui/DotBar';
 import { Card } from '@/components/ui/Card';
@@ -27,8 +27,8 @@ import {
 } from '@/domain/community';
 import { useGamification } from '@/features/gamification/data';
 import { Avatar, dayMonth } from '@/features/gamification/components';
-import { cleanLook } from '@/domain/community-look';
-import { LookLine, MemberAvatar, useLookA11y } from './MemberAvatar';
+import { cleanLook, type Look } from '@/domain/community-look';
+import { LookLine, MemberAvatar, SupporterBadge, useLookA11y } from './MemberAvatar';
 import { usePlanStore } from '@/lib/plan';
 import { SectionHead } from '@/features/gamification/MeCards';
 import { useProfile } from '@/features/profile/api';
@@ -53,6 +53,7 @@ import {
 import { useBoardChoice } from './board-store';
 import { DropdownButton, DropdownMenu, type DropdownOption } from './Dropdown';
 import { NameSheet } from './NameSheet';
+import { ReportPhotoSheet, type ReportTarget } from './ReportPhotoSheet';
 import { IconTile, useAreaColors, type Area } from '@/components/ui/IconTile';
 
 /** Colour code (DECISIONS 107): diet is nutrition, the rest is training. */
@@ -431,6 +432,8 @@ function BoardView({ name }: { name: string }) {
   const audienceLine = useAudienceLine();
   // One dropdown open at a time: who to compare with, or the period.
   const [open, setOpen] = useState<'who' | 'period' | null>(null);
+  // A member's photo reported from a row's long press (DECISIONS 120).
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
   useCommunitySubmit();
 
   // The community shows the profile name: follow a change made elsewhere (Personal info).
@@ -632,14 +635,20 @@ function BoardView({ name }: { name: string }) {
             }
           />
         ) : (
-          <Podium rows={podium} metric={metric} />
+          <Podium rows={podium} metric={metric} onReport={setReporting} />
         )}
       </Card>
 
       {rest.length > 0 ? (
         <Card gap={0} style={{ paddingVertical: 4, paddingHorizontal: 14 }}>
           {rest.map((r, i) => (
-            <PlaceRow key={r.public_id} row={r} metric={metric} first={i === 0} />
+            <PlaceRow
+              key={r.public_id}
+              row={r}
+              metric={metric}
+              first={i === 0}
+              onReport={setReporting}
+            />
           ))}
         </Card>
       ) : null}
@@ -653,9 +662,34 @@ function BoardView({ name }: { name: string }) {
         list={friends.data ?? []}
         metric={metric}
         mine={rows.find((r) => r.is_me)?.value ?? null}
+        onReport={setReporting}
       />
+      <ReportPhotoSheet target={reporting} onClose={() => setReporting(null)} />
     </>
   );
+}
+
+/**
+ * A long press on a member's row reports its photo (DECISIONS 120), also offered to screen readers
+ * as an action of the row ("Report photo"). Nothing for your own row or without a photo.
+ */
+function useReportProps(onReport: (target: ReportTarget) => void) {
+  const { t } = useTranslation();
+  return (
+    m: { public_id: string; name: string; is_me?: boolean },
+    look: Look | null,
+  ): Partial<PressableProps> => {
+    const photo = look?.photo;
+    if (!photo || m.is_me) return {};
+    const open = () => onReport({ publicId: m.public_id, name: m.name, photo });
+    return {
+      onLongPress: open,
+      accessibilityActions: [{ name: 'report', label: t('report.action') }],
+      onAccessibilityAction: (e) => {
+        if (e.nativeEvent.actionName === 'report') open();
+      },
+    };
+  };
 }
 
 function useMoveText() {
@@ -668,10 +702,20 @@ function useMoveText() {
   };
 }
 
-function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric }) {
+function Podium({
+  rows,
+  metric,
+  onReport,
+}: {
+  rows: BoardRow[];
+  metric: CommunityMetric;
+  onReport: (target: ReportTarget) => void;
+}) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
+  const lookA11y = useLookA11y();
+  const reportProps = useReportProps(onReport);
   // Second, first, third, as on a podium (ties keep the board's order).
   const order = [rows[1], rows[0], rows[2]];
   return (
@@ -681,15 +725,17 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
         const first = i === 1;
         const block = first ? 104 : i === 0 ? 76 : 56;
         const size = first ? 60 : 46;
+        const look = cleanLook(r.look);
         return (
           <Pressable
             key={r.public_id}
             accessibilityRole="button"
             accessibilityLabel={t('community.board.podiumA11y', {
               place: r.place,
-              name: r.name,
+              name: `${r.name}${lookA11y(look)}`,
               value: formatScore(metric, r.value),
             })}
+            {...reportProps(r, look)}
             onPress={() => {
               tick();
               router.push({ pathname: '/progress/community-profile', params: { id: r.public_id } });
@@ -697,10 +743,13 @@ function Podium({ rows, metric }: { rows: BoardRow[]; metric: CommunityMetric })
             style={{ flex: 1, alignItems: 'center', gap: 6 }}
           >
             {first ? <Icon name="trophy" size={24} color={colors.streakInk} /> : null}
-            <MemberAvatar name={r.name} look={cleanLook(r.look)} size={size} ring={first} />
-            <Text semibold numberOfLines={1} style={{ fontSize: 14 }}>
-              {r.name}
-            </Text>
+            <MemberAvatar name={r.name} look={look} size={size} ring={first} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+              <Text semibold numberOfLines={1} style={{ fontSize: 14, flexShrink: 1 }}>
+                {r.name}
+              </Text>
+              {look?.supporter ? <SupporterBadge size={16} /> : null}
+            </View>
             <Text semibold numeric>
               {formatScore(metric, r.value)}
             </Text>
@@ -768,19 +817,23 @@ function PlaceRow({
   row,
   metric,
   first,
+  onReport,
 }: {
   row: BoardRow;
   metric: CommunityMetric;
   first: boolean;
+  onReport: (target: ReportTarget) => void;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
   const moveText = useMoveText();
   const lookA11y = useLookA11y();
+  const reportProps = useReportProps(onReport);
   const look = cleanLook(row.look);
   return (
     <Pressable
+      {...reportProps(row, look)}
       accessibilityRole="button"
       accessibilityLabel={t('community.board.rowA11y', {
         place: row.place,
@@ -878,11 +931,13 @@ function FriendsCard({
   list,
   metric,
   mine,
+  onReport,
 }: {
   list: FriendRow[];
   metric: CommunityMetric;
   /** Your score on this board, to compare with (null without one). */
   mine: number | null;
+  onReport: (target: ReportTarget) => void;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -890,6 +945,7 @@ function FriendsCard({
   const answer = useAnswerFriend();
   const showToast = useToastStore((s) => s.show);
   const lookA11y = useLookA11y();
+  const reportProps = useReportProps(onReport);
   // What a friend's line says: a request, no score, or how far ahead / behind you they are.
   const subtitle = (f: FriendRow): string => {
     if (f.status === 'asked_you') return t('community.friends.askedYou');
@@ -932,6 +988,7 @@ function FriendsCard({
           }}
         >
           <Pressable
+            {...reportProps(f, cleanLook(f.look))}
             accessibilityRole="button"
             accessibilityLabel={[
               `${f.name}${lookA11y(cleanLook(f.look))}`,

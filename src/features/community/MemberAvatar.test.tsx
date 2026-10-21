@@ -68,5 +68,19 @@ describe('LookLine', () => {
   it('shows nothing without a title or badge', async () => {
     await renderUI(<LookLine look={{ colour: 'rose' }} />);
     expect(screen.queryByText('Runner')).toBeNull();
+    expect(screen.queryByTestId('supporter-badge', hidden)).toBeNull();
+  });
+
+  it('the Supporter badge (DECISIONS 120): a star in rows, with the word on profiles, read out', async () => {
+    await renderUI(<LookLine look={{ supporter: true, title: 'runner' }} />);
+    expect(screen.getByTestId('supporter-badge', hidden)).toBeTruthy();
+    expect(screen.queryByText('Supporter', hidden)).toBeNull();
+    expect(screen.getByLabelText('Supporter, Runner')).toBeTruthy();
+  });
+
+  it('the Supporter badge alone, with its word', async () => {
+    await renderUI(<LookLine look={{ supporter: true }} word />);
+    expect(screen.getByText('Supporter', hidden)).toBeTruthy();
+    expect(screen.getByLabelText('Supporter')).toBeTruthy();
   });
 });

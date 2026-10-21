@@ -11,7 +11,12 @@ jest.mock('expo-router', () => ({
 }));
 
 const PID = '0f8fad5b-d9cb-469f-a165-70867728950e';
-const mockState: { member: boolean; photo: string | null } = { member: true, photo: null };
+const mockState: {
+  member: boolean;
+  photo: string | null;
+  review?: boolean;
+  banned?: boolean;
+} = { member: true, photo: null };
 const mockSave = jest.fn(async (_c: unknown) => ({}));
 const mockSetPhoto = jest.fn(async (_a: { localUri?: string | null; path?: string | null }) =>
   _a.localUri ? `${PID}/new12345.jpg` : (_a.path ?? null),
@@ -34,6 +39,8 @@ jest.mock('./api', () => ({
           title: null,
           showcase_badge: null,
           photo_path: mockState.photo,
+          photo_review: mockState.review ?? false,
+          photo_banned: mockState.banned ?? false,
           look: mockState.photo ? { photo: mockState.photo } : null,
         }
       : null,
@@ -55,6 +62,8 @@ beforeEach(() => {
   mockPick.mockClear();
   mockState.member = true;
   mockState.photo = null;
+  mockState.review = false;
+  mockState.banned = false;
   useToastStore.setState({ toast: null });
   // Old photo files wait for the toast (5 s) before they are deleted.
   jest.useFakeTimers();
@@ -129,6 +138,37 @@ describe('Customize profile (DECISIONS 119)', () => {
     await fireEvent.press(screen.getByLabelText('Remove photo'));
     expect(mockSetPhoto).toHaveBeenCalledWith({ publicId: PID, path: null });
     expect(useToastStore.getState().toast?.message).toBe('Photo removed');
+  });
+
+  it('photo under review (DECISIONS 120): a calm note, no new photo, removing still works without Undo', async () => {
+    usePlanStore.setState({ plan: 'supporter' });
+    mockState.photo = `${PID}/old12345.jpg`;
+    mockState.review = true;
+    await renderUI(<CustomizeProfileScreen />);
+    expect(screen.getByText('Your photo is being reviewed')).toBeTruthy();
+    expect(screen.queryByLabelText('Choose from gallery')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Remove photo'));
+    expect(mockSetPhoto).toHaveBeenCalledWith({ publicId: PID, path: null });
+    expect(useToastStore.getState().toast?.actionLabel).toBeUndefined();
+  });
+
+  it('3 strikes: no more photos, said plainly; the rest of the look still works', async () => {
+    usePlanStore.setState({ plan: 'supporter' });
+    mockState.banned = true;
+    await renderUI(<CustomizeProfileScreen />);
+    expect(screen.getByText('You can no longer add a profile photo')).toBeTruthy();
+    expect(screen.queryByLabelText('Choose from gallery')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Ocean'));
+    await fireEvent.press(screen.getByText('Save'));
+    expect(mockSave).toHaveBeenCalled();
+  });
+
+  it('a refused upload names the reason', async () => {
+    usePlanStore.setState({ plan: 'supporter' });
+    mockSetPhoto.mockRejectedValueOnce({ code: '42501', hint: 'photo_banned' });
+    await renderUI(<CustomizeProfileScreen />);
+    await fireEvent.press(screen.getByLabelText('Choose from gallery'));
+    expect(useToastStore.getState().toast?.message).toBe('You can no longer add a profile photo');
   });
 
   it('not a member: says to join first', async () => {

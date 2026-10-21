@@ -2384,7 +2384,33 @@
     },
     "save": "Save",
     "saved": "Profile look saved",
-    "saveFailed": "Could not save. Check your connection and try again."
+    "saveFailed": "Could not save. Check your connection and try again.",
+    "supporterBadge": "Supporter",
+    "supporterA11y": "Supporter",
+    "photoReview": "Your photo is being reviewed",
+    "photoReviewInfo": "Some members reported it, so others see your initial for now. You can remove it, but not change it until the review is done.",
+    "photoBanned": "You can no longer add a profile photo",
+    "photoBannedInfo": "Three of your photos were judged inappropriate. Your colour, frame, title and badge still work."
+  },
+  "report": {
+    "action": "Report photo",
+    "actionA11y": "Report {{name}}'s photo",
+    "title": "Report this photo?",
+    "body": "Tell us if {{name}}'s profile photo is not right for the community. They will not know who reported it. After a few reports the photo is hidden until we review it.",
+    "reasonTitle": "Reason (optional)",
+    "reasons": {
+      "nudity": "Nudity or sexual content",
+      "violence": "Violence or gore",
+      "hateful": "Hateful or offensive",
+      "spam": "Spam or advertising",
+      "other": "Something else"
+    },
+    "send": "Report",
+    "sent": "Report sent. Thank you.",
+    "already": "You already reported this photo.",
+    "gone": "This photo has changed or is no longer shown.",
+    "tooMany": "You sent many reports today. Try again tomorrow.",
+    "failed": "Could not send the report. Check your connection and try again."
   },
   "community": {
     "needsAccount": "The community needs an account",

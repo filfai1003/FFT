@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { profilePalette } from '@/design/profile-palette';
 import { useTheme } from '@/design/use-theme';
@@ -140,11 +141,48 @@ function FrameRing({
   );
 }
 
-/** What the look adds to a row's spoken label: ", Runner, badge First workout" (or nothing). */
+/**
+ * The Supporter badge (DECISIONS 120): a star in the streak / achievements colour (a perk, like
+ * the other rewards), with the word on profile pages (`word`); in rows the star alone, the word
+ * being read out with the row. Premium shows the same badge (it includes Supporter).
+ */
+export function SupporterBadge({ size = 18, word = false }: { size?: number; word?: boolean }) {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const label = t('look.supporterBadge');
+  return (
+    <View
+      testID="supporter-badge"
+      // Read out by the row or line it sits in ("Supporter"), never on its own.
+      aria-hidden
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        minWidth: size,
+        height: size,
+        paddingHorizontal: word ? 8 : 0,
+        borderRadius: word ? size / 2 : 6,
+        backgroundColor: colors.streakSoft,
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name="star" size={Math.round(size * 0.62)} color={colors.streakInk} />
+      {word ? (
+        <Text variant="label" semibold style={{ color: colors.streakInk }}>
+          {label}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+/** What the look adds to a row's spoken label: ", Supporter, Runner, badge First workout". */
 export function useLookA11y() {
   const { t } = useTranslation();
   return (look: Look | null | undefined): string => {
     const parts = [
+      look?.supporter ? t('look.supporterA11y') : null,
       look?.title ? t(`look.titles.${look.title}`) : null,
       look?.badge ? t('look.badgeA11y', { name: badgeName(t, look.badge) }) : null,
     ].filter(Boolean);
@@ -153,15 +191,29 @@ export function useLookA11y() {
 }
 
 /**
- * The showcase badge and the title next to a member's name ("🏅 Runner"), or nothing. Read out as
- * words: the badge's name and the title.
+ * The Supporter badge, the showcase badge and the title next to a member's name ("★ 🏅 Runner"),
+ * or nothing. Read out as words: Supporter, the badge's name and the title. `word`: the Supporter
+ * badge with its word (profile pages).
  */
-export function LookLine({ look, size = 18 }: { look?: Look | null; size?: number }) {
+export function LookLine({
+  look,
+  size = 18,
+  word = false,
+}: {
+  look?: Look | null;
+  size?: number;
+  word?: boolean;
+}) {
   const { t } = useTranslation();
   const badge = look?.badge ? badgeCatalogue.find((b) => b.id === look.badge) : undefined;
   const title = look?.title ? t(`look.titles.${look.title}`) : null;
-  if (!badge && !title) return null;
-  const label = [title, badge ? t('look.badgeA11y', { name: badgeName(t, badge.id) }) : null]
+  const supporter = look?.supporter === true;
+  if (!badge && !title && !supporter) return null;
+  const label = [
+    supporter ? t('look.supporterA11y') : null,
+    title,
+    badge ? t('look.badgeA11y', { name: badgeName(t, badge.id) }) : null,
+  ]
     .filter(Boolean)
     .join(', ');
   return (
@@ -170,6 +222,7 @@ export function LookLine({ look, size = 18 }: { look?: Look | null; size?: numbe
       accessibilityLabel={label}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}
     >
+      {supporter ? <SupporterBadge size={size} word={word} /> : null}
       {badge ? <BadgeDisc badge={badge} size={size} /> : null}
       {title ? (
         <Text variant="label" muted numberOfLines={1} style={{ flexShrink: 1 }}>

@@ -306,7 +306,7 @@ export function ProfileScreen() {
             {name}
           </Text>
         )}
-        <LookLine look={look} size={20} />
+        <LookLine look={look} size={20} word />
         {subtitle && !profile.isPending ? (
           <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
             {subtitle}

@@ -35,6 +35,7 @@ import {
   useRemoveFriend,
 } from './api';
 import { formatScore } from './CommunityView';
+import { ReportPhotoSheet, type ReportTarget } from './ReportPhotoSheet';
 import { useProgressView } from '@/features/gamification/progress-view';
 
 const statIcon: Record<CommunityMetric, IconName> = {
@@ -64,6 +65,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
   const [codeOpen, setCodeOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [reporting, setReporting] = useState<ReportTarget | null>(null);
 
   const p = profile.data;
   const own = p?.is_me ?? !publicId;
@@ -172,7 +174,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
               >
                 {p.name}
               </Text>
-              <LookLine look={look} size={20} />
+              <LookLine look={look} size={20} word />
               <Text variant="bodyS" muted style={{ textAlign: 'center' }}>
                 {`${t('community.profile.since', { date: monthYear(p.joined_at) })} · ${t(
                   'community.profile.badges',
@@ -226,6 +228,18 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
                   }}
                 />
               )
+            ) : null}
+
+            {!own && look?.photo ? (
+              <Button
+                variant="ghost"
+                icon="shield"
+                label={t('report.action')}
+                accessibilityLabel={t('report.actionA11y', { name: p.name })}
+                onPress={() =>
+                  setReporting({ publicId: p.public_id, name: p.name, photo: look.photo ?? '' })
+                }
+              />
             ) : null}
 
             <SectionHead title={t('community.profile.thisMonth')} />
@@ -349,6 +363,7 @@ export function PublicProfileScreen({ publicId }: { publicId?: string }) {
         ) : null}
       </Screen>
 
+      <ReportPhotoSheet target={reporting} onClose={() => setReporting(null)} />
       {me.data ? (
         <>
           <MyCodeSheet

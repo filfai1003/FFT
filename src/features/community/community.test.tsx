@@ -21,7 +21,13 @@ jest.mock('@/features/profile/api', () => ({
 jest.mock('@/features/train/exercises', () => ({ useExercises: () => ({ data: [] }) }));
 jest.mock('@/features/gamification/data', () => ({ useGamification: () => null }));
 
-const mockState: { member: boolean } = { member: false };
+const mockState: { member: boolean; other: boolean } = { member: false, other: false };
+// Kenji's photo, as in the mocked board below.
+const KENJI_PHOTO = '0f8fad5b-d9cb-469f-a165-70867728950e/abcdef12.jpg';
+const mockReport = jest.fn(
+  async (_r: { publicId: string; photo: string; reason: string | null }): Promise<string> =>
+    'reported',
+);
 const mockBoardKeys: { audience: string }[] = [];
 const mockJoin = jest.fn(async () => undefined);
 const mockLeave = jest.fn(async () => undefined);
@@ -53,8 +59,15 @@ jest.mock('./api', () => {
       place: 4,
       place_before: 6,
       is_me: false,
-      // A Supporter's look (DECISIONS 119): title and showcase badge next to the name.
-      look: { colour: 'ocean', frame: 'dotted', title: 'runner', badge: 'first_workout' },
+      // A Supporter's look (DECISIONS 119, 120): the Supporter badge, title, showcase badge, photo.
+      look: {
+        supporter: true,
+        colour: 'ocean',
+        frame: 'dotted',
+        title: 'runner',
+        badge: 'first_workout',
+        photo: '0f8fad5b-d9cb-469f-a165-70867728950e/abcdef12.jpg',
+      },
     },
     {
       public_id: 'p-me',
@@ -99,6 +112,15 @@ jest.mock('./api', () => {
         ...me,
         is_me: true,
         friend: null,
+        // Someone else's page (DECISIONS 120): a Supporter with a photo.
+        ...(mockState.other
+          ? {
+              public_id: 'p4',
+              name: 'Kenji',
+              is_me: false,
+              look: { supporter: true, photo: '0f8fad5b-d9cb-469f-a165-70867728950e/abcdef12.jpg' },
+            }
+          : {}),
         scores: [
           { period: 'month', metric: 'workouts', value: 3, place: 12, total: 40, top_pct: 30 },
           { period: 'week', metric: 'diet', value: 80, place: 2, total: 40, top_pct: 5 },
@@ -112,6 +134,7 @@ jest.mock('./api', () => {
     useAddFriend: () => mutation(),
     useAnswerFriend: () => mutation(),
     useRemoveFriend: () => mutation(),
+    useReportPhoto: () => mutation(mockReport as (...a: unknown[]) => Promise<unknown>),
   };
 });
 
@@ -119,6 +142,9 @@ beforeEach(() => {
   mockPush.mockClear();
   mockJoin.mockClear();
   mockLeave.mockClear();
+  mockReport.mockClear();
+  mockState.other = false;
+  useToastStore.setState({ toast: null });
   mockBoardKeys.length = 0;
   useBoardChoice.setState({ audience: 'everyone', period: 'month' });
   usePlanStore.setState({ plan: null });
@@ -145,7 +171,13 @@ describe('Community: leaderboard', () => {
     await renderUI(<CommunityView />);
     expect(screen.getByText('Most workouts')).toBeTruthy();
     expect(screen.getByLabelText('1: Noor, 12')).toBeTruthy();
-    expect(screen.getByLabelText('4. Kenji, Runner, badge First workout, 8, Up 2')).toBeTruthy();
+    expect(
+      screen.getByLabelText('4. Kenji, Supporter, Runner, badge First workout, 8, Up 2'),
+    ).toBeTruthy();
+    // The Supporter badge next to the name (DECISIONS 120), only for Kenji.
+    expect(screen.getAllByTestId('supporter-badge', { includeHiddenElements: true }).length).toBe(
+      1,
+    );
     expect(
       screen.getByTestId('member-avatar-frame-dotted', { includeHiddenElements: true }),
     ).toBeTruthy();
@@ -270,6 +302,56 @@ describe('Community profile', () => {
     expect(toast?.actionLabel).toBe('Undo');
     await toast?.onAction?.();
     expect(mockJoin).toHaveBeenCalledWith('Filippo');
+  });
+});
+
+describe('Reporting a profile photo (DECISIONS 120)', () => {
+  it('long press on a row: confirm with an optional reason; the toast has no Undo', async () => {
+    mockState.member = true;
+    await renderUI(<CommunityView />);
+    const kenji = screen.getByLabelText(
+      '4. Kenji, Supporter, Runner, badge First workout, 8, Up 2',
+    );
+    // Offered to screen readers too; rows without a photo offer nothing.
+    expect(kenji.props.accessibilityActions).toEqual([{ name: 'report', label: 'Report photo' }]);
+    expect(screen.getByLabelText('1: Noor, 12').props.accessibilityActions).toBeUndefined();
+    await fireEvent(kenji, 'longPress');
+    expect(screen.getByText('Report this photo?')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Spam or advertising' }));
+    await fireEvent.press(screen.getByText('Report'));
+    expect(mockReport).toHaveBeenCalledWith({
+      publicId: 'p4',
+      photo: KENJI_PHOTO,
+      reason: 'spam',
+    });
+    const toast = useToastStore.getState().toast;
+    expect(toast?.message).toBe('Report sent. Thank you.');
+    expect(toast?.actionLabel).toBeUndefined();
+  });
+
+  it("from someone's profile: the Supporter badge with its word, Report photo, no reason", async () => {
+    mockState.member = true;
+    mockState.other = true;
+    await renderUI(<PublicProfileScreen publicId="p4" />);
+    expect(screen.getByText('Supporter', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("Report Kenji's photo"));
+    expect(screen.getByText(/They will not know who reported it/)).toBeTruthy();
+    await fireEvent.press(screen.getByText('Report'));
+    expect(mockReport).toHaveBeenCalledWith({ publicId: 'p4', photo: KENJI_PHOTO, reason: null });
+  });
+
+  it('your own profile has no Report button; too many reports say so', async () => {
+    mockState.member = true;
+    await renderUI(<PublicProfileScreen />);
+    expect(screen.queryByText('Report photo')).toBeNull();
+    mockState.other = true;
+    mockReport.mockRejectedValueOnce({ code: '54000' });
+    await renderUI(<PublicProfileScreen publicId="p4" />);
+    await fireEvent.press(screen.getByLabelText("Report Kenji's photo"));
+    await fireEvent.press(screen.getByText('Report'));
+    expect(useToastStore.getState().toast?.message).toBe(
+      'You sent many reports today. Try again tomorrow.',
+    );
   });
 });
 

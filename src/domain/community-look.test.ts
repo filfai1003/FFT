@@ -1,6 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { avatarPath, cleanLook, FRAMES, PROFILE_COLOURS, TITLES } from './community-look';
+import {
+  avatarPath,
+  cleanLook,
+  FRAMES,
+  PROFILE_COLOURS,
+  REPORT_REASONS,
+  TITLES,
+} from './community-look';
 
 const PID = '0f8fad5b-d9cb-469f-a165-70867728950e';
 
@@ -44,5 +51,19 @@ describe('community look (DECISIONS 119)', () => {
     );
     for (const v of [...PROFILE_COLOURS, ...FRAMES, ...TITLES]) expect(sql).toContain(`'${v}'`);
     expect(TITLES.every((t) => t.length <= 24)).toBe(true);
+  });
+
+  it('the Supporter badge comes only as true from the server (DECISIONS 120)', () => {
+    expect(cleanLook({ supporter: true })).toEqual({ supporter: true });
+    expect(cleanLook({ supporter: 'yes', colour: 'rose' })).toEqual({ colour: 'rose' });
+    expect(cleanLook({ supporter: false })).toBeNull();
+  });
+
+  it('the report reasons are the server’s', () => {
+    const sql = fs.readFileSync(
+      path.join(__dirname, '../../supabase/migrations/20261021100000_community_badge_reports.sql'),
+      'utf8',
+    );
+    for (const r of REPORT_REASONS) expect(sql).toContain(`'${r}'`);
   });
 });
