@@ -101,10 +101,16 @@ export function Gauge({
               if (shown.length === 0 || closing) return null;
               const dot = Math.min(0.01, filled / 2);
               // Very little filled: two round ends of different colours would overlap as two
-              // blobs, so one round piece in the first colour covers the whole fill.
+              // blobs, so one round piece in the biggest share's colour covers the whole fill.
               const caps =
                 filled < 2 * stroke
-                  ? [{ at: 0, len: filled, color: shown[0]!.color }]
+                  ? [
+                      {
+                        at: 0,
+                        len: filled,
+                        color: shown.reduce((a, b) => (b.share > a.share ? b : a)).color,
+                      },
+                    ]
                   : [
                       { at: 0, len: dot, color: shown[0]!.color },
                       { at: filled - dot, len: dot, color: shown[shown.length - 1]!.color },
