@@ -6,6 +6,23 @@ import { defaultPreferences, type Preferences } from './preferences-store';
 
 type SettingsRow = Row<'user_settings'>;
 
+/**
+ * Saved choices over the defaults. A row saved before a reminder existed (DECISIONS 122) gets it
+ * on only when the user still has some reminder on: whoever turned them all off keeps them off.
+ */
+export function notificationsOf(
+  n: Partial<Preferences['notifications']>,
+): Preferences['notifications'] {
+  const d = defaultPreferences.notifications;
+  const anyReminder = Boolean(n.workout_reminder || n.weekly_check_in || n.meals);
+  return {
+    ...d,
+    water: d.water && anyReminder,
+    weekly_summary: d.weekly_summary && anyReminder,
+    ...n,
+  };
+}
+
 /** user_settings row -> the two client stores. */
 export function rowToState(row: SettingsRow): {
   appearance: AppearanceState;
@@ -37,7 +54,7 @@ export function rowToState(row: SettingsRow): {
       language: row.language,
       waterGlassMl: row.water_glass_ml,
       smallPlates: row.small_plates ?? false,
-      notifications: { ...defaultPreferences.notifications, ...n },
+      notifications: notificationsOf(n),
     },
   };
 }

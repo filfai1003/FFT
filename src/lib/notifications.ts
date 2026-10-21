@@ -27,3 +27,25 @@ export async function setReminder(
 export async function scheduleRestEnd(_seconds: number, _copy: { title: string; body: string }) {}
 
 export async function cancelRestEnd() {}
+
+export type SmartNotification = {
+  id: string;
+  date: Date;
+  title: string;
+  body: string;
+  url: string;
+};
+
+export async function cancelSmartReminders() {}
+
+export async function scheduleSmartReminders(
+  _list: readonly SmartNotification[],
+): Promise<boolean> {
+  return false;
+}
+
+export async function dismissStaleSmartReminders(_relevant: ReadonlySet<string>) {}
+
+export function onReminderOpened(_open: (url: string) => void): () => void {
+  return () => undefined;
+}

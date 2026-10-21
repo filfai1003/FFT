@@ -20,7 +20,7 @@ import { useTheme } from '@/design/use-theme';
 import { ensurePermission } from '@/lib/notifications';
 import { goBack } from '@/lib/navigation';
 import { SupporterTag, useCanChooseAreaColors } from '@/features/settings/AreaColorsScreen';
-import { ReminderRow } from '@/features/settings/ReminderRow';
+import { ReminderLimitsRow, ReminderRow } from '@/features/settings/ReminderRow';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 
 /** One settings page (from Profile): back, title, content. */
@@ -279,7 +279,7 @@ export function NotificationsSection() {
           value={prefs.notifications.rest_timer}
           onValueChange={(v) => void toggleRestTimer(v)}
         />
-        {(['workout', 'checkin', 'meals'] as const).map((kind) => (
+        {(['workout', 'meals', 'water', 'weekly', 'checkin'] as const).map((kind) => (
           <View
             key={kind}
             style={{
@@ -290,6 +290,10 @@ export function NotificationsSection() {
             <ReminderRow kind={kind} bare />
           </View>
         ))}
+        {/* Quiet hours and the daily cap of the smart reminders (DECISIONS 122). */}
+        <View style={{ borderTopWidth: 1, borderColor: colors.divider }}>
+          <ReminderLimitsRow />
+        </View>
       </Card>
 
       <Sheet

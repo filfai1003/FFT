@@ -37,6 +37,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { updateOnLaunch } from '@/lib/app-update';
 import { createQueryClient } from '@/lib/query-client';
 import { WidgetBridge } from '@/features/widgets/WidgetBridge';
+import { ReminderBridge } from '@/features/reminders/ReminderBridge';
 import { Platform } from 'react-native';
 import { installErrorReporting, reportError, setErrorScreen } from '@/lib/error-report';
 import type { ErrorBoundaryProps } from 'expo-router';
@@ -202,6 +203,8 @@ function AppRoutes() {
       <StatusBar style={mode === 'light' ? 'dark' : 'light'} />
       {/* Android home screen widgets follow the data (DECISIONS 51). */}
       {Platform.OS === 'android' && signedIn && onboarded ? <WidgetBridge /> : null}
+      {/* Smart reminders and the weekly summary follow the data (DECISIONS 122). */}
+      {Platform.OS !== 'web' && signedIn && onboarded ? <ReminderBridge /> : null}
       {/* Switching between sign in, onboarding and the app fades; pages opened on top slide in
           from the right, forms and the workout rise from the bottom (DECISIONS 69). */}
       <Stack screenOptions={rootOptions}>

@@ -390,6 +390,8 @@ const specific: Record<string, () => Row> = {
       workout_reminder: true,
       weekly_check_in: true,
       meals: false,
+      water: false,
+      weekly_summary: true,
     },
   }),
 };

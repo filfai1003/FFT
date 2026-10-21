@@ -4,6 +4,7 @@ import type { Translate } from '@/i18n';
 import { getCurrentUserId, setCurrentUserId } from '@/lib/current-user';
 import { reportError } from '@/lib/error-report';
 import { getLocalDb } from '@/lib/local-db';
+import { rescheduleReminders } from '@/features/reminders/schedule';
 import { isWidgetAction, runWidgetAction } from './actions';
 import { refreshApp } from './app-refresh';
 import { buildSnapshot } from './build';
@@ -130,7 +131,13 @@ export async function handleWidgetClick(
       }
       await saveState(state);
       await updateWidgets(snapshot, state);
-      if (result.wrote) await refreshApp();
+      if (result.wrote) {
+        await refreshApp();
+        // The smart reminders follow a quick action too, with the app closed (DECISIONS 122).
+        await rescheduleReminders(saved.userId).catch((e) =>
+          reportError(e, 'widget', { step: 'reminders' }),
+        );
+      }
       return state.undo !== before.undo ? state : null;
     } catch (e) {
       reportError(e, 'widget', { action });

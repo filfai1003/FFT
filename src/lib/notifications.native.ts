@@ -130,3 +130,93 @@ export async function cancelRestEnd() {
       .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
   );
 }
+
+// --- smart reminders (DECISIONS 122) ------------------------------------------------------------
+
+const SMART = 'smart';
+/** The daily repeating reminders of before 122, replaced by the smart ones. */
+const LEGACY_SMART: string[] = ['workout', 'meals'];
+
+export type SmartNotification = {
+  /** Stable id of the reminder (`meal:lunch:2026-10-21`). */
+  id: string;
+  date: Date;
+  title: string;
+  body: string;
+  /** The app page it opens (an Expo Router path). */
+  url: string;
+};
+
+const kindOf = (n: { content: { data?: unknown } }) =>
+  (n.content.data as { kind?: string } | undefined)?.kind;
+
+/** Removes every scheduled smart reminder (and the old daily ones they replace). */
+export async function cancelSmartReminders() {
+  if (!supported) return;
+  const all = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(
+    all
+      .filter((n) => {
+        const kind = kindOf(n);
+        return kind === SMART || (kind != null && LEGACY_SMART.includes(kind));
+      })
+      .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+  );
+}
+
+/**
+ * Replaces the scheduled smart reminders with `list` (each once, at its date). Nothing is asked:
+ * without the system's permission nothing is scheduled. True when scheduled.
+ */
+export async function scheduleSmartReminders(list: readonly SmartNotification[]): Promise<boolean> {
+  if (!supported) return false;
+  await cancelSmartReminders();
+  if (list.length === 0) return true;
+  if (!(await notificationsAllowed())) return false;
+  await ensureChannel();
+  for (const n of list) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: `${SMART}.${n.id}`,
+      content: { title: n.title, body: n.body, data: { kind: SMART, id: n.id, url: n.url } },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: n.date },
+    });
+  }
+  return true;
+}
+
+/** Takes delivered smart reminders that no longer apply (lunch logged) out of the list. */
+export async function dismissStaleSmartReminders(relevant: ReadonlySet<string>) {
+  if (!supported) return;
+  const shown = await Notifications.getPresentedNotificationsAsync();
+  await Promise.all(
+    shown
+      .filter((n) => {
+        const data = n.request.content.data as { kind?: string; id?: string } | undefined;
+        return data?.kind === SMART && data.id != null && !relevant.has(data.id);
+      })
+      .map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+  );
+}
+
+const opened = new Set<string>();
+
+/**
+ * Calls `open` with the page of a smart reminder the user tapped, also the one that started the
+ * app. Only app paths ("/…") of the app's own reminders are followed.
+ */
+export function onReminderOpened(open: (url: string) => void): () => void {
+  if (!supported) return () => undefined;
+  const handle = (r: Notifications.NotificationResponse | null) => {
+    if (!r || r.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const req = r.notification.request;
+    const data = req.content.data as { kind?: string; url?: unknown } | undefined;
+    const key = `${req.identifier}@${r.notification.date}`;
+    if (data?.kind !== SMART || typeof data.url !== 'string' || !data.url.startsWith('/')) return;
+    if (opened.has(key)) return;
+    opened.add(key);
+    open(data.url);
+  };
+  void Notifications.getLastNotificationResponseAsync().then(handle, () => undefined);
+  const sub = Notifications.addNotificationResponseReceivedListener(handle);
+  return () => sub.remove();
+}

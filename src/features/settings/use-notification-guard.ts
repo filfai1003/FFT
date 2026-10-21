@@ -1,10 +1,22 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { cancelRestEnd, notificationsAllowed, setReminder } from '@/lib/notifications';
+import {
+  cancelRestEnd,
+  cancelSmartReminders,
+  notificationsAllowed,
+  setReminder,
+} from '@/lib/notifications';
 import { defaultReminderTimes } from '@/lib/reminder-times';
 import { usePreferencesStore } from './preferences-store';
 
-const none = { rest_timer: false, workout_reminder: false, weekly_check_in: false, meals: false };
+const none = {
+  rest_timer: false,
+  workout_reminder: false,
+  weekly_check_in: false,
+  meals: false,
+  water: false,
+  weekly_summary: false,
+};
 const empty = { title: '', body: '' };
 
 /**
@@ -27,6 +39,7 @@ export function useNotificationGuard(active: boolean) {
         setReminder('checkin', false, empty, defaultReminderTimes),
         setReminder('meals', false, empty, defaultReminderTimes),
         cancelRestEnd(),
+        cancelSmartReminders(),
       ]);
     };
     if (anyOn) void check();

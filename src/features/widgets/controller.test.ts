@@ -45,6 +45,9 @@ jest.mock('@/lib/notifications', () => ({
   scheduleRestEnd: jest.fn(async () => undefined),
   cancelRestEnd: jest.fn(async () => undefined),
 }));
+jest.mock('@/features/reminders/schedule', () => ({
+  rescheduleReminders: jest.fn(async () => undefined),
+}));
 jest.mock('../../../modules/rest-timer', () => ({
   showRestTimer: jest.fn(),
   hideRestTimer: jest.fn(),

@@ -28,7 +28,17 @@ describe('reminder times', () => {
         { hour: 19, minute: 0 },
       ],
     };
-    expect(sanitizeTimes(saved)).toEqual(saved);
+    expect(sanitizeTimes(saved)).toEqual({ ...defaultReminderTimes, ...saved });
+    const smart = {
+      ...saved,
+      water: { hour: 16, minute: 30 },
+      weekly: { hour: 20, minute: 0 },
+      quiet: { on: false, start: { hour: 23, minute: 0 }, end: { hour: 6, minute: 30 } },
+      maxPerDay: 5,
+    };
+    expect(sanitizeTimes(smart)).toEqual(smart);
+    expect(sanitizeTimes({ maxPerDay: 40 }).maxPerDay).toBe(3);
+    expect(sanitizeTimes({ quiet: { on: 'yes' } }).quiet).toEqual(defaultReminderTimes.quiet);
   });
 
   it('meal reminders: none, a few or many; a new one comes 3 hours after the latest', () => {

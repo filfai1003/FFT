@@ -7,6 +7,9 @@ export type NotificationPrefs = {
   workout_reminder: boolean;
   weekly_check_in: boolean;
   meals: boolean;
+  /** Smart reminders (DECISIONS 122): a water nudge, and the weekly summary on the week's last day. */
+  water: boolean;
+  weekly_summary: boolean;
 };
 
 export type Preferences = {
@@ -35,7 +38,14 @@ export const defaultPreferences: Preferences = {
   language: 'en',
   waterGlassMl: 250,
   smallPlates: false,
-  notifications: { rest_timer: true, workout_reminder: true, weekly_check_in: true, meals: false },
+  notifications: {
+    rest_timer: true,
+    workout_reminder: true,
+    weekly_check_in: true,
+    meals: false,
+    water: false,
+    weekly_summary: true,
+  },
 };
 
 type Actions = {
