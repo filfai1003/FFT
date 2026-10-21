@@ -119,10 +119,20 @@ export function StreakCard({ game }: { game: GameData }) {
 }
 
 /** "Next badge" with its ring, plus the two after it as small bars. */
-export function NextBadgeCard({ game }: { game: GameData }) {
+export function NextBadgeCard({
+  game,
+  skipMetric,
+}: {
+  game: GameData;
+  /** Badges of this kind left out (the workout summary shows the streak badge on its own card). */
+  skipMetric?: BadgeState['metric'];
+}) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const [next, ...later] = nextBadges(game.badges, 3);
+  const [next, ...later] = nextBadges(
+    skipMetric ? game.badges.filter((b) => b.metric !== skipMetric) : game.badges,
+    3,
+  );
   if (!next) {
     return (
       <Card gap={4}>

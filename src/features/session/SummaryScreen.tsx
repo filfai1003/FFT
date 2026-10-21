@@ -238,7 +238,8 @@ export function SummaryScreen() {
                 </View>
               </View>
             </Card>
-            <NextBadgeCard game={game} />
+            {/* The streak card above already says how far the next streak badge is. */}
+            <NextBadgeCard game={game} skipMetric="streak" />
           </>
         ) : null}
 
