@@ -27,6 +27,9 @@ describe('onboarding: only the name and 18+ are required (DECISIONS 103)', () =>
     await renderUI(<OnboardingFlow />);
     expect(screen.getByText('About you')).toBeTruthy();
     expect(screen.getByText('Birth date (optional)')).toBeTruthy();
+    // Progress once: the bar (read as the step), no second "Step x of y" line.
+    expect(screen.getByLabelText(/^Step 1 of [0-9]+$/)).toBeTruthy();
+    expect(screen.queryByText(/^Step 1 of/)).toBeNull();
     expect(disabled('Continue')).toBe(true);
     expect(disabled('Skip setup')).toBe(true);
 

@@ -28,6 +28,7 @@ import {
 } from './strength';
 import {
   cmToFeetInches,
+  displayLength,
   displayWeight,
   feetInchesToCm,
   kcalToKj,
@@ -247,6 +248,11 @@ describe('units', () => {
   it('cm <-> ft/in', () => {
     expect(cmToFeetInches(180)).toEqual({ feet: 5, inches: 11 });
     expect(feetInchesToCm(5, 11)).toBe(180.3);
+  });
+
+  it('body measurements: cm, or inches with one decimal when the user picked feet', () => {
+    expect(displayLength(85.04, 'cm')).toEqual({ value: 85, unit: 'cm' });
+    expect(displayLength(85, 'ft_in')).toEqual({ value: 33.5, unit: 'in' });
   });
 
   it('kcal -> kJ and the load step per unit', () => {

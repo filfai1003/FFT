@@ -21,7 +21,7 @@ import { dotsOn } from '@/domain/dots';
 import { relativeDay, shortDateLabel } from '@/domain/day';
 import { parseDecimal } from '@/domain/numbers';
 import { goalProgress, goalStartValue } from '@/domain/progress';
-import { cmToFeetInches, displayWeight, storedWeight } from '@/domain/units';
+import { displayLength, displayWeight, storedWeight } from '@/domain/units';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
@@ -183,13 +183,10 @@ export function BodyScreen() {
   const u = unit;
 
   const shown = (kg: number) => displayWeight(kg, unit);
-  const len = (cm: number) =>
-    lengthUnit === 'cm'
-      ? `${fmt(cm)} cm`
-      : (() => {
-          const x = cmToFeetInches(cm);
-          return `${x.feet}′ ${x.inches}″`;
-        })();
+  const len = (cm: number) => {
+    const l = displayLength(cm, lengthUnit);
+    return `${l.value.toFixed(1)} ${l.unit}`;
+  };
 
   const weights = (entries.data ?? []).filter((e) => e.weightKg != null);
   const latest = weights[weights.length - 1];

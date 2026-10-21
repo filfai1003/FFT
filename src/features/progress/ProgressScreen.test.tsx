@@ -21,6 +21,9 @@ jest.mock('@/features/community/CommunityView', () => ({
   useCommunityBottomSpace: () => 24,
 }));
 
+// The training balance card has its own tests (BalanceScreens.test.tsx).
+jest.mock('./BalanceScreens', () => ({ BalanceCard: () => null }));
+
 const mockData: { entries: BodyEntry[]; photos: Photo[] } = { entries: [], photos: [] };
 jest.mock('./data', () => ({
   ...jest.requireActual('./data'),

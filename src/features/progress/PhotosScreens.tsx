@@ -18,7 +18,7 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
-import { displayWeight } from '@/domain/units';
+import { displayLength, displayWeight } from '@/domain/units';
 import { useProfile } from '@/features/profile/api';
 import { usePrivacyStore } from '@/features/profile/privacy-store';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
@@ -238,6 +238,7 @@ export function ComparePhotosScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const unit = usePreferencesStore((s) => s.weightUnit);
+  const lengthUnit = usePreferencesStore((s) => s.lengthUnit);
   const blur = usePrivacyStore((s) => s.blurPhotos);
   const lock = usePrivacyStore((s) => s.lockPhotos);
   const photos = usePhotos();
@@ -292,7 +293,12 @@ export function ComparePhotosScreen() {
         })
       : null,
     a?.measures.waist != null && b?.measures.waist != null
-      ? item(b.measures.waist - a.measures.waist, t('photos.waistCm'), 'smallerIsBetter')
+      ? item(
+          displayLength(b.measures.waist, lengthUnit).value -
+            displayLength(a.measures.waist, lengthUnit).value,
+          t('photos.waistIn', { unit: displayLength(0, lengthUnit).unit }),
+          'smallerIsBetter',
+        )
       : null,
   ].filter((x) => x != null);
 

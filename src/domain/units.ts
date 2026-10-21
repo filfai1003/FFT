@@ -14,6 +14,19 @@ export function cmToFeetInches(cm: number): { feet: number; inches: number } {
   return { feet: Math.floor(totalInches / 12), inches: totalInches % 12 };
 }
 
+/**
+ * A body measurement (waist, arm…) in the user's length unit: centimetres, or inches with one
+ * decimal ("33.5 in"). Heights use feet and inches; sizes this small read better in inches.
+ */
+export function displayLength(
+  cm: number,
+  unit: 'cm' | 'ft_in',
+): { value: number; unit: 'cm' | 'in' } {
+  return unit === 'cm'
+    ? { value: Math.round(cm * 10) / 10, unit: 'cm' }
+    : { value: Math.round((cm / CM_PER_INCH) * 10) / 10, unit: 'in' };
+}
+
 export const feetInchesToCm = (feet: number, inches: number) =>
   Math.round((feet * 12 + inches) * CM_PER_INCH * 10) / 10;
 
