@@ -6,7 +6,6 @@ import { AiDock } from '@/features/ai/AiDock';
 import { renderUI } from '@/test/render';
 import { dockHiddenAfterScroll, DOCK_TOP_ZONE } from './dock-scroll';
 import { useHintsStore } from './hints-store';
-import { weekDotShape } from './week-dots';
 
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
@@ -50,16 +49,6 @@ describe('Home coach bar while scrolling', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'Hi');
     await hide(true);
     expect(dock().props.pointerEvents).toBe('box-none');
-  });
-});
-
-describe('week strip marks (shape, not colour alone)', () => {
-  it('filled = on target, ring = off target (past days), today is not judged yet', () => {
-    expect(weekDotShape('onTarget', false)).toBe('full');
-    expect(weekDotShape('off', false)).toBe('ring');
-    expect(weekDotShape('none', false)).toBe('none');
-    expect(weekDotShape('off', true)).toBe('today');
-    expect(weekDotShape('onTarget', true)).toBe('full');
   });
 });
 

@@ -10,6 +10,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { DarkThemeScope, useTheme } from '@/design/use-theme';
+import { ThemedStatusBar } from '@/components/ui/ThemedStatusBar';
 import { confirm } from '@/lib/haptics';
 import type { Food } from './foods';
 import { useLabelReader } from './CreateFoodScreen';
@@ -29,6 +30,8 @@ type State =
 export function ScannerScreen() {
   return (
     <DarkThemeScope>
+      {/* Light icons on the black camera, whatever the app theme (DECISIONS 123). */}
+      <ThemedStatusBar />
       <Scanner />
     </DarkThemeScope>
   );

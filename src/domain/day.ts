@@ -38,6 +38,33 @@ export function weekOf(day: string, weekStart: 'mon' | 'sun'): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(first, i));
 }
 
+/** Days of a month as a grid (Monday or Sunday first), with leading blanks (null). */
+export function monthGrid(ym: string, weekStart: 'mon' | 'sun'): (string | null)[] {
+  const first = `${ym}-01`;
+  const [y, m] = ym.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const blanks = weekStart === 'mon' ? (dow + 6) % 7 : dow;
+  const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return [
+    ...Array<null>(blanks).fill(null),
+    ...Array.from({ length: count }, (_, i) => addDays(first, i)),
+  ];
+}
+
+/** "2026-10" moved by `delta` months ("2026-12", 1 -> "2027-01"). */
+export function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+/** The weekday letters over a calendar, in the order of the week start setting. */
+export function weekdayLetters(weekStart: 'mon' | 'sun'): string[] {
+  return weekStart === 'mon'
+    ? ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 const MONTHS = [
   'Jan',
@@ -127,6 +154,11 @@ const WEEKDAY_NAMES = [
   'Friday',
   'Saturday',
 ] as const;
+
+/** "Wednesday 14 October": the title of Today when it shows a past day. */
+export function longDateLabel(day: string): string {
+  return `${weekdayName(day)} ${dayOfMonth(day)} ${MONTH_NAMES[Number(day.slice(5, 7)) - 1]}`;
+}
 
 /** English weekday name of a YYYY-MM-DD date. */
 export function weekdayName(day: string): string {

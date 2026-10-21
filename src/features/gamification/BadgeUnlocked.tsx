@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Easing, Platform, View } from 'react-native';
@@ -9,7 +9,7 @@ import { Gauge } from '@/components/ui/Gauge';
 import { Icon } from '@/components/ui/Icon';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
-import { useTheme } from '@/design/use-theme';
+import { useTheme, WorkoutThemeScope } from '@/design/use-theme';
 import { nextBadges, type BadgeState, type LevelInfo } from '@/domain/gamification';
 import { formatInt } from '@/domain/numbers';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -233,6 +233,8 @@ export function BadgeUnlockedSheet({
  */
 export function BadgeUnlockWatcher() {
   const router = useRouter();
+  // Over the workout or its summary the sheet takes the workout's theme (DECISIONS 123).
+  const inWorkout = (useSegments() as string[])[0] === 'session';
   const userId = useSessionStore((s) => s.userId);
   const game = useGamification();
   useGamificationRefresh();
@@ -280,7 +282,7 @@ export function BadgeUnlockWatcher() {
     }
     then?.();
   };
-  return (
+  const sheet = (
     <BadgeUnlockedSheet
       badge={game.badges.find((b) => b.id === open.id) ?? null}
       others={open.others}
@@ -295,4 +297,5 @@ export function BadgeUnlockWatcher() {
       }
     />
   );
+  return inWorkout ? <WorkoutThemeScope>{sheet}</WorkoutThemeScope> : sheet;
 }

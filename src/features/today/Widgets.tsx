@@ -41,7 +41,8 @@ import {
 } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
 import { useBodyEntries } from '@/features/progress/data';
-import { useToday } from '@/features/profile/use-today';
+import { MarkDoneSheet } from '@/features/train/MarkDoneSheet';
+import { useHomeDay } from './home-day';
 import { useStartWorkout } from '@/features/session/start';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { estimateMinutes } from '@/features/train/plans';
@@ -151,7 +152,8 @@ export function NutritionWidget({ size }: Props) {
   const { colors } = useTheme();
   const router = useRouter();
   const barHeight = useTabBarHeight();
-  const today = useToday();
+  // The day Home shows: today, or a past day picked on the row of days (DECISIONS 123).
+  const { day: today } = useHomeDay();
   const profile = useProfile();
   const showToast = useToastStore((s) => s.show);
   const totals = useDayTotals(today);
@@ -509,9 +511,11 @@ export function WorkoutWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const { plan, rotation, upNext, doneToday } = useTodayWorkout();
+  const { day, past } = useHomeDay();
+  const { plan, rotation, upNext, doneToday } = useTodayWorkout(day);
   const { startDay } = useStartWorkout();
   const [creating, setCreating] = useState(false);
+  const [marking, setMarking] = useState(false);
   const coachReady = useCoachReady();
   const askCoach = useAskCoach();
   const openPlan = () =>
@@ -519,7 +523,7 @@ export function WorkoutWidget({ size }: Props) {
   const small = size === 'small';
 
   const cycle =
-    plan && rotation && !small ? (
+    plan && rotation && !small && !past ? (
       <View
         accessible
         accessibilityLabel={t('today.cycleProgress', {
@@ -574,7 +578,7 @@ export function WorkoutWidget({ size }: Props) {
           </View>
           <View style={{ flex: small ? undefined : 1, gap: 2 }}>
             <Text variant={small ? 'titleM' : 'displayS'} numberOfLines={2}>
-              {t('today.workoutDone')}
+              {past ? t('today.past.workoutDone') : t('today.workoutDone')}
             </Text>
             <Text variant="bodyS" muted>
               {t('today.workoutDoneInfo', {
@@ -584,8 +588,32 @@ export function WorkoutWidget({ size }: Props) {
             </Text>
           </View>
         </View>
-        {plan ? <Button label={t('today.trainAgain')} variant="ghost" onPress={openPlan} /> : null}
+        {plan && !past ? (
+          <Button label={t('today.trainAgain')} variant="ghost" onPress={openPlan} />
+        ) : null}
       </>
+    );
+  } else if (past) {
+    // A past day: a workout cannot start there, but one trained and not logged can be marked.
+    body = (
+      <View style={{ gap: 10 }}>
+        <View style={{ gap: 2 }}>
+          <Text variant={small ? 'titleM' : 'displayS'} numberOfLines={2}>
+            {t('today.past.noWorkout')}
+          </Text>
+          {small ? null : (
+            <Text variant="bodyS" muted>
+              {t('today.past.noWorkoutInfo')}
+            </Text>
+          )}
+        </View>
+        <Button
+          label={t('calendar.markDone')}
+          icon="check"
+          variant="secondary"
+          onPress={() => setMarking(true)}
+        />
+      </View>
     );
   } else if (upNext && plan) {
     // A day without exercises cannot start: instead of a dead Start, the way to fill it.
@@ -700,6 +728,9 @@ export function WorkoutWidget({ size }: Props) {
         {body}
       </Frame>
       <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />
+      {past ? (
+        <MarkDoneSheet visible={marking} onClose={() => setMarking(false)} day={day} />
+      ) : null}
     </>
   );
 }
@@ -782,7 +813,8 @@ export function WaterWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const barHeight = useTabBarHeight();
-  const today = useToday();
+  // The day Home shows: today, or a past day picked on the row of days (DECISIONS 123).
+  const { day: today } = useHomeDay();
   const glassMl = usePreferencesStore((s) => s.waterGlassMl);
   const showToast = useToastStore((s) => s.show);
   const water = useWater(today);
@@ -937,8 +969,10 @@ export function WeightWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const router = useRouter();
-  const today = useToday();
-  const entries = useBodyEntries().data ?? [];
+  // The day Home shows: today, or a past day picked on the row of days (DECISIONS 123).
+  const { day: today, past } = useHomeDay();
+  // On a past day: the weight as it was then (nothing logged after it counts).
+  const entries = (useBodyEntries().data ?? []).filter((e) => e.day <= today);
   const latest = entries.find((e) => e.weightKg != null);
   // Toward the profile goal is green; otherwise neutral (arrow and words say the direction).
   const trend = weightTrend(entries, today, useProfile().data?.goal);
@@ -952,7 +986,14 @@ export function WeightWidget({ size }: Props) {
       label={t('today.weight')}
       icon="scale"
       area="neutral"
-      onPress={() => router.push(latest ? '/progress/body' : '/check-in')}
+      // The check-in logs today: a past day without a weight has nothing to open.
+      onPress={
+        latest
+          ? () => router.push('/progress/body')
+          : past
+            ? undefined
+            : () => router.push('/check-in')
+      }
       pressLabel={latest ? undefined : t('today.logWeight')}
     >
       {latest?.weightKg != null ? (
@@ -1011,12 +1052,18 @@ export function WeightWidget({ size }: Props) {
         <>
           <BigNumber value={'–'} unit={t('today.kgUnit')} />
           <PendingLine height={small ? 40 : 48} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Icon name="plus" size={18} color={colors.text} />
-            <Text variant="bodyS" semibold>
-              {t('today.logWeight')}
+          {past ? (
+            <Text variant="bodyS" muted>
+              {t('today.past.noWeight')}
             </Text>
-          </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="plus" size={18} color={colors.text} />
+              <Text variant="bodyS" semibold>
+                {t('today.logWeight')}
+              </Text>
+            </View>
+          )}
         </>
       )}
     </Frame>
@@ -1030,7 +1077,8 @@ export function WeightWidget({ size }: Props) {
 export function SupplementsWidget({ size }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const today = useToday();
+  // The day Home shows: today, or a past day picked on the row of days (DECISIONS 123).
+  const { day: today } = useHomeDay();
   const [open, setOpen] = useState(false);
   const list = useSupplements().data ?? [];
   const taken = useSupplementLogs(today, today).data?.get(today);

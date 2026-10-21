@@ -4,26 +4,37 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
+import { MonthGrid } from '@/components/ui/MonthGrid';
 import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
-import { addDays, monthYearLabel, shortDateLabel, weekOf } from '@/domain/day';
+import {
+  addDays,
+  monthGrid,
+  monthYearLabel,
+  shiftMonth,
+  shortDateLabel,
+  weekOf,
+} from '@/domain/day';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
-import { monthGrid, shiftMonth } from '@/features/train/HistoryScreen';
 import { goBack as goBackTo } from '@/lib/navigation';
-import { CalendarGrid, CalendarLegend, useCalendarData } from './CalendarGrid';
+import { CalendarLegend, useCalendarData, useCalendarMarks } from './calendar-data';
 import { DayDetail } from './DayDetail';
 
 export type CalendarMode = 'week' | 'month';
 
-/** Calendar of the week or the month: which days you trained and which days you followed the diet. */
+/**
+ * Progress calendar: the week or the month, which days you trained and followed the diet, and
+ * the chosen day's detail. Its grid is the shared month grid (DECISIONS 123): a tap selects the
+ * day and the detail below follows.
+ */
 export function CalendarScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const goBack = () => goBackTo(router, '/(tabs)');
+  const goBack = () => goBackTo(router, '/progress');
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const [mode, setMode] = useState<CalendarMode>('month');
@@ -34,6 +45,7 @@ export function CalendarScreen() {
     mode === 'week' ? weekOf(selected, weekStart) : monthGrid(ym, weekStart);
   const days = cells.filter((d): d is string => d != null);
   const data = useCalendarData([days[0]!.slice(0, 7), days[days.length - 1]!.slice(0, 7)]);
+  const marks = useCalendarMarks(data);
 
   const past = days.filter((d) => d <= today);
   const trainedCount = past.filter((d) => data.sessionsByDay.has(d)).length;
@@ -42,7 +54,8 @@ export function CalendarScreen() {
 
   const move = (delta: -1 | 1) => {
     if (mode === 'week') {
-      setSelected(addDays(selected, 7 * delta));
+      const next = addDays(selected, 7 * delta);
+      setSelected(next > today ? today : next);
       return;
     }
     const next = shiftMonth(ym, delta);
@@ -56,7 +69,9 @@ export function CalendarScreen() {
   return (
     <Screen scroll bottomBarHeight={24} gap={14}>
       <TopBar onBack={goBack} backLabel={t('common.back')} />
-      <Text variant="screenTitle">{t('calendar.title')}</Text>
+      <Text variant="screenTitle" accessibilityRole="header">
+        {t('calendar.title')}
+      </Text>
 
       <Segmented
         accessibilityLabel={t('calendar.view')}
@@ -106,13 +121,14 @@ export function CalendarScreen() {
           />
         </View>
 
-        <CalendarGrid
+        <MonthGrid
           cells={cells}
+          weekStart={weekStart}
           today={today}
           selected={selected}
           onSelect={setSelected}
-          weekStart={weekStart}
-          data={data}
+          renderMarks={marks.renderMarks}
+          describe={marks.describe}
         />
         <CalendarLegend />
       </Card>

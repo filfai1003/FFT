@@ -66,6 +66,8 @@ export function IconButton({
           width: box,
           height: box,
           borderRadius: box / 2,
+          // Android draws the dimmed / scaled press layer as a square unless clipped to the circle.
+          overflow: 'hidden',
           borderWidth: selected ? 2 : plain || soft ? 0 : 1,
           borderColor: selected ? colors.text : colors.borderDecorative,
           backgroundColor: plain

@@ -80,9 +80,11 @@ export function FoodSearchScreen() {
       {/* Header, search and tabs stay put; only the results scroll. */}
       <Screen gap={14} style={{ paddingBottom: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {/* It rises from the bottom (modal): it closes, pages that slide in go back (DECISIONS 123). */}
           <IconButton
-            icon="chevronLeft"
-            accessibilityLabel={t('diet.backToLog')}
+            icon="close"
+            look="plain"
+            accessibilityLabel={t('common.close')}
             onPress={() => goBack(router)}
           />
           <Pressable
@@ -278,11 +280,7 @@ function FoodRow({
           {t('common.kcal')}
         </Text>
       </View>
-      <AddButton
-        filled
-        accessibilityLabel={t('diet.chooseAmount', { name: f.name })}
-        onPress={onAdd}
-      />
+      <AddButton accessibilityLabel={t('diet.chooseAmount', { name: f.name })} onPress={onAdd} />
     </View>
   );
 }

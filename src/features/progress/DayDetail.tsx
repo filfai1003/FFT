@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
 import { IconButton } from '@/components/ui/IconButton';
-import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { Toggle } from '@/components/ui/Toggle';
@@ -17,8 +16,8 @@ import { useDayTotals, useGoals } from '@/features/diet/log';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
 import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import { type SessionView } from '@/features/train/history';
-import { useMarkWorkoutDone, useSetWorkoutDeleted } from '@/features/train/mark-done';
-import { useActivePlan, useRotation } from '@/features/train/plans';
+import { MarkDoneSheet } from '@/features/train/MarkDoneSheet';
+import { useSetWorkoutDeleted } from '@/features/train/mark-done';
 import { useToday } from '@/features/profile/use-today';
 import { useToastStore } from '@/lib/toast-store';
 
@@ -40,9 +39,6 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
   const eaten = totals.data;
   const status = target && eaten ? dietDayStatus(eaten.kcal, target.kcal) : 'none';
 
-  const { plan } = useActivePlan();
-  const rotation = useRotation(plan);
-  const markDone = useMarkWorkoutDone();
   const setWorkoutDeleted = useSetWorkoutDeleted();
   const [marking, setMarking] = useState(false);
 
@@ -50,23 +46,6 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
   const taken = useSupplementLogs(day, day).data?.get(day);
   const setTaken = useSetTaken();
   const [editing, setEditing] = useState(false);
-
-  const mark = async (name: string, planDayId: string | null) => {
-    setMarking(false);
-    const planDay = plan?.days.find((d) => d.id === planDayId) ?? null;
-    const id = await markDone.mutateAsync({
-      day,
-      name,
-      plan: planDay ? plan : null,
-      planDay,
-      rotation,
-    });
-    showToast({
-      message: t('calendar.markedDone', { name }),
-      actionLabel: t('common.undo'),
-      onAction: () => setWorkoutDeleted.mutate({ id, deleted: true }),
-    });
-  };
 
   const section = (title: string, color: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -229,30 +208,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
         </View>
       </Card>
 
-      <Sheet
-        visible={marking}
-        onClose={() => setMarking(false)}
-        title={t('calendar.markDoneTitle', { date: shortDateLabel(day) })}
-        closeLabel={t('common.close')}
-      >
-        <View style={{ gap: 8 }}>
-          {(plan?.days ?? []).map((d) => (
-            <Button
-              key={d.id}
-              variant={rotation?.state.upNextDayId === d.id ? 'primary' : 'secondary'}
-              label={d.name}
-              disabled={markDone.isPending}
-              onPress={() => void mark(d.name, d.id)}
-            />
-          ))}
-          <Button
-            variant="ghost"
-            label={t('calendar.otherWorkout')}
-            disabled={markDone.isPending}
-            onPress={() => void mark(t('calendar.otherWorkout'), null)}
-          />
-        </View>
-      </Sheet>
+      <MarkDoneSheet visible={marking} onClose={() => setMarking(false)} day={day} />
 
       <SupplementsSheet visible={editing} onClose={() => setEditing(false)} />
     </>

@@ -211,8 +211,7 @@ export function ProfileScreen() {
     <Screen scroll bottomBarHeight={24} gap={12}>
       <TopBar
         onBack={() => goBack(router, '/')}
-        backLabel={t('common.close')}
-        backIcon="close"
+        backLabel={t('common.back')}
         right={
           <IconButton
             icon="gear"

@@ -17,7 +17,7 @@ Expo SDK 57 + React Native + TypeScript (strict) + Expo Router (routes in `src/a
 ## Structure
 ```
 src/app/            routing only (thin screens). (tabs)/ = Home (index), diet, train, progress (each tab folder has its own _layout Stack) + the "+" Add sheet; profile/, ai-chat, ai-chats are root pages (no tab bar). dev/ = dev-only pages
-src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar (filled bar), Gauge (arc/ring), DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, ExerciseImage, Icon, Text)
+src/components/ui/  design system (Screen, Card, Button, IconButton, Chip, Segmented, Toggle, Input, Stepper, DotBar (filled bar), Gauge (arc/ring), DotColumnChart, TabBar, BottomActionBar, Sheet, ToastHost, PageHeader, DayStrip, MonthGrid, CalendarSheet, ExerciseImage, Icon, Text)
 src/design/         tokens.ts (light + dark palettes, mirror of tokens.json, tested), theme, use-theme (app/workout scope), appearance-store (a11y settings), fonts, text-style
 src/domain/         pure logic with tests: strength (Epley), nutrition (Mifflin, safety), rotation, units, dots, numbers
 src/features/       per-area queries and screens (premium/ = plan gate and data moves, widgets/ = Android home screen widgets)
@@ -38,6 +38,15 @@ Every device keeps ALL user data in its own database: `getSupabase()` returns `s
 - Icon-only controls need `accessibilityLabel`. Never use colour alone for state.
 - Every important action can be undone (toast with UNDO, 5 s: `useToastStore().show`). Moving between exercises never loses data. Finish asks for confirmation.
 - Respect accessibility settings everywhere (text scale, bold, high contrast, reduce motion, haptics, one-hand mode).
+
+## Patterns (one way each, DECISIONS 123)
+- Days: a row of days is `DayStrip` and only selects the day for the page (the page shows that day; "Back to today" is built in). The month calendar opens only from the calendar button at the right end of `PageHeader` (`onCalendar`) → `DayCalendarSheet`. Any month grid is `MonthGrid`. Today on a past day: cards read `useHomeDay()`; a card that cannot act on the past is read-only.
+- Headers: tab pages `PageHeader`; pushed pages `TopBar` (‹ back) + title; forms `FormHeader` (Cancel). ‹ for pages that slide in, × for what rises from the bottom (modals, sheets, cameras).
+- Accent only for the page's one main action; in-page adds are the soft `AddButton` / outlined buttons; header text actions `secondary`.
+- Delete: trash / Remove → at once + Undo toast; a confirmation `Sheet` only for irreversible or big deletions; never system alerts, no swipe-to-delete.
+- Details: sheet for a quick change of one thing, page for anything with sub-navigation or history.
+- Toasts: leave `bottomOffset` out (the host sits above the tab bar or a `BottomActionBar` by itself); `placement: 'top'` only where the bottom is the work area.
+- Theme scopes: anything opened from the workout stays in `WorkoutThemeScope`; a page in another scope mounts `ThemedStatusBar`.
 
 ## Domain rules
 - Rotation: "Up next" = first plan day not done in the current cycle; any day can be trained any time (out of order counts for the cycle). See `src/domain/rotation.ts`.

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { InfoButton } from '@/components/ui/InfoButton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { pressFeedback, Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { IconTile } from '@/components/ui/IconTile';
@@ -63,34 +64,30 @@ export function TrainScreen() {
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
         {/* Canvas "Train": title, then the library and history as round buttons on the right. */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            {lastWhen ? (
-              <Text variant="bodyS" muted>
-                {t('train.lastWorkout', { when: lastWhen })}
-              </Text>
-            ) : null}
-            <Text variant="screenTitle" accessibilityRole="header">
-              {t('nav.train')}
-            </Text>
-          </View>
-          <IconButton
-            icon="book"
-            accessibilityLabel={t('train.library')}
-            onPress={() => router.push('/train/library')}
-          />
-          <IconButton
-            icon="clock"
-            accessibilityLabel={
-              lastDay.data
-                ? `${t('train.history')}, ${t('train.historyLast', {
-                    when: whenLabel(lastDay.data, today, t as Translate),
-                  })}`
-                : t('train.history')
-            }
-            onPress={() => router.push('/train/history')}
-          />
-        </View>
+        <PageHeader
+          overline={lastWhen ? t('train.lastWorkout', { when: lastWhen }) : undefined}
+          title={t('nav.train')}
+          actions={
+            <>
+              <IconButton
+                icon="book"
+                accessibilityLabel={t('train.library')}
+                onPress={() => router.push('/train/library')}
+              />
+              <IconButton
+                icon="clock"
+                accessibilityLabel={
+                  lastDay.data
+                    ? `${t('train.history')}, ${t('train.historyLast', {
+                        when: whenLabel(lastDay.data, today, t as Translate),
+                      })}`
+                    : t('train.history')
+                }
+                onPress={() => router.push('/train/history')}
+              />
+            </>
+          }
+        />
 
         <ActiveSessionBanner />
 

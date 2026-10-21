@@ -14,6 +14,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Segmented } from '@/components/ui/Segmented';
 import { Sheet } from '@/components/ui/Sheet';
 import { SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
 import { shortDateLabel } from '@/domain/day';
@@ -85,6 +86,7 @@ export const chartValues = (v: (number | null)[]) => {
 export function ProgressScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { colors } = useTheme();
   const { period, setPeriod } = useProgressPeriod();
   const strength = useStrength(period);
   const game = useGamification();
@@ -95,27 +97,26 @@ export function ProgressScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Screen scroll bottomBarHeight={view === 'community' ? communityBottom : 24} gap={14}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <Text variant="screenTitle" accessibilityRole="header">
-              {t('nav.progress')}
-            </Text>
-          </View>
-          {view === 'me' ? (
-            // Canvas "Progress": a dark "Check-in" pill (the accent stays for the main actions).
-            <Button
-              variant="dark"
-              size="small"
-              block={false}
-              icon="plus"
-              label={t('checkIn.title')}
-              accessibilityLabel={t('progress.newCheckIn')}
-              onPress={() => router.push('/check-in')}
-            />
-          ) : (
-            <CommunityAvatarButton />
-          )}
-        </View>
+        <PageHeader
+          title={t('nav.progress')}
+          actions={
+            view === 'me' ? (
+              // A header action: outlined like the round header buttons (DECISIONS 123; the accent stays
+              // for the page's main action).
+              <Button
+                variant="secondary"
+                size="small"
+                block={false}
+                icon="plus"
+                label={t('checkIn.title')}
+                accessibilityLabel={t('progress.newCheckIn')}
+                onPress={() => router.push('/check-in')}
+              />
+            ) : (
+              <CommunityAvatarButton />
+            )
+          }
+        />
 
         <Segmented
           accessibilityLabel={t('progress.view')}
@@ -174,6 +175,22 @@ export function ProgressScreen() {
                 <StreakCard game={game} />
                 {/* The weekly summary without the notification (DECISIONS 122). */}
                 <ThisWeekCard />
+                {/* The day-by-day calendar (workouts, diet, supplements; DECISIONS 123). */}
+                <Card
+                  onPress={() => router.push('/calendar')}
+                  accessibilityLabel={`${t('progress.calendarLink')}, ${t('progress.calendarLinkInfo')}`}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <IconTile icon="calendar" area="neutral" />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text semibold>{t('progress.calendarLink')}</Text>
+                      <Text variant="bodyS" muted>
+                        {t('progress.calendarLinkInfo')}
+                      </Text>
+                    </View>
+                    <Icon name="chevronRight" size={20} color={colors.textMuted} />
+                  </View>
+                </Card>
                 <NextBadgeCard game={game} />
                 <BadgeGrid badges={game.badges} />
               </>

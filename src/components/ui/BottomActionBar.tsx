@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { registerBottomBar } from '@/lib/toast-store';
 import { View } from 'react-native';
 import { KeyboardStickyView } from './keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,9 @@ export function useActionBarHeight() {
 export function BottomActionBar({ children }: { children: ReactNode }) {
   const { colors } = useTheme();
   const { bottom } = useSafeAreaInsets();
+  const height = useActionBarHeight();
+  // Toasts sit above it (DECISIONS 123).
+  useEffect(() => registerBottomBar(height), [height]);
   return (
     // Follows the keyboard frame by frame; when it is open the safe-area padding goes under it.
     <KeyboardStickyView

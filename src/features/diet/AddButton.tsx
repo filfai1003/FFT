@@ -5,18 +5,16 @@ import { useTheme } from '@/design/use-theme';
 import { tick } from '@/lib/haptics';
 
 /**
- * The round "+" of a meal or a search result (canvas "Diet"): filled in the text colour where
- * adding is the next step (an empty meal, a result), soft once the meal has foods. Never the
- * accent: that stays the one main action of the page.
+ * The round "+" of a meal or a search result: always soft (the empty-track fill, text-colour icon),
+ * the same quiet look for every in-page add (DECISIONS 123). Never filled and never the accent:
+ * that stays the one main action of the page.
  */
 export function AddButton({
   accessibilityLabel,
   onPress,
-  filled,
 }: {
   accessibilityLabel: string;
   onPress: () => void;
-  filled: boolean;
 }) {
   const { colors } = useTheme();
   const press = usePressScale(pressFeedback.icon);
@@ -36,7 +34,7 @@ export function AddButton({
           width: box,
           height: box,
           borderRadius: box / 2,
-          backgroundColor: filled ? colors.text : colors.dotOff,
+          backgroundColor: colors.dotOff,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: press.opacity,
@@ -44,7 +42,7 @@ export function AddButton({
         press.style,
       ]}
     >
-      <Icon name="plus" size={20} color={filled ? colors.bg : colors.text} />
+      <Icon name="plus" size={20} color={colors.text} />
     </AnimatedPressable>
   );
 }

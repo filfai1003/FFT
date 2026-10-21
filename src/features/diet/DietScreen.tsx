@@ -1,9 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
-import { IconButton } from '@/components/ui/IconButton';
 import { IconTile } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
 import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
@@ -12,19 +10,15 @@ import { radius, touch } from '@/design/tokens';
 import { formatInt } from '@/domain/numbers';
 import { useTheme } from '@/design/use-theme';
 import { meals, sumMacros, type Meal } from '@/domain/diet';
-import { addDays, shortDateLabel, weekOf } from '@/domain/day';
+import { addDays } from '@/domain/day';
 import { FirstUseHint } from '@/features/help/FirstUseHint';
 import { useProfile } from '@/features/profile/api';
-import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { AddButton } from './AddButton';
 import { mealIcon } from './meal-icon';
-import { DayPickerSheet } from './DayPickerSheet';
-import { DayStrip } from './DayStrip';
+import { DietDayHeader } from './DietDayHeader';
 import { DaySummaryCard } from './DaySummaryCard';
-import { PickDayLabel } from './PickDayLabel';
 import { FixedMealsLog } from './FixedMealsLog';
 import { useDietDay, useDayTarget } from './day-hooks';
-import { useStripStatuses } from './week-status';
 import { useToastStore } from '@/lib/toast-store';
 import { useCopyEntries, useDayLog, useDayTotals, useSetLogDeleted, type LogEntry } from './log';
 
@@ -58,15 +52,11 @@ function DietSkeleton() {
 function FoodLog() {
   const { t } = useTranslation();
   const router = useRouter();
-  const weekStart = usePreferencesStore((s) => s.weekStart);
   const { day, today, setDay } = useDietDay();
-  const [calendar, setCalendar] = useState(false);
   const log = useDayLog(day);
   const before = useDayLog(addDays(day, -1));
   const totals = useDayTotals(day);
   const target = useDayTarget(day);
-  const week = weekOf(day, weekStart);
-  const statuses = useStripStatuses(week, today);
   const copy = useCopyEntries();
   const setDeleted = useSetLogDeleted();
   const showToast = useToastStore((s) => s.show);
@@ -93,24 +83,7 @@ function FoodLog() {
   return (
     <>
       <Screen scroll bottomBarHeight={24} gap={14}>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}
-        >
-          <View style={{ gap: 4 }}>
-            {/* The day itself (not only the month): which day the log shows, at a glance. */}
-            <PickDayLabel label={shortDateLabel(day)} onPress={() => setCalendar(true)} />
-            <Text variant="screenTitle" accessibilityRole="header">
-              {t('nav.diet')}
-            </Text>
-          </View>
-          <IconButton
-            icon="gear"
-            accessibilityLabel={t('diet.goalsAndMode')}
-            onPress={() => router.push('/diet-goals')}
-          />
-        </View>
-
-        <DayStrip days={week} selected={day} onSelect={setDay} statuses={statuses} />
+        <DietDayHeader day={day} today={today} setDay={setDay} />
 
         <FirstUseHint id="dietTips" />
 
@@ -152,13 +125,6 @@ function FoodLog() {
           ))}
         </View>
       </Screen>
-      <DayPickerSheet
-        visible={calendar}
-        onClose={() => setCalendar(false)}
-        selected={day}
-        today={today}
-        onSelect={setDay}
-      />
     </>
   );
 }
@@ -227,12 +193,7 @@ function MealSection({
             </Text>
           )}
         </View>
-        {/* Filled while the meal is empty: adding is the next step there. */}
-        <AddButton
-          filled={empty}
-          accessibilityLabel={t('diet.addTo', { meal: name })}
-          onPress={onAdd}
-        />
+        <AddButton accessibilityLabel={t('diet.addTo', { meal: name })} onPress={onAdd} />
       </View>
       {empty && yesterday.length > 0 ? (
         <Pressable
