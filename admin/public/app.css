@@ -792,3 +792,26 @@ dialog::backdrop {
       border-color 120ms;
   }
 }
+
+/* ---------------------------------------------------------------- reported photos */
+.photo-thumb {
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: var(--surface-alt);
+  display: block;
+}
+.photo-missing {
+  width: 96px;
+  min-height: 96px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  text-align: center;
+  font-size: 12px;
+}

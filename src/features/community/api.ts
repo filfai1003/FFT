@@ -11,7 +11,7 @@ import {
   type CommunityMetric,
   type CommunityPeriod,
 } from '@/domain/community';
-import type { Frame, ProfileColour, Title } from '@/domain/community-look';
+import type { Frame, ProfileColour, ReportReason, Title } from '@/domain/community-look';
 import { goalForDay, hasTarget } from '@/domain/diet';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useGoals } from '@/features/diet/log';
@@ -52,6 +52,11 @@ export type CommunityMe = {
   title?: string | null;
   showcase_badge?: string | null;
   photo_path?: string | null;
+  /** A photo of the member is under review (DECISIONS 120): hidden from others, not replaceable. */
+  photo_review?: boolean;
+  /** 3 photos judged inappropriate: no more photos until an admin gives the right back. */
+  photo_banned?: boolean;
+  photo_strikes?: number;
   /** What others see now (null: defaults, or no longer Supporter / Premium). */
   look?: unknown;
 } & Partial<CommunityGroups>;
@@ -274,6 +279,31 @@ export function useSetAvatar() {
       if (a.localUri) return setAvatar(a.publicId, a.localUri);
       await setPhotoPath(a.path ?? null);
       return a.path ?? null;
+    },
+    onSuccess: invalidate,
+  });
+}
+
+export type ReportStatus = 'reported' | 'already' | 'no_photo';
+
+/**
+ * Reports a member's profile photo (DECISIONS 120): `photo` is the one the reporter saw (nothing
+ * is reported if it changed since). The reporter stays anonymous to the member.
+ */
+export function useReportPhoto() {
+  const invalidate = useInvalidateCommunity();
+  return useMutation({
+    mutationFn: async (r: {
+      publicId: string;
+      photo: string;
+      reason: ReportReason | null;
+    }): Promise<ReportStatus> => {
+      const out = await rpc<{ status: ReportStatus }>('community_report_photo', {
+        p_public_id: r.publicId,
+        p_reason: r.reason,
+        p_photo: r.photo,
+      });
+      return out.status;
     },
     onSuccess: invalidate,
   });

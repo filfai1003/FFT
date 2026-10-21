@@ -157,6 +157,7 @@ export function CustomizeProfileScreen() {
     setDraft({ ...value, ...patch });
   };
   const preview: Look = {
+    ...(supporter ? { supporter: true as const } : {}),
     ...(value.colour ? { colour: value.colour } : {}),
     ...(value.frame ? { frame: value.frame } : {}),
     ...(value.title ? { title: value.title } : {}),
@@ -166,6 +167,10 @@ export function CustomizeProfileScreen() {
   // The plan ended while choices were set: others see the defaults (hidden, not deleted).
   const hidden = !supporter && m.look == null && (!same(saved, EMPTY) || m.photo_path != null);
   const earned = badgeCatalogue.filter((b) => m.badges.includes(b.id));
+  // Reported photos (DECISIONS 120): no new photo while one is reviewed or after 3 strikes.
+  const banned = m.photo_banned === true;
+  const reviewed = !banned && m.photo_review === true;
+  const photoLocked = banned || reviewed;
   const changed = !same(value, saved);
   const describe = [
     m.name,
@@ -195,6 +200,8 @@ export function CustomizeProfileScreen() {
 
   const choosePhoto = async (source: 'library' | 'camera') => {
     if (!supporter) return toPlans();
+    // Under review or after 3 strikes (DECISIONS 120) the server refuses a new photo anyway.
+    if (photoLocked) return;
     setBusy(source);
     try {
       const uri = await pickAvatar(source);
@@ -213,8 +220,16 @@ export function CustomizeProfileScreen() {
             .catch(() => undefined);
         },
       });
-    } catch {
-      showToast({ message: t('look.photoFailed') });
+    } catch (e) {
+      const hint = (e as { hint?: string }).hint;
+      showToast({
+        message:
+          hint === 'photo_banned'
+            ? t('look.photoBanned')
+            : hint === 'photo_review'
+              ? t('look.photoReview')
+              : t('look.photoFailed'),
+      });
     } finally {
       setBusy(null);
     }
@@ -229,8 +244,8 @@ export function CustomizeProfileScreen() {
       removeLater(previous);
       showToast({
         message: t('look.photoRemoved'),
-        // Putting it back needs the plan (the server refuses otherwise).
-        ...(supporter
+        // Putting it back needs the plan, and no review or ban (the server refuses otherwise).
+        ...(supporter && !photoLocked
           ? {
               actionLabel: t('common.undo'),
               onAction: () => {
@@ -298,23 +313,50 @@ export function CustomizeProfileScreen() {
               {t('look.photoPublic')}
             </Text>
           </View>
-          <Button
-            variant="secondary"
-            icon="image"
-            label={t('look.choosePhoto')}
-            loading={busy === 'library'}
-            disabled={busy != null && busy !== 'library'}
-            onPress={() => void choosePhoto('library')}
-          />
-          {Platform.OS === 'web' ? null : (
-            <Button
-              variant="secondary"
-              icon="camera"
-              label={t('look.takePhoto')}
-              loading={busy === 'camera'}
-              disabled={busy != null && busy !== 'camera'}
-              onPress={() => void choosePhoto('camera')}
-            />
+          {photoLocked ? (
+            <View
+              testID={banned ? 'photo-banned-note' : 'photo-review-note'}
+              accessible
+              style={{
+                flexDirection: 'row',
+                gap: 10,
+                alignItems: 'flex-start',
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: colors.surfaceAlt,
+              }}
+            >
+              <Icon name={banned ? 'lock' : 'clock'} size={18} color={colors.text} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="bodyS" semibold>
+                  {banned ? t('look.photoBanned') : t('look.photoReview')}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {banned ? t('look.photoBannedInfo') : t('look.photoReviewInfo')}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                icon="image"
+                label={t('look.choosePhoto')}
+                loading={busy === 'library'}
+                disabled={busy != null && busy !== 'library'}
+                onPress={() => void choosePhoto('library')}
+              />
+              {Platform.OS === 'web' ? null : (
+                <Button
+                  variant="secondary"
+                  icon="camera"
+                  label={t('look.takePhoto')}
+                  loading={busy === 'camera'}
+                  disabled={busy != null && busy !== 'camera'}
+                  onPress={() => void choosePhoto('camera')}
+                />
+              )}
+            </>
           )}
           {m.photo_path ? (
             <Button

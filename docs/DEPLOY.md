@@ -20,7 +20,7 @@ Services, all in Railway's EU region (`europe-west4-drams3a`, Amsterdam; moved f
 | `api`      | this repo (`server/Dockerfile`)    | public domain `fft-api`: the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `AI_PROVIDERS` (DECISIONS 88), `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `src/domain/` (the coach rules the API runs), `supabase/migrations/`, `supabase/functions/` or `supabase/seed.sql` |
 | `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
 | `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
-| `admin`    | this repo (`admin/`)               | admin panel, **no public domain by default** (add `admin-fft` in Settings > Networking only while you use it, then remove it); sign-in = `ADMIN_PASSWORD` + a code from an authenticator app (`ADMIN_TOTP_SECRET`, base32, generated on Railway: add it to the app with "enter a setup key", time based) |
+| `admin`    | this repo (`admin/`)               | admin panel, **no public domain by default** (add `admin-fft` in Settings > Networking only while you use it, then remove it); sign-in = `ADMIN_PASSWORD` + a code from an authenticator app (`ADMIN_TOTP_SECRET`, base32, generated on Railway: add it to the app with "enter a setup key", time based); optional `SUPABASE_URL` (the backend URL, as on `api`) so Reported photos can show the images (public bucket, no key) |
 
 Public URL: `https://your-backend.example.com` (the `backend` service domain, Kong).
 
