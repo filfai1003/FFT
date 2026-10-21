@@ -81,8 +81,8 @@ describe('Weekly summary (DECISIONS 122)', () => {
     await renderUI(<WeeklySummaryScreen />);
     expect(screen.getByText('Your week')).toBeTruthy();
     expect(screen.getByText('19 Oct – 25 Oct')).toBeTruthy();
-    expect(screen.getByLabelText('2 of 4 planned workouts')).toBeTruthy();
-    expect(screen.getByLabelText('2 of 3 days on target')).toBeTruthy();
+    expect(screen.getByLabelText('Workouts: 2 of 4 planned')).toBeTruthy();
+    expect(screen.getByLabelText('Days on target: 2 of 3')).toBeTruthy();
     expect(screen.getByText('−0.4 kg')).toBeTruthy();
     expect(screen.getByText('Bench press')).toBeTruthy();
     expect(screen.getByText('Badges earned')).toBeTruthy();

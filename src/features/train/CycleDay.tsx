@@ -120,7 +120,7 @@ export function CycleBar({ cycle, done, total }: { cycle: number; done: number; 
       gap={4}
       color={colors.training}
       track={colors.trainingSoft}
-      accessibilityLabel={t('train.cycleLabel', { n: cycle, done, total })}
+      accessibilityLabel={t('train.cycleLabel', { n: cycle, done, count: total })}
     />
   );
 }

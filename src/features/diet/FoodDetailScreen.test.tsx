@@ -46,14 +46,14 @@ describe('Food detail (DECISIONS 112)', () => {
     await renderUI(<FoodDetailScreen />);
     expect(screen.getByText('Verified · Open Food Facts · Fage')).toBeTruthy();
     expect(screen.getByText('73')).toBeTruthy();
-    expect(screen.getByText('10% of goal')).toBeTruthy();
-    expect(screen.getByLabelText('Protein, 10% of goal')).toBeTruthy();
+    expect(screen.getByText('10% of target')).toBeTruthy();
+    expect(screen.getByLabelText('Protein, 10% of target')).toBeTruthy();
   });
 
   it('without a target: grams only, no goal bars', async () => {
     await renderUI(<FoodDetailScreen />);
     expect(screen.getByText('10')).toBeTruthy();
-    expect(screen.queryByText(/% of goal/)).toBeNull();
+    expect(screen.queryByText(/% of target/)).toBeNull();
   });
 
   it('while the food loads: placeholders; a food that is gone says so', async () => {

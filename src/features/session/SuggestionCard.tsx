@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Text } from '@/components/ui/Text';
 import { radius, touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -95,9 +96,12 @@ export function SuggestionCard({
           />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="body" numeric semibold>
-            {title}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="body" numeric semibold style={{ flexShrink: 1 }}>
+              {title}
+            </Text>
+            <InfoButton topic="weightSuggestion" />
+          </View>
           <Text variant="label" muted numeric>
             {reason}
           </Text>

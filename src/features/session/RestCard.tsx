@@ -5,6 +5,7 @@ import * as Speech from 'expo-speech';
 import { Card } from '@/components/ui/Card';
 import { Gauge } from '@/components/ui/Gauge';
 import { IconTile } from '@/components/ui/IconTile';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useAppearanceStore } from '@/design/appearance-store';
@@ -104,6 +105,7 @@ export function RestCard() {
           <Text variant="bodyS" semibold>
             {t('session.rest', { time: formatClock(rest.totalS) })}
           </Text>
+          <InfoButton topic="restTimer" />
         </View>
         <Pressable
           accessibilityRole="button"

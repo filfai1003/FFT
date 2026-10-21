@@ -45,7 +45,7 @@ describe('Food search (DECISIONS 112)', () => {
     mockRecent = [yogurt];
     await renderUI(<FoodSearchScreen />);
     expect(screen.getByRole('button', { name: 'Greek yogurt 2%, Verified, 73 kcal' })).toBeTruthy();
-    expect(screen.getByText('100 g · P 10 · C 3.6 · F 2')).toBeTruthy();
+    expect(screen.getByText('100 g: protein 10 · carbs 3.6 · fat 2')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Choose amount of Greek yogurt 2%' })).toBeTruthy();
   });
 

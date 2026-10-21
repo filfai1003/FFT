@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile } from '@/components/ui/IconTile';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Screen } from '@/components/ui/Screen';
 import { Section } from '@/components/ui/Section';
 import { Segmented } from '@/components/ui/Segmented';
@@ -228,6 +229,7 @@ export function BalanceScreen() {
           <Text variant="bodyS" semibold style={{ flex: 1 }}>
             {t('balance.guide', { min: GUIDE_MIN, max: GUIDE_MAX })}
           </Text>
+          <InfoButton topic="hardSets" />
         </View>
         <Text variant="bodyS" muted>
           {t('balance.guideNote')}

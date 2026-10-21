@@ -25,13 +25,295 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password"
   },
+  "help": {
+    "about": "About {{term}}",
+    "gotIt": "Got it",
+    "forExample": "For example",
+    "why": "Why it matters",
+    "first": {
+      "train": {
+        "title": "How Train works",
+        "b1": "Your plan is a list of workout days. Up next is the day to do now.",
+        "b2": "Tap Start to begin. You can do any day at any time: it still counts.",
+        "b3": "The book button opens the exercise library. The clock shows your past workouts."
+      },
+      "workout": {
+        "title": "During a workout",
+        "b1": "Check the weight and reps, then tap Done set. The rest timer starts by itself.",
+        "b2": "Swipe left or right to move between exercises. Nothing you typed is lost.",
+        "b3": "Tap Finish at the end. Only the sets you ticked are saved."
+      },
+      "diet": {
+        "title": "How Diet works",
+        "b1": "Log what you eat in each meal: search, scan a barcode or pick a recent food.",
+        "b2": "The ring shows the kcal left today. The bars show protein, carbs and fat.",
+        "b3": "Tap the gear at the top to change your targets or switch to fixed meals."
+      },
+      "progress": {
+        "title": "How Progress works",
+        "b1": "Add a check-in to save your weight, body fat, measurements and photos.",
+        "b2": "Your lines start after two check-ins. Once a week is enough.",
+        "b3": "Strength shows how much stronger you get, from the sets you log."
+      },
+      "community": {
+        "title": "How the community works",
+        "b1": "Leaderboards compare how much each person improves, not who is strongest.",
+        "b2": "Others see only your name, level, scores and badges. Never your weight or photos.",
+        "b3": "Tap ⓘ next to a leaderboard to see how its score is counted."
+      }
+    },
+    "whatsThis": "What does this mean?",
+    "whichMode": "Not sure which to choose?"
+  },
+  "forms": {
+    "namePlaceholder": "e.g. Alex",
+    "heightPlaceholder": "e.g. 175",
+    "weightPlaceholder": "e.g. 70",
+    "bodyFatPlaceholder": "e.g. 18",
+    "emailPlaceholder": "e.g. alex@example.com",
+    "passwordPlaceholder": "At least 8 characters",
+    "optional": "Optional",
+    "saveFailed": "This could not be saved. Check that every number is a plain number (e.g. 70 or 70.5), then try again."
+  },
+  "explain": {
+    "setsReps": {
+      "term": "sets and reps",
+      "title": "Sets and reps",
+      "body": "A rep (repetition) is one lift: up and down once. A set is a group of reps done without stopping. You rest between sets.",
+      "example": "3 × 10 means 3 sets of 10 reps: lift 10 times, rest, 10 more, rest, 10 more."
+    },
+    "restTimer": {
+      "term": "the rest timer",
+      "title": "Rest timer",
+      "body": "When you tick a set, a timer counts down your rest before the next one. Use −15 and +15 to change it, or Skip to go on now. Your phone tells you when the rest is over.",
+      "example": "Heavy sets of 5 reps often need 2 to 3 minutes. Lighter sets of 12 need about 1 minute.",
+      "why": "Resting long enough lets you lift well in the next set."
+    },
+    "weightSuggestion": {
+      "term": "the weight suggestion",
+      "title": "Next weight suggestion",
+      "body": "The app looks at your last workout. If you reached the top of the rep range in every set, it adds a little weight; if you fell short, it lowers it a bit. Otherwise it keeps the weight and you aim for one more rep.",
+      "example": "Target 6–8 reps. Last time 60 kg × 8 in every set, so today: 62.5 kg.",
+      "why": "Adding a little weight or a rep over time is called progressive overload. It is how you get stronger."
+    },
+    "e1rm": {
+      "term": "estimated max",
+      "title": "Estimated max (1RM)",
+      "body": "1RM means one-rep max: the heaviest weight you could lift just once. You never have to try it. The app works it out from your sets of 12 reps or fewer.",
+      "example": "60 kg for 10 reps gives an estimated max of 80 kg (60 × (1 + 10 ÷ 30)).",
+      "why": "You can compare workouts even when the weight or the reps change. If it goes up, you are getting stronger."
+    },
+    "actualMax": {
+      "term": "actual max",
+      "title": "Actual max",
+      "body": "The heaviest weight you really lifted in this exercise, for any number of reps, in a set you ticked as done.",
+      "example": "Sets of 80 kg × 5 and 85 kg × 2: your actual max is 85 kg."
+    },
+    "records": {
+      "term": "records",
+      "title": "Records",
+      "body": "A record is a new personal best in an exercise: a heavier weight than ever before, or a higher estimated max.",
+      "example": "Your best squat was 100 kg. Today you lift 102.5 kg: new record.",
+      "why": "Records show your progress, and they earn XP and badges."
+    },
+    "strengthScore": {
+      "term": "the strength score",
+      "title": "Strength score",
+      "body": "How much your estimated max changed over the period, in %, averaged over your exercises. Exercises with more sets count more. Only exercises done on at least 2 different days count.",
+      "example": "Bench press 80 → 84 kg (+5%) and squat 100 → 102 kg (+2%), with the same number of sets: about +3.5%.",
+      "why": "One number that tells you whether your training is working."
+    },
+    "volume": {
+      "term": "volume",
+      "title": "Volume",
+      "body": "Volume is all the weight you moved: weight × reps, added up for every set you finished.",
+      "example": "3 sets of 10 reps at 50 kg = 1,500 kg of volume.",
+      "why": "More volume over the weeks usually means more work for your muscles."
+    },
+    "hardSets": {
+      "term": "hard sets",
+      "title": "Hard sets and the guideline",
+      "body": "A hard set is a real working set, not a light warm-up. The main muscle of an exercise gets 1 set, each helping muscle half a set. Many studies suggest about 10 to 20 hard sets per muscle group a week to build muscle.",
+      "example": "4 sets of bench press = 4 chest sets, plus 2 for shoulders and 2 for triceps.",
+      "why": "It shows which muscles get a lot of work and which get little, so your training stays balanced."
+    },
+    "plan": {
+      "term": "workout plans",
+      "title": "Workout plan",
+      "body": "A plan is your list of workout days, such as Push, Pull and Legs. Each day has its exercises, with sets, reps and rest. One plan is active at a time.",
+      "example": "A 3-day plan: Push on Monday, Pull on Wednesday, Legs on Friday.",
+      "why": "With a plan you never have to think about what to do next."
+    },
+    "cycle": {
+      "term": "cycles and up next",
+      "title": "Cycle and up next",
+      "body": "A cycle is one round through every day of your plan. Up next is the first day you have not done yet in this cycle. You can do any day at any time: it still counts. When every day is done, a new cycle starts.",
+      "example": "Plan: Push, Pull, Legs. You did Push and Legs, so Up next is Pull. After Pull, cycle 2 starts."
+    },
+    "dropSet": {
+      "term": "drop sets",
+      "title": "Drop sets",
+      "body": "After a set, lower the weight and keep going right away, with no rest. Each lighter round is a drop.",
+      "example": "Curls 14 kg × 10, then straight away 10 kg × 8, then 6 kg × 8.",
+      "why": "It works the muscle harder in less time. When you are starting out, use it on the last set only."
+    },
+    "superset": {
+      "term": "supersets",
+      "title": "Supersets",
+      "body": "Two or more exercises done in turn: one set of each, then one rest. They are labelled A1, A2 and so on.",
+      "example": "A1 curls × 10, A2 triceps pushdowns × 10, then rest 90 s. Do that 3 times.",
+      "why": "It saves time, and works well for muscles that do opposite jobs."
+    },
+    "calorieTarget": {
+      "term": "the calorie target",
+      "title": "Calorie target",
+      "body": "How many kcal (calories) to eat each day for your goal. Eating less than your body burns (a deficit) makes you lose weight. Eating more (a surplus) helps you build muscle. For your safety the target is never under 1,500 kcal or more than 25% under your maintenance.",
+      "example": "You burn about 2,500 kcal a day. To lose fat slowly, aim for about 2,250 (10% less).",
+      "why": "What you eat is the biggest part of changing your weight."
+    },
+    "maintenance": {
+      "term": "maintenance calories",
+      "title": "Maintenance calories",
+      "body": "The kcal your body burns in a day: to stay alive, move and train. Eat this much and your weight stays about the same. The app estimates it from your sex, age, height, weight and daily activity.",
+      "example": "A man of 30, 180 cm, 80 kg, mostly sitting: about 2,150 kcal a day.",
+      "why": "It is only an estimate. If your weight changes while you eat this much, move your target by 100 to 200 kcal."
+    },
+    "macros": {
+      "term": "macros",
+      "title": "Macros: protein, carbs and fat",
+      "body": "Macros are the three parts of food that give you energy: protein builds and repairs muscle, carbs are your main fuel for training, and fat keeps your hormones and body healthy. 1 g of protein or carbs = 4 kcal, 1 g of fat = 9 kcal.",
+      "example": "2,000 kcal split 30% protein, 40% carbs, 30% fat = 150 g protein, 200 g carbs, 67 g fat.",
+      "why": "Enough protein helps you keep or build muscle, whatever your goal."
+    },
+    "trainingBonus": {
+      "term": "the training-day target",
+      "title": "Higher target on training days",
+      "body": "On days you log a workout, your calorie target goes up a little, and the extra kcal go to carbs. Rest days keep the normal target.",
+      "example": "Target 2,000 kcal. On a workout day it becomes 2,200: 200 kcal more, as 50 g of carbs.",
+      "why": "Training uses energy. More carbs on those days help you train and recover."
+    },
+    "trackingMode": {
+      "term": "tracking modes",
+      "title": "Count foods or fixed meals",
+      "body": "Count foods: you log each food you eat, by search or barcode, and see what is left for the day. Fixed meals: you plan your meals once, then tick each one off when you eat it.",
+      "example": "Count foods suits a varied diet. Fixed meals suits eating mostly the same things, like meal prep.",
+      "why": "Both use the same targets, and you can switch any time."
+    },
+    "bodyFat": {
+      "term": "body fat",
+      "title": "Body fat %",
+      "body": "The share of your weight that is fat. A smart scale, calipers or a tape measure can estimate it. Each gives a slightly different number, so use the same one every time.",
+      "example": "80 kg at 20% body fat = 16 kg of fat.",
+      "why": "Weight alone can hide change: you can lose fat and gain muscle and weigh the same."
+    },
+    "leanMass": {
+      "term": "lean and fat mass",
+      "title": "Lean mass and fat mass",
+      "body": "Fat mass is the kg of fat in your body. Lean mass is everything else: muscle, bones, water and organs. Both come from your weight and body fat %.",
+      "example": "80 kg at 20% body fat: 16 kg fat mass and 64 kg lean mass.",
+      "why": "Lean mass going up while fat mass goes down is the best kind of change."
+    },
+    "checkIn": {
+      "term": "check-ins",
+      "title": "Check-in",
+      "body": "A check-in saves your weight, body fat, measurements and photos for the day. Every field is optional. Once a week, at the same time of day, works well.",
+      "example": "Every Monday before breakfast: weight, waist and three photos.",
+      "why": "Regular check-ins draw your lines in Progress."
+    },
+    "streak": {
+      "term": "streaks",
+      "title": "Streak",
+      "body": "Your streak is the number of days in a row you logged something: food, a workout or a check-in. Miss a whole day and it starts again from 0.",
+      "example": "You log Monday to Thursday: a 4-day streak. Nothing on Friday, so on Saturday it is back to 0.",
+      "why": "Small daily habits add up."
+    },
+    "xpLevels": {
+      "term": "XP and levels",
+      "title": "XP and levels",
+      "body": "XP (experience points) are points for what you do: logging, workouts, days on target, check-ins, records and badges. Enough XP takes you to the next level. Each level needs a bit more than the last.",
+      "example": "A workout gives 50 XP, a day on your calorie target 20, a check-in 10. A day gives at most 100 XP. Level 2 needs 100 XP, level 3 another 150."
+    },
+    "badgeRarity": {
+      "term": "badges",
+      "title": "Badges and rarity",
+      "body": "Badges reward milestones, like your first workout or a 30-day streak. Most are common. Rare and epic ones are harder: most need many days in a row.",
+      "example": "Clean week (rare): stay on your calorie target 7 days in a row."
+    },
+    "boardWorkouts": {
+      "term": "the workouts score",
+      "title": "Workouts score",
+      "body": "The number of workouts you finished this week or this month. At most 2 a day count.",
+      "example": "Workouts on Monday, Wednesday and Friday = 3."
+    },
+    "boardDiet": {
+      "term": "the diet score",
+      "title": "Diet score",
+      "body": "The share of days you ate within 10% of your own calorie target. Only days with a target count. Everyone has their own target, so anyone can reach 100%.",
+      "example": "Target 2,000 kcal: a day between 1,800 and 2,200 counts. 5 of 7 days = 71%."
+    },
+    "boardTraining": {
+      "term": "the training score",
+      "title": "Training score",
+      "body": "The share of your planned workouts you did. A plan of 3 days counts as 3 workouts planned a week. Workouts outside a plan do not count here.",
+      "example": "A 3-day plan and 2 plan workouts this week = 67%."
+    },
+    "boardStrength": {
+      "term": "the strength score",
+      "title": "Strength score",
+      "body": "How much your estimated max went up since the start of the period, in %. It is measured against where you started, so a beginner can beat a strong lifter.",
+      "example": "Squat 100 → 105 kg this month = +5%."
+    },
+    "plans": {
+      "term": "Supporter and Premium",
+      "title": "Free, Supporter and Premium",
+      "body": "Free has every feature. Supporter adds extras for people who want to back FFT, like comparing with friends and profile colours. Premium adds the AI coach with no key of your own, with a monthly allowance.",
+      "example": "With Free you can still use the coach with your own AI key, from Anthropic or another provider."
+    },
+    "serverCopy": {
+      "term": "the copy on the server",
+      "title": "Copy on the server",
+      "body": "Your data is always saved on this phone. A copy on our server (in the EU) lets you use the web app and other phones, connect AI apps, and get your data back if you lose your phone. You choose what goes, and can turn it off.",
+      "example": "You lose your phone: sign in on a new one and everything comes back."
+    },
+    "encryption": {
+      "term": "end-to-end encryption",
+      "title": "End-to-end encryption",
+      "body": "Your data is locked on your phone before it is sent, with a key only you have (made from your passphrase). Our server keeps it but cannot read it.",
+      "example": "Like a locked box: we carry it, but only you have the key.",
+      "why": "If you lose both your passphrase and your recovery key, nobody can open the copy, not even us. The API and AI apps cannot use it."
+    },
+    "relay": {
+      "term": "syncing phones",
+      "title": "Sync with another phone",
+      "body": "Your phones send each other their changes through our server, locked with a key only your phones have. The server keeps nothing: each change is deleted once your other phone has it.",
+      "example": "You log lunch on your phone: it shows on your tablet a few seconds later."
+    },
+    "apiMcp": {
+      "term": "API and MCP",
+      "title": "API and MCP",
+      "body": "The API lets your own programs read and change your FFT data. MCP is the way AI apps like Claude or ChatGPT connect to it. A token is a secret key for one tool: keep it private, and revoke it when you stop using it.",
+      "example": "Connect Claude, then ask it: \"How much protein did I eat this week?\""
+    },
+    "foodSource": {
+      "term": "where food data comes from",
+      "title": "Where the food data comes from",
+      "body": "Generic foods, like apple or rice, come from Ciqual: a food table from a French public agency (ANSES), with checked values per 100 g. Packaged products come from Open Food Facts: a free database filled in from product labels by volunteers. A green tick means the values were checked. Foods you create are only yours.",
+      "example": "Apple, raw (Ciqual): 54 kcal per 100 g. A cereal bar (Open Food Facts): found by its barcode."
+    },
+    "previous": {
+      "term": "previous",
+      "title": "Previous",
+      "body": "What you did in this set the last time you did this exercise, so you know what to aim for. A dash (—) means there is no last time yet: it is your first time.",
+      "example": "Previous 60 × 8: last time you lifted 60 kg for 8 reps in this set."
+    }
+  },
   "empty": {
-    "trainBody": "A plan tells you what to train next and keeps each cycle on track.",
+    "trainBody": "A plan is your list of workout days. It tells you what to do next.",
     "planDaysTitle": "No days in this plan yet",
     "planDaysBody": "Add the days you train, like push, pull and legs.",
     "historyTitle": "No workouts this month",
     "historyBody": "Finished workouts show up here, with their sets and time.",
-    "exerciseTitle": "No sessions yet",
+    "exerciseTitle": "Not done yet",
     "exerciseBody": "Do this exercise in a workout to see your sets and progress here.",
     "bodyTitle": "No check-ins yet",
     "bodyBody": "Your weight, body fat and measurements show up here, with how they change.",
@@ -77,7 +359,8 @@
     "removeWater": "Remove a glass of water",
     "waterRemoved": "Glass of water removed",
     "workoutDone": "Workout done today",
-    "workoutDoneInfo": "{{names}} · {{sets}} sets",
+    "workoutDoneInfo_one": "{{names}} · {{count}} set",
+    "workoutDoneInfo_other": "{{names}} · {{count}} sets",
     "trainAgain": "Train another day",
     "waterLabel": "Water",
     "edit": "Edit",
@@ -127,13 +410,14 @@
     "macroOver": "{{g}} g over",
     "eatenOf": "{{eaten}} of {{target}}",
     "waterToGo": "{{l}} L to go",
-    "waterGoalReached": "Goal reached",
+    "waterGoalReached": "Target reached",
     "addGlass": "Glass",
     "moreExercises": "+{{count}} more",
     "supplementsTaken": "{{n}} of {{total}} taken",
     "kcalEatenShort": "kcal eaten",
     "sameAsYesterday": "Same as yesterday",
-    "sameAsYesterdayLabel": "Same as yesterday: {{count}} foods, {{kcal}} kcal",
+    "sameAsYesterdayLabel_one": "Same as yesterday: {{count}} food, {{kcal}} kcal",
+    "sameAsYesterdayLabel_other": "Same as yesterday: {{count}} foods, {{kcal}} kcal",
     "copiedDay_one": "{{count}} food from yesterday logged",
     "copiedDay_other": "{{count}} foods from yesterday logged",
     "setTarget": "Set a target",
@@ -194,8 +478,8 @@
     "modeSignUp": "Create account",
     "email": "Email",
     "password": "Password",
-    "errorEmail": "Enter a valid email address.",
-    "errorPassword": "Use at least 8 characters.",
+    "errorEmail": "Enter a full email address, like alex@example.com.",
+    "errorPassword": "Use at least 8 characters for your password.",
     "continueSignIn": "Sign in",
     "continueSignUp": "Create account",
     "confirmEmail": "Check your inbox to confirm your email, then sign in.",
@@ -220,7 +504,7 @@
     "skip": "Skip",
     "skipStep": "Skip this step",
     "skipSetup": "Skip setup",
-    "skipSetupDetail": "Start now with the defaults. You can add the rest later in Profile and Goals.",
+    "skipSetupDetail": "Start now with the defaults. You can add the rest later in Profile and Diet targets.",
     "skipSetupNeeds": "Enter your name and confirm you are 18 or older first.",
     "reason": {
       "name": "Enter your name to continue.",
@@ -234,11 +518,11 @@
     "goal": {
       "title": "Your goal",
       "loseFat": "Lose fat",
-      "loseFatDetail": "A moderate calorie deficit.",
+      "loseFatDetail": "Eat a bit less than you burn.",
       "maintain": "Maintain",
-      "maintainDetail": "Stay where you are.",
+      "maintainDetail": "Keep your weight about the same.",
       "buildMuscle": "Build muscle",
-      "buildMuscleDetail": "A small calorie surplus."
+      "buildMuscleDetail": "Eat a bit more than you burn."
     },
     "body": {
       "title": "About you",
@@ -254,21 +538,21 @@
       "monthPlaceholder": "MM",
       "yearPlaceholder": "YYYY",
       "underage": "You must be 18 or older to use this app.",
-      "errorBirth": "Enter a valid date.",
+      "errorBirth": "Enter a real date: day, month and year.",
       "sexOptional": "Sex (optional) · for the calorie formula",
       "male": "Male",
       "female": "Female",
       "notSet": "Not set",
       "heightOptional": "Height (cm, optional)",
       "weightOptional": "Weight (kg, optional)",
-      "errorHeight": "Between 100 and 250 cm.",
-      "errorWeight": "Between 30 and 300 kg."
+      "errorHeight": "Enter a height between 100 and 250 cm.",
+      "errorWeight": "Enter a weight between 30 and 300 kg."
     },
     "lifestyle": {
       "title": "Your routine",
-      "activity": "Daily activity outside training",
+      "activity": "How active you are outside workouts",
       "sedentary": "Mostly sitting",
-      "light": "Light",
+      "light": "Some walking",
       "active": "On my feet",
       "physical": "Physical job",
       "experience": "Training experience",
@@ -288,9 +572,9 @@
       "suggested": "Suggested: {{kcal}} · maintenance {{maintenance}} {{pct}}",
       "suggestedSame": "Suggested: {{kcal}} · same as maintenance",
       "noSuggestion": "Add your details in Profile to get a suggested target.",
-      "safety": "Targets below 1,500 kcal or a deficit over 25% are blocked. For those, follow a plan from a nutrition professional.",
+      "safety": "For your safety the target cannot go below 1,500 kcal or more than 25% under your maintenance. If you need less, follow a plan from a dietitian.",
       "notMedical": "FFT is not medical advice: if you have a health condition, ask your doctor first.",
-      "noTargetDetail": "You will see what you eat, without a calorie target or calories left. You can set a target any time in Diet goals."
+      "noTargetDetail": "You will see what you eat, without a calorie target or calories left. You can set a target any time in Diet targets."
     },
     "mode": {
       "title": "How you track food",
@@ -322,7 +606,7 @@
     "planName": "Plan name",
     "planNamePlaceholder": "e.g. Push Pull Legs",
     "emptyTitle": "No plan yet",
-    "emptyWorkout": "Empty workout",
+    "emptyWorkout": "Quick workout",
     "activePlan": "Active plan",
     "upNext": "Up next",
     "exerciseCount_one": "{{count}} exercise · ~{{min}} min",
@@ -350,7 +634,8 @@
     "yourPlans": "Your plans",
     "cycleProgress": "Cycle {{n}} · {{done}} of {{total}} done",
     "cycleDone": "{{done}} of {{total}} done",
-    "cycleLabel": "Cycle {{n}}, {{done}} of {{total}} days done",
+    "cycleLabel_one": "Cycle {{n}}, {{done}} of {{count}} day done",
+    "cycleLabel_other": "Cycle {{n}}, {{done}} of {{count}} days done",
     "dayState": {
       "next": "Up next",
       "done": "Done",
@@ -367,7 +652,8 @@
     },
     "lastWorkout": "Last workout {{when}}",
     "lastTime": "last time {{when}}",
-    "neverDone": "first time"
+    "neverDone": "first time",
+    "quickStart": "Start a workout without a plan"
   },
   "plan": {
     "more": "More options: rename, duplicate, archive, delete",
@@ -385,7 +671,7 @@
     "startNow": "Start {{name}} now",
     "startDay": "Start {{name}}",
     "addDay": "+ Add day",
-    "emptyWorkout": "Empty workout",
+    "emptyWorkout": "Quick workout",
     "daysCount_one": "{{count}} day",
     "daysCount_other": "{{count}} days",
     "setActive": "Set as active plan",
@@ -451,7 +737,7 @@
     "noResultsBody": "Try another word or filter, or create your own exercise.",
     "notLogged": "Not logged yet",
     "recordWeight": "Max {{max}} {{unit}}",
-    "recordWeightEst": "Max {{max}} {{unit}} · Est. 1RM {{est}} {{unit}}",
+    "recordWeightEst": "Max {{max}} {{unit}} · Est. max {{est}} {{unit}}",
     "bestReps_one": "Best {{count}} rep",
     "bestReps_other": "Best {{count}} reps",
     "bestTime": "Best {{time}}",
@@ -479,9 +765,10 @@
   "picker": {
     "addTo": "Add to",
     "search": "Search exercise",
-    "createNew": "+ Create new",
+    "createNew": "Create new",
     "add_one": "Add {{count}} exercise",
-    "add_other": "Add {{count}} exercises"
+    "add_other": "Add {{count}} exercises",
+    "pickToAdd": "Pick exercises to add"
   },
   "exerciseForm": {
     "newTitle": "New exercise",
@@ -516,19 +803,19 @@
   "exerciseDetail": {
     "more": "More options",
     "actualMax": "Actual max",
-    "heaviest": "Heaviest logged",
-    "est1rm": "Estimated 1RM",
-    "epley": "Epley formula",
+    "heaviest": "Heaviest you lifted",
+    "est1rm": "Estimated max",
+    "epley": "Worked out from your sets",
     "metric": "Chart metric",
-    "metricEst": "Est. 1RM",
+    "metricEst": "Est. max",
     "metricMax": "Actual max",
-    "change_one": "{{delta}} {{unit}} · {{count}} session",
-    "change_other": "{{delta}} {{unit}} · {{count}} sessions",
+    "change_one": "{{delta}} {{unit}} · {{count}} workout",
+    "change_other": "{{delta}} {{unit}} · {{count}} workouts",
     "chartLabel": "Rising from {{from}} to {{to}} {{unit}}",
     "chartLabelDown": "Falling from {{from}} to {{to}} {{unit}}",
     "chartEmpty": "Do it on two days to see the trend here",
     "best": "Best",
-    "recent": "Recent sessions",
+    "recent": "Recent workouts",
     "edit": "Edit exercise",
     "delete": "Delete exercise",
     "deleteTitle": "Delete this exercise?",
@@ -541,11 +828,13 @@
     "inProgress": "Workout in progress",
     "resume": "Resume",
     "resumeLabel": "Resume {{name}}",
-    "resumeLabelFull": "Resume {{name}}: {{done}} of {{total}} sets done, {{time}}",
-    "setsDoneShort": "{{done}}/{{total}} sets",
+    "resumeLabelFull_one": "Resume {{name}}: {{done}} of {{count}} set done, {{time}}",
+    "resumeLabelFull_other": "Resume {{name}}: {{done}} of {{count}} sets done, {{time}}",
+    "setsDoneShort_one": "{{done}}/{{count}} set",
+    "setsDoneShort_other": "{{done}}/{{count}} sets",
     "setsProgress": "Sets done",
     "header": "{{name}} · In progress",
-    "minimize": "Minimize session (keeps running)",
+    "minimize": "Minimize workout (keeps running)",
     "finish": "Finish",
     "progress": "Exercise {{current}} of {{total}}",
     "targetReps": "Target · {{reps}} reps",
@@ -582,11 +871,13 @@
     "noneBody": "This workout was finished or discarded.",
     "backToTrain": "Back to Train",
     "finishTitle": "Finish now?",
-    "finishBody": "You completed {{done}} of {{total}} exercises. Sets you haven't checked off won't be saved.",
+    "finishBody_one": "You did {{done}} of {{count}} exercise. Sets you haven't ticked won't be saved.",
+    "finishBody_other": "You did {{done}} of {{count}} exercises. Sets you haven't ticked won't be saved.",
     "finishNothing": "Tick a set to save this workout, or discard it.",
     "noSetsYet": "No sets done yet",
     "notStarted": "Not started",
-    "setsOf": "{{done}}/{{total}} sets",
+    "setsOf_one": "{{done}}/{{count}} set",
+    "setsOf_other": "{{done}}/{{count}} sets",
     "finishAndSave": "Finish and save",
     "keepTraining": "Keep training",
     "discard": "Discard workout",
@@ -665,21 +956,22 @@
     "records": "Records",
     "new": "new",
     "newMax": "New max",
-    "newEst": "New est. 1RM",
+    "newEst": "New est. max",
     "maxDetail": "{{value}} {{unit}} × {{reps}} · was {{was}} {{unit}}",
-    "estDetail": "Est. 1RM {{value}} {{unit}} · was {{was}} {{unit}}",
+    "estDetail": "Est. max {{value}} {{unit}} · was {{was}} {{unit}}",
     "howFelt": "How did it feel?",
     "feeling": {
       "1": "Easy",
       "2": "OK",
       "3": "Good",
       "4": "Hard",
-      "5": "Max"
+      "5": "All out"
     },
     "notes": "Workout notes",
     "notesPlaceholder": "Notes (optional)",
     "seeSets": "See all sets",
-    "hideSets": "Hide sets"
+    "hideSets": "Hide sets",
+    "howFeltWhy": "Saved with this workout, so you (and the coach) can see how hard your workouts feel over time."
   },
   "history": {
     "title": "History",
@@ -688,9 +980,10 @@
     "workouts_one": "{{count}} workout",
     "workouts_other": "{{count}} workouts",
     "trained": "trained",
-    "sessions": "Sessions",
+    "sessions": "Workouts",
     "outOfOrder": "Out of order",
-    "info": "{{min}} min · {{tonnes}} {{unit}} · {{sets}} sets"
+    "info_one": "{{min}} min · {{tonnes}} {{unit}} · {{count}} set",
+    "info_other": "{{min}} min · {{tonnes}} {{unit}} · {{count}} sets"
   },
   "detail": {
     "minutes": "Minutes",
@@ -700,7 +993,7 @@
     "repeat": "Repeat this workout"
   },
   "diet": {
-    "goalsAndMode": "Goals and tracking mode",
+    "goalsAndMode": "Targets and tracking mode",
     "openCalendar": "Open calendar",
     "pickDay": "Pick a day",
     "ofTarget": "/ {{kcal}} kcal",
@@ -736,7 +1029,7 @@
       "salt": "Salt"
     },
     "mealsCount": "{{done}} of {{total}} meals",
-    "mealLine": "{{kcal}} kcal · P {{p}} · C {{c}} · F {{f}}",
+    "mealLine": "{{kcal}} kcal · protein {{p}} g · carbs {{c}} g · fat {{f}} g",
     "adjust": "Adjust {{name}}",
     "upNext": "Up next",
     "adjusted": "Adjusted",
@@ -769,7 +1062,7 @@
     "searching": "Searching…",
     "typeToSearch": "Type at least 2 letters, or pick a recent food.",
     "verified": "Verified",
-    "per100": "100 g · P {{p}} · C {{c}} · F {{f}}",
+    "per100": "100 g: protein {{p}} · carbs {{c}} · fat {{f}}",
     "chooseAmount": "Choose amount of {{name}}",
     "createFood": "Can't find it? Create a food",
     "decreasePortion": "Decrease portion",
@@ -785,12 +1078,12 @@
     "deleteFood": "Delete food",
     "foodDeleted": "{{name}} deleted",
     "verifiedOff": "Verified · Open Food Facts",
-    "fromOff": "Open Food Facts",
-    "fromCiqual": "Ciqual (ANSES) · generic food",
+    "fromOff": "Product data · Open Food Facts",
+    "fromCiqual": "Checked nutrition data · Ciqual (ANSES)",
     "forGrams": "For {{g}} g",
-    "ofGoal": "{{pct}}% of goal",
+    "ofGoal": "{{pct}}% of target",
     "amount": "Amount",
-    "custom": "Custom",
+    "custom": "Other amount",
     "decreaseAmount": "Decrease amount",
     "increaseAmount": "Increase amount",
     "nutrition": "Nutrition",
@@ -830,9 +1123,11 @@
     "foodMissing": "This food is no longer available",
     "nothingYet": "Nothing yet",
     "sameAsYesterday": "Same as yesterday",
-    "sameAsYesterdayLabel": "Same {{meal}} as yesterday: {{count}} foods, {{kcal}} kcal",
+    "sameAsYesterdayLabel_one": "Same {{meal}} as yesterday: {{count}} food, {{kcal}} kcal",
+    "sameAsYesterdayLabel_other": "Same {{meal}} as yesterday: {{count}} foods, {{kcal}} kcal",
     "copiedMeal_one": "{{meal}}: {{count}} food from yesterday",
-    "copiedMeal_other": "{{meal}}: {{count}} foods from yesterday"
+    "copiedMeal_other": "{{meal}}: {{count}} foods from yesterday",
+    "yourPortion": "Your {{g}} g"
   },
   "createFood": {
     "title": "New food",
@@ -848,7 +1143,7 @@
     "removePortion": "Remove portion",
     "addPortion": "+ Add portion",
     "privacy": "Only visible to you. You'll find it under Mine.",
-    "macrosMismatch": "These macros come to about {{macros}} kcal, not {{kcal}}. Check the label.",
+    "macrosMismatch": "Protein, carbs and fat add up to about {{macros}} kcal, not {{kcal}}. Check the numbers on the label.",
     "save": "Save food",
     "saveChanges": "Save changes",
     "labelPhoto": "Fill from a photo of the label",
@@ -861,7 +1156,8 @@
     "labelCameraTitle": "Nutrition label",
     "labelNeedCamera": "Allow the camera to photograph the label, or pick a photo.",
     "scanBarcode": "Scan the barcode",
-    "labelNeedsConsent": "Reading labels uses the AI coach: agree to it first in the AI coach settings."
+    "labelNeedsConsent": "Reading labels uses the AI coach: agree to it first in the AI coach settings.",
+    "namePlaceholder": "e.g. Greek yogurt"
   },
   "scanner": {
     "close": "Close scanner",
@@ -884,7 +1180,7 @@
     "photoLabel": "Photograph the label"
   },
   "goals": {
-    "title": "Diet goals",
+    "title": "Diet targets",
     "howYouTrack": "How you track",
     "dailyCalories": "Daily calories",
     "suggestedChip": "Suggested for you",
@@ -901,11 +1197,11 @@
     "totalOk": "The split adds up to 100%.",
     "totalOff": "The split adds up to {{pct}}%, so your macros come to {{kcal}} kcal. You can keep it that way.",
     "trainingBonus": "Higher target on training days",
-    "trainingBonusDetail": "+ Carbs when a session is logged",
-    "save": "Save goals",
+    "trainingBonusDetail": "Extra carbs on days you log a workout",
+    "save": "Save targets",
     "problem": {
-      "below_minimum": "Targets below 1,500 kcal are blocked.",
-      "deficit_too_large": "A deficit over 25% of maintenance is blocked."
+      "below_minimum": "The target cannot be below 1,500 kcal. Raise it to 1,500 or more.",
+      "deficit_too_large": "That is more than 25% under your maintenance. Raise the target a little."
     },
     "mealsTitle": "Your meals",
     "target": "Calorie target",
@@ -955,7 +1251,7 @@
       "all": "All time"
     },
     "strength": "Strength",
-    "avgChange": "Avg change in est. 1RM",
+    "avgChange": "Average change in estimated max",
     "strengthChart": "Strength {{pct}} percent over the period",
     "top": "Top",
     "group": {
@@ -970,7 +1266,7 @@
     "bodyFat": "Body fat",
     "weightChart": "Weekly average weight over the period",
     "bodyFatChart": "Body fat over the period",
-    "pts": "{{delta}} pts",
+    "pts": "{{delta}} points",
     "photos": "Photos",
     "photosLast": "Photos · last check-in {{date}}",
     "today": "Today is {{date}}",
@@ -980,7 +1276,7 @@
     "byExercises": "Exercises",
     "overall": "Overall",
     "byGroup": "By muscle group",
-    "exercisesEst": "Exercises · est. 1RM",
+    "exercisesEst": "Exercises · est. max",
     "fromTo": "{{from}} → {{to}} {{unit}}",
     "setsCount_one": "{{count}} set",
     "setsCount_other": "{{count}} sets",
@@ -993,18 +1289,18 @@
     "groupChart": "{{name}} strength {{pct}} percent over the period",
     "bodyWeightTitle": "Body weight",
     "kgToday": "{{unit}} today",
-    "sevenDay": "7-day avg {{value}}",
+    "sevenDay": "7-day average {{value}}",
     "goal": "Goal {{value}} {{unit}}",
     "toGo": "{{value}} {{unit}} to go",
     "goalBar": "Progress to your weight goal",
     "setGoal": "Set a goal",
     "goalFat": "Goal {{value}} %",
-    "toGoFat": "{{value}} pts to go",
+    "toGoFat": "{{value}} points to go",
     "goalFatBar": "Progress to your body fat goal",
     "removeGoals": "Remove goals",
     "goalBodyFat": "Goal body fat (%)",
-    "goalWeightError": "Enter a realistic weight.",
-    "goalBodyFatError": "Enter a body fat between 2 and 70 %.",
+    "goalWeightError": "Enter a weight between 20 and 500 kg (44 to 1,100 lb).",
+    "goalBodyFatError": "Enter a body fat between 2 and 70%.",
     "changeGoal": "Change goal",
     "goalWeight": "Goal weight ({{unit}})",
     "entries": "Entries",
@@ -1040,7 +1336,7 @@
     "community": "Community",
     "periodA11y": "Period: {{period}}. Change",
     "yourNumbers": "Your numbers",
-    "youAreChanging": "You are changing",
+    "youAreChanging": "Your progress",
     "fromValue": "from {{value}} {{unit}}",
     "thisWeek": "{{value}} this week",
     "waist": "Waist",
@@ -1121,7 +1417,8 @@
     "notes": "Notes",
     "notesPlaceholder": "Notes (sleep, how you feel…)",
     "save": "Save check-in",
-    "saved": "Check-in saved"
+    "saved": "Check-in saved",
+    "measureExample": "e.g. 80"
   },
   "photos": {
     "title": "Photos",
@@ -1168,7 +1465,7 @@
     "memberSince": "Member since {{date}}",
     "free": "Free",
     "personalInfo": "Personal info",
-    "dietGoals": "Diet goals & mode",
+    "dietGoals": "Diet targets & mode",
     "menu": {
       "profile": "Profile",
       "units": "Units",
@@ -1218,18 +1515,18 @@
       "strength": "Strength, 4 wk",
       "dayStreak": "Day streak",
       "thisMonth": "This month",
-      "ofDays": "{{n}} of {{total}}",
-      "daysLogged": "Days logged",
-      "daysLoggedA11y": "{{n}} of {{total}} days this month with something logged",
-      "trainingDays": "Days trained",
-      "trainingDaysA11y": "Trained on {{n}} of {{total}} days this month",
+      "ofDays": "{{n}} of {{total}} days",
+      "daysLogged": "Logged this month",
+      "daysLoggedA11y": "Something logged on {{n}} of the {{total}} days so far this month",
+      "trainingDays": "Trained this month",
+      "trainingDaysA11y": "Trained on {{n}} of the {{total}} days so far this month",
       "none": "–",
       "badges": "Badges"
     },
     "links": {
       "progress": "Progress",
       "history": "Workout history",
-      "goals": "Goals and diet mode",
+      "goals": "Targets and diet mode",
       "personal": "Personal info"
     },
     "goalKcal": "{{kcal}} kcal",
@@ -1395,7 +1692,8 @@
   "privacy": {
     "importTitle": "Import an export",
     "import": "Import",
-    "imported": "Imported {{count}} items and {{photos}} photos.",
+    "imported_one": "Imported {{count}} item and {{photos}} photos.",
+    "imported_other": "Imported {{count}} items and {{photos}} photos.",
     "notAnExport": "This file is not an FFT export. Choose the .zip made by Export.",
     "title": "Your data",
     "intro": "These change how your data is used, where it goes and who handles it. Everything is always saved on this phone first.",
@@ -1434,7 +1732,8 @@
     "deleteKeepDetail": "Your plans, workouts, food diary, body data, photos, settings and AI conversations stay on this phone and the app goes on without an account. They are then only on this phone, with no online backup; your other devices and the web app lose access.",
     "deleting": "Deleting…",
     "deletedKept": "Account deleted. Your data is now on this phone only.",
-    "deletedKeptMissing": "Account deleted. Your data is now on this phone only; {{count}} photos were not on this phone and could not be kept.",
+    "deletedKeptMissing_one": "Account deleted. Your data is now on this phone only; {{count}} photo was not on this phone and could not be kept.",
+    "deletedKeptMissing_other": "Account deleted. Your data is now on this phone only; {{count}} photos were not on this phone and could not be kept.",
     "keepNotEmpty": "This phone already has data from using FFT without an account, so nothing was deleted. To keep your account's data instead: export it, choose Delete everything, then use FFT without an account and import the export here.",
     "keepFailed": "The account could not be deleted. Nothing was changed; try again.",
     "deleteNoteKeep": "Deletes your account and your data on our server right away; you choose whether the data on this phone goes too. Copies in backups disappear when the backups expire. This can't be undone.",
@@ -1495,7 +1794,8 @@
     "legendWorkout": "Training",
     "legendDietOn": "Nutrition",
     "workouts": "Training",
-    "workoutInfo": "{{sets}} sets",
+    "workoutInfo_one": "{{count}} set",
+    "workoutInfo_other": "{{count}} sets",
     "diet": "Nutrition",
     "dietLine": "{{eaten}} of {{target}} kcal",
     "dietLineNoTarget": "{{eaten}} kcal eaten",
@@ -1517,9 +1817,9 @@
     "openDiet": "Edit nutrition",
     "addSupplement": "Add supplement",
     "supplementName": "Name",
-    "supplementNameHint": "Creatine",
+    "supplementNameHint": "e.g. Creatine",
     "supplementDose": "Dose",
-    "supplementDoseHint": "5 g",
+    "supplementDoseHint": "e.g. 5 g",
     "supplementRemove": "Remove {{name}}",
     "supplementRemoved": "{{name}} removed",
     "editSupplements": "Edit list",
@@ -1555,7 +1855,7 @@
     "create": "Make a token",
     "createTitle": "New token",
     "tokenName": "Name",
-    "tokenNameHint": "Claude on my laptop",
+    "tokenNameHint": "e.g. Claude on my laptop",
     "scopeTitle": "Permission",
     "scopeRead": "Read only",
     "scopeWrite": "Read and write",
@@ -1633,7 +1933,7 @@
     "doneDiet": "Your calorie target (and meals, if any) were updated.",
     "openPlan": "Open the plan",
     "openDiet": "Open the diet",
-    "workoutSummary": "{{days}} days · {{exercises}} exercises",
+    "workoutSummary": "Days: {{days}} · exercises: {{exercises}}",
     "keyProblem": "Your API key is not set correctly",
     "keyProblemBody": "The AI provider did not accept it. Check the key and the model in the settings, or copy your request and use your own AI app.",
     "openSettings": "Open AI settings",
@@ -1854,7 +2154,7 @@
     "photo": "Photo",
     "again": "Log again",
     "againFood": "Log {{name}} again",
-    "per100": "{{kcal}} kcal · P {{p}} g per 100 g",
+    "per100": "{{kcal}} kcal · protein {{p}} g per 100 g",
     "coach": "Tell the coach what you ate"
   },
   "link": {
@@ -2245,7 +2545,7 @@
     "noRecords": "No new records in the last 30 days. Beat your best weight in any exercise to set one.",
     "gain": "+{{delta}} {{unit}} · +{{pct}}%",
     "gainShort": "+{{pct}}%",
-    "est1rm": "Est. 1RM",
+    "est1rm": "Est. max",
     "recordA11y": "{{name}}: new record {{value}} {{unit}}, up {{delta}} {{unit}}, {{pct}} percent, {{date}}",
     "badges": "Badges",
     "earnedOf": "{{count}} of {{total}} earned",
@@ -2334,7 +2634,7 @@
     },
     "checkins_10": {
       "name": "10 check-ins",
-      "how": "Log your body on 10 days"
+      "how": "Do a check-in on 10 days"
     },
     "early_bird": {
       "name": "Early bird",
@@ -2366,11 +2666,11 @@
     },
     "water_run_7": {
       "name": "Well hydrated",
-      "how": "Reach your water goal 7 days in a row"
+      "how": "Reach your water target 7 days in a row"
     },
     "perfect_run_7": {
       "name": "Perfect week",
-      "how": "7 days in a row with diet on target, all supplements, water goal, and never two days without training"
+      "how": "7 days in a row with diet on target, all supplements, water target, and never two days without training"
     },
     "workouts_250": {
       "name": "250 workouts",
@@ -2550,7 +2850,8 @@
     },
     "audienceDetail": {
       "everyone": "Everyone in the community",
-      "everyoneCount": "All {{count}} people on this leaderboard",
+      "everyoneCount_one": "{{count}} person on this leaderboard",
+      "everyoneCount_other": "All {{count}} people on this leaderboard",
       "friends": "Only the people you added",
       "country": "People in your country",
       "class": "Your age group and weight class"
@@ -2592,7 +2893,7 @@
         "workouts": "Workouts finished since {{date}}.",
         "diet": "Share of days within 10% of each person's own calorie target since {{date}}.",
         "training": "Share of each person's own planned workouts done since {{date}}.",
-        "strength": "Estimated 1RM change since {{date}}. Measured against where each person started, so anyone can win."
+        "strength": "Change in estimated max since {{date}}. Measured against where each person started, so anyone can win."
       },
       "podiumA11y": "{{place}}: {{name}}, {{value}}",
       "rowA11y": "{{place}}. {{name}}, {{value}}, {{move}}"
@@ -2752,7 +3053,7 @@
     "trainingTitleNoPlan": "Training day",
     "trainingBody": "One of your usual training days. Tap to see your workout.",
     "waterTitle": "Time for a glass of water",
-    "waterBody": "A glass now keeps you on track for today’s goal.",
+    "waterBody": "A glass now keeps you on track for today’s target.",
     "weeklyTitle": "Your week",
     "weeklyGeneric": "See how your week went."
   },
@@ -2771,7 +3072,7 @@
     "workouts": "Workouts",
     "workoutsA11y_one": "{{count}} workout this week",
     "workoutsA11y_other": "{{count}} workouts this week",
-    "workoutsOfA11y": "{{count}} of {{planned}} planned workouts",
+    "workoutsOfA11y": "Workouts: {{count}} of {{planned}} planned",
     "ofPlanned_one": "of {{count}} planned",
     "ofPlanned_other": "of {{count}} planned",
     "noPlan": "No active plan",
@@ -2781,7 +3082,7 @@
     "ofDays_one": "of {{count}} day so far",
     "ofDays_other": "of {{count}} days",
     "noTarget": "No calorie target set",
-    "dietA11y": "{{count}} of {{days}} days on target",
+    "dietA11y": "Days on target: {{count}} of {{days}}",
     "weight": "Weight",
     "noWeight": "No weight logged",
     "noChange": "First weigh-in",

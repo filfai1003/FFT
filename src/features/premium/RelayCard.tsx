@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
@@ -341,7 +342,10 @@ export function RelayCard() {
 
   return (
     <Card size="small" gap={8}>
-      <Text variant="bodyS">{t('relay.title')}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text variant="bodyS">{t('relay.title')}</Text>
+        <InfoButton topic="relay" />
+      </View>
       {choice === 'on' ? (
         <Text variant="bodyS" muted>
           {t('relay.serverCopyOn')}

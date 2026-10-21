@@ -68,7 +68,7 @@ describe('Diet goals: a target or none (DECISIONS 104)', () => {
     expect(screen.getByText('Daily calories')).toBeTruthy();
     await fireEvent.press(screen.getByRole('radio', { name: 'No target' }));
     expect(screen.queryByText('Daily calories')).toBeNull();
-    await fireEvent.press(screen.getByText('Save goals'));
+    await fireEvent.press(screen.getByText('Save targets'));
     await waitFor(() => expect(mockRemoveTarget).toHaveBeenCalled());
     expect(mockRemoveTarget.mock.calls[0][0]).toMatchObject({
       day: '2026-10-18',
@@ -89,7 +89,7 @@ describe('Diet goals: a target or none (DECISIONS 104)', () => {
     expect(screen.queryByText('Daily calories')).toBeNull();
     await fireEvent.press(screen.getByRole('radio', { name: 'Set a target' }));
     expect(screen.getByText('Daily calories')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Save goals'));
+    await fireEvent.press(screen.getByText('Save targets'));
     await waitFor(() => expect(mockSaveGoal).toHaveBeenCalled());
     const saved = mockSaveGoal.mock.calls[0][0] as { kcal: number; waterMl: number };
     expect(saved.kcal).toBe(2000);
@@ -111,7 +111,7 @@ describe('Diet goals: a target or none (DECISIONS 104)', () => {
     mockGoals = [];
     await renderUI(<DietGoalsScreen />);
     expect(screen.getByRole('radio', { name: 'No target', checked: true })).toBeTruthy();
-    await fireEvent.press(screen.getByText('Save goals'));
+    await fireEvent.press(screen.getByText('Save targets'));
     await waitFor(() => expect(useToastStore.getState().toast).toBeNull());
     expect(mockSaveGoal).not.toHaveBeenCalled();
     expect(mockRemoveTarget).not.toHaveBeenCalled();

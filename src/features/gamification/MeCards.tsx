@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
 import { Icon } from '@/components/ui/Icon';
+import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { Text } from '@/components/ui/Text';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -88,7 +89,12 @@ export function StreakCard({ game }: { game: GameData }) {
         </Gauge>
         <View style={{ flex: 1, minWidth: 0, gap: 12 }}>
           <View style={{ gap: 2 }}>
-            <Text semibold>{title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text semibold style={{ flexShrink: 1 }}>
+                {title}
+              </Text>
+              <InfoButton topic="streak" />
+            </View>
             {detail ? (
               <Text variant="bodyS" muted>
                 {detail}
@@ -234,11 +240,14 @@ export function SectionHead({
   right,
   onRight,
   rightLabel,
+  info,
 }: {
   title: string;
   right?: string;
   onRight?: () => void;
   rightLabel?: string;
+  /** A "What's this?" button after the title (DECISIONS 124). */
+  info?: ExplainTopic;
 }) {
   const { colors } = useTheme();
   return (
@@ -251,9 +260,12 @@ export function SectionHead({
         paddingHorizontal: 2,
       }}
     >
-      <Text variant="titleM" semibold accessibilityRole="header">
-        {title}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+        <Text variant="titleM" semibold accessibilityRole="header">
+          {title}
+        </Text>
+        {info ? <InfoButton topic={info} /> : null}
+      </View>
       {right && onRight ? (
         <Pressable
           accessibilityRole="button"
@@ -316,6 +328,7 @@ export function RecordsRow({ game }: { game: GameData }) {
     <>
       <SectionHead
         title={t('game.newRecords')}
+        info="records"
         right={t('game.seeAll')}
         onRight={() => router.push('/progress/strength')}
       />
@@ -446,6 +459,7 @@ export function BadgeGrid({ badges }: { badges: readonly BadgeState[] }) {
     <>
       <SectionHead
         title={t('game.badges')}
+        info="badgeRarity"
         right={t('game.earnedOf', { count: earned, total: badges.length })}
       />
       <Card

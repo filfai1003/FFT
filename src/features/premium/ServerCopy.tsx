@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Card } from '@/components/ui/Card';
 import { CardTitle } from '@/components/ui/CardTitle';
 import { ToggleRow } from '@/components/ui/ToggleRow';
@@ -404,6 +405,7 @@ export function ServerCopyCard() {
             onValueChange={(v) => setSheet(v ? 'on' : 'off')}
           />
         )}
+        <InfoButton topic="serverCopy" link />
         {web ? (
           <Text variant="bodyS" muted>
             {t('serverCopy.webNote')}

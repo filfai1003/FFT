@@ -60,6 +60,13 @@ describe('Training balance (DECISIONS 121)', () => {
     expect(screen.getByText('How sets are counted')).toBeTruthy();
   });
 
+  it('the guideline has a "What\'s this?" explaining hard sets (DECISIONS 124)', async () => {
+    await renderUI(<BalanceScreen />);
+    await fireEvent.press(screen.getByLabelText('About hard sets'));
+    expect(screen.getByText('Hard sets and the guideline')).toBeTruthy();
+    expect(screen.getByText(/4 sets of bench press/)).toBeTruthy();
+  });
+
   it('a week of training: sets per group with the guideline in words', async () => {
     mockSets.list = [
       ...Array.from({ length: 12 }, () => set('bench', '2026-10-20')),

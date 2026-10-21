@@ -13,6 +13,7 @@ import { formatInt } from '@/domain/numbers';
 import { useTheme } from '@/design/use-theme';
 import { meals, sumMacros, type Meal } from '@/domain/diet';
 import { addDays, shortDateLabel, weekOf } from '@/domain/day';
+import { FirstUseHint } from '@/features/help/FirstUseHint';
 import { useProfile } from '@/features/profile/api';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { AddButton } from './AddButton';
@@ -110,6 +111,8 @@ function FoodLog() {
         </View>
 
         <DayStrip days={week} selected={day} onSelect={setDay} statuses={statuses} />
+
+        <FirstUseHint id="dietTips" />
 
         {/* A day with nothing logged is the same card, unfilled: no separate empty message. */}
         <DaySummaryCard

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { SkeletonCard, SkeletonGroup, SkeletonRows } from '@/components/ui/Skeleton';
 import { DotBar } from '@/components/ui/DotBar';
 import { DotColumnChart } from '@/components/ui/DotColumnChart';
@@ -49,7 +50,12 @@ export function StrengthScreen() {
           </Text>
         }
       />
-      <Text variant="screenTitle">{t('progress.strengthTitle')}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Text variant="screenTitle" style={{ flexShrink: 1 }}>
+          {t('progress.strengthTitle')}
+        </Text>
+        <InfoButton topic="strengthScore" />
+      </View>
 
       <Segmented
         accessibilityLabel={t('progress.groupBy')}
@@ -128,7 +134,7 @@ export function StrengthScreen() {
               ))}
             </Section>
           ) : (
-            <Section title={t('progress.exercisesEst')}>
+            <Section title={t('progress.exercisesEst')} info="e1rm">
               {exercises.map((c) => {
                 const ex = s.exerciseName(c.exerciseId);
                 return (

@@ -113,7 +113,8 @@ export const SetRow = memo(function SetRow({
             value={set[c.field]}
             onChangeText={(v) => onChange(index, c.field, v)}
             keyboardType={c.keyboard}
-            placeholder={c.placeholder}
+            // An empty box says what goes in it ("kg", "reps"), for a first workout.
+            placeholder={c.placeholder ?? c.label.toLowerCase()}
             selectTextOnFocus
           />
         </View>

@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconTile } from '@/components/ui/IconTile';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
@@ -100,17 +101,23 @@ export function PlanDetailScreen({ planId }: { planId: string }) {
               done={rotation.state.doneCount}
               total={rotation.state.totalDays}
             />
-            <Text variant="bodyS" muted>
-              {`${t('train.cycleDone', {
-                done: rotation.state.doneCount,
-                total: rotation.state.totalDays,
-              })} · ${t('plan.anyDayShort')}`}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="bodyS" muted style={{ flexShrink: 1 }}>
+                {`${t('train.cycleDone', {
+                  done: rotation.state.doneCount,
+                  total: rotation.state.totalDays,
+                })} · ${t('plan.anyDayShort')}`}
+              </Text>
+              <InfoButton topic="cycle" />
+            </View>
           </View>
         ) : (
-          <Text variant="bodyS" muted>
-            {t('plan.anyDay')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="bodyS" muted style={{ flexShrink: 1 }}>
+              {t('plan.anyDay')}
+            </Text>
+            <InfoButton topic="cycle" />
+          </View>
         )}
 
         <View style={{ gap: 10 }}>

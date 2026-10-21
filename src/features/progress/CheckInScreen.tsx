@@ -8,6 +8,7 @@ import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActio
 import { Button } from '@/components/ui/Button';
 import { FormHeader } from '@/components/ui/FormHeader';
 import { Icon } from '@/components/ui/Icon';
+import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
@@ -84,8 +85,9 @@ export function CheckInScreen() {
       clearPhotos();
       goBack(router, '/progress');
       showToast({ message: t('checkIn.saved') });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      // A sentence that says how to fix it, not the database's message (DECISIONS 124).
+      setError(t('forms.saveFailed'));
     }
   };
 
@@ -95,6 +97,7 @@ export function CheckInScreen() {
     set: (v: string) => void,
     unitLabel: string,
     hint: string,
+    info?: ExplainTopic,
   ) => (
     <View
       style={{
@@ -108,9 +111,12 @@ export function CheckInScreen() {
         backgroundColor: colors.surface,
       }}
     >
-      <Text variant="bodyS" muted>
-        {label}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text variant="bodyS" muted>
+          {label}
+        </Text>
+        {info ? <InfoButton topic={info} /> : null}
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
         <TextInput
           accessibilityLabel={label}
@@ -149,9 +155,12 @@ export function CheckInScreen() {
           <Text variant="screenTitle" style={{ fontSize: 36 }} accessibilityRole="header">
             {shortDateLabel(today)}
           </Text>
-          <Text variant="bodyS" muted>
-            {t('checkIn.optional')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="bodyS" muted style={{ flexShrink: 1 }}>
+              {t('checkIn.optional')}
+            </Text>
+            <InfoButton topic="checkIn" />
+          </View>
         </View>
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -167,7 +176,14 @@ export function CheckInScreen() {
                 })
               : t('checkIn.firstTime'),
           )}
-          {big(t('checkIn.bodyFat'), bodyFat, setBodyFat, '%', t(`progress.method.${method}`))}
+          {big(
+            t('checkIn.bodyFat'),
+            bodyFat,
+            setBodyFat,
+            '%',
+            t(`progress.method.${method}`),
+            'bodyFat',
+          )}
         </View>
 
         <View style={{ gap: 8 }}>
@@ -182,7 +198,7 @@ export function CheckInScreen() {
                   label={t(`progress.measure.${k}`)}
                   value={measures[k] ?? ''}
                   onChangeText={(v) => setMeasures((s) => ({ ...s, [k]: v }))}
-                  placeholder={lastOf(k) != null ? String(lastOf(k)) : '—'}
+                  placeholder={lastOf(k) != null ? String(lastOf(k)) : t('checkIn.measureExample')}
                   keyboardType="decimal-pad"
                 />
               </View>

@@ -229,8 +229,9 @@ function FoodForm({ initial }: { initial?: Food }) {
         pathname: '/food/[foodId]',
         params: { foodId: id, meal: params.meal, day: params.day },
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      // A sentence that says how to fix it, not the database's message (DECISIONS 124).
+      setError(t('forms.saveFailed'));
     }
   };
 
@@ -252,6 +253,7 @@ function FoodForm({ initial }: { initial?: Food }) {
           label={t('createFood.name')}
           value={name}
           onChangeText={setName}
+          placeholder={t('createFood.namePlaceholder')}
           autoCapitalize="sentences"
         />
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -260,7 +262,7 @@ function FoodForm({ initial }: { initial?: Food }) {
               label={t('createFood.brand')}
               value={brand}
               onChangeText={setBrand}
-              placeholder="—"
+              placeholder={t('forms.optional')}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -270,6 +272,7 @@ function FoodForm({ initial }: { initial?: Food }) {
                   label={t('createFood.barcode')}
                   value={barcode}
                   onChangeText={(v) => setBarcode(v.replace(/\D/g, ''))}
+                  placeholder={t('forms.optional')}
                   keyboardType="number-pad"
                 />
               </View>
@@ -294,6 +297,7 @@ function FoodForm({ initial }: { initial?: Food }) {
                   label={`${t(`diet.nutrient.${f.key === 'kcal' ? 'energy' : f.key}`)} (${f.unit})`}
                   value={values[f.key]}
                   onChangeText={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                  placeholder="0"
                   keyboardType="decimal-pad"
                 />
               </View>

@@ -262,7 +262,7 @@ function FoodRow({
           </Text>
           {f.verified ? <VerifiedTick /> : null}
         </View>
-        <Text variant="bodyS" muted numberOfLines={1}>
+        <Text variant="bodyS" muted numberOfLines={2}>
           {t('diet.per100', {
             p: round(f.per100.protein),
             c: round(f.per100.carbs),

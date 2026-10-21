@@ -2,8 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-/** One-time explanations on Home, each shown until dismissed (per device). */
-export type HintId = 'todayTips';
+/**
+ * One-time explanations, each shown until dismissed (per device): the Home tips and the
+ * first-use cards of Train, the workout, Diet, Progress and Community (DECISIONS 124).
+ */
+export type HintId =
+  'todayTips' | 'trainTips' | 'workoutTips' | 'dietTips' | 'progressTips' | 'communityTips';
 
 type State = {
   seen: Partial<Record<HintId, true>>;

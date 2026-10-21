@@ -95,7 +95,9 @@ describe('Profile (your own page)', () => {
     ).toBeTruthy();
     expect(screen.getByLabelText('10 workouts: earned 10 Oct')).toBeTruthy();
     expect(screen.getByLabelText('+3.5% Strength, 4 wk')).toBeTruthy();
-    expect(screen.getByLabelText('9 of 18 days this month with something logged')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Something logged on 9 of the 18 days so far this month'),
+    ).toBeTruthy();
     expect(screen.getByText('Only you see: 81.2 kg · 180 cm · 2,600 kcal')).toBeTruthy();
   });
 
@@ -105,7 +107,7 @@ describe('Profile (your own page)', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/profile/settings');
     await fireEvent.press(screen.getByLabelText('Progress'));
     expect(mockPush).toHaveBeenLastCalledWith('/progress');
-    await fireEvent.press(screen.getByLabelText('Goals and diet mode, 2,600 kcal'));
+    await fireEvent.press(screen.getByLabelText('Targets and diet mode, 2,600 kcal'));
     expect(mockPush).toHaveBeenLastCalledWith('/diet-goals');
   });
 

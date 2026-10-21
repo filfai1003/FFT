@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Screen } from '@/components/ui/Screen';
@@ -72,7 +73,12 @@ export function PremiumScreen({ gate = false }: { gate?: boolean }) {
         <TopBar onBack={() => goBack(router, '/profile/settings')} backLabel={t('common.back')} />
       )}
       <View style={{ gap: 6 }}>
-        <Text variant="screenTitle">{t('premium.plansTitle')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text variant="screenTitle" style={{ flexShrink: 1 }}>
+            {t('premium.plansTitle')}
+          </Text>
+          <InfoButton topic="plans" />
+        </View>
         {gate ? <Text muted>{t('premium.gateIntro')}</Text> : null}
       </View>
 

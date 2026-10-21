@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { View, type TextInput } from 'react-native';
 import { Card } from '@/components/ui/Card';
 import { ChipGroup } from '@/components/ui/ChipGroup';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Segmented } from '@/components/ui/Segmented';
@@ -60,6 +61,7 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
         label={t('onboarding.body.name')}
         value={draft.name}
         onChangeText={(name) => patch({ name })}
+        placeholder={t('forms.namePlaceholder')}
         autoComplete="given-name"
         autoCapitalize="words"
       />
@@ -143,6 +145,7 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
             label={t('onboarding.body.heightOptional')}
             value={draft.heightCm}
             onChangeText={(heightCm) => patch({ heightCm })}
+            placeholder={t('forms.heightPlaceholder')}
             keyboardType="decimal-pad"
             error={
               draft.heightCm.trim() !== '' && problems.includes('height')
@@ -156,6 +159,7 @@ export function BodyStep({ draft, patch, today }: StepProps & { today: Date }) {
             label={t('onboarding.body.weightOptional')}
             value={draft.weightKg}
             onChangeText={(weightKg) => patch({ weightKg })}
+            placeholder={t('forms.weightPlaceholder')}
             keyboardType="decimal-pad"
             error={
               draft.weightKg.trim() !== '' && problems.includes('weight')
@@ -250,9 +254,12 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
     <View style={{ gap: 20 }}>
       {choice}
       <Card gap={14}>
-        <Text variant="bodyS" semibold muted>
-          {t('onboarding.target.daily')}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text variant="bodyS" semibold muted>
+            {t('onboarding.target.daily')}
+          </Text>
+          <InfoButton topic="calorieTarget" />
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
           <Text
             variant="displayXL"
@@ -275,9 +282,12 @@ export function TargetStep({ draft, patch, today }: StepProps & { today: Date })
           decreaseLabel={t('onboarding.target.lower')}
           increaseLabel={t('onboarding.target.raise')}
         />
-        <Text variant="bodyS" semibold muted>
-          {suggestion}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text variant="bodyS" semibold muted style={{ flexShrink: 1 }}>
+            {suggestion}
+          </Text>
+          <InfoButton topic="maintenance" />
+        </View>
       </Card>
       <MacroSplitCard
         kcal={target.kcal}
@@ -309,6 +319,12 @@ export function ModeStep({ draft, patch }: StepProps) {
         onPress={() => patch({ dietMode: 'fixed_meals' })}
         icon={{ name: 'list', area: 'nutrition' }}
       />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 4 }}>
+        <Text variant="bodyS" muted style={{ flexShrink: 1 }}>
+          {t('help.whichMode')}
+        </Text>
+        <InfoButton topic="trackingMode" />
+      </View>
     </View>
   );
 }

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Skeleton, SkeletonCard, SkeletonGroup } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { Text } from '@/components/ui/Text';
 import { space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
@@ -57,6 +58,14 @@ import { ReportPhotoSheet, type ReportTarget } from './ReportPhotoSheet';
 import { IconTile, useAreaColors, type Area } from '@/components/ui/IconTile';
 
 /** Colour code (DECISIONS 107): diet is nutrition, the rest is training. */
+/** How each leaderboard's score is counted (DECISIONS 124). */
+const boardTopic: Record<CommunityMetric, ExplainTopic> = {
+  workouts: 'boardWorkouts',
+  diet: 'boardDiet',
+  training: 'boardTraining',
+  strength: 'boardStrength',
+};
+
 const metricArea: Record<CommunityMetric, Area> = {
   workouts: 'training',
   diet: 'nutrition',
@@ -594,9 +603,12 @@ function BoardView({ name }: { name: string }) {
         style={{ paddingHorizontal: 14, paddingBottom: podium.length ? 0 : 16, overflow: 'hidden' }}
       >
         <View style={{ gap: 2 }}>
-          <Text variant="titleM" semibold accessibilityRole="header">
-            {title}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="titleM" semibold accessibilityRole="header" style={{ flexShrink: 1 }}>
+              {title}
+            </Text>
+            <InfoButton topic={boardTopic[metric]} />
+          </View>
           {key.audience !== 'everyone' ? (
             <Text variant="bodyS" semibold>
               {audienceLine(key.audience, board.data)}
