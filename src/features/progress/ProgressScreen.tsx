@@ -32,6 +32,7 @@ import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { BalanceCard } from './BalanceScreens';
+import { ThisWeekCard } from '@/features/weekly/ThisWeekCard';
 import { poses, useBodyEntries, useBodyGoal, usePhotos } from './data';
 import { EmptyLine } from './EmptyLine';
 import { PhotoTile } from './PhotoTile';
@@ -166,6 +167,8 @@ export function ProgressScreen() {
                   {t('progress.consistency')}
                 </Text>
                 <StreakCard game={game} />
+                {/* The weekly summary without the notification (DECISIONS 122). */}
+                <ThisWeekCard />
                 <NextBadgeCard game={game} />
                 <BadgeGrid badges={game.badges} />
               </>

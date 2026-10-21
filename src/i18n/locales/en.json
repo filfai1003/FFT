@@ -1311,20 +1311,18 @@
       },
       "meals": {
         "name": "Meal reminders"
+      },
+      "water": {
+        "name": "Water nudge"
+      },
+      "weekly_summary": {
+        "name": "Weekly summary"
       }
     },
     "reminder": {
-      "workout": {
-        "title": "Time to train",
-        "body": "Your next workout is waiting."
-      },
       "checkin": {
         "title": "Weekly check-in",
         "body": "Log your weight and measurements."
-      },
-      "meals": {
-        "title": "Meal time",
-        "body": "Log what you ate."
       }
     },
     "deniedTitle": "Notifications are blocked",
@@ -1822,7 +1820,28 @@
     "addMealTime": "Add a time",
     "noMealTimes": "No times yet: add as many as you like.",
     "noMealTimesShort": "No times set",
-    "section": "Reminders"
+    "section": "Reminders",
+    "usualDaysAt": "On your usual training days at {{time}}",
+    "waterAt": "If you are behind, at {{time}}",
+    "ifNotLogged": "If not logged yet · {{times}}",
+    "workoutHelp": "Only on the weekdays you usually train (learned from your last 6 weeks), and not once you have trained that day. It names your next workout.",
+    "mealsHelp": "Each time goes with a meal. The reminder is skipped once that meal is logged (fixed meals: once it is ticked).",
+    "waterHelp": "Only when today’s glasses are behind where they should be by then.",
+    "weeklyHelp": "On {{day}}, the last day of your week: your workouts, diet and weight in one line.",
+    "limits": "Quiet hours and limit",
+    "limitsHelp": "For the workout, meal and water reminders. The same reminder is never sent twice.",
+    "changeLimits": "Change quiet hours and limit",
+    "quietHours": "Quiet hours",
+    "quietHelp": "No reminder in this time",
+    "quietStart": "From",
+    "quietEnd": "Until",
+    "quietSummary": "Quiet {{start}}–{{end}}",
+    "quietOff": "No quiet hours",
+    "perDay_one": "at most {{count}} a day",
+    "perDay_other": "at most {{count}} a day",
+    "maxPerDay": "Reminders a day at most",
+    "fewer": "Fewer",
+    "more": "More"
   },
   "add": {
     "title": "Add",
@@ -2692,5 +2711,62 @@
     },
     "errorFilterUnavailable": "This filter is not available yet. Choose Everyone for now.",
     "errorFilterPlan": "This filter comes with Supporter and Premium."
+  },
+  "smartReminders": {
+    "mealTitle": "{{meal}} not logged yet",
+    "mealBody": "You haven’t logged {{meal}} yet. Tap to add it.",
+    "mealLower": {
+      "breakfast": "breakfast",
+      "lunch": "lunch",
+      "snack": "a snack",
+      "dinner": "dinner"
+    },
+    "fixedBody": "Not ticked yet today. Followed the plan? Tap to mark it.",
+    "trainingTitle": "Today: {{name}}",
+    "trainingTitleNoPlan": "Training day",
+    "trainingBody": "One of your usual training days. Tap to see your workout.",
+    "waterTitle": "Time for a glass of water",
+    "waterBody": "A glass now keeps you on track for today’s goal.",
+    "weeklyTitle": "Your week",
+    "weeklyGeneric": "See how your week went."
+  },
+  "weekly": {
+    "title": "Your week",
+    "titlePast": "That week",
+    "range": "{{from}} – {{to}}",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "line": {
+      "workouts_one": "{{count}} workout",
+      "workouts_other": "{{count}} workouts",
+      "onTarget_one": "{{count}} day on target",
+      "onTarget_other": "{{count}} days on target"
+    },
+    "workouts": "Workouts",
+    "workoutsA11y_one": "{{count}} workout this week",
+    "workoutsA11y_other": "{{count}} workouts this week",
+    "workoutsOfA11y": "{{count}} of {{planned}} planned workouts",
+    "ofPlanned_one": "of {{count}} planned",
+    "ofPlanned_other": "of {{count}} planned",
+    "noPlan": "No active plan",
+    "trainedDays_one": "Trained on {{count}} day",
+    "trainedDays_other": "Trained on {{count}} days",
+    "diet": "Days on the calorie target",
+    "ofDays_one": "of {{count}} day so far",
+    "ofDays_other": "of {{count}} days",
+    "noTarget": "No calorie target set",
+    "dietA11y": "{{count}} of {{days}} days on target",
+    "weight": "Weight",
+    "noWeight": "No weight logged",
+    "noChange": "First weigh-in",
+    "streak": "Streak",
+    "streakDays_one": "day in a row",
+    "streakDays_other": "days in a row",
+    "bestRecord": "Best record",
+    "badgesEarned": "Badges earned",
+    "noBadges": "No new badge this week.",
+    "closest": "Closest badges",
+    "card": "This week",
+    "cardA11y": "This week: {{summary}}. Opens your weekly summary"
   }
 }

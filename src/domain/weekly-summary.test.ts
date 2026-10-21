@@ -1,4 +1,4 @@
-﻿import type { GamificationInput } from './gamification';
+import type { GamificationInput } from './gamification';
 import { buildWeeklySummary, shiftWeek, type WeeklySummaryInput } from './weekly-summary';
 
 // Week of Monday 2026-10-19 to Sunday 2026-10-25; today is Wednesday 21.
@@ -58,7 +58,9 @@ describe('buildWeeklySummary', () => {
 
   it('the best record of the week is the biggest gain', () => {
     const s = buildWeeklySummary(input());
-    expect(s.bestRecord).toEqual(expect.objectContaining({ exerciseId: 'bench', kind: 'max', valueKg: 85 }));
+    expect(s.bestRecord).toEqual(
+      expect.objectContaining({ exerciseId: 'bench', kind: 'max', valueKg: 85 }),
+    );
   });
 
   it('badges earned this week and the closest ones', () => {

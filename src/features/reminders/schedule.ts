@@ -66,10 +66,33 @@ async function readStored(): Promise<Stored> {
   }
 }
 
-/** The local Date of a day and minute (the phone's clock, which the notifications follow). */
-export function dateAt(day: string, at: number): Date {
+/** Minutes after midnight of `now` in a time zone. */
+export function localMinutes(now: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return (get('hour') % 24) * 60 + get('minute');
+}
+
+/**
+ * The instant of a day and minute in a time zone (the user's profile one, the same as the days of
+ * the data). Corrected twice so it lands right around a daylight saving change.
+ */
+export function dateAt(day: string, at: number, timeZone: string): Date {
   const [y, m, d] = day.split('-').map(Number);
-  return new Date(y, m - 1, d, Math.floor(at / 60), at % 60, 0, 0);
+  const wanted = Date.UTC(y, m - 1, d, Math.floor(at / 60), at % 60);
+  let guess = wanted;
+  for (let i = 0; i < 2; i++) {
+    const shown = new Date(guess);
+    const [sy, sm, sd] = localDay(shown, timeZone).split('-').map(Number);
+    const seen = Date.UTC(sy, sm - 1, sd) + localMinutes(shown, timeZone) * 60_000;
+    guess += wanted - seen;
+  }
+  return new Date(guess);
 }
 
 /** Where a tap on each reminder goes (Expo Router paths). */
@@ -147,26 +170,38 @@ async function readTimes(): Promise<ReminderTimes> {
   return useReminderTimes.getState().times;
 }
 
-/** Everything the planner needs, read from the device. */
-export async function plannerInput(
-  userId: string,
-  prefs: Preferences,
-  times: ReminderTimes,
-  sent: ReadonlySet<string>,
-  now: Date,
-): Promise<{ input: PlannerInput; summary: WeeklySummary; dietTracked: boolean }> {
-  const db = getSupabase();
-  const profile = await db
+type UserClock = {
+  tz: string;
+  today: string;
+  nowMin: number;
+  mode: 'tracking' | 'fixed_meals';
+};
+
+/** The user's time zone (the profile's, as the days of the data), today and the diet mode. */
+async function userClock(userId: string, now: Date): Promise<UserClock> {
+  const profile = await getSupabase()
     .from('profiles')
     .select('timezone, diet_mode')
     .eq('id', userId)
     .maybeSingle();
   if (profile.error) throw profile.error;
   const tz = profile.data?.timezone ?? deviceTimeZone();
-  const today = localDay(now, tz);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const mode = profile.data?.diet_mode === 'fixed_meals' ? 'fixed_meals' : 'tracking';
+  return {
+    tz,
+    today: localDay(now, tz),
+    nowMin: localMinutes(now, tz),
+    mode: profile.data?.diet_mode === 'fixed_meals' ? 'fixed_meals' : 'tracking',
+  };
+}
 
+/** Everything the planner needs, read from the device. */
+export async function plannerInput(
+  prefs: Preferences,
+  times: ReminderTimes,
+  sent: ReadonlySet<string>,
+  clock: UserClock,
+): Promise<{ input: PlannerInput; summary: WeeklySummary; dietTracked: boolean }> {
+  const { tz, today, nowMin, mode } = clock;
   const [activity, goals, water, weights, plans] = await Promise.all([
     fetchActivity(tz),
     fetchGoals(),
@@ -228,7 +263,11 @@ export async function plannerInput(
         workoutDays,
         trainedToday: running != null || workoutDays.includes(today),
       },
-      water: { time: clockMinutes(times.water), todayMl: water.totalMl, goalMl: goal?.waterMl || 2000 },
+      water: {
+        time: clockMinutes(times.water),
+        todayMl: water.totalMl,
+        goalMl: goal?.waterMl || 2000,
+      },
       weekly: { time: clockMinutes(times.weekly), weekStart: prefs.weekStart },
     },
     summary,
@@ -262,22 +301,15 @@ export function rescheduleReminders(userId: string, opts: RescheduleOptions = {}
     }
     const times = opts.times ?? (await readTimes());
     const stored = await readStored();
-    const today = localDay(now, deviceTimeZone());
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const sent = updateSent(stored.sent, stored.scheduled, today, nowMin);
+    const clock = await userClock(userId, now);
+    const sent = updateSent(stored.sent, stored.scheduled, clock.today, clock.nowMin);
 
-    const { input, summary, dietTracked } = await plannerInput(
-      userId,
-      prefs,
-      times,
-      new Set(sent),
-      now,
-    );
+    const { input, summary, dietTracked } = await plannerInput(prefs, times, new Set(sent), clock);
     const plan = planReminders(input);
     const weekly = { summary, unit: prefs.weightUnit, dietTracked };
     const list: SmartNotification[] = plan.schedule.map((r) => ({
       id: r.id,
-      date: dateAt(r.day, r.at),
+      date: dateAt(r.day, r.at, clock.tz),
       url: reminderLink(r),
       ...reminderCopy(r, t, weekly),
     }));
@@ -297,4 +329,3 @@ export function rescheduleReminders(userId: string, opts: RescheduleOptions = {}
 export function stopReminders(): Promise<void> {
   return serial(() => cancelSmartReminders());
 }
-

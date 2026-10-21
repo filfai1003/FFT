@@ -199,8 +199,7 @@ export function planReminders(input: PlannerInput): ReminderPlan {
 
     if (input.enabled.water && input.water.goalMl > 0) {
       const at = input.water.time;
-      const behind =
-        !isToday || input.water.todayMl < input.water.goalMl * expectedWaterShare(at);
+      const behind = !isToday || input.water.todayMl < input.water.goalMl * expectedWaterShare(at);
       if (behind) candidates.push({ id: `water:${day}`, type: 'water', day, at });
     }
 

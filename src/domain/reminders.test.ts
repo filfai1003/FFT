@@ -28,7 +28,12 @@ function input(patch: Partial<PlannerInput> = {}): PlannerInput {
       fixed: [],
       loggedToday: new Set(),
     },
-    training: { time: h(18), upNext: { id: 'd1', name: 'Push B' }, workoutDays: [], trainedToday: false },
+    training: {
+      time: h(18),
+      upNext: { id: 'd1', name: 'Push B' },
+      workoutDays: [],
+      trainedToday: false,
+    },
     water: { time: h(15), todayMl: 0, goalMl: 2000 },
     weekly: { time: h(19), weekStart: 'mon' },
     ...patch,
@@ -93,7 +98,9 @@ describe('planReminders: meals', () => {
   });
 
   it('nothing when meal reminders are off', () => {
-    const plan = planReminders(input({ enabled: { meals: false, training: false, water: false, weekly: false } }));
+    const plan = planReminders(
+      input({ enabled: { meals: false, training: false, water: false, weekly: false } }),
+    );
     expect(plan.schedule).toEqual([]);
   });
 });
@@ -201,7 +208,9 @@ describe('planReminders: water and weekly summary', () => {
     const on = { meals: false, training: false, water: true, weekly: false };
     expect(expectedWaterShare(h(15))).toBeCloseTo(7 / 13);
     expect(ids(planReminders(input({ enabled: on })))).toEqual([`water:${TODAY}`]);
-    const ahead = planReminders(input({ enabled: on, water: { time: h(15), todayMl: 1500, goalMl: 2000 } }));
+    const ahead = planReminders(
+      input({ enabled: on, water: { time: h(15), todayMl: 1500, goalMl: 2000 } }),
+    );
     expect(ids(ahead)).toEqual([]);
   });
 
@@ -212,12 +221,16 @@ describe('planReminders: water and weekly summary', () => {
       expect.objectContaining({ id: 'weekly:2026-10-19', day: '2026-10-25', at: h(19) }),
     ]);
     const sun = planReminders(input({ enabled: on, weekly: { time: h(19), weekStart: 'sun' } }));
-    expect(sun.schedule[0]).toEqual(expect.objectContaining({ day: '2026-10-24', weekFrom: '2026-10-18' }));
+    expect(sun.schedule[0]).toEqual(
+      expect.objectContaining({ day: '2026-10-24', weekFrom: '2026-10-18' }),
+    );
   });
 
   it('weekly: after Sunday evening it moves to the next week, and is outside the cap', () => {
     const on = { meals: true, training: false, water: false, weekly: true };
-    const plan = planReminders(input({ today: '2026-10-25', nowMin: h(20), maxPerDay: 0, enabled: on }));
+    const plan = planReminders(
+      input({ today: '2026-10-25', nowMin: h(20), maxPerDay: 0, enabled: on }),
+    );
     expect(ids(plan)).toEqual(['weekly:2026-10-26']);
   });
 });

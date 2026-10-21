@@ -193,10 +193,7 @@ export function ReminderRow({ kind, bare = false }: { kind: ReminderSetting; bar
                 day: t(`reminders.weekday.${lastWeekday(weekStart)}`),
               }),
             )}
-            <ClockEditor
-              value={times.weekly}
-              onChange={(weekly) => void changeTimes({ weekly })}
-            />
+            <ClockEditor value={times.weekly} onChange={(weekly) => void changeTimes({ weekly })} />
           </>
         ) : null}
         {kind === 'checkin' ? (
@@ -294,7 +291,10 @@ export function ReminderLimitsRow() {
   const name = t('reminders.limits');
   const summary = [
     quiet.on
-      ? t('reminders.quietSummary', { start: formatClock(quiet.start), end: formatClock(quiet.end) })
+      ? t('reminders.quietSummary', {
+          start: formatClock(quiet.start),
+          end: formatClock(quiet.end),
+        })
       : t('reminders.quietOff'),
     t('reminders.perDay', { count: maxPerDay }),
   ].join(' · ');
