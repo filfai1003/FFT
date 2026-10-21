@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormHeader } from '@/components/ui/FormHeader';
 import { IconButton } from '@/components/ui/IconButton';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Stepper } from '@/components/ui/Stepper';
@@ -104,8 +105,9 @@ export function DayEditorScreen() {
         removedIds: state.removedIds,
       });
       goBack(router, '/train');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch {
+      // A sentence that says how to fix it, not the database's message (DECISIONS 124).
+      setError(t('forms.saveFailed'));
     }
   };
 
@@ -315,9 +317,12 @@ function ExpandedExercise(props: {
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <View style={{ flex: 1, gap: 6 }}>
-          <Text variant="bodyS" muted>
-            {t('plan.sets')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="bodyS" muted>
+              {t('plan.sets')}
+            </Text>
+            <InfoButton topic="setsReps" />
+          </View>
           <Stepper
             value={e.targetSets}
             min={1}
@@ -361,7 +366,10 @@ function ExpandedExercise(props: {
       {props.canLink ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text>{t('plan.supersetToggle')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ flexShrink: 1 }}>{t('plan.supersetToggle')}</Text>
+              <InfoButton topic="superset" />
+            </View>
             <Text variant="bodyS" muted>
               {props.label
                 ? t('plan.supersetDetailOn', { label: props.label })
@@ -398,9 +406,12 @@ function DropSetEditor({
   const mode = drops ? drops.on : 'off';
   return (
     <View style={{ gap: 8 }}>
-      <Text variant="bodyS" muted>
-        {t('plan.dropSet')}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text variant="bodyS" muted>
+          {t('plan.dropSet')}
+        </Text>
+        <InfoButton topic="dropSet" />
+      </View>
       <Segmented
         accessibilityLabel={t('plan.dropSet')}
         value={mode}

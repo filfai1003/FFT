@@ -147,6 +147,7 @@ export function PersonalInfoScreen() {
           label={t('onboarding.body.name')}
           value={v.name}
           onChangeText={setName}
+          placeholder={t('forms.namePlaceholder')}
           autoCapitalize="words"
         />
 
@@ -192,7 +193,7 @@ export function PersonalInfoScreen() {
             <Input
               label={t('profile.height')}
               variant="compact"
-              placeholder={t('profile.notSet')}
+              placeholder={t('forms.heightPlaceholder')}
               value={v.height}
               onChangeText={setHeight}
               keyboardType="decimal-pad"

@@ -103,7 +103,7 @@ export function DayDetail({ day, sessions }: { day: string; sessions: SessionVie
                   <Text variant="body">{name}</Text>
                   {s.stats.sets > 0 ? (
                     <Text variant="bodyS" muted>
-                      {t('calendar.workoutInfo', { sets: s.stats.sets })}
+                      {t('calendar.workoutInfo', { count: s.stats.sets })}
                     </Text>
                   ) : null}
                 </Pressable>

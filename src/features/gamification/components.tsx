@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { DotBar } from '@/components/ui/DotBar';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { tick } from '@/lib/haptics';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
@@ -59,7 +60,11 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
           width: inner,
           height: inner,
           borderRadius: inner / 2,
-          backgroundColor: badge.earned ? colors.streak : locked ? colors.surfaceAlt : colors.streakSoft,
+          backgroundColor: badge.earned
+            ? colors.streak
+            : locked
+              ? colors.surfaceAlt
+              : colors.streakSoft,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -67,7 +72,9 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
         <Icon
           name={locked ? 'lock' : badge.glyph}
           size={Math.round(inner * 0.48)}
-          color={badge.earned ? colors.surface : locked ? colors.textPlaceholderIcon : colors.streakInk}
+          color={
+            badge.earned ? colors.surface : locked ? colors.textPlaceholderIcon : colors.streakInk
+          }
         />
       </View>
     </View>
@@ -123,10 +130,11 @@ export function LevelBar({ level }: { level: LevelInfo }) {
   const { colors } = useTheme();
   return (
     <View style={{ gap: 6 }}>
-      <View
-        style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}
-      >
-        <Text semibold>{t('game.level', { level: level.level })}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text semibold>{t('game.level', { level: level.level })}</Text>
+          <InfoButton topic="xpLevels" />
+        </View>
         <Text variant="label" muted numeric>
           {t('game.xpOf', { xp: formatInt(level.xp), next: formatInt(level.nextLevelXp) })}
         </Text>
@@ -169,7 +177,11 @@ export function WeekDayMark({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor:
-          state === 'done' ? colors.streak : state === 'missed' ? colors.surfaceAlt : colors.surface,
+          state === 'done'
+            ? colors.streak
+            : state === 'missed'
+              ? colors.surfaceAlt
+              : colors.surface,
         borderWidth: state === 'today' ? 2 : state === 'future' ? 1 : 0,
         borderColor: state === 'today' ? colors.streak : colors.borderDecorative,
       }}

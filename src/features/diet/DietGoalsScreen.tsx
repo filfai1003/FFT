@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormHeader } from '@/components/ui/FormHeader';
 import { IconTile } from '@/components/ui/IconTile';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Skeleton, SkeletonGroup } from '@/components/ui/Skeleton';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -255,9 +256,12 @@ export function DietGoalsScreen() {
         />
 
         <View style={{ gap: 8 }}>
-          <Text variant="bodyS" muted>
-            {t('goals.howYouTrack')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="bodyS" muted>
+              {t('goals.howYouTrack')}
+            </Text>
+            <InfoButton topic="trackingMode" />
+          </View>
           {/* Stacked, each with its icon (canvas "Diet goals"): side by side the two
               descriptions wrapped into narrow columns. */}
           <View style={{ gap: 8 }} accessibilityRole="radiogroup">
@@ -309,7 +313,10 @@ export function DietGoalsScreen() {
                   gap: 8,
                 }}
               >
-                <Text semibold>{t('goals.dailyCalories')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text semibold>{t('goals.dailyCalories')}</Text>
+                  <InfoButton topic="calorieTarget" />
+                </View>
                 {isSuggested ? (
                   <StatusChip area="nutrition" label={t('goals.suggestedChip')} />
                 ) : null}
@@ -346,6 +353,7 @@ export function DietGoalsScreen() {
                 <Text variant="bodyS" muted style={{ flex: 1, lineHeight: 16 }}>
                   {suggestion}
                 </Text>
+                <InfoButton topic="maintenance" />
                 <Button
                   label={t('goals.recalculate')}
                   variant="secondary"
@@ -381,7 +389,10 @@ export function DietGoalsScreen() {
               {/* Training's own colour: the bonus depends on a workout (DECISIONS 107). */}
               <IconTile icon="dumbbell" area="training" />
               <View style={{ flex: 1, gap: 2, paddingVertical: 8 }}>
-                <Text>{t('goals.trainingBonus')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ flexShrink: 1 }}>{t('goals.trainingBonus')}</Text>
+                  <InfoButton topic="trainingBonus" />
+                </View>
                 <Text variant="bodyS" muted>
                   {t('goals.trainingBonusDetail')}
                 </Text>

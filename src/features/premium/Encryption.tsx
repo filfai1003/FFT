@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Card } from '@/components/ui/Card';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
@@ -498,6 +499,7 @@ export function EncryptionSection({ web }: { web: boolean }) {
           onValueChange={(v) => setSheet(v ? 'on' : 'off')}
         />
       )}
+      <InfoButton topic="encryption" link />
       {web ? (
         <Text variant="bodyS" muted>
           {t('vault.webNote')}

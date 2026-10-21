@@ -1,6 +1,6 @@
 import '@/i18n';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { screen } from '@testing-library/react-native';
+import { fireEvent, screen } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { color } from '@/design/tokens';
 import { renderUI as renderBare } from '@/test/render';
@@ -175,6 +175,17 @@ describe('History', () => {
 });
 
 describe('Exercise detail', () => {
+  it('explains actual max and estimated max where they are shown (DECISIONS 124)', async () => {
+    mockTrend = [];
+    await renderUI(
+      <ExerciseDetailScreen exerciseId="x0" sessionRoute="/train/history/[sessionId]" />,
+    );
+    expect(screen.getByLabelText('About actual max')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('About estimated max'));
+    expect(screen.getByText('Estimated max (1RM)')).toBeTruthy();
+    expect(screen.getByText(/60 kg for 10 reps/)).toBeTruthy();
+  });
+
   it('the change is a green pill with an arrow when stronger', async () => {
     mockTrend = [
       { day: '2026-10-01', est1rmKg: 86, maxKg: 80 },
@@ -183,7 +194,7 @@ describe('Exercise detail', () => {
     await renderUI(
       <ExerciseDetailScreen exerciseId="x0" sessionRoute="/train/history/[sessionId]" />,
     );
-    expect(screen.getByText('+7 kg · 2 sessions')).toBeTruthy();
+    expect(screen.getByText('+7 kg · 2 workouts')).toBeTruthy();
     expect(screen.getByLabelText('Rising from 86 to 93 kg')).toBeTruthy();
   });
 
@@ -195,7 +206,7 @@ describe('Exercise detail', () => {
     await renderUI(
       <ExerciseDetailScreen exerciseId="x0" sessionRoute="/train/history/[sessionId]" />,
     );
-    expect(screen.getByText('−3 kg · 2 sessions')).toBeTruthy();
+    expect(screen.getByText('−3 kg · 2 workouts')).toBeTruthy();
     expect(screen.getByLabelText('Falling from 93 to 90 kg')).toBeTruthy();
 
     mockTrend = [{ day: '2026-10-01', est1rmKg: 93, maxKg: 80 }];

@@ -97,7 +97,7 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
               </Text>
             </View>
             <Text muted style={{ flex: 1 }}>
-              {t('session.finishBody', { done: sum.exercisesDone, total: sum.exercisesTotal })}
+              {t('session.finishBody', { done: sum.exercisesDone, count: sum.exercisesTotal })}
             </Text>
           </View>
         )}
@@ -132,7 +132,7 @@ export function FinishSheet({ visible, onClose }: { visible: boolean; onClose: (
                   label={
                     e.done === 0
                       ? t('session.notStarted')
-                      : t('session.setsOf', { done: e.done, total: e.total })
+                      : t('session.setsOf', { done: e.done, count: e.total })
                   }
                 />
               </View>

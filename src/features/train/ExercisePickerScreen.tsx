@@ -97,13 +97,18 @@ export function ExercisePickerScreen() {
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <Button
             label={t('picker.createNew')}
+            icon="plus"
             variant="secondary"
             block={false}
             onPress={() => router.push('/exercise/new')}
           />
           <Button
             size="large"
-            label={t('picker.add', { count: selected.size })}
+            label={
+              selected.size === 0
+                ? t('picker.pickToAdd')
+                : t('picker.add', { count: selected.size })
+            }
             disabled={selected.size === 0 || busy}
             onPress={add}
             style={{ flex: 1 }}

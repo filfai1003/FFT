@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
@@ -32,7 +33,10 @@ export function MacroSplitCard({ kcal, percents, onChange }: Props) {
 
   return (
     <Card gap={12}>
-      <Text semibold>{t('goals.macroSplit')}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text semibold>{t('goals.macroSplit')}</Text>
+        <InfoButton topic="macros" />
+      </View>
       {/* One filled bar split in three (canvas "Goals"): always relative to the total. */}
       <View
         accessible

@@ -26,6 +26,7 @@ import {
 } from '@/features/community/CommunityView';
 import { PillButton, dayMonth } from '@/features/gamification/components';
 import { useGamification } from '@/features/gamification/data';
+import { FirstUseHint } from '@/features/help/FirstUseHint';
 import { BadgeGrid, NextBadgeCard, RecordsRow, StreakCard } from '@/features/gamification/MeCards';
 import { useProgressView, type ProgressView } from '@/features/gamification/progress-view';
 import { useProfile } from '@/features/profile/api';
@@ -127,9 +128,13 @@ export function ProgressScreen() {
         />
 
         {view === 'community' ? (
-          <CommunityView />
+          <>
+            <FirstUseHint id="communityTips" />
+            <CommunityView />
+          </>
         ) : (
           <>
+            <FirstUseHint id="progressTips" />
             <View
               style={{
                 flexDirection: 'row',

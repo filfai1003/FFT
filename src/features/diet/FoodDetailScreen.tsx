@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { DotBar } from '@/components/ui/DotBar';
@@ -201,6 +202,7 @@ export function FoodDetailScreen() {
                     : t('diet.fromOff')}
               {food.data.brand ? ` · ${food.data.brand}` : ''}
             </Text>
+            {food.data.source === 'custom' ? null : <InfoButton topic="foodSource" />}
           </View>
         </View>
 
@@ -350,11 +352,13 @@ function NutritionTable({ per100, grams }: { per100: Per100; grams: number }) {
   const { colors } = useTheme();
   type NutrientKey =
     'energy' | 'protein' | 'carbs' | 'sugars' | 'fat' | 'saturates' | 'fiber' | 'salt';
+  // Energy in whole kcal, as in the big number above (no 90.5 here and 91 there).
+  const fmt = (key: NutrientKey, n: number) => (key === 'energy' ? Math.round(n) : round(n));
   const row = (key: NutrientKey, v: number | null | undefined, unit: string, sub = false) => ({
     key,
     sub,
-    a: v == null ? '—' : `${round(v)} ${unit}`,
-    b: v == null ? '—' : `${round((v * grams) / 100)} ${unit}`,
+    a: v == null ? '—' : `${fmt(key, v)} ${unit}`,
+    b: v == null ? '—' : `${fmt(key, (v * grams) / 100)} ${unit}`,
   });
   const rows = [
     row('energy', per100.kcal, 'kcal'),
@@ -376,7 +380,7 @@ function NutritionTable({ per100, grams }: { per100: Per100; grams: number }) {
           {t('diet.perGrams', { g: 100 })}
         </Text>
         <Text variant="bodyS" muted style={{ flex: 1, textAlign: 'right' }}>
-          {t('diet.perGrams', { g: round(grams) })}
+          {t('diet.yourPortion', { g: round(grams) })}
         </Text>
       </View>
       {rows.map((r) => (

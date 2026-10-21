@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { useAppearanceStore } from '@/design/appearance-store';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
+import { FirstUseHint } from '@/features/help/FirstUseHint';
 import { ExerciseThumb } from '@/features/train/exercise-image';
 import { usePlan } from '@/features/train/plans';
 import { confirm } from '@/lib/haptics';
@@ -233,9 +235,12 @@ export function SessionScreen() {
             <Text variant="label" muted style={{ width: 30 }}>
               {t('session.colSet')}
             </Text>
-            <Text variant="label" muted style={{ flex: 1 }}>
-              {t('session.colPrevious')}
-            </Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text variant="label" muted>
+                {t('session.colPrevious')}
+              </Text>
+              <InfoButton topic="previous" />
+            </View>
             {cols.map((c) => (
               <Text
                 key={c.field}
@@ -383,6 +388,8 @@ export function SessionScreen() {
           </View>
         ) : null}
 
+        {exercise ? <FirstUseHint id="workoutTips" /> : null}
+
         {exercise ? (
           <>
             {/* Swipe left / right for the next / previous exercise (a superset moves as one). */}
@@ -395,9 +402,12 @@ export function SessionScreen() {
               onNext={() => update((s) => goTo(s, nextIndex))}
             >
               {inSuperset ? (
-                <Text variant="label" muted>
-                  {t('session.supersetIntro', { count: group.length })}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text variant="label" muted style={{ flexShrink: 1 }}>
+                    {t('session.supersetIntro', { count: group.length })}
+                  </Text>
+                  <InfoButton topic="superset" />
+                </View>
               ) : null}
               {group.map((i) => renderExercise(i))}
             </ExerciseSwiper>
@@ -474,6 +484,7 @@ export function SessionScreen() {
         <NavButton
           label={nextEx ? t('session.nextNamed', { name: nextEx.name }) : t('session.addExercise')}
           icon={nextEx ? 'chevronRight' : 'plus'}
+          caption={nextEx ? undefined : t('session.add')}
           disabled={!exercise}
           onPress={() => (nextEx ? update((s) => goTo(s, nextIndex)) : openPicker())}
         />
@@ -550,11 +561,14 @@ function NavButton({
   icon,
   disabled,
   onPress,
+  caption,
 }: {
   label: string;
   icon: 'chevronLeft' | 'chevronRight' | 'plus';
   disabled: boolean;
   onPress: () => void;
+  /** A short visible word under the icon ("Add"), where the icon alone does not say it. */
+  caption?: string;
 }) {
   const { colors } = useTheme();
   return (
@@ -577,6 +591,11 @@ function NavButton({
       })}
     >
       <Icon name={icon} size={22} color={colors.text} />
+      {caption ? (
+        <Text variant="label" aria-hidden>
+          {caption}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

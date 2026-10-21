@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Card } from '@/components/ui/Card';
 import { IconButton } from '@/components/ui/IconButton';
 import { Input } from '@/components/ui/Input';
@@ -158,7 +159,12 @@ export function ApiScreen() {
     <>
       <Screen scroll bottomBarHeight={allowed && synced ? barHeight + 24 : 24} gap={14}>
         <TopBar onBack={goBack} backLabel={t('common.back')} />
-        <Text variant="screenTitle">{t('api.title')}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text variant="screenTitle" style={{ flexShrink: 1 }}>
+            {t('api.title')}
+          </Text>
+          <InfoButton topic="apiMcp" />
+        </View>
 
         {fresh.map((app) => (
           <Card key={`new-${app.id}`} gap={6} tone="alt">

@@ -10,6 +10,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import type { Area } from '@/components/ui/IconTile';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { StatusChip } from '@/components/ui/StatusChip';
+import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { Screen } from '@/components/ui/Screen';
 import { Sheet } from '@/components/ui/Sheet';
@@ -147,12 +148,15 @@ function PeriodLine({
 }
 
 /** Heading of a block of the page: what it is, and a hint of what it covers. */
-function BlockTitle({ title, hint }: { title: string; hint?: string }) {
+function BlockTitle({ title, hint, info }: { title: string; hint?: string; info?: ExplainTopic }) {
   return (
     <View style={{ gap: 2, paddingTop: 6 }}>
-      <Text variant="label" accessibilityRole="header">
-        {title}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text variant="label" accessibilityRole="header">
+          {title}
+        </Text>
+        {info ? <InfoButton topic={info} /> : null}
+      </View>
       {hint ? (
         <Text variant="bodyS" muted>
           {hint}
@@ -380,7 +384,7 @@ export function BodyScreen() {
               </View>
             </Card>
 
-            <BlockTitle title={t('progress.tabFat')} />
+            <BlockTitle title={t('progress.tabFat')} info="bodyFat" />
             <Card gap={14}>
               <PeriodLine
                 values={fatLine}
@@ -411,6 +415,7 @@ export function BodyScreen() {
                       })}
                     </Text>
                   </View>
+                  <InfoButton topic="leanMass" style={{ alignSelf: 'center' }} />
                 </View>
               ) : null}
               <View style={[{ gap: 8 }, divider]}>
@@ -569,6 +574,7 @@ export function BodyScreen() {
           label={t('progress.goalWeight', { unit: u })}
           value={goalInput}
           onChangeText={setGoalInput}
+          placeholder={t('forms.weightPlaceholder')}
           keyboardType="decimal-pad"
           error={weightBad ? t('progress.goalWeightError') : undefined}
           autoFocus
@@ -577,6 +583,7 @@ export function BodyScreen() {
           label={t('progress.goalBodyFat')}
           value={fatGoalInput}
           onChangeText={setFatGoalInput}
+          placeholder={t('forms.bodyFatPlaceholder')}
           keyboardType="decimal-pad"
           error={fatBad ? t('progress.goalBodyFatError') : undefined}
         />

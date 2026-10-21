@@ -89,7 +89,7 @@ describe('Progress · Me numbers (DECISIONS 114)', () => {
     ];
     await renderUI(<ProgressScreen />);
     expect(screen.getByText('2.0 kg')).toBeTruthy();
-    expect(screen.getByText('1.0 pts')).toBeTruthy();
+    expect(screen.getByText('1.0 points')).toBeTruthy();
     expect(screen.getByText('3 cm')).toBeTruthy();
     expect(screen.getByLabelText('Weight over the period')).toBeTruthy();
     expect(screen.queryByText('Add at check-in')).toBeNull();

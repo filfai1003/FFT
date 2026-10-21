@@ -90,6 +90,7 @@ export function AuthScreen() {
           label={t('auth.email')}
           value={email}
           onChangeText={setEmail}
+          placeholder={t('forms.emailPlaceholder')}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -101,6 +102,7 @@ export function AuthScreen() {
           label={t('auth.password')}
           value={password}
           onChangeText={setPassword}
+          placeholder={mode === 'signIn' ? undefined : t('forms.passwordPlaceholder')}
           secureTextEntry
           autoCapitalize="none"
           autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}

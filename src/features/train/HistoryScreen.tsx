@@ -246,7 +246,7 @@ function SessionRow({
             min: s.stats.minutes,
             tonnes: tonnes.toFixed(1),
             unit: unit === 'kg' ? 'T' : 'K LB',
-            sets: s.stats.sets,
+            count: s.stats.sets,
           })}
         </Text>
       </View>

@@ -247,9 +247,14 @@ export function SummaryScreen() {
           accessibilityRole="radiogroup"
           accessibilityLabel={t('summary.howFelt')}
         >
-          <Text variant="bodyS" muted>
-            {t('summary.howFelt')}
-          </Text>
+          <View style={{ gap: 2 }}>
+            <Text variant="bodyS" muted>
+              {t('summary.howFelt')}
+            </Text>
+            <Text variant="bodyS" muted>
+              {t('summary.howFeltWhy')}
+            </Text>
+          </View>
           <View style={{ flexDirection: 'row', gap: 6 }}>
             {FEELINGS.map((n) => {
               const selected = feeling === n;

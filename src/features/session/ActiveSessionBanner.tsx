@@ -33,7 +33,7 @@ export function ActiveSessionBanner() {
       accessibilityLabel={t('session.resumeLabelFull', {
         name: active.dayName,
         done,
-        total: sets.length,
+        count: sets.length,
         time: formatClock(elapsed),
       })}
       onPress={() =>
@@ -60,7 +60,7 @@ export function ActiveSessionBanner() {
             {active.dayName}
           </Text>
           <Text variant="label" semibold numeric style={{ color: colors.trainingInk }}>
-            {t('session.setsDoneShort', { done, total: sets.length })}
+            {t('session.setsDoneShort', { done, count: sets.length })}
           </Text>
         </View>
         {sets.length > 0 ? (

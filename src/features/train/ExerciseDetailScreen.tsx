@@ -9,6 +9,7 @@ import { DotColumnChart } from '@/components/ui/DotColumnChart';
 import type { IconName } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { IconTile, type Area } from '@/components/ui/IconTile';
+import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { ListRow } from '@/components/ui/ListRow';
 import { Screen } from '@/components/ui/Screen';
@@ -132,6 +133,7 @@ export function ExerciseDetailScreen({
                 note={t('exerciseDetail.heaviest')}
                 icon="trophy"
                 area="streak"
+                info="actualMax"
               />
               <StatCard
                 label={t('exerciseDetail.est1rm')}
@@ -144,6 +146,7 @@ export function ExerciseDetailScreen({
                 note={t('exerciseDetail.epley')}
                 icon="chart"
                 area="training"
+                info="e1rm"
               />
             </View>
 
@@ -307,6 +310,7 @@ function StatCard({
   note,
   icon,
   area,
+  info,
 }: {
   label: string;
   value: string;
@@ -314,6 +318,7 @@ function StatCard({
   note: string;
   icon: IconName;
   area: Area;
+  info: ExplainTopic;
 }) {
   return (
     <Card size="small" gap={6} style={{ flex: 1 }}>
@@ -322,6 +327,7 @@ function StatCard({
         <Text variant="bodyS" semibold style={{ flex: 1 }}>
           {label}
         </Text>
+        <InfoButton topic={info} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
         <Text variant="displayM" numeric>

@@ -577,7 +577,7 @@ export function WorkoutWidget({ size }: Props) {
             <Text variant="bodyS" muted>
               {t('today.workoutDoneInfo', {
                 names: doneToday.map((s) => s.name || t('train.emptyWorkout')).join(', '),
-                sets: doneToday.reduce((a, s) => a + s.stats.sets, 0),
+                count: doneToday.reduce((a, s) => a + s.stats.sets, 0),
               })}
             </Text>
           </View>

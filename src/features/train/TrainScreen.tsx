@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { pressFeedback, Reveal } from '@/components/ui/motion';
 import { Screen } from '@/components/ui/Screen';
 import { IconTile } from '@/components/ui/IconTile';
@@ -18,6 +19,7 @@ import { radius } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { relativeDay } from '@/domain/day';
 import { useTimeZone } from '@/features/gamification/data';
+import { FirstUseHint } from '@/features/help/FirstUseHint';
 import { useToday } from '@/features/profile/use-today';
 import { ActiveSessionBanner } from '@/features/session/ActiveSessionBanner';
 import { useStartWorkout } from '@/features/session/start';
@@ -92,6 +94,8 @@ export function TrainScreen() {
 
         <ActiveSessionBanner />
 
+        {!isPending ? <FirstUseHint id="trainTips" /> : null}
+
         {isPending ? (
           <SkeletonGroup accessibilityLabel={t('common.loading')}>
             <SkeletonCard lines={1} height={52} />
@@ -113,7 +117,7 @@ export function TrainScreen() {
             }}
             actionVariant="primary"
             secondaryAction={{
-              label: t('train.emptyWorkout'),
+              label: t('train.quickStart'),
               onPress: () => startEmpty(t('train.emptyWorkout')),
             }}
           />
@@ -126,9 +130,12 @@ export function TrainScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <IconTile icon="dumbbell" area="training" size={60} />
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text variant="bodyS" semibold style={{ color: colors.trainingInk }}>
-                    {t('train.upNext')}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text variant="bodyS" semibold style={{ color: colors.trainingInk }}>
+                      {t('train.upNext')}
+                    </Text>
+                    <InfoButton topic="cycle" />
+                  </View>
                   <Text variant="displayM" numberOfLines={2}>
                     {upNext.name}
                   </Text>
@@ -202,7 +209,7 @@ export function TrainScreen() {
         ) : null}
 
         {plans && plans.length > 0 ? (
-          <Section title={t('train.yourPlans')} gap={8}>
+          <Section title={t('train.yourPlans')} gap={8} info="plan">
             {plans.map((p) => {
               const active = p.status === 'active';
               return (

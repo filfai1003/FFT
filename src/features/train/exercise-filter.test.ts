@@ -76,7 +76,7 @@ describe('grouping and labels', () => {
   });
 
   it('meta line lists primary, secondary and equipment', () => {
-    expect(exerciseMeta(list[0])).toBe('CHEST · SHOULDERS · TRICEPS · BARBELL');
+    expect(exerciseMeta(list[0])).toBe('Chest · shoulders · triceps · barbell');
   });
 
   it('record label in the unit of the user', () => {

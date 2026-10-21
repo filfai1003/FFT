@@ -34,7 +34,7 @@ describe('SuggestionCard', () => {
   });
 
   it('a step up is a green panel; going down stays neutral, never red', async () => {
-    const { rerender } = await renderUI(
+    const { unmount } = await renderUI(
       <SuggestionCard
         exercise={exercise({ kind: 'up', from: 80, to: 82.5, reps: [8, 8, 8] })}
         unit="kg"
@@ -42,7 +42,8 @@ describe('SuggestionCard', () => {
       />,
     );
     expect(screen.getByTestId('suggestion')).toHaveStyle({ backgroundColor: color.successSoft });
-    await rerender(
+    await unmount();
+    await renderUI(
       <SuggestionCard
         exercise={exercise({ kind: 'down', from: 80, to: 75, reps: [5, 4] })}
         unit="kg"
@@ -53,7 +54,7 @@ describe('SuggestionCard', () => {
     expect(screen.getByTestId('suggestion')).toHaveStyle({ backgroundColor: color.surfaceAlt });
   });
 
-  it('same weight: no button', async () => {
+  it('same weight: no keep button, only the explanation (DECISIONS 124)', async () => {
     await renderUI(
       <SuggestionCard
         exercise={exercise({ kind: 'same', from: 80, to: 80, reps: [8, 7] })}
@@ -62,6 +63,9 @@ describe('SuggestionCard', () => {
       />,
     );
     expect(screen.getByText('Same weight, one more rep')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    await fireEvent.press(screen.getByLabelText('About the weight suggestion'));
+    expect(screen.getByText('Next weight suggestion')).toBeTruthy();
+    expect(screen.getByText(/progressive overload/)).toBeTruthy();
   });
 });
