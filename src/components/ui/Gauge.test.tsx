@@ -28,7 +28,7 @@ describe('Gauge', () => {
     expect(end.props.stroke.payload).toBe(processColor('#3BA3E0'));
   });
 
-  it('very little filled: one round piece in the biggest share's colour, not two dots', async () => {
+  it('very little filled: one round piece in the colour of the biggest share, not two dots', async () => {
     // 91 of 2,000 kcal on a 160 pt gauge.
     await renderUI(
       <Gauge
