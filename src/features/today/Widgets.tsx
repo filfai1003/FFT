@@ -724,7 +724,13 @@ export function WorkoutWidget({ size }: Props) {
 
   return (
     <>
-      <Frame size={size} label={t('today.workout')} icon="dumbbell" area="training" right={cycle}>
+      <Frame
+        size={size}
+        label={past ? t('today.past.workoutTitle') : t('today.workout')}
+        icon="dumbbell"
+        area="training"
+        right={cycle}
+      >
         {body}
       </Frame>
       <NewPlanSheet visible={creating} onClose={() => setCreating(false)} />

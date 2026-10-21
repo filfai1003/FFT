@@ -464,7 +464,8 @@
       "workoutDone": "Workout done",
       "noWorkout": "No workout this day",
       "noWorkoutInfo": "Trained and forgot to log it? Mark it as done.",
-      "noWeight": "No weight logged by then"
+      "noWeight": "No weight logged by then",
+      "workoutTitle": "Workout"
     }
   },
   "app": {

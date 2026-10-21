@@ -257,10 +257,13 @@ export function TodayScreen() {
                 <Text
                   variant="screenTitle"
                   accessibilityRole="header"
-                  numberOfLines={2}
+                  accessibilityLabel={longDateLabel(day)}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
                   style={{ fontSize: 24, lineHeight: 28 }}
                 >
-                  {longDateLabel(day)}
+                  {shortDateLabel(day)}
                 </Text>
               ) : (
                 <Greeting name={profile.data?.name} />

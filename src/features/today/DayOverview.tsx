@@ -23,7 +23,10 @@ export function Greeting({ name }: { name: string | null | undefined }) {
     <Text
       variant="screenTitle"
       accessibilityRole="header"
-      numberOfLines={2}
+      // One line beside the header buttons: a long name shrinks the text instead of wrapping.
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.7}
       style={{ fontSize: 24, lineHeight: 28 }}
     >
       {first ? t(`today.greeting.${part}Name`, { name: first }) : t(`today.greeting.${part}`)}
