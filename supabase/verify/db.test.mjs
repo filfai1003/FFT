@@ -3573,6 +3573,7 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
       ['ocean', 'double', 'runner', 'first_workout'],
     );
     assert.deepEqual(me.look, {
+      supporter: true,
       colour: 'ocean',
       frame: 'double',
       title: 'runner',
@@ -3612,6 +3613,7 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
       return b.rows.find((r) => r.name === name)?.look ?? null;
     };
     assert.deepEqual(await lookOn(FP, 'Sol'), {
+      supporter: true,
       colour: 'ocean',
       frame: 'double',
       title: 'runner',
@@ -3703,6 +3705,274 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     );
   });
 
+  it('Supporter badge and photo reports (DECISIONS 120): one per reporter, 10 a day, hidden at 3, admin decisions, 3 strikes, clean-up', async () => {
+    const OW = '12000000-0000-0000-0000-00000000000a'; // supporter with a photo
+    const R = [1, 2, 3, 4].map((n) => `12000000-0000-0000-0000-00000000000${n}`); // free
+    await admin();
+    for (const [i, id] of [OW, ...R].entries())
+      await db.query(
+        `insert into auth.users (id, instance_id, aud, role, email)
+         values ($1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', $2)`,
+        [id, `rep${i}@test.dev`],
+      );
+    await db.exec(`insert into public.user_plans (user_id, plan) values ('${OW}', 'supporter')`);
+    const pid = {};
+    for (const [id, name] of [
+      [OW, 'Ola'],
+      [R[0], 'Rae'],
+      [R[1], 'Rik'],
+      [R[2], 'Ros'],
+      [R[3], 'Rui'],
+    ]) {
+      await as(id);
+      pid[id] = (await one(`select public.community_join($1) as m`, [name])).m.public_id;
+    }
+    const upload = (path) =>
+      db.query(`insert into storage.objects (bucket_id, name) values ('community-avatars', $1)`, [
+        path,
+      ]);
+    const queued = async (path) => {
+      await admin();
+      return count(
+        `select count(*) as n from public.files_to_delete where bucket = 'community-avatars' and path = $1`,
+        [path],
+      );
+    };
+    const report = async (uid, reason = null, photo = null) => {
+      await as(uid);
+      return (
+        await one(`select public.community_report_photo($1, $2, $3) as r`, [pid[OW], reason, photo])
+      ).r.status;
+    };
+    const lookOf = async (viewer) => {
+      await as(viewer);
+      return (await one(`select public.community_profile($1) as p`, [pid[OW]])).p.look;
+    };
+    const meOf = async () => {
+      await as(OW);
+      return (await one(`select public.community_me() as m`)).m;
+    };
+    const decide = async (path, verdict) => {
+      await admin();
+      return (
+        await one(`select public.community_photo_decide($1, $2, $3) as d`, [OW, path, verdict])
+      ).d;
+    };
+    const refusedWith = async (sql, params, code, hint) =>
+      assert.rejects(
+        () => db.query(sql, params),
+        (e) => e.code === code && (!hint || e.hint === hint),
+      );
+    const newPhoto = async (name) => {
+      await as(OW);
+      const p = `${pid[OW]}/${name}.jpg`;
+      await upload(p);
+      await db.query(`select public.community_set_photo($1)`, [p]);
+      return p;
+    };
+
+    // The Supporter badge: in the look of Supporter and Premium (A is VIP), never for free.
+    assert.equal((await lookOf(R[0])).supporter, true);
+    await as(R[0]);
+    assert.equal((await one(`select public.community_profile($1) as p`, [pid[R[1]]])).p.look, null);
+    await as(A);
+    const annaId = (await one(`select public.community_me() as m`)).m?.public_id;
+    if (annaId) {
+      await as(R[0]);
+      assert.equal(
+        (await one(`select public.community_profile($1) as p`, [annaId])).p.look.supporter,
+        true,
+      );
+    }
+
+    // Reports: never your own, known reasons only, a member that exists, nothing to report
+    // without a photo; nobody reads the table directly.
+    assert.equal(await report(R[0]), 'no_photo');
+    const p1 = await newPhoto('photo001');
+    await rejects(`select public.community_report_photo('${pid[OW]}')`, '22023');
+    await as(R[0]);
+    await rejects(`select public.community_report_photo('${pid[OW]}', 'ugly')`, '22023');
+    await rejects(`select public.community_report_photo('${randomUUID()}')`, 'P0002');
+    await rejects(`select * from public.community_photo_reports`, '42501');
+    // The photo changed since it was seen: nothing reported.
+    assert.equal(await report(R[0], 'spam', `${pid[OW]}/oldphoto1.jpg`), 'no_photo');
+    // One report per reporter per photo.
+    assert.equal(await report(R[0], 'spam', p1), 'reported');
+    assert.equal(await report(R[0], 'nudity'), 'already');
+    await admin();
+    assert.equal(
+      await count(
+        `select count(*) as n from public.community_photo_reports where photo_path = $1`,
+        [p1],
+      ),
+      1,
+    );
+
+    // At most 10 reports a day per reporter (older ones do not count).
+    await admin();
+    for (let i = 0; i < 10; i++)
+      await db.query(
+        `insert into public.community_photo_reports (reporter_id, member_id, photo_path)
+         values ($1, $2, $3)`,
+        [R[3], OW, `${pid[OW]}/rate000${i}.jpg`],
+      );
+    await as(R[3]);
+    await rejects(`select public.community_report_photo('${pid[OW]}')`, '54000');
+    await admin();
+    await db.query(
+      `update public.community_photo_reports set created_at = now() - interval '25 hours'
+       where reporter_id = $1`,
+      [R[3]],
+    );
+    await db.query(
+      `delete from public.community_photo_reports where reporter_id = $1 and photo_path like '%/rate%'`,
+      [R[3]],
+    );
+
+    // Two reports: still shown. The third member: hidden from everyone else, not from the owner.
+    assert.equal(await report(R[1], 'violence'), 'reported');
+    assert.equal((await lookOf(R[2])).photo, p1);
+    assert.equal((await meOf()).photo_review, false);
+    assert.equal(await report(R[2]), 'reported');
+    const hidden = await lookOf(R[3]);
+    assert.equal(hidden.photo, undefined);
+    assert.equal(hidden.supporter, true);
+    let me = await meOf();
+    assert.deepEqual([me.photo_review, me.look.photo, me.photo_path], [true, p1, p1]);
+    // Under review: no new upload, no other photo, its file cannot be deleted by the member.
+    await as(OW);
+    await assert.rejects(() => upload(`${pid[OW]}/photo002.jpg`), { code: '42501' });
+    await refusedWith(
+      `select public.community_set_photo($1)`,
+      [`${pid[OW]}/photo002.jpg`],
+      '42501',
+      'photo_review',
+    );
+    await db.query(
+      `delete from storage.objects where bucket_id = 'community-avatars' and name = $1`,
+      [p1],
+    );
+    await admin();
+    assert.equal(await count(`select count(*) as n from storage.objects where name = $1`, [p1]), 1);
+    assert.equal(await report(R[3], 'other'), 'reported');
+
+    // Appropriate: visible again, the owner can change it, the same people cannot report it again.
+    // Members cannot decide.
+    await as(R[0]);
+    await rejects(`select public.community_photo_decide('${OW}', '${p1}', 'appropriate')`, '42501');
+    await rejects(`select public.community_photo_restore('${OW}')`, '42501');
+    await admin();
+    await rejects(`select public.community_photo_decide('${OW}', '${p1}', 'meh')`, '22023');
+    const ok = await decide(p1, 'appropriate');
+    assert.deepEqual([ok.closed, ok.strikes, ok.banned], [4, 0, false]);
+    await admin();
+    await rejects(`select public.community_photo_decide('${OW}', '${p1}', 'appropriate')`, 'P0002');
+    assert.equal((await lookOf(R[3])).photo, p1);
+    assert.equal((await meOf()).photo_review, false);
+    assert.equal(await report(R[0]), 'already');
+    assert.equal(await queued(p1), 0);
+
+    // Inappropriate: removed and queued, a strike; a removal by the owner under review keeps the
+    // file for the admin until the decision.
+    const p2 = await newPhoto('photo002');
+    assert.equal(await queued(p1), 1);
+    for (const r of R.slice(0, 3)) assert.equal(await report(r, 'nudity'), 'reported');
+    await as(OW);
+    await db.query(`select public.community_set_photo(null)`);
+    assert.equal(await queued(p2), 0);
+    await as(OW);
+    await refusedWith(
+      `select public.community_set_photo($1)`,
+      [`${pid[OW]}/photo003.jpg`],
+      '42501',
+      'photo_review',
+    );
+    let d = await decide(p2, 'inappropriate');
+    assert.deepEqual([d.closed, d.strikes, d.banned], [3, 1, false]);
+    assert.equal(await queued(p2), 1);
+
+    // Two more photos judged inappropriate: 3 strikes, no more photos (removing stays allowed).
+    for (const name of ['photo003', 'photo004']) {
+      const p = await newPhoto(name);
+      for (const r of R.slice(0, 3)) await report(r, 'hateful');
+      d = await decide(p, 'inappropriate');
+      await admin();
+      assert.equal(
+        await count(`select count(*) as n from public.community_members where photo_path = $1`, [
+          p,
+        ]),
+        0,
+      );
+      assert.equal(await queued(p), 1);
+    }
+    assert.deepEqual([d.strikes, d.banned], [3, true]);
+    me = await meOf();
+    assert.deepEqual([me.photo_strikes, me.photo_banned, me.photo_review], [3, true, false]);
+    await as(OW);
+    await assert.rejects(() => upload(`${pid[OW]}/photo005.jpg`), { code: '42501' });
+    await admin();
+    await db.query(
+      `insert into storage.objects (bucket_id, name) values ('community-avatars', $1)`,
+      [`${pid[OW]}/photo005.jpg`],
+    );
+    await as(OW);
+    await refusedWith(
+      `select public.community_set_photo($1)`,
+      [`${pid[OW]}/photo005.jpg`],
+      '42501',
+      'photo_banned',
+    );
+    await db.query(`select public.community_set_photo(null)`);
+    // The export shows the member its reports (never who made them) and its strikes.
+    const exp = (await one(`select public.community_export() as e`)).e;
+    assert.equal(exp.member.photo_banned, true);
+    assert.equal(exp.photo_reports_about_you.length, 13);
+    assert.ok(!JSON.stringify(exp).includes(R[0]) && !JSON.stringify(exp).includes(pid[R[0]]));
+    await as(R[0]);
+    assert.equal(
+      (await one(`select public.community_export() as e`)).e.photo_reports_made.length,
+      4,
+    );
+
+    // An admin gives the right back.
+    await admin();
+    await rejects(`select public.community_photo_restore('${randomUUID()}')`, 'P0002');
+    await db.query(`select public.community_photo_restore($1)`, [OW]);
+    me = await meOf();
+    assert.deepEqual([me.photo_strikes, me.photo_banned], [0, false]);
+    await db.query(`select public.community_set_photo($1)`, [`${pid[OW]}/photo005.jpg`]);
+
+    // Leaving deletes the reports made by the member; deleting the account those about it.
+    await as(R[0]);
+    await db.query(`select public.community_leave()`);
+    await admin();
+    assert.equal(
+      await count(
+        `select count(*) as n from public.community_photo_reports where reporter_id = $1`,
+        [R[0]],
+      ),
+      0,
+    );
+    assert.ok(
+      (await count(
+        `select count(*) as n from public.community_photo_reports where member_id = $1`,
+        [OW],
+      )) > 0,
+    );
+    await db.query(`delete from auth.users where id = $1`, [OW]);
+    assert.equal(await count(`select count(*) as n from public.community_photo_reports`), 0);
+    for (const r of R.slice(1)) {
+      await as(r);
+      await db.query(`select public.community_leave()`);
+    }
+    await admin();
+    await db.exec(
+      `delete from public.files_to_delete where bucket = 'community-avatars';
+       delete from storage.objects where bucket_id = 'community-avatars';
+       delete from auth.users where id in (${R.map((r) => `'${r}'`).join(', ')});`,
+    );
+  });
+
   it('the export lists the community data; leaving deletes member, scores and friendships', async () => {
     await as(A);
     const exp = (await one(`select public.community_export() as e`)).e;
@@ -3752,6 +4022,8 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
     oauth_clients: 'an app used only by this account goes',
     food_servings: 'through its food (foods.owner_id, cascade)',
     files_to_delete: 'queued paths in the account folder go (DECISIONS 98)',
+    community_photo_reports:
+      'through the member rows of reporter and member (cascade, DECISIONS 120)',
   };
   /** Rows for Z where no other account's row can be copied (the table is empty by then). */
   const EXPLICIT = {
