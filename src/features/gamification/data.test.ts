@@ -182,3 +182,29 @@ describe('supplement and water days', () => {
     expect([...a.waterGoalDays!]).toEqual(['2026-10-12']);
   });
 });
+
+describe('water-goal days follow the automatic water target', () => {
+  it('80 kg and no manual target: 2,650 ml, so 2,500 ml is not enough and 2,700 ml is', async () => {
+    await seed();
+    await mockClient.from('nutrition_goals').insert({
+      id: id(2),
+      valid_from: '2026-10-02',
+      kcal: 2000,
+      protein_g: 150,
+      carbs_g: 200,
+      fat_g: 60,
+      training_day_bonus_kcal: 0,
+      water_ml: 2000,
+      water_auto: true,
+    });
+    await mockClient.from('body_metrics').insert({ id: id(600), day: '2026-10-02', weight_kg: 80 });
+    await mockClient.from('water_logs').insert([
+      { id: id(610), day: '2026-10-10', ml: 2500 },
+      { id: id(611), day: '2026-10-11', ml: 2700 },
+    ]);
+    const a = await fetchActivity('UTC');
+    // No age known: 80 kg × 33 ml = 2,640, rounded to 2,650 ml.
+    expect(a.waterGoalDays?.has('2026-10-10')).toBe(false);
+    expect(a.waterGoalDays?.has('2026-10-11')).toBe(true);
+  });
+});

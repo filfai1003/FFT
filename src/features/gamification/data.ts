@@ -17,6 +17,7 @@ import type { ExerciseMuscles } from '@/domain/volume';
 import { fetchGoals } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
+import { waterTargetFromData } from '@/features/diet/water-target';
 import { fetchVolumeSets } from '@/features/progress/balance';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { usePlanStore } from '@/lib/plan';
@@ -59,10 +60,10 @@ export async function fetchActivity(tz: string): Promise<Activity> {
   ] = await Promise.all([
     db.from('food_logs').select('day').is('deleted_at', null),
     db.from('fixed_meal_checks').select('day, status').is('deleted_at', null),
-    db.from('body_metrics').select('day').is('deleted_at', null),
+    db.from('body_metrics').select('day, weight_kg, created_at').is('deleted_at', null),
     db
       .from('workout_sessions')
-      .select('id, plan_id, started_at')
+      .select('id, plan_id, started_at, ended_at')
       .eq('status', 'done')
       .is('deleted_at', null),
     db.from('session_sets').select('session_id, completed_at').is('deleted_at', null),
@@ -75,7 +76,7 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     db.from('supplements').select('id, created_at, deleted_at'),
     db.from('supplement_logs').select('day, supplement_id').is('deleted_at', null),
     db.from('water_logs').select('day, ml').is('deleted_at', null),
-    db.from('profiles').select('created_at'),
+    db.from('profiles').select('created_at, birth_date, sex, height_cm'),
     // Every completed set ever (balanced weeks, DECISIONS 126): the training balance's reading.
     fetchVolumeSets('1970-01-01', tz),
     db.from('exercises').select('id, primary_muscle, secondary_muscles, indirect_muscles'),
@@ -161,9 +162,41 @@ export async function fetchActivity(tz: string): Promise<Activity> {
   const waterByDay = new Map<string, number>();
   for (const r of rowsOf<{ day: string; ml: number | string }>(water as Rows))
     waterByDay.set(r.day, (waterByDay.get(r.day) ?? 0) + Number(r.ml));
+  // The day's water target as everywhere else (DECISIONS 127): weight then, that day's workouts.
+  const waterProfile =
+    rowsOf<{ birth_date: string | null; sex: string | null; height_cm: number | string | null }>(
+      profile as Rows,
+    )[0] ?? null;
+  const weights = rowsOf<{ day: string; weight_kg: number | string | null; created_at: string }>(
+    body as Rows,
+  )
+    .filter((r) => r.weight_kg != null)
+    .sort((a, b) => a.day.localeCompare(b.day) || a.created_at.localeCompare(b.created_at));
+  const weightOn = (day: string) => {
+    let kg: number | null = null;
+    for (const w of weights) if (w.day <= day) kg = Number(w.weight_kg);
+    return kg;
+  };
+  const sessionsByDay = new Map<string, { startedAt: string; endedAt: string | null }[]>();
+  for (const s of rowsOf<{ id: string; started_at: string; ended_at: string | null }>(
+    sessions as Rows,
+  )) {
+    if (!withSets.has(s.id)) continue;
+    const day = localDay(new Date(s.started_at), tz);
+    sessionsByDay.set(day, [
+      ...(sessionsByDay.get(day) ?? []),
+      { startedAt: s.started_at, endedAt: s.ended_at },
+    ]);
+  }
   const waterGoalDays = new Set<string>();
   for (const [day, ml] of waterByDay) {
-    const goalMl = goalForDay(goals, day)?.waterMl ?? 2000;
+    const goalMl = waterTargetFromData({
+      day,
+      goals,
+      profile: waterProfile,
+      weightKg: weightOn(day),
+      workouts: sessionsByDay.get(day) ?? [],
+    }).ml;
     if (goalMl > 0 && ml >= goalMl) waterGoalDays.add(day);
   }
 
