@@ -64,9 +64,11 @@ describe('buildWeeklySummary', () => {
   });
 
   it('badges earned this week and the closest ones', () => {
-    const s = buildWeeklySummary(input());
-    // First workout was before the week; the first record came this week.
-    expect(s.badgesEarned.map((b) => b.id)).toContain('first_record');
+    const s = buildWeeklySummary(
+      input({ activity: activity({ supplementTicks: ['2026-10-20'] }) }),
+    );
+    // First workout was before the week; the first supplement tick came this week.
+    expect(s.badgesEarned.map((b) => b.id)).toContain('supplements_1');
     expect(s.badgesEarned.map((b) => b.id)).not.toContain('first_workout');
     expect(s.closestBadges).toHaveLength(3);
     expect(s.closestBadges.every((b) => !b.earned)).toBe(true);

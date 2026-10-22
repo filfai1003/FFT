@@ -78,7 +78,7 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     db.from('profiles').select('created_at'),
     // Every completed set ever (balanced weeks, DECISIONS 126): the training balance's reading.
     fetchVolumeSets('1970-01-01', tz),
-    db.from('exercises').select('id, primary_muscle, secondary_muscles'),
+    db.from('exercises').select('id, primary_muscle, secondary_muscles, indirect_muscles'),
   ]);
   const today = localDay(new Date(), tz);
 
@@ -179,10 +179,21 @@ export async function fetchActivity(tz: string): Promise<Activity> {
   ].sort();
   const firstDay = starts[0] ?? null;
 
+  type ExerciseRow = {
+    id: string;
+    primary_muscle: Muscle;
+    secondary_muscles: Muscle[] | null;
+    indirect_muscles: Muscle[] | null;
+  };
   const exerciseMuscles = new Map<string, ExerciseMuscles>(
-    rowsOf<{ id: string; primary_muscle: Muscle; secondary_muscles: Muscle[] | null }>(
-      exercises as Rows,
-    ).map((e) => [e.id, { primary: e.primary_muscle, secondary: e.secondary_muscles ?? [] }]),
+    rowsOf<ExerciseRow>(exercises as Rows).map((e): [string, ExerciseMuscles] => [
+      e.id,
+      {
+        primary: e.primary_muscle,
+        secondary: e.secondary_muscles ?? [],
+        indirect: e.indirect_muscles ?? [],
+      },
+    ]),
   );
 
   type DailyRow = {

@@ -90,16 +90,31 @@ describe('gamification data (read from the device)', () => {
     expect(a.exerciseDays.map((r) => r.bestWeightKg)).toEqual([80, 85]);
   });
 
-  it('gives a streak, a record and the first badges', async () => {
+  it('gives a streak, a record and the first badges (DECISIONS 126)', async () => {
     const a = await fetchActivity('UTC');
-    const g = computeGamification({ ...a, today: '2026-10-15' });
+    const g = computeGamification({ ...a, today: '2026-10-15', weekStart: 'mon', plan: null });
     expect(g.streak).toBe(3);
     expect(g.records).toEqual([
       expect.objectContaining({ kind: 'max', valueKg: 85, deltaKg: 5, day: '2026-10-13' }),
       expect.objectContaining({ kind: 'est1rm', day: '2026-10-13' }),
     ]);
     const earned = g.badges.filter((b) => b.earned).map((b) => b.id);
-    expect(earned).toEqual(['first_workout', 'first_record']);
+    // Records are no badges any more; the first day of use is the 12th (3 days ago).
+    expect(earned).toEqual([
+      'first_workout',
+      'diet_days_1',
+      'member_1',
+      'diet_run_1',
+      'train_run_1',
+    ]);
+    expect(a.firstDay).toBe('2026-10-12');
+    expect([...a.dietLoggedDays!].sort()).toEqual(['2026-10-12', '2026-10-13']);
+    expect(a.dietDays!.map((d) => [d.day, d.eaten.kcal, d.target?.kcal])).toEqual(
+      expect.arrayContaining([
+        ['2026-10-12', 1900, 2000],
+        ['2026-10-13', 1200, 2000],
+      ]),
+    );
   });
 
   it('days without a target never count as on target (DECISIONS 104)', async () => {
@@ -159,7 +174,10 @@ describe('supplement and water days', () => {
     const a = await fetchActivity('UTC');
     // The 13th also needed Vitamin D (added that day).
     expect([...a.supplementDays!]).toEqual(['2026-10-12']);
-    expect(a.noSupplements).toBe(false);
+    // Each tick counts; days with a supplement to take start when it was added.
+    expect(a.supplementTicks).toHaveLength(2);
+    expect(a.supplementDueDays!.has('2026-10-01')).toBe(true);
+    expect(a.supplementDueDays!.has('2026-09-30')).toBe(false);
     // Goal 2,500 ml: only the 12th reached it.
     expect([...a.waterGoalDays!]).toEqual(['2026-10-12']);
   });

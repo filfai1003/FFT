@@ -19,7 +19,7 @@ import {
   type DietDay,
   type GamificationInput,
 } from './gamification';
-import { balanceMuscles, WEEKLY_SETS_GUIDE, type VolumeSet } from './volume';
+import { balanceMuscles, guideOf, WEEKLY_SETS_GUIDE, type VolumeSet } from './volume';
 
 // 2026-10-14 is a Wednesday. Monday weeks: 09-28…10-04, 10-05…10-11, 10-12…10-18.
 const TODAY = '2026-10-14';
@@ -273,7 +273,7 @@ describe('balanced weeks (every muscle with a guideline within it)', () => {
     Object.fromEntries(balanceMuscles.map(({ muscle }) => [muscle, { sets, volumeKg: 0 }]));
   const musclesOf = (id: string) => {
     const m = balanceMuscles.find((x) => x.muscle === id);
-    return m ? { primary: m.muscle, secondary: [] } : undefined;
+    return m ? { primary: m.muscle, secondary: [], indirect: [] } : undefined;
   };
   /** `n` hard sets (bodyweight) of every muscle on `day`. */
   const weekSets = (day: string, n: number): VolumeSet[] =>
@@ -291,6 +291,13 @@ describe('balanced weeks (every muscle with a guideline within it)', () => {
 
   it('isBalancedWeek: all within; one under or over is not', () => {
     expect(isBalancedWeek(perMuscle(N))).toBe(true);
+    // Muscles without a guideline (helpers, DECISIONS 125) are not asked for.
+    const helpers = balanceMuscles.filter(({ muscle }) => guideOf(muscle) == null);
+    expect(helpers.length).toBeGreaterThan(0);
+    const zero = Object.fromEntries(
+      helpers.map(({ muscle }) => [muscle, { sets: 0, volumeKg: 0 }]),
+    );
+    expect(isBalancedWeek({ ...perMuscle(N), ...zero })).toBe(true);
     expect(
       isBalancedWeek({ ...perMuscle(N), [balanceMuscles[0]!.muscle]: { sets: 2, volumeKg: 0 } }),
     ).toBe(false);
@@ -313,7 +320,10 @@ describe('balanced weeks (every muscle with a guideline within it)', () => {
     const input = empty({
       volumeSets: sets,
       exerciseMuscles: new Map(
-        balanceMuscles.map(({ muscle }) => [muscle, { primary: muscle, secondary: [] }]),
+        balanceMuscles.map(({ muscle }) => [
+          muscle,
+          { primary: muscle, secondary: [], indirect: [] },
+        ]),
       ),
     });
     expect(find(input, 'balanced_weeks_1')).toMatchObject({ earned: true, earnedOn: '2026-09-21' });

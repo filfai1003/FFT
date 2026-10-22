@@ -3,6 +3,7 @@ import { dietDayStatus, ON_TARGET_TOLERANCE, type Macros } from './diet';
 import { loggingStreak } from './streak';
 import {
   balanceMuscles,
+  guideOf,
   guideStatus,
   muscleVolume,
   type ExerciseMuscles,
@@ -397,9 +398,11 @@ export function workoutRespectedDays(
  * `balancedWeeks`, so a change of muscles or guidelines there only needs these two adapted.
  */
 export function isBalancedWeek(perMuscle: Partial<Record<string, MuscleVolume>>): boolean {
-  const guided = balanceMuscles.map((m) => m.muscle);
+  // Helper muscles without a guideline (DECISIONS 125) are not asked for.
+  const guided = balanceMuscles.map((m) => m.muscle).filter((m) => guideOf(m) != null);
   return (
-    guided.length > 0 && guided.every((m) => guideStatus(perMuscle[m]?.sets ?? 0) === 'within')
+    guided.length > 0 &&
+    guided.every((m) => guideStatus(perMuscle[m]?.sets ?? 0, guideOf(m)) === 'within')
   );
 }
 

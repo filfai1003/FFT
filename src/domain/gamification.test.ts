@@ -166,4 +166,3 @@ describe('XP and levels', () => {
     expect(l.progress).toBeCloseTo(50 / 200);
   });
 });
-

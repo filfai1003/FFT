@@ -3508,6 +3508,10 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
     await assert.rejects(() => submit(A, 50, []), 'a level jump of 45');
     await unthrottle();
     await assert.rejects(() => submit(A, 5, [], ['Bad badge']), 'badge id');
+    // The catalogue of DECISIONS 126 sends up to 91 badges: up to 128 pass, 129 do not.
+    const ids = (n) => Array.from({ length: n }, (_, i) => `badge_${i}`);
+    await unthrottle();
+    await assert.rejects(() => submit(A, 5, [], ids(129)), '129 badges');
     // Nothing of the refused ones was written.
     await admin();
     assert.equal(
@@ -3516,7 +3520,16 @@ describe('community: opt-in leaderboards, profiles and friends (DECISIONS 90)', 
       ),
       0,
     );
-    // At most once a minute.
+    await unthrottle();
+    await submit(A, 5, [], ids(128));
+    await admin();
+    assert.equal(
+      await count(
+        `select cardinality(badges) as n from public.community_members where user_id = '${A}'`,
+      ),
+      128,
+    );
+    // At most once a minute (this also puts A's usual badges back).
     await unthrottle();
     await submit(A, 5, [{ period: 'month', metric: 'workouts', value: 3 }]);
     await assert.rejects(

@@ -72,7 +72,10 @@ jest.mock('@/features/gamification/data', () => {
       { exerciseId: 'bench', day: day(9), bestWeightKg: 85, bestE1rmKg: 92 },
     ],
   };
-  const game = { ...computeGamification({ ...activity, today: '2026-10-18' }), activity };
+  const game = {
+    ...computeGamification({ ...activity, today: '2026-10-18', weekStart: 'mon', plan: null }),
+    activity,
+  };
   return { useGamification: () => game };
 });
 
@@ -86,7 +89,7 @@ describe('Profile (your own page)', () => {
     expect(screen.getByText(/^Build muscle · [0-9,]+ XP to level [0-9]+$/)).toBeTruthy();
     // Streak, badges, strength; the level ring, records and badges (canvas Profile).
     expect(screen.getByLabelText('12 Day streak')).toBeTruthy();
-    expect(screen.getByLabelText('5 Badges')).toBeTruthy();
+    expect(screen.getByLabelText('4 Badges')).toBeTruthy();
     expect(
       screen.getByLabelText(/^Level [0-9]+, [0-9]+% of the way to level [0-9]+$/),
     ).toBeTruthy();
@@ -118,7 +121,7 @@ describe('Profile (your own page)', () => {
         /"backgroundColor":"(#[0-9A-F]+)"/,
       )?.[1];
     expect(bg('12 Day streak')).toBe(palettes.light.streakSoft);
-    expect(bg('5 Badges')).toBe(palettes.light.streakSoft);
+    expect(bg('4 Badges')).toBe(palettes.light.streakSoft);
     expect(bg('+3.5% Strength, 4 wk')).toBe(palettes.light.trainingSoft);
   });
 

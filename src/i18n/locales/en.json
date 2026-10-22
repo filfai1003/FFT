@@ -243,7 +243,7 @@
     "badgeRarity": {
       "term": "badges",
       "title": "Badges and rarity",
-      "body": "Badges reward milestones, like your first workout or 10 days in a row on your diet. Most are common. Rare and epic ones are harder: they need many days, or many days in a row. Streaks allow a little slack: up to 2 off-target days a week if the week stays within 10% of its targets, and up to 2 rest days a week, never 2 in a row. Medals ask for diet, training, water goal and supplements on the same days.",
+      "body": "Badges reward milestones, like your first workout or 10 days in a row on your diet. Rare and epic ones need many days, or many days in a row. Streaks allow up to 2 off-target days a week if the week stays within 10% of its targets, and up to 2 rest days a week, never 2 in a row. Medals ask for diet, training, water goal and supplements on the same days.",
       "example": "Iron medal: 10 days in a row with your diet, training, water goal and supplements all kept."
     },
     "boardWorkouts": {

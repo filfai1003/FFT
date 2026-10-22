@@ -36,7 +36,10 @@ const activity = {
   ],
   daily: [],
 };
-const mockGame = { ...computeGamification({ ...activity, today: '2026-10-14' }), activity };
+const mockGame = {
+  ...computeGamification({ ...activity, today: '2026-10-14', weekStart: 'mon', plan: 'supporter' }),
+  activity,
+};
 jest.mock('./data', () => ({ useGamification: () => mockGame }));
 
 describe('Progress · Me cards', () => {
@@ -45,11 +48,9 @@ describe('Progress · Me cards', () => {
   it('streak ring, level and the week drawn with ticks and dashes, not colour alone', async () => {
     await renderUI(<StreakCard game={mockGame} />);
     expect(
-      screen.getByLabelText('12 day logging streak, 12 of 14 days to the next streak badge'),
+      screen.getByLabelText('12 day logging streak, 12 of 14 days to the next streak goal'),
     ).toBeTruthy();
-    expect(
-      screen.getByText('2 more days for the 2-week streak badge. Best: 12 days.'),
-    ).toBeTruthy();
+    expect(screen.getByText('2 more days to a 14-day streak. Best: 12 days.')).toBeTruthy();
     expect(screen.getByText(`Level ${mockGame.level.level}`)).toBeTruthy();
     expect(screen.getByLabelText('Mon 12 Oct, logged')).toBeTruthy();
     expect(screen.getByLabelText('Tue 13 Oct, logged')).toBeTruthy();
@@ -66,7 +67,7 @@ describe('Progress · Me cards', () => {
         <RecordsRow game={mockGame} />
       </>,
     );
-    expect(screen.getByLabelText('Next badge, 2-week streak: 12 of 14')).toBeTruthy();
+    expect(screen.getByLabelText('Next badge, 10 workouts: 7 of 10')).toBeTruthy();
     const record = screen.getByLabelText(
       'Bench press: new record 85 kg, up 5 kg, 6.3 percent, 9 Oct',
     );
@@ -86,13 +87,22 @@ describe('Progress · Me cards', () => {
 
   it('badge grid: earned, in progress and locked with how to unlock', async () => {
     await renderUI(<BadgeGrid badges={mockGame.badges} />);
-    expect(screen.getByText(`4 of ${mockGame.badges.length} earned`)).toBeTruthy();
+    // Supporter, First workout and the 1-day training streak.
+    expect(screen.getByText(`3 of ${mockGame.badges.length} earned`)).toBeTruthy();
     expect(screen.getByLabelText('First workout: earned 1 Oct')).toBeTruthy();
-    // Rare and epic badges say so (DECISIONS 116).
-    expect(screen.getByLabelText('Epic. Iron week: earned 7 Oct')).toBeTruthy();
-    expect(screen.getAllByText('Rare', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+    // Grouped by family, each with its header (DECISIONS 126).
+    for (const family of ['Plans', 'Workouts', 'Diet', 'Streaks', 'Balance', 'Medals', 'All'])
+      expect(screen.getByRole('header', { name: family })).toBeTruthy();
+    // Plan badges have no day; rare and epic badges say so (DECISIONS 116).
+    expect(screen.getByLabelText('Rare. Supporter: earned')).toBeTruthy();
+    expect(screen.getByLabelText('Rare. Premium: locked. Have the Premium plan')).toBeTruthy();
+    expect(screen.getAllByText('Epic', { includeHiddenElements: true }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('10 workouts: 7 of 10')).toBeTruthy();
-    expect(screen.getByLabelText('Early bird: locked. Start 5 workouts before 8:00')).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        'Bronze medal: locked. Keep your diet, training, water goal and supplements on the same day',
+      ),
+    ).toBeTruthy();
   });
 });
 
@@ -114,7 +124,7 @@ describe('Badge earned sheet', () => {
     useAppearanceStore.setState({ reduceMotion: true });
     const onClose = jest.fn();
     const onSee = jest.fn();
-    const badge = mockGame.badges.find((b) => b.id === 'streak_7')!;
+    const badge = mockGame.badges.find((b) => b.id === 'first_workout')!;
     await renderUI(
       <BadgeUnlockedSheet
         badge={badge}
@@ -125,8 +135,8 @@ describe('Badge earned sheet', () => {
         onSeeBadges={onSee}
       />,
     );
-    expect(screen.getByLabelText('Badge earned: 7-day streak')).toBeTruthy();
-    expect(screen.getByText('+50 XP')).toBeTruthy();
+    expect(screen.getByLabelText('Badge earned: First workout')).toBeTruthy();
+    expect(screen.getByText('+10 XP')).toBeTruthy();
     expect(screen.getByText('Next: 10 workouts', { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText('You also earned 1 more badge.')).toBeTruthy();
     await fireEvent.press(screen.getByText('See badges'));
