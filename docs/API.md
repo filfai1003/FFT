@@ -98,10 +98,10 @@ arguments as the JSON body.
 | `query_data` | | `table`, `columns`, `where` [{column, op, value}], `group_by`, `aggregates` [{fn, column}], `order_by`, `limit` |
 | `get_strength` | | strength score, by muscle group and exercise (`period` 4w/12w/1y/all) |
 | `get_workout_plans` | | the plans in the plan format |
-| `get_diet` | | calorie/macro target, maintenance, water goal, fixed meals |
+| `get_diet` | | calorie/macro target, maintenance, water target in force (`water_goal_ml`, `water_goal_automatic`: worked out from weight, age, sex and the day's workouts, DECISIONS 127), fixed meals |
 | `list_exercises` | | exercise names (`muscle`) |
 | `propose_plans` | yes | `workout_plan` and/or `diet_plan` in the plan format; a changed plan keeps an archived backup |
-| `set_nutrition_goal` | yes | `kcal`, `protein_g`, `carbs_g`, `fat_g` (never < 1500 kcal or > 25 % deficit) |
+| `set_nutrition_goal` | yes | `kcal`, `protein_g`, `carbs_g`, `fat_g` (never < 1500 kcal or > 25 % deficit); `water_ml` (own water target) or `water_automatic: true` |
 | `set_meal_status` | yes | fixed meals: `meal`, `status` done/skipped/adjusted/pending |
 | `create_food`, `update_food`, `delete_food` | yes | the user's own foods (per 100 g, portions) |
 | `add_supplement`, `set_supplement` | yes | the supplement list; taken / not taken on a `day` |

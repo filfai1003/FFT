@@ -29,6 +29,7 @@
     "about": "About {{term}}",
     "gotIt": "Got it",
     "forExample": "For example",
+    "forYou": "Yours today",
     "why": "Why it matters",
     "first": {
       "train": {
@@ -198,6 +199,13 @@
       "body": "On days you log a workout, your calorie target goes up a little, and the extra kcal go to carbs. Rest days keep the normal target.",
       "example": "Target 2,000 kcal. On a workout day it becomes 2,200: 200 kcal more, as 50 g of carbs.",
       "why": "Training uses energy. More carbs on those days help you train and recover."
+    },
+    "water": {
+      "term": "the water target",
+      "title": "Water target",
+      "body": "How much to drink in a day. The app works it out from your weight and age: 35 ml per kg under 30, 33 ml from 30 to 54, 30 ml from 55. It is never below the usual amount for your sex (2 L for men, 1.6 L for women). On days you train it adds 0.5 L per hour of workout, so it goes up once you finish a workout.",
+      "example": "70 kg × 35 ml = 2.45 L. After a 1-hour workout: + 0.5 L, so 2.95 L that day.",
+      "why": "Food also contains water (fruit, vegetables, soup: about a fifth of what you take in), so the target counts only drinks: water, tea, coffee, milk."
     },
     "trackingMode": {
       "term": "tracking modes",
@@ -1253,7 +1261,37 @@
     "setTarget": "Set a target",
     "noTarget": "No target",
     "noTargetDetail": "You see what you eat, without a target or calories left. You can set one any time.",
-    "targetRemoved": "Target removed"
+    "targetRemoved": "Target removed",
+    "water": "Water",
+    "waterMode": "Water target",
+    "waterAuto": "Automatic",
+    "waterOwn": "Set my own",
+    "waterAutoValue": "Automatic · {{l}} L",
+    "waterOwnValue": "Your own · {{l}} L",
+    "waterAutoDetail": "From your weight, age and sex, plus more on days you train. Today: {{l}} L.",
+    "waterOwnDetail": "Automatic would be {{l}} L today.",
+    "waterLower": "Lower water target by 100 ml",
+    "waterRaise": "Raise water target by 100 ml"
+  },
+  "waterTarget": {
+    "base": "Base: {{kg}} kg × {{perKg}} ml = {{l}} L",
+    "baseCounted": "Base: {{kg}} kg × {{perKg}} ml = {{l}} L (you weigh {{weight}} kg; above a BMI of 30 only part of the extra weight counts)",
+    "baseFloor": "Base: {{l}} L, the usual amount for your sex (log your weight for a closer target)",
+    "baseDefault": "Base: {{l}} L (add your weight and sex for a target that fits you)",
+    "floor": "Raised to the minimum for your sex: {{l}} L",
+    "training": "Training today: + {{l}} L",
+    "trainingMinutes": "Training today ({{min}} min): + {{l}} L",
+    "clampedMax": "Kept at the {{l}} L maximum",
+    "clampedMin": "Kept at the {{l}} L minimum",
+    "total": "Your target: {{l}} L",
+    "manual": "You set your own target: {{l}} L. Automatic would be {{auto}} L today.",
+    "missing": "Not known yet: {{list}}. Your weight comes from your check-ins; sex, age and height from Personal info.",
+    "detail": {
+      "weight": "weight",
+      "sex": "sex",
+      "age": "age",
+      "height": "height"
+    }
   },
   "fixed": {
     "planName": "Plan name",

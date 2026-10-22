@@ -299,6 +299,7 @@ export function PersonalInfoScreen() {
                   trainingDayBonusKcal: goal.trainingDayBonusKcal,
                   maintenanceKcal: suggestion.maintenance,
                   waterMl: goal.waterMl,
+                  waterAuto: goal.waterAuto,
                 });
                 goBack(router, '/profile');
               }}

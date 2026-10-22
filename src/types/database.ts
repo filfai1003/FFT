@@ -560,6 +560,7 @@ export type Database = {
           updated_at: string;
           user_id: string;
           valid_from: string;
+          water_auto: boolean | null;
           water_ml: number;
         };
         ComputedFields: never;
@@ -576,6 +577,7 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           valid_from: string;
+          water_auto?: boolean | null;
           water_ml?: number;
         };
         Update: {
@@ -591,6 +593,7 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
           valid_from?: string;
+          water_auto?: boolean | null;
           water_ml?: number;
         };
         Relationships: [];

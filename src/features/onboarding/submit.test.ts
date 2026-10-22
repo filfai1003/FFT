@@ -74,7 +74,7 @@ describe('finishing the onboarding with only the required inputs (DECISIONS 103)
     expect(error).toBeNull();
     const { data: goals } = await mockClient
       .from('nutrition_goals')
-      .select('kcal, protein_g, carbs_g, fat_g, maintenance_kcal, water_ml');
+      .select('kcal, protein_g, carbs_g, fat_g, maintenance_kcal, water_ml, water_auto');
     expect(goals).toEqual([
       {
         kcal: null,
@@ -83,6 +83,7 @@ describe('finishing the onboarding with only the required inputs (DECISIONS 103)
         fat_g: null,
         maintenance_kcal: null,
         water_ml: 2000,
+        water_auto: true,
       },
     ]);
   });

@@ -44,6 +44,7 @@ describe('day strip statuses', () => {
     fatG: 60,
     trainingDayBonusKcal: 0,
     waterMl: 2000,
+    waterAuto: false,
   };
   const days = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'];
   const kcal = new Map([

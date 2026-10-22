@@ -68,7 +68,10 @@ export type Goal = {
   carbsG: number | null;
   fatG: number | null;
   trainingDayBonusKcal: number;
+  /** The user's own water target (ml); used only when `waterAuto` is false. */
   waterMl: number;
+  /** The water target is computed from the user's details (DECISIONS 127, domain/hydration). */
+  waterAuto: boolean;
 };
 
 /** A goal that has a calorie/macro target. */

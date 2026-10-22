@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { goalForDay, type Goal, type Macros, type Meal } from '@/domain/diet';
 import { addDays, deviceTimeZone, localDay } from '@/domain/day';
+import { DEFAULT_WATER_ML, isWaterAutomatic } from '@/domain/hydration';
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { useProfile } from '@/features/profile/api';
 import { getSupabase } from '@/lib/supabase';
@@ -103,6 +104,7 @@ type GoalRow = {
   fat_g: number | null;
   training_day_bonus_kcal: number;
   water_ml: number;
+  water_auto: boolean | null;
   maintenance_kcal: number | null;
 };
 
@@ -120,6 +122,7 @@ function toGoal(r: GoalRow): GoalWithMaintenance {
     fatG: numOrNull(r.fat_g),
     trainingDayBonusKcal: r.training_day_bonus_kcal,
     waterMl: r.water_ml,
+    waterAuto: isWaterAutomatic(r),
     maintenanceKcal: r.maintenance_kcal,
   };
 }
@@ -334,6 +337,7 @@ export type GoalInput = {
   trainingDayBonusKcal: number;
   maintenanceKcal: number | null;
   waterMl: number;
+  waterAuto: boolean;
 };
 
 /** Writes the goal row of a start day (history is kept: one row per start date). */
@@ -354,9 +358,48 @@ export async function saveGoalRow(userId: string, g: GoalInput) {
       training_day_bonus_kcal: target ? g.trainingDayBonusKcal : 0,
       maintenance_kcal: target ? g.maintenanceKcal : null,
       water_ml: g.waterMl,
+      water_auto: g.waterAuto,
       deleted_at: null,
     });
   if (error) throw error;
+}
+
+/**
+ * Changes only the water target from `day` on (automatic, or the user's own number), keeping the
+ * calorie target in force that day as it is. Without any goal row the new row has no calorie
+ * target, which reads the same as no row at all (DECISIONS 104).
+ */
+export async function saveWaterTarget(
+  userId: string,
+  day: string,
+  current: GoalWithMaintenance | null,
+  water: { auto: boolean; ml: number },
+) {
+  await saveGoalRow(userId, {
+    validFrom: day,
+    kcal: current?.kcal ?? null,
+    proteinG: current?.proteinG ?? null,
+    carbsG: current?.carbsG ?? null,
+    fatG: current?.fatG ?? null,
+    trainingDayBonusKcal: current?.trainingDayBonusKcal ?? 0,
+    maintenanceKcal: current?.maintenanceKcal ?? null,
+    waterMl: water.ml,
+    waterAuto: water.auto,
+  });
+}
+
+/** Changes only the water target from a day on (see `saveWaterTarget`). */
+export function useSaveWaterTarget() {
+  const userId = useUserId();
+  const invalidate = useInvalidateDiet();
+  return useMutation({
+    mutationFn: (v: {
+      day: string;
+      current: GoalWithMaintenance | null;
+      water: { auto: boolean; ml: number };
+    }) => saveWaterTarget(userId!, v.day, v.current, v.water),
+    onSuccess: invalidate,
+  });
 }
 
 /** New calorie/macro goal (or "no target") from a day on. */
@@ -387,7 +430,8 @@ export async function removeTarget(
     fatG: null,
     trainingDayBonusKcal: 0,
     maintenanceKcal: null,
-    waterMl: current?.waterMl ?? 2000,
+    waterMl: current?.waterMl ?? DEFAULT_WATER_ML,
+    waterAuto: current?.waterAuto ?? true,
   });
   if (current && current.validFrom === day) return () => saveGoalRow(userId, current);
   const id = await stableId(userId, `goal-${day}`);

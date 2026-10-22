@@ -8,6 +8,8 @@ import { SupplementsWidget, WaterGlass, WaterWidget } from './Widgets';
 const mockSetTaken = jest.fn();
 let mockTaken = new Set<string>();
 let mockWaterMl = 0;
+// The water target (DECISIONS 127): null = still being read (2 L), else the inputs.
+let mockWaterInputs: Record<string, unknown> | null = null;
 let mockWorkout: { kind: 'done' } | { kind: 'next'; name: string } | { kind: 'none' } = {
   kind: 'none',
 };
@@ -41,6 +43,13 @@ jest.mock('@/features/diet/log', () => ({
   useCopyEntries: () => ({ mutateAsync: jest.fn(), isPending: false }),
   useSetLogDeleted: () => ({ mutate: jest.fn() }),
 }));
+jest.mock('@/features/diet/water-target', () => ({
+  useWaterTarget: () => ({
+    target: mockWaterInputs
+      ? jest.requireActual('@/domain/hydration').effectiveWaterTarget(null, mockWaterInputs)
+      : null,
+  }),
+}));
 jest.mock('./day-status', () => ({
   useTodayWorkout: () => ({ plan: null, rotation: null, upNext: undefined, doneToday: [] }),
   useDayStatus: () => ({
@@ -58,6 +67,7 @@ beforeEach(() => {
   mockSetTaken.mockClear();
   mockTaken = new Set(['s1']);
   mockWaterMl = 0;
+  mockWaterInputs = null;
   mockWorkout = { kind: 'none' };
   useAppearanceStore.setState({ reduceMotion: false });
 });
@@ -95,6 +105,26 @@ describe('Home · water glass', () => {
     const level = screen.getByTestId('water-level', { includeHiddenElements: true });
     // Half of the 64 pt glass, plus the wave's amplitude above it.
     expect(level.props.style).toMatchObject({ height: 32 + 3 });
+  });
+
+  it('aims at the day’s target and explains it with the user’s own numbers', async () => {
+    // 70 kg, 25, a man, trained today: 2.45 L + 0.5 L = 2.95 L, about 12 glasses of 250 ml.
+    mockWaterInputs = { weightKg: 70, ageYears: 25, sex: 'male', trainedToday: true };
+    mockWaterMl = 950;
+    await renderUI(<WaterWidget size="large" />);
+    expect(screen.getByLabelText('4 of 12 glasses')).toBeTruthy();
+    expect(screen.getByText('2.0 L to go')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('About the water target'));
+    expect(screen.getByText('Base: 70 kg × 35 ml = 2.45 L')).toBeTruthy();
+    expect(screen.getByText('Training today: + 0.5 L')).toBeTruthy();
+    expect(screen.getByText('Your target: 2.95 L')).toBeTruthy();
+  });
+
+  it('says the target is reached once the day’s amount is drunk', async () => {
+    mockWaterInputs = { sex: 'female' }; // no weight: 1.6 L
+    mockWaterMl = 1600;
+    await renderUI(<WaterWidget size="small" />);
+    expect(screen.getByText('Target reached')).toBeTruthy();
   });
 
   it('an empty glass has no water; reduce motion keeps the wave still', async () => {

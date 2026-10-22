@@ -8,6 +8,7 @@ import {
   type FixedCheck,
   type Meal,
 } from '@/domain/diet';
+import { DEFAULT_WATER_ML } from '@/domain/hydration';
 import { listExercises, MUSCLE_FILTER_HELP, type ExerciseListRow } from '@/domain/muscles';
 import { MIN_DAILY_KCAL, macroKcal, targetProblem } from '@/domain/nutrition';
 import { parseBundle } from '@/domain/plan-import';
@@ -73,6 +74,18 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
   required,
 });
 const number = (description: string) => ({ type: 'number', description });
+
+/** The water fields of a goal change: automatic, the user's own number, or as they were. */
+function nextWater(
+  input: Input,
+  current: { waterMl: number; waterAuto: boolean } | null,
+): { waterMl: number; waterAuto: boolean } {
+  const ml = optNum(input, 'water_ml', 500, 10000);
+  if (input.water_automatic === true)
+    return { waterMl: current?.waterMl ?? DEFAULT_WATER_ML, waterAuto: true };
+  if (ml != null) return { waterMl: Math.round(ml), waterAuto: false };
+  return { waterMl: current?.waterMl ?? DEFAULT_WATER_ML, waterAuto: current?.waterAuto ?? true };
+}
 const text = (description: string) => ({ type: 'string', description });
 const dayField = text('Date as YYYY-MM-DD. Default: today.');
 const mealField = { type: 'string', enum: [...meals], description: 'Which meal of the day.' };
@@ -843,7 +856,14 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
           carbs_g: number('Daily carbs in g.'),
           fat_g: number('Daily fat in g.'),
           training_day_bonus_kcal: number('Extra kcal on training days (optional).'),
-          water_ml: number('Daily water goal in ml (optional).'),
+          water_ml: number(
+            "Daily water target in ml (optional): the user's own number instead of the automatic one.",
+          ),
+          water_automatic: {
+            type: 'boolean',
+            description:
+              "true = the app works out the water target from the user's details (optional).",
+          },
         },
         ['kcal', 'protein_g', 'carbs_g', 'fat_g'],
       ),
@@ -852,7 +872,14 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
         ...line('protein', input.protein_g != null ? `${input.protein_g} g` : null),
         ...line('carbs', input.carbs_g != null ? `${input.carbs_g} g` : null),
         ...line('fat', input.fat_g != null ? `${input.fat_g} g` : null),
-        ...line('water', input.water_ml != null ? `${input.water_ml} ml` : null),
+        ...line(
+          'water',
+          input.water_automatic === true
+            ? 'automatic'
+            : input.water_ml != null
+              ? `${input.water_ml} ml`
+              : null,
+        ),
       ],
       run: async (input) => {
         const kcal = Math.round(num(input, 'kcal', 500, 8000));
@@ -885,7 +912,8 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
             optNum(input, 'training_day_bonus_kcal', 0, 1000) ?? current?.trainingDayBonusKcal ?? 0,
           ),
           maintenanceKcal: maintenance,
-          waterMl: Math.round(optNum(input, 'water_ml', 500, 10000) ?? current?.waterMl ?? 2500),
+          // DECISIONS 127: a number = the user's own target; else it stays as it was.
+          ...nextWater(input, current),
         };
         await saveGoal.mutateAsync(next);
         return {
@@ -908,6 +936,7 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
                   trainingDayBonusKcal: current.trainingDayBonusKcal,
                   maintenanceKcal: current.maintenanceKcal,
                   waterMl: current.waterMl,
+                  waterAuto: current.waterAuto,
                 });
               }
             : undefined,
