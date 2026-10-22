@@ -54,6 +54,7 @@ const exercise = (i: number) => ({
     name: ['Bench press', 'Overhead press', 'Dips', 'Fly', 'Pushdown', 'Raise'][i],
     primaryMuscle: 'chest' as const,
     secondaryMuscles: [],
+    indirectMuscles: [],
     equipment: 'barbell',
     logType: 'weight_reps' as const,
     imagePath: null,
@@ -133,7 +134,8 @@ jest.mock('./exercises', () => ({
         ownerId: null,
         name: 'Bench press',
         primaryMuscle: 'chest',
-        secondaryMuscles: [],
+        secondaryMuscles: ['front_delts', 'triceps'],
+        indirectMuscles: ['forearms'],
         equipment: 'barbell',
         logType: 'weight_reps',
         imagePath: null,
@@ -185,6 +187,23 @@ describe('History', () => {
 });
 
 describe('Exercise detail', () => {
+  it('muscles worked: three levels in words, marks only as decoration (DECISIONS 125)', async () => {
+    mockTrend = [];
+    await renderUI(
+      <ExerciseDetailScreen exerciseId="x0" sessionRoute="/train/history/[sessionId]" />,
+    );
+    expect(screen.getByText('Muscles worked')).toBeTruthy();
+    // Group and equipment under the name.
+    expect(screen.getByText('Chest · Barbell')).toBeTruthy();
+    expect(screen.getByLabelText('Main, one set for each set: Chest')).toBeTruthy();
+    expect(
+      screen.getByLabelText('Helps, half a set for each set: Front shoulders, Triceps'),
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Steadies, a quarter set for each set: Forearms')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('About muscles worked'));
+    expect(screen.getByText(/4 sets of back squat/)).toBeTruthy();
+  });
+
   it('explains actual max and estimated max where they are shown (DECISIONS 124)', async () => {
     mockTrend = [];
     await renderUI(

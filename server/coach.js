@@ -13,6 +13,7 @@ import {
   strengthReport,
 } from '../src/domain/data-tools.ts';
 import { checkAsPlanned } from '../src/domain/diet.ts';
+import { listExercises, MUSCLE_FILTER_HELP } from '../src/domain/muscles.ts';
 import {
   macroKcal,
   MIN_DAILY_KCAL,
@@ -367,13 +368,16 @@ async function applyWorkout(q, userId, workout, result) {
       else if (e.newExercise) {
         const exId = randomUUID();
         await q(
-          `insert into public.exercises (id, owner_id, name, primary_muscle, secondary_muscles, equipment, log_type)
-           values ($1, $2, $3, $4, '{}', $5, $6)`,
+          `insert into public.exercises (id, owner_id, name, primary_muscle, secondary_muscles,
+             indirect_muscles, equipment, log_type)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             exId,
             userId,
             e.name,
             e.newExercise.primaryMuscle,
+            e.newExercise.secondaryMuscles,
+            e.newExercise.indirectMuscles,
             e.newExercise.equipment,
             e.newExercise.logType,
           ],
@@ -573,24 +577,20 @@ export const COACH_TOOLS = [
   {
     name: 'list_exercises',
     description:
-      'The exercise names the app knows (use these exact names in workout plans), optionally for one muscle.',
+      'The exercise names the app knows (use these exact names in workout plans), optionally for one muscle or group. Each has its main muscle, its group and the share of a set each muscle gets (1 main, 0.5 helps, 0.25 steadies).',
     inputSchema: {
       type: 'object',
       properties: {
-        muscle: {
-          type: 'string',
-          description: 'chest, back, shoulders, biceps, triceps, legs, glutes or abs (optional).',
-        },
+        muscle: { type: 'string', description: MUSCLE_FILTER_HELP },
       },
     },
     run: async (q, args) => {
       const muscle = optStr(args, 'muscle', 20)?.toLowerCase();
       const rows = await q(
-        `select name, primary_muscle as muscle, equipment from public.exercises
-         where deleted_at is null and ($1::text is null or primary_muscle = $1) order by name`,
-        [muscle ?? null],
+        `select name, primary_muscle, secondary_muscles, indirect_muscles, equipment
+           from public.exercises where deleted_at is null order by name`,
       );
-      return { exercises: rows };
+      return { exercises: listExercises(rows, muscle) };
     },
   },
   {

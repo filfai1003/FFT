@@ -133,9 +133,16 @@
     "hardSets": {
       "term": "hard sets",
       "title": "Hard sets and the guideline",
-      "body": "A hard set is a real working set, not a light warm-up. The main muscle of an exercise gets 1 set, each helping muscle half a set. Many studies suggest about 10 to 20 hard sets per muscle group a week to build muscle.",
-      "example": "4 sets of bench press = 4 chest sets, plus 2 for shoulders and 2 for triceps.",
+      "body": "A hard set is a real working set, not a light warm-up. The main muscle of an exercise gets 1 set, a muscle that helps half a set and a muscle that steadies a quarter. Many studies suggest about 10 to 20 hard sets per muscle a week to build muscle.",
+      "example": "4 sets of bench press = 4 chest sets, plus 2 for the front shoulders and 2 for the triceps.",
       "why": "It shows which muscles get a lot of work and which get little, so your training stays balanced."
+    },
+    "muscleLevels": {
+      "term": "muscles worked",
+      "title": "Muscles worked",
+      "body": "Every exercise works one main muscle. Other muscles help it, and some only steady the body. For your weekly sets, the main muscle gets 1 set for each set you do, a muscle that helps gets half a set and a muscle that steadies gets a quarter.",
+      "example": "4 sets of back squat = 4 sets for the quads, 2 for the glutes and 2 for the inner thighs, 1 for the hamstrings and 1 for the lower back.",
+      "why": "It shows how much work each muscle really gets, so your training balance is right."
     },
     "plan": {
       "term": "workout plans",
@@ -760,13 +767,22 @@
     },
     "muscle": {
       "chest": "Chest",
-      "back": "Back",
-      "shoulders": "Shoulders",
+      "lats": "Lats",
+      "upper_back": "Upper back",
+      "lower_back": "Lower back",
+      "front_delts": "Front shoulders",
+      "side_delts": "Side shoulders",
+      "rear_delts": "Rear shoulders",
       "biceps": "Biceps",
       "triceps": "Triceps",
-      "legs": "Legs",
+      "forearms": "Forearms",
+      "quads": "Quads",
+      "hamstrings": "Hamstrings",
       "glutes": "Glutes",
-      "abs": "Abs"
+      "adductors": "Adductors (inner thighs)",
+      "calves": "Calves",
+      "abs": "Abs",
+      "obliques": "Obliques (side abs)"
     }
   },
   "picker": {
@@ -794,8 +810,11 @@
       "distance_time": "Distance and time",
       "distance_timeExample": "E.g. run 5 km"
     },
-    "primary": "Primary muscle",
-    "secondary": "Secondary muscles",
+    "primary": "Main muscle",
+    "primaryHint": "The muscle it works most. It also puts the exercise in its group.",
+    "secondary": "Muscles that help (half a set each)",
+    "indirect": "Muscles that steady it (a quarter set each)",
+    "othersHint": "Optional. Pick the main muscle first.",
     "equipment": "Equipment",
     "gear": {
       "barbell": "Barbell",
@@ -829,7 +848,24 @@
     "deleteBody": "It disappears from the library and from plans. Past workouts keep their sets.",
     "deleteConfirm": "Delete exercise",
     "howTo": "How to perform",
-    "avoid": "Avoid"
+    "avoid": "Avoid",
+    "musclesWorked": "Muscles worked",
+    "level": {
+      "primary": "Main",
+      "secondary": "Helps",
+      "indirect": "Steadies"
+    },
+    "levelShare": {
+      "primary": "1 set",
+      "secondary": "½ set",
+      "indirect": "¼ set"
+    },
+    "levelA11y": "{{level}}, {{share}} for each set: {{muscles}}",
+    "levelShareA11y": {
+      "primary": "one set",
+      "secondary": "half a set",
+      "indirect": "a quarter set"
+    }
   },
   "session": {
     "inProgress": "Workout in progress",
@@ -1377,17 +1413,19 @@
       "last": "last week",
       "avg4": "a week on average"
     },
-    "guide": "Guideline: {{min}} to {{max}} hard sets per muscle group a week",
+    "guide": "Guideline: {{min}} to {{max}} hard sets per muscle a week",
     "guideNote": "A common evidence-based range for building muscle. It is a guide, not a rule: what suits you depends on your goal, experience and recovery.",
     "status": {
       "under": "Below",
       "within": "Within",
-      "over": "Above"
+      "over": "Above",
+      "none": "No guideline"
     },
     "statusLong": {
       "under": "below the {{min}} to {{max}} guideline",
       "within": "within the {{min}} to {{max}} guideline",
-      "over": "above the {{min}} to {{max}} guideline"
+      "over": "above the {{min}} to {{max}} guideline",
+      "none": "no guideline, it mostly works as a helper"
     },
     "rowA11y": "{{name}}, {{sets}} {{when}}, {{status}}",
     "sets_one": "{{value}} set",
@@ -1398,22 +1436,17 @@
     "behindTitle": "Most behind",
     "volume": "{{value}} {{unit}} volume",
     "ofTotal": "{{within}} of {{total}}",
-    "cardWithin": "{{within}} of {{total}} muscle groups within the guideline",
-    "cardWithinShort": "muscle groups within {{min}}–{{max}} sets this week",
-    "movement": {
-      "push": "Push",
-      "pull": "Pull",
-      "legs": "Legs",
-      "core": "Core"
-    },
+    "cardWithin": "{{within}} of {{total}} muscles within the guideline",
+    "cardWithinShort": "muscles within {{min}}–{{max}} sets this week",
     "emptyTitle": {
       "this": "No sets this week yet",
       "last": "No sets last week",
       "avg4": "No sets in the 4 weeks before this one"
     },
-    "emptyBody": "Finish a workout and your sets per muscle group show here.",
+    "emptyBody": "Finish a workout and your sets per muscle show here.",
     "howTitle": "How sets are counted",
-    "howBody": "A hard set is a completed working set of a finished workout. Warm-ups (lighter than 60% of your heaviest set of that exercise in the workout) and drop sets are left out. The main muscle of an exercise gets 1 set, each helping muscle half a set. Volume is weight × reps of every completed set, shared the same way."
+    "howBody": "A hard set is a completed working set of a finished workout. Warm-ups (lighter than 60% of your heaviest set of that exercise in the workout) and drop sets are left out. The main muscle of an exercise gets 1 set, each muscle that helps half a set and each muscle that steadies a quarter. Volume is weight × reps of every completed set, shared the same way.",
+    "helperNote": "Muscles marked \"No guideline\" mostly work as helpers in other exercises, so their sets are shown but not judged."
   },
   "checkIn": {
     "title": "Check-in",

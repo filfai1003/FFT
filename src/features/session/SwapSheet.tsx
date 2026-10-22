@@ -103,7 +103,9 @@ export function SwapSheet({
       />
       {!q && currentExercise ? (
         <Text variant="label" muted>
-          {t('session.swapSameMuscle', { muscle: cap(currentExercise.primaryMuscle) })}
+          {t('session.swapSameMuscle', {
+            muscle: t(`library.muscle.${currentExercise.primaryMuscle}`),
+          })}
         </Text>
       ) : null}
       <View>
@@ -112,7 +114,7 @@ export function SwapSheet({
             key={exercise.id}
             title={exercise.name}
             info={[
-              cap(exercise.primaryMuscle),
+              t(`library.muscle.${exercise.primaryMuscle}`),
               cap(exercise.equipment),
               otherEquipment
                 ? t('session.swapOtherEquipment')

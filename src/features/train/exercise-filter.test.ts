@@ -12,6 +12,7 @@ const ex = (
   name,
   primaryMuscle: primary,
   secondaryMuscles: [],
+  indirectMuscles: [],
   equipment: 'barbell',
   logType: 'weight_reps',
   imagePath: null,
@@ -19,10 +20,13 @@ const ex = (
 });
 
 const list = [
-  ex('Barbell bench press', 'chest', { secondaryMuscles: ['shoulders', 'triceps'] }),
+  ex('Barbell bench press', 'chest', { secondaryMuscles: ['front_delts', 'triceps'] }),
   ex('Incline Smith press', 'chest', { ownerId: 'me', equipment: 'machine' }),
-  ex('Pull-up', 'back', { logType: 'reps', equipment: 'bodyweight' }),
+  ex('Pull-up', 'lats', { logType: 'reps', equipment: 'bodyweight' }),
   ex('Dumbbell curl', 'biceps'),
+  ex('Wrist curl', 'forearms'),
+  ex('Side plank', 'obliques'),
+  ex('Face pull', 'rear_delts'),
   ex('Crunch', 'abs'),
   ex('Hip thrust', 'glutes'),
 ];
@@ -34,6 +38,10 @@ describe('strength groups', () => {
     expect(strengthGroup('abs')).toBe('core');
     expect(strengthGroup('glutes')).toBe('legs');
     expect(strengthGroup('chest')).toBe('chest');
+    expect(strengthGroup('forearms')).toBe('arms');
+    expect(strengthGroup('obliques')).toBe('core');
+    expect(strengthGroup('rear_delts')).toBe('shoulders');
+    expect(strengthGroup('lats')).toBe('back');
   });
 });
 
@@ -41,12 +49,20 @@ describe('filterExercises', () => {
   it('filters by group, including mapped muscles', () => {
     expect(filterExercises(list, { query: '', filter: 'arms' }).map((e) => e.name)).toEqual([
       'Dumbbell curl',
+      'Wrist curl',
     ]);
     expect(filterExercises(list, { query: '', filter: 'core' }).map((e) => e.name)).toEqual([
+      'Side plank',
       'Crunch',
     ]);
     expect(filterExercises(list, { query: '', filter: 'legs' }).map((e) => e.name)).toEqual([
       'Hip thrust',
+    ]);
+    expect(filterExercises(list, { query: '', filter: 'shoulders' }).map((e) => e.name)).toEqual([
+      'Face pull',
+    ]);
+    expect(filterExercises(list, { query: '', filter: 'back' }).map((e) => e.name)).toEqual([
+      'Pull-up',
     ]);
   });
 
@@ -68,15 +84,25 @@ describe('filterExercises', () => {
 describe('grouping and labels', () => {
   it('groups by primary muscle in a fixed order, sorted by name', () => {
     const groups = groupByMuscle(list);
-    expect(groups.map((g) => g.muscle)).toEqual(['chest', 'back', 'biceps', 'glutes', 'abs']);
+    expect(groups.map((g) => g.muscle)).toEqual([
+      'chest',
+      'lats',
+      'rear_delts',
+      'biceps',
+      'forearms',
+      'glutes',
+      'abs',
+      'obliques',
+    ]);
     expect(groups[0].items.map((e) => e.name)).toEqual([
       'Barbell bench press',
       'Incline Smith press',
     ]);
   });
 
-  it('meta line lists primary, secondary and equipment', () => {
-    expect(exerciseMeta(list[0])).toBe('Chest · shoulders · triceps · barbell');
+  it('meta line lists primary, secondary and equipment, in words', () => {
+    const name = (m: string) => (m === 'front_delts' ? 'Front shoulders' : m);
+    expect(exerciseMeta(list[0], name)).toBe('Chest · front shoulders · triceps · barbell');
   });
 
   it('record label in the unit of the user', () => {

@@ -17,6 +17,7 @@ const ex = (id: string, logType: Exercise['logType'] = 'weight_reps'): Exercise 
   name: id,
   primaryMuscle: 'chest',
   secondaryMuscles: [],
+  indirectMuscles: [],
   equipment: 'barbell',
   logType,
   imagePath: null,

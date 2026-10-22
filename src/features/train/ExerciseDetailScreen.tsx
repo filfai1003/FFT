@@ -21,12 +21,14 @@ import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
 import { localDay } from '@/domain/day';
+import { strengthGroup } from '@/domain/muscles';
 import { displayWeight, type WeightUnit } from '@/domain/units';
 import { useProfile } from '@/features/profile/api';
 import { formatClock, trimNumber } from '@/features/session/logic';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { ExerciseThumb } from './exercise-image';
 import { HowToCard } from './HowToCard';
+import { MusclesWorked } from './MusclesWorked';
 import { useExerciseTrend, useRecords } from './exercise-stats';
 import { useExerciseSessions } from './history';
 import { useDeleteExercise, useExercises, type Exercise } from './exercises';
@@ -110,12 +112,15 @@ export function ExerciseDetailScreen({
               {exercise.name}
             </Text>
             <Text variant="bodyS" muted style={{ lineHeight: 16 }}>
-              {[exercise.primaryMuscle, ...exercise.secondaryMuscles, exercise.equipment]
-                .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-                .join(' · ')}
+              {[
+                t(`library.filter.${strengthGroup(exercise.primaryMuscle)}`),
+                exercise.equipment.charAt(0).toUpperCase() + exercise.equipment.slice(1),
+              ].join(' · ')}
             </Text>
           </View>
         </View>
+
+        <MusclesWorked exercise={exercise} />
 
         <HowToCard exerciseId={exercise.id} />
 
