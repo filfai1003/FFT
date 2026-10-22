@@ -8,7 +8,6 @@ import { DotBar } from '@/components/ui/DotBar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import type { Area } from '@/components/ui/IconTile';
-import { Sparkline } from '@/components/ui/Sparkline';
 import { StatusChip } from '@/components/ui/StatusChip';
 import { InfoButton, type ExplainTopic } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
@@ -29,8 +28,8 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useToastStore } from '@/lib/toast-store';
 import { goBack } from '@/lib/navigation';
 import { measureKeys, useBodyEntries, useBodyGoal, useDeleteEntry, useSetBodyGoal } from './data';
-import { EmptyLine } from './EmptyLine';
-import { signed, useChangeWords, useLineColors } from './ProgressScreen';
+import { PeriodLine, useChangeWords } from './PeriodLine';
+import { signed } from './ProgressScreen';
 import { bodyProgress, changeArea, useProgressPeriod } from './series';
 
 const fmt = (n: number, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toFixed(d);
@@ -95,54 +94,6 @@ function Stat({
         )}
         {change ? <ChangeChip change={change} /> : null}
       </Card>
-    </View>
-  );
-}
-
-/** A period's line with its dates, or where it will start (one value or none yet). */
-function PeriodLine({
-  values,
-  from,
-  area,
-  height,
-  label,
-  hasValue,
-}: {
-  values: readonly number[];
-  from: string;
-  area: Area;
-  height: number;
-  label: string;
-  hasValue: boolean;
-}) {
-  const { t } = useTranslation();
-  const { lineColor, lineFill } = useLineColors();
-  if (values.length < 2)
-    return (
-      <View style={{ gap: 6 }}>
-        <EmptyLine height={height} start={hasValue} />
-        <Text variant="label" muted>
-          {hasValue ? t('progress.lineNext') : t('progress.addAtCheckIn')}
-        </Text>
-      </View>
-    );
-  return (
-    <View style={{ gap: 6 }}>
-      <Sparkline
-        values={values}
-        height={height}
-        color={lineColor(area)}
-        fill={lineFill(area)}
-        accessibilityLabel={label}
-      />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text variant="label" muted>
-          {shortDateLabel(from).split(' ').slice(1).join(' ')}
-        </Text>
-        <Text variant="label" muted>
-          {t('common.today')}
-        </Text>
-      </View>
     </View>
   );
 }
