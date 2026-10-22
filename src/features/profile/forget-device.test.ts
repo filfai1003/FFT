@@ -29,6 +29,8 @@ describe('"Delete everything" forgets every per-account key on the device (DECIS
       `fft.relay.${U}`,
       `fft.plan.${U}`,
       `fft.consent-server.${U}`,
+      `fft.badges-seen.${U}`,
+      `fft.badges-seen.v2.${U}`,
       `fft.sync.${OTHER}`,
     ])
       await AsyncStorage.setItem(k, 'x');

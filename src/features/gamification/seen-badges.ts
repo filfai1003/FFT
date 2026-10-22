@@ -5,7 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * convenience (DECISIONS 89): badges themselves are computed from the data, so another phone may
  * show the sheet once more, and nothing is lost if this is cleared.
  */
-const key = (userId: string) => `fft.badges-seen.${userId}`;
+// v2 since the new catalogue (DECISIONS 126): the first read after the update is a first run, so
+// the badges a history already earns under the new rules are taken as seen, not celebrated at once.
+const key = (userId: string) => `fft.badges-seen.v2.${userId}`;
+/** This device's keys of an account's seen badges (the current one and the first catalogue's). */
+export const seenBadgesKeysOf = (userId: string) => [key(userId), `fft.badges-seen.${userId}`];
 
 /** Null = never stored on this device (first run: everything earned so far counts as seen). */
 export async function loadSeenBadges(userId: string): Promise<Set<string> | null> {

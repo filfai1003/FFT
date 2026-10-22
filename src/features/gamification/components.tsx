@@ -26,6 +26,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
   const c = 2 * Math.PI * r;
   const locked = !badge.earned && badge.current === 0;
   const inner = size - 16;
+  const earned = badgeColors(colors, badge);
   return (
     <View aria-hidden style={{ width: size, height: size }}>
       <Svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0 }}>
@@ -34,7 +35,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={badge.earned ? colors.streak : locked ? colors.borderControl : colors.streakSoft}
+          stroke={badge.earned ? earned.fill : locked ? colors.borderControl : colors.streakSoft}
           strokeWidth={stroke}
           strokeDasharray={locked ? '4 5' : undefined}
         />
@@ -61,7 +62,7 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
           height: inner,
           borderRadius: inner / 2,
           backgroundColor: badge.earned
-            ? colors.streak
+            ? earned.fill
             : locked
               ? colors.surfaceAlt
               : colors.streakSoft,
@@ -72,13 +73,26 @@ export function BadgeMedal({ badge, size = 60 }: { badge: BadgeState; size?: num
         <Icon
           name={locked ? 'lock' : badge.glyph}
           size={Math.round(inner * 0.48)}
-          color={
-            badge.earned ? colors.surface : locked ? colors.textPlaceholderIcon : colors.streakInk
-          }
+          color={badge.earned ? earned.ink : locked ? colors.textPlaceholderIcon : colors.streakInk}
         />
       </View>
     </View>
   );
+}
+
+type Colors = ReturnType<typeof useTheme>['colors'];
+
+/**
+ * An earned badge's disc and glyph: the streak / achievements colour, or a medal's own tier
+ * colours (DECISIONS 126: medals look different from every other badge).
+ */
+export function badgeColors(
+  colors: Colors,
+  badge: Pick<BadgeState, 'medal'>,
+): { fill: string; ink: string } {
+  return badge.medal
+    ? { fill: colors.medal[badge.medal], ink: colors.medalInk[badge.medal] }
+    : { fill: colors.streak, ink: colors.surface };
 }
 
 /** An earned badge disc without a ring (Profile, public profile). */
@@ -86,10 +100,11 @@ export function BadgeDisc({
   badge,
   size = 48,
 }: {
-  badge: Pick<BadgeState, 'glyph'>;
+  badge: Pick<BadgeState, 'glyph' | 'medal'>;
   size?: number;
 }) {
   const { colors } = useTheme();
+  const { fill, ink } = badgeColors(colors, badge);
   return (
     <View
       aria-hidden
@@ -97,12 +112,12 @@ export function BadgeDisc({
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: colors.streak,
+        backgroundColor: fill,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Icon name={badge.glyph} size={Math.round(size * 0.44)} color={colors.surface} />
+      <Icon name={badge.glyph} size={Math.round(size * 0.44)} color={ink} />
     </View>
   );
 }
@@ -114,6 +129,8 @@ export function useBadgeLabel() {
     const name = badgeName(t, b.id);
     if (b.earned && b.earnedOn)
       return t('game.badgeEarnedA11y', { name, date: dayMonth(b.earnedOn) });
+    // Plan badges have no day: they are earned while the plan lasts.
+    if (b.earned) return t('game.badgeEarnedNoDateA11y', { name });
     if (b.current === 0) return t('game.badgeLockedA11y', { name, how: badgeHow(t, b.id) });
     return t('game.progressA11y', { name, current: b.current, target: b.target });
   };

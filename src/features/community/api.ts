@@ -13,6 +13,7 @@ import {
 } from '@/domain/community';
 import type { Frame, ProfileColour, ReportReason, Title } from '@/domain/community-look';
 import { goalForDay, hasTarget } from '@/domain/diet';
+import { isCommunityBadge } from '@/domain/gamification';
 import { useSessionStore } from '@/features/auth/session-store';
 import { useGoals } from '@/features/diet/log';
 import { useGamification } from '@/features/gamification/data';
@@ -411,7 +412,8 @@ export function useCommunitySubmit() {
     try {
       await rpc<void>('community_submit', {
         p_level: game.level.level,
-        p_badges: game.badges.filter((b) => b.earned).map((b) => b.id),
+        // Never the plan badges: Premium would tell others who pays (DECISIONS 120, 126).
+        p_badges: game.badges.filter((b) => b.earned && isCommunityBadge(b.id)).map((b) => b.id),
         p_scores: scores,
       });
       // The country / class boards (DECISIONS 117): buckets only, sent when they changed.

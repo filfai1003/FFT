@@ -21,7 +21,7 @@ export type WeeklySummaryInput = {
   today: string;
   weekStart: 'mon' | 'sun';
   /** The gamification's input without `today` (loggedDays, workouts, diet days, records…). */
-  activity: Omit<GamificationInput, 'today'>;
+  activity: Omit<GamificationInput, 'today' | 'weekStart'>;
   /** Days of the active plan (planned once a week); null without a plan. */
   planDays: number | null;
   /** Weights logged, oldest first (kg). */
@@ -75,7 +75,7 @@ export function buildWeeklySummary(input: WeeklySummaryInput): WeeklySummary {
     ? { endKg: last.kg, startKg, deltaKg: startKg == null ? null : round1(last.kg - startKg) }
     : null;
 
-  const game: GamificationInput = { ...input.activity, today: asOf };
+  const game: GamificationInput = { ...input.activity, today: asOf, weekStart: input.weekStart };
   const badges = badgeStates(game);
   const records = personalRecords(input.activity.exerciseDays, asOf).filter((r) => inWeek(r.day));
   const bestRecord =

@@ -10,6 +10,7 @@ import { planKeyOf } from '@/lib/plan';
 import { authStorage } from '@/lib/secure-storage';
 import { consentKeyOf } from './consent-server';
 import { removeExportFiles } from './export';
+import { seenBadgesKeysOf } from '@/features/gamification/seen-badges';
 
 /**
  * Everything this device keeps about an account outside its database (DECISIONS 83), forgotten
@@ -29,6 +30,7 @@ export async function forgetAccountOnDevice(
     planKeyOf(userId),
     consentKeyOf(userId),
     connectionsSeenKeyOf(userId),
+    ...seenBadgesKeysOf(userId),
   ]).catch(() => undefined);
   for (const k of relay.secure) await authStorage.removeItem(k).catch(() => undefined);
   await forgetVaultKey(userId).catch(() => undefined);

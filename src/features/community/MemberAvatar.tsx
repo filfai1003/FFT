@@ -184,7 +184,10 @@ export function useLookA11y() {
     const parts = [
       look?.supporter ? t('look.supporterA11y') : null,
       look?.title ? t(`look.titles.${look.title}`) : null,
-      look?.badge ? t('look.badgeA11y', { name: badgeName(t, look.badge) }) : null,
+      // A badge no longer in the catalogue (DECISIONS 126) is not read out.
+      look?.badge && badgeCatalogue.some((b) => b.id === look.badge)
+        ? t('look.badgeA11y', { name: badgeName(t, look.badge) })
+        : null,
     ].filter(Boolean);
     return parts.length ? `, ${parts.join(', ')}` : '';
   };

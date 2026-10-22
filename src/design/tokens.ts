@@ -109,6 +109,31 @@ const light = {
   streakSoft: '#FBEBD3',
   streakInk: '#9A5800',
   dangerSoft: '#FBE4E2',
+  /**
+   * Medal tiers (DECISIONS 126): the earned medal's disc and ring, and its glyph (`medalInk`).
+   * Fixed colours, not area colours: a medal looks the same in every colour choice. Disc >= 3:1
+   * on the card and glyph >= 3:1 on the disc in both themes (tokens.test.ts).
+   */
+  medal: {
+    bronze: '#A0612B',
+    iron: '#5A636E',
+    gold: '#9C7A00',
+    platinum: '#6F8394',
+    emerald: '#0B7A55',
+    diamond: '#2A7FB0',
+    master: '#7A2E9E',
+    champion: '#191917',
+  },
+  medalInk: {
+    bronze: '#FFFFFF',
+    iron: '#FFFFFF',
+    gold: '#FFFFFF',
+    platinum: '#FFFFFF',
+    emerald: '#FFFFFF',
+    diamond: '#FFFFFF',
+    master: '#FFFFFF',
+    champion: '#F2C94C',
+  },
   /** A disabled filled button: neutral fill (never a faded accent) and its label (>= 4.5:1). */
   disabledSurface: '#E9E7E2',
   disabledText: '#5E5A54',
@@ -164,6 +189,26 @@ const dark: Palette = {
   streakSoft: '#2B2114',
   streakInk: '#F0B45C',
   dangerSoft: '#3A1A18',
+  medal: {
+    bronze: '#D08A50',
+    iron: '#A4AEB8',
+    gold: '#E0B83A',
+    platinum: '#B8C6D3',
+    emerald: '#3CC48E',
+    diamond: '#6CB8E8',
+    master: '#C08AE0',
+    champion: '#F2C94C',
+  },
+  medalInk: {
+    bronze: '#1D1C1A',
+    iron: '#1D1C1A',
+    gold: '#1D1C1A',
+    platinum: '#1D1C1A',
+    emerald: '#1D1C1A',
+    diamond: '#1D1C1A',
+    master: '#1D1C1A',
+    champion: '#191917',
+  },
   disabledSurface: '#2A2926',
   disabledText: '#A8A49D',
   overlay: 'rgba(0,0,0,0.6)',

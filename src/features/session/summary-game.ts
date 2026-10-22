@@ -1,5 +1,7 @@
 import { computeGamification, nextStreakTarget } from '@/domain/gamification';
 import type { Activity, GameData } from '@/features/gamification/data';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { usePlanStore } from '@/lib/plan';
 
 /**
  * Streak and badges for the workout summary. The workout just finished is written to the device
@@ -19,6 +21,11 @@ export function gameWithWorkout(
         workouts: [...activity.workouts, workout],
         loggedDays: new Set([...activity.loggedDays, workout.day]),
       };
-  const game = computeGamification({ ...withIt, today });
+  const game = computeGamification({
+    ...withIt,
+    today,
+    weekStart: usePreferencesStore.getState().weekStart,
+    plan: usePlanStore.getState().plan,
+  });
   return { ...game, activity: withIt, nextStreak: nextStreakTarget(game.streak) };
 }

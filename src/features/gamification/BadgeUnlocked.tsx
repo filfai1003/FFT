@@ -14,7 +14,7 @@ import { nextBadges, type BadgeState, type LevelInfo } from '@/domain/gamificati
 import { formatInt } from '@/domain/numbers';
 import { useSessionStore } from '@/features/auth/session-store';
 import { confirm, tick } from '@/lib/haptics';
-import { badgeHow, badgeName } from './components';
+import { badgeColors, badgeHow, badgeName } from './components';
 import { useGamification, useGamificationRefresh } from './data';
 import { useProgressView } from './progress-view';
 import { badgeToCelebrate, loadSeenBadges, saveSeenBadges } from './seen-badges';
@@ -42,6 +42,7 @@ function Medal({ badge }: { badge: BadgeState }) {
       useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [pop, reduceMotion]);
+  const { fill, ink } = badgeColors(colors, badge);
   return (
     <Animated.View
       aria-hidden
@@ -58,11 +59,11 @@ function Medal({ badge }: { badge: BadgeState }) {
           <Path key={d} d={d} stroke={colors.streak} strokeWidth={3} strokeLinecap="round" />
         ))}
         <Circle cx={110} cy={88} r={62} fill={colors.surface} stroke={colors.borderDecorative} />
-        <Circle cx={110} cy={88} r={56} fill="none" stroke={colors.streak} strokeWidth={6} />
-        <Circle cx={110} cy={88} r={46} fill={colors.streak} />
+        <Circle cx={110} cy={88} r={56} fill="none" stroke={fill} strokeWidth={6} />
+        <Circle cx={110} cy={88} r={46} fill={fill} />
       </Svg>
       <View style={{ position: 'absolute', top: 62, left: 84 }}>
-        <Icon name={badge.glyph} size={52} color={colors.surface} />
+        <Icon name={badge.glyph} size={52} color={ink} />
       </View>
     </Animated.View>
   );
@@ -138,19 +139,22 @@ export function BadgeUnlockedSheet({
       </View>
       <Card gap={12} style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View
-            style={{
-              minHeight: 28,
-              paddingHorizontal: 10,
-              borderRadius: 14,
-              backgroundColor: colors.streakSoft,
-              justifyContent: 'center',
-            }}
-          >
-            <Text variant="bodyS" semibold numeric style={{ color: colors.streakInk }}>
-              {t('game.unlocked.xp', { xp: badge.xp })}
-            </Text>
-          </View>
+          {/* Plan badges give no XP (DECISIONS 126): no "+0 XP". */}
+          {badge.xp > 0 ? (
+            <View
+              style={{
+                minHeight: 28,
+                paddingHorizontal: 10,
+                borderRadius: 14,
+                backgroundColor: colors.streakSoft,
+                justifyContent: 'center',
+              }}
+            >
+              <Text variant="bodyS" semibold numeric style={{ color: colors.streakInk }}>
+                {t('game.unlocked.xp', { xp: badge.xp })}
+              </Text>
+            </View>
+          ) : null}
           <Text semibold style={{ flex: 1 }}>
             {t('game.level', { level: level.level })}
           </Text>

@@ -1,22 +1,29 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { deviceTimeZone, localDay, localHour } from '@/domain/day';
+import { addDays, deviceTimeZone, localDay, localHour } from '@/domain/day';
 import { dietDayStatus, goalForDay, targetForDay } from '@/domain/diet';
 import {
   computeGamification,
+  type BadgePlan,
+  type DietDay,
   type ExerciseDay,
   type Gamification,
   type GamificationInput,
   type WorkoutDay,
 } from '@/domain/gamification';
+import type { Muscle } from '@/domain/muscles';
 import type { DailyE1rm } from '@/domain/progress';
+import type { ExerciseMuscles } from '@/domain/volume';
 import { fetchGoals } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
+import { fetchVolumeSets } from '@/features/progress/balance';
+import { usePreferencesStore } from '@/features/settings/preferences-store';
+import { usePlanStore } from '@/lib/plan';
 import { getSupabase } from '@/lib/supabase';
 
 /** Everything the streak, XP, records, badges and community scores are computed from. */
-export type Activity = Omit<GamificationInput, 'today' | 'workouts'> & {
+export type Activity = Omit<GamificationInput, 'today' | 'workouts' | 'weekStart' | 'plan'> & {
   workouts: (WorkoutDay & { planId: string | null })[];
   /** Per exercise and day (main sets): the strength score's input. */
   daily: DailyE1rm[];
@@ -34,27 +41,46 @@ const num = (v: unknown) => (v == null ? null : Number(v));
 /** Reads the device's own database (never the server): a few queries over the user's history. */
 export async function fetchActivity(tz: string): Promise<Activity> {
   const db = getSupabase();
-  const [food, checks, body, sessions, sets, totals, daily, goals, supps, suppLogs, water] =
-    await Promise.all([
-      db.from('food_logs').select('day').is('deleted_at', null),
-      db.from('fixed_meal_checks').select('day, status').is('deleted_at', null),
-      db.from('body_metrics').select('day').is('deleted_at', null),
-      db
-        .from('workout_sessions')
-        .select('id, plan_id, started_at')
-        .eq('status', 'done')
-        .is('deleted_at', null),
-      db.from('session_sets').select('session_id, completed_at').is('deleted_at', null),
-      db.from('daily_nutrition_totals').select('day, kcal'),
-      db
-        .from('exercise_e1rm_daily')
-        .select('exercise_id, day, best_e1rm_kg, best_weight_kg, sets, volume_kg'),
-      fetchGoals(),
-      // Deleted supplements too: a day only asks for the supplements the user had on that day.
-      db.from('supplements').select('id, created_at, deleted_at'),
-      db.from('supplement_logs').select('day, supplement_id').is('deleted_at', null),
-      db.from('water_logs').select('day, ml').is('deleted_at', null),
-    ]);
+  const [
+    food,
+    checks,
+    body,
+    sessions,
+    sets,
+    totals,
+    daily,
+    goals,
+    supps,
+    suppLogs,
+    water,
+    profile,
+    volumeSets,
+    exercises,
+  ] = await Promise.all([
+    db.from('food_logs').select('day').is('deleted_at', null),
+    db.from('fixed_meal_checks').select('day, status').is('deleted_at', null),
+    db.from('body_metrics').select('day').is('deleted_at', null),
+    db
+      .from('workout_sessions')
+      .select('id, plan_id, started_at')
+      .eq('status', 'done')
+      .is('deleted_at', null),
+    db.from('session_sets').select('session_id, completed_at').is('deleted_at', null),
+    db.from('daily_nutrition_totals').select('day, kcal, protein_g, carbs_g, fat_g'),
+    db
+      .from('exercise_e1rm_daily')
+      .select('exercise_id, day, best_e1rm_kg, best_weight_kg, sets, volume_kg'),
+    fetchGoals(),
+    // Deleted supplements too: a day only asks for the supplements the user had on that day.
+    db.from('supplements').select('id, created_at, deleted_at'),
+    db.from('supplement_logs').select('day, supplement_id').is('deleted_at', null),
+    db.from('water_logs').select('day, ml').is('deleted_at', null),
+    db.from('profiles').select('created_at'),
+    // Every completed set ever (balanced weeks, DECISIONS 126): the training balance's reading.
+    fetchVolumeSets('1970-01-01', tz),
+    db.from('exercises').select('id, primary_muscle, secondary_muscles, indirect_muscles'),
+  ]);
+  const today = localDay(new Date(), tz);
 
   // A finished workout counts only with at least one completed set.
   const withSets = new Set(
@@ -72,20 +98,38 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     });
 
   const checkInDays = new Set(rowsOf<{ day: string }>(body as Rows).map((r) => r.day));
-  const loggedDays = new Set<string>(checkInDays);
-  for (const r of rowsOf<{ day: string }>(food as Rows)) loggedDays.add(r.day);
+  // Diet days logged: any food, or a fixed meal done or adjusted.
+  const dietLoggedDays = new Set<string>();
+  for (const r of rowsOf<{ day: string }>(food as Rows)) dietLoggedDays.add(r.day);
   for (const r of rowsOf<{ day: string; status: string }>(checks as Rows))
-    if (r.status === 'done' || r.status === 'adjusted') loggedDays.add(r.day);
+    if (r.status === 'done' || r.status === 'adjusted') dietLoggedDays.add(r.day);
+  const loggedDays = new Set<string>([...checkInDays, ...dietLoggedDays]);
   for (const w of workouts) loggedDays.add(w.day);
 
   // Diet on target: within 10 % of that day's target (training-day bonus included). Days without
-  // a target (DECISIONS 104) never count.
+  // a target (DECISIONS 104) never count. The same days, with the eaten macros and the target,
+  // feed the "diet respected" rule (126).
   const trained = new Set(workouts.map((w) => w.day));
   const dietOnTargetDays = new Set<string>();
-  for (const t of rowsOf<{ day: string; kcal: number | string }>(totals as Rows)) {
+  const dietDays: DietDay[] = [];
+  type TotalsRow = {
+    day: string;
+    kcal: unknown;
+    protein_g: unknown;
+    carbs_g: unknown;
+    fat_g: unknown;
+  };
+  for (const t of rowsOf<TotalsRow>(totals as Rows)) {
     const target = targetForDay(goalForDay(goals, t.day), trained.has(t.day));
+    const eaten = {
+      kcal: Number(t.kcal ?? 0),
+      protein: Number(t.protein_g ?? 0),
+      carbs: Number(t.carbs_g ?? 0),
+      fat: Number(t.fat_g ?? 0),
+    };
+    if (eaten.kcal > 0) dietDays.push({ day: t.day, eaten, target });
     if (!target) continue;
-    if (dietDayStatus(Number(t.kcal), target.kcal) === 'onTarget') dietOnTargetDays.add(t.day);
+    if (dietDayStatus(eaten.kcal, target.kcal) === 'onTarget') dietOnTargetDays.add(t.day);
   }
 
   // Supplements: a day counts when every supplement the user had that day was ticked.
@@ -97,14 +141,21 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     until: r.deleted_at ? localDay(new Date(r.deleted_at), tz) : null,
   }));
   const takenByDay = new Map<string, Set<string>>();
-  for (const r of rowsOf<{ day: string; supplement_id: string }>(suppLogs as Rows))
+  const supplementTicks: string[] = [];
+  for (const r of rowsOf<{ day: string; supplement_id: string }>(suppLogs as Rows)) {
     takenByDay.set(r.day, (takenByDay.get(r.day) ?? new Set()).add(r.supplement_id));
+    supplementTicks.push(r.day);
+  }
   const supplementDays = new Set<string>();
   for (const [day, taken] of takenByDay) {
     const due = supplementList.filter((x) => x.from <= day && (x.until == null || x.until > day));
     if (due.length > 0 && due.every((x) => taken.has(x.id))) supplementDays.add(day);
   }
-  const noSupplements = !supplementList.some((x) => x.until == null);
+  // Days with at least one supplement to take (a day without any counts as met for medals).
+  const supplementDueDays = new Set<string>();
+  for (const x of supplementList)
+    for (let d = x.from; d <= today && (x.until == null || d < x.until); d = addDays(d, 1))
+      supplementDueDays.add(d);
 
   // Water: the day's glasses reach that day's goal.
   const waterByDay = new Map<string, number>();
@@ -115,6 +166,35 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     const goalMl = goalForDay(goals, day)?.waterMl ?? 2000;
     if (goalMl > 0 && ml >= goalMl) waterGoalDays.add(day);
   }
+
+  // First day of use: the account's creation or the first logged row, whichever is earlier.
+  // (A placeholder date of a profile seeded on the device, 1970, is not a creation day.)
+  const starts = [
+    ...rowsOf<{ created_at: string | null }>(profile as Rows)
+      .filter((r) => r.created_at && r.created_at >= '2000')
+      .map((r) => localDay(new Date(r.created_at!), tz)),
+    ...loggedDays,
+    ...supplementTicks,
+    ...waterByDay.keys(),
+  ].sort();
+  const firstDay = starts[0] ?? null;
+
+  type ExerciseRow = {
+    id: string;
+    primary_muscle: Muscle;
+    secondary_muscles: Muscle[] | null;
+    indirect_muscles: Muscle[] | null;
+  };
+  const exerciseMuscles = new Map<string, ExerciseMuscles>(
+    rowsOf<ExerciseRow>(exercises as Rows).map((e): [string, ExerciseMuscles] => [
+      e.id,
+      {
+        primary: e.primary_muscle,
+        secondary: e.secondary_muscles ?? [],
+        indirect: e.indirect_muscles ?? [],
+      },
+    ]),
+  );
 
   type DailyRow = {
     exercise_id: string;
@@ -138,9 +218,15 @@ export async function fetchActivity(tz: string): Promise<Activity> {
     dietOnTargetDays,
     checkInDays,
     exerciseDays,
+    dietLoggedDays,
+    dietDays,
+    supplementTicks,
     supplementDays,
+    supplementDueDays,
     waterGoalDays,
-    noSupplements,
+    firstDay,
+    volumeSets,
+    exerciseMuscles,
     daily: dailyRows.map((r) => ({
       exerciseId: r.exercise_id,
       day: r.day,
@@ -165,8 +251,21 @@ export function useActivity() {
   });
 }
 
-export function inputOf(activity: Activity, today: string): GamificationInput {
-  return { ...activity, today };
+/**
+ * The input of a day: the activity plus the week start (weekly badge rules) and the plan
+ * (Supporter / Premium badges, DECISIONS 126). Both default to what this device knows now.
+ */
+export function inputOf(
+  activity: Activity,
+  today: string,
+  ctx: { weekStart?: 'mon' | 'sun'; plan?: BadgePlan | null } = {},
+): GamificationInput {
+  return {
+    ...activity,
+    today,
+    weekStart: ctx.weekStart ?? usePreferencesStore.getState().weekStart,
+    plan: ctx.plan !== undefined ? ctx.plan : usePlanStore.getState().plan,
+  };
 }
 
 /** Streak, level, badges and records, computed on the device. Null while loading. */
@@ -175,8 +274,13 @@ export type GameData = Gamification & { activity: Activity };
 export function useGamification(): GameData | null {
   const today = useToday();
   const activity = useActivity();
+  const weekStart = usePreferencesStore((s) => s.weekStart);
+  const plan = usePlanStore((s) => s.plan);
   if (!activity.data) return null;
-  return { ...computeGamification(inputOf(activity.data, today)), activity: activity.data };
+  return {
+    ...computeGamification(inputOf(activity.data, today, { weekStart, plan })),
+    activity: activity.data,
+  };
 }
 
 /**

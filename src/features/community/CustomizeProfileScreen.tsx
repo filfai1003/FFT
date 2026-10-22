@@ -50,7 +50,13 @@ function savedOf(me: CommunityMe): Cosmetics {
     colour: isProfileColour(me.profile_colour) ? me.profile_colour : null,
     frame: isFrame(me.frame) ? me.frame : null,
     title: isTitle(me.title) ? me.title : null,
-    badge: me.showcase_badge && me.badges.includes(me.showcase_badge) ? me.showcase_badge : null,
+    // A showcase badge no longer earned, or no longer in the catalogue (DECISIONS 126): none.
+    badge:
+      me.showcase_badge &&
+      me.badges.includes(me.showcase_badge) &&
+      badgeCatalogue.some((b) => b.id === me.showcase_badge)
+        ? me.showcase_badge
+        : null,
   };
 }
 
