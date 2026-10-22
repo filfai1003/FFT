@@ -23,7 +23,14 @@ jest.mock('@/features/progress/balance', () => ({
   useBalance: () => ({
     isPending: false,
     rows: [],
-    behind: { muscle: 'back', movement: 'pull', sets: 4, volumeKg: 0, status: 'under' },
+    behind: {
+      muscle: 'upper_back',
+      group: 'back',
+      sets: 4,
+      volumeKg: 0,
+      guide: { min: 10, max: 20 },
+      status: 'under',
+    },
     within: 0,
     empty: false,
   }),
@@ -87,8 +94,8 @@ describe('Weekly summary (DECISIONS 122)', () => {
     expect(screen.getByText('Bench press')).toBeTruthy();
     expect(screen.getByText('Badges earned')).toBeTruthy();
     expect(screen.getByText('Closest badges')).toBeTruthy();
-    // The training balance's most behind group.
-    expect(screen.getByText(/Back/)).toBeTruthy();
+    // The training balance's most behind muscle.
+    expect(screen.getByText(/^Upper back: 4 sets/)).toBeTruthy();
   });
 
   it('earlier weeks with the arrows; no later week than this one', async () => {

@@ -21,6 +21,7 @@ const day = (id: string, name: string, exercises = 0): PlanDayView => ({
       name: `Exercise ${i + 1}`,
       primaryMuscle: 'chest',
       secondaryMuscles: [],
+      indirectMuscles: [],
       equipment: 'barbell',
       logType: 'weight_reps',
       imagePath: null,

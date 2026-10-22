@@ -110,7 +110,7 @@ The two modes share goals, totals, charts and Today.
 **Screens:** Progress (overview with period 4 WK / 12 WK / 1 YR / ALL), Strength, Muscle group detail, Body weight, Body fat & measurements, Photos, Compare photos, Check-in.
 
 - **Strength score (overall):** average of the % change in Estimated 1RM of every exercise trained in the period (latest value versus the first of the period), **weighted by the number of sets** of that exercise.
-- **Per muscle group:** same formula over the exercises whose *primary muscle* is that group. Groups: Chest, Back, Shoulders, Legs, Arms, Core.
+- **Per muscle group:** same formula over the exercises whose *primary muscle* belongs to that group (17 muscles, DECISIONS 125). Groups: Chest, Back, Shoulders, Legs, Arms, Core.
 - **Per exercise:** change in Estimated 1RM (before → now).
 - **Weight:** chart of weekly averages, 7-day moving average, goal with a dot bar.
 - **Body fat:** percentage, lean and fat mass computed from the weight, saved measurement method (scale, calipers, tape estimate). Measurements: waist, hips, chest, arm, thigh.
@@ -141,7 +141,7 @@ Sign-up (email, Apple, Google), goal, body data, activity and experience, energy
 - `consents` (id, user_id, type `'health_data'|'analytics'`, granted_at, withdrawn_at)
 
 ### Training
-- `exercises` (id, owner_id null = catalogue, name, primary_muscle, secondary_muscles text[], equipment, log_type `'weight_reps'|'reps'|'time'|'distance_time'`, image_path)
+- `exercises` (id, owner_id null = catalogue, name, primary_muscle (one of 17), secondary_muscles text[] (½ set), indirect_muscles text[] (¼ set; DECISIONS 125), equipment, log_type `'weight_reps'|'reps'|'time'|'distance_time'`, image_path)
 - `workout_plans` (id, user_id, name, goal, active, source `'manual'|'ai'|'trainer'`)
 - `plan_days` (id, plan_id, position, name)
 - `plan_exercises` (id, plan_day_id, exercise_id, position, target_sets, target_reps text, rest_s, notes)

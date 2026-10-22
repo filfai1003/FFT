@@ -9,6 +9,7 @@ import {
   type Meal,
 } from '@/domain/diet';
 import { DEFAULT_WATER_ML } from '@/domain/hydration';
+import { listExercises, MUSCLE_FILTER_HELP, type ExerciseListRow } from '@/domain/muscles';
 import { MIN_DAILY_KCAL, macroKcal, targetProblem } from '@/domain/nutrition';
 import { parseBundle } from '@/domain/plan-import';
 import { useSessionStore } from '@/features/auth/session-store';
@@ -364,24 +365,21 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
     {
       name: 'list_exercises',
       description:
-        'The exercise names the app knows (use these exact names in workout plans), optionally for one muscle.',
+        'The exercise names the app knows (use these exact names in workout plans), optionally for one muscle or group. Each has its main muscle, its group and the share of a set each muscle gets (1 main, 0.5 helps, 0.25 steadies).',
       schema: obj({
-        muscle: text('chest, back, shoulders, biceps, triceps, legs, glutes or abs (optional).'),
+        muscle: text(MUSCLE_FILTER_HELP),
       }),
       run: async (input) => {
         const muscle = optStr(input, 'muscle', 20)?.toLowerCase();
-        let q = getSupabase().from('exercises').select('name, primary_muscle, equipment');
+        let q = getSupabase()
+          .from('exercises')
+          .select('name, primary_muscle, secondary_muscles, indirect_muscles, equipment');
         q = q.is('deleted_at', null);
         // The user's own exercises are training data: only the catalogue when it is not shared.
         if (!access.training) q = q.is('owner_id', null);
-        if (muscle) q = q.eq('primary_muscle', muscle);
         const { data, error } = await q.order('name');
         if (error) throw new Error(error.message);
-        return {
-          exercises: (data as { name: string; primary_muscle: string; equipment: string }[]).map(
-            (e) => ({ name: e.name, muscle: e.primary_muscle, equipment: e.equipment }),
-          ),
-        };
+        return { exercises: listExercises(data as ExerciseListRow[], muscle) };
       },
     },
   ];

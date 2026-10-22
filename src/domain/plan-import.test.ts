@@ -78,20 +78,34 @@ describe('parseBundle', () => {
           {
             name: 'd',
             exercises: [
-              { exercise: 'Zercher squat', primary_muscle: 'legs', equipment: 'barbell' },
+              {
+                exercise: 'Zercher squat',
+                primary_muscle: 'quads',
+                secondary_muscles: ['glutes', 'Adductors', 'wings'],
+                indirect_muscles: ['upper_back', 'glutes'],
+                equipment: 'barbell',
+              },
               { exercise: 'Mystery', primary_muscle: 'wings', equipment: 'barbell' },
+              // The eight older muscle names are still understood (DECISIONS 125).
+              { exercise: 'Old row', primary_muscle: 'back', equipment: 'cables' },
             ],
           },
         ],
       },
     });
-    const [a, b] = r.workout!.days[0].exercises;
+    const [a, b, c] = r.workout!.days[0].exercises;
     expect(a.newExercise).toEqual({
-      primaryMuscle: 'legs',
+      primaryMuscle: 'quads',
+      secondaryMuscles: ['glutes', 'adductors'],
+      indirectMuscles: ['upper_back'],
       equipment: 'barbell',
       logType: 'weight_reps',
     });
     expect(b.newExercise).toBeNull();
+    expect(c.newExercise).toMatchObject({
+      primaryMuscle: 'lats',
+      secondaryMuscles: ['upper_back'],
+    });
   });
 });
 

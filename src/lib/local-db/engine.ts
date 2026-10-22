@@ -1,5 +1,13 @@
 import { catalogue } from './catalogue';
-import { columns, foreignKeys, LOCAL_USER_ID, tableNames, withDefaults, type Row } from './schema';
+import {
+  columns,
+  foreignKeys,
+  LOCAL_USER_ID,
+  normalizeExerciseRow,
+  tableNames,
+  withDefaults,
+  type Row,
+} from './schema';
 
 /** Where the on-device database and its files live (IndexedDB on the web, files on devices). */
 export type Kv = {
@@ -135,7 +143,20 @@ export class LocalDb {
     this.tracking = this.tracking || saved?.tracking === true;
     for (const name of tableNames) this.tables[name] = saved?.tables[name] ?? [];
     const purged = await this.purgeDeleted();
-    if (this.seed() || !text || purged > 0) await this.save();
+    const migrated = this.migrateMuscles();
+    if (this.seed() || !text || purged > 0 || migrated) await this.save();
+  }
+
+  /**
+   * The user's own exercises saved with the eight old muscles get the 17 muscles (DECISIONS 125),
+   * mapped like the server's migration. `updated_at` stays: the server maps its copy the same way,
+   * so neither side has to send anything (and a later change on another device still wins).
+   */
+  private migrateMuscles(): boolean {
+    let changed = false;
+    for (const row of this.tables.exercises ?? [])
+      if (row.owner_id != null && normalizeExerciseRow(row)) changed = true;
+    return changed;
   }
 
   /**
@@ -249,6 +270,7 @@ export class LocalDb {
         name: e.name,
         primary_muscle: e.primary,
         secondary_muscles: e.secondary,
+        indirect_muscles: e.indirect,
         equipment: e.equipment,
         log_type: e.log,
         image_path: e.image,
@@ -369,9 +391,15 @@ export class LocalDb {
       );
       if (local) {
         const next = { ...local, ...known };
+        // A row from an app not updated yet (or an old sealed copy) reads in today's muscles.
+        if (table === 'exercises') normalizeExerciseRow(next);
         if (JSON.stringify(next) === JSON.stringify(local)) continue;
         Object.assign(local, next);
-      } else store.push(withDefaults(table, known, this.userId));
+      } else {
+        const row = withDefaults(table, known, this.userId);
+        if (table === 'exercises') normalizeExerciseRow(row);
+        store.push(row);
+      }
       changed = true;
     }
     for (const d of deleted) {

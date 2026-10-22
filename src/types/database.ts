@@ -184,6 +184,7 @@ export type Database = {
           equipment: string;
           id: string;
           image_path: string | null;
+          indirect_muscles: string[];
           log_type: string;
           name: string;
           owner_id: string | null;
@@ -199,6 +200,7 @@ export type Database = {
           equipment: string;
           id?: string;
           image_path?: string | null;
+          indirect_muscles?: string[];
           log_type?: string;
           name: string;
           owner_id?: string | null;
@@ -213,6 +215,7 @@ export type Database = {
           equipment?: string;
           id?: string;
           image_path?: string | null;
+          indirect_muscles?: string[];
           log_type?: string;
           name?: string;
           owner_id?: string | null;
@@ -1273,6 +1276,7 @@ export type Database = {
       clear_my_online_data: { Args: never; Returns: undefined };
       epley_1rm: { Args: { reps: number; weight_kg: number }; Returns: number };
       is_premium: { Args: never; Returns: boolean };
+      muscle_names: { Args: never; Returns: string[] };
       my_sync: { Args: never; Returns: boolean | null };
       set_sync: { Args: { p_enabled: boolean }; Returns: undefined };
       last_sets: {

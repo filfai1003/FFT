@@ -50,7 +50,8 @@ export const ABOUT: Record<string, string> = {
   fixed_meal_checks: 'Each day a fixed meal was done / adjusted / skipped.',
   foods: "Foods: the user's own (owner_id set), generic foods (source ciqual) and products (off).",
   food_servings: 'Serving sizes of foods (label and grams).',
-  exercises: "Exercises: catalogue and the user's own, with muscle, equipment, log type.",
+  exercises:
+    "Exercises: catalogue and the user's own, with equipment, log type and muscles: primary_muscle (1 set per set), secondary_muscles (help, 0.5) and indirect_muscles (steady, 0.25).",
   workout_plans: 'Workout plans (status active / archived).',
   plan_days: 'Days of a workout plan, in order.',
   plan_exercises: 'Exercises of a plan day: target sets, reps, rest.',

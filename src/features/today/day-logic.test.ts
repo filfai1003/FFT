@@ -1,14 +1,6 @@
 import i18n from '@/i18n';
 import { formatInt } from '@/domain/numbers';
-import {
-  dayPart,
-  daySummary,
-  firstName,
-  supplementsCount,
-  waterGoal,
-  weightLine,
-  weightTrend,
-} from './day-logic';
+import { dayPart, daySummary, firstName, supplementsCount, waterGoal } from './day-logic';
 
 describe('greeting', () => {
   it('morning 5–11, afternoon 12–17, evening from 18 through the night', () => {
@@ -28,92 +20,6 @@ describe('greeting', () => {
     expect(firstName('filippo')).toBe('Filippo');
     expect(firstName('')).toBeNull();
     expect(firstName(null)).toBeNull();
-  });
-});
-
-describe('weight change this week vs the goal', () => {
-  const today = '2026-10-18';
-  const down = [
-    { day: '2026-10-18', weightKg: 80 },
-    { day: '2026-10-11', weightKg: 80.4 },
-  ];
-  const up = [
-    { day: '2026-10-18', weightKg: 80.4 },
-    { day: '2026-10-11', weightKg: 80 },
-  ];
-
-  it('losing fat: down is toward the goal, up is not (neutral, never red)', () => {
-    expect(weightTrend(down, today, 'lose_fat')).toMatchObject({
-      direction: 'down',
-      towardGoal: true,
-    });
-    expect(weightTrend(up, today, 'lose_fat')).toMatchObject({
-      direction: 'up',
-      towardGoal: false,
-    });
-  });
-
-  it('building muscle: up is toward the goal', () => {
-    expect(weightTrend(up, today, 'build_muscle')?.towardGoal).toBe(true);
-    expect(weightTrend(down, today, 'build_muscle')?.towardGoal).toBe(false);
-  });
-
-  it('maintaining: within 0.3 kg is on goal, more is not', () => {
-    const small = [
-      { day: '2026-10-18', weightKg: 80.2 },
-      { day: '2026-10-10', weightKg: 80 },
-    ];
-    expect(weightTrend(small, today, 'maintain')?.towardGoal).toBe(true);
-    expect(weightTrend(up, today, 'maintain')?.towardGoal).toBe(false);
-  });
-
-  it('a tiny change is flat (not toward losing or gaining)', () => {
-    const flat = [
-      { day: '2026-10-18', weightKg: 80.02 },
-      { day: '2026-10-10', weightKg: 80 },
-    ];
-    expect(weightTrend(flat, today, 'lose_fat')).toMatchObject({
-      direction: 'flat',
-      towardGoal: false,
-    });
-    expect(weightTrend(flat, today, 'maintain')?.towardGoal).toBe(true);
-  });
-
-  it('needs a weigh-in at least a week before; skips days without a weight', () => {
-    expect(weightTrend([{ day: '2026-10-18', weightKg: 80 }], today, 'lose_fat')).toBeNull();
-    expect(
-      weightTrend(
-        [
-          { day: '2026-10-18', weightKg: 80 },
-          { day: '2026-10-15', weightKg: 79 },
-        ],
-        today,
-        'lose_fat',
-      ),
-    ).toBeNull();
-    const trend = weightTrend(
-      [
-        { day: '2026-10-18', weightKg: null },
-        { day: '2026-10-17', weightKg: 80 },
-        { day: '2026-10-10', weightKg: 81 },
-      ],
-      today,
-      'lose_fat',
-    );
-    expect(trend?.change).toBeCloseTo(-1);
-  });
-
-  it('the line covers the last four weeks, oldest first', () => {
-    const line = weightLine(
-      [
-        { day: '2026-10-18', weightKg: 80 },
-        { day: '2026-10-01', weightKg: 81 },
-        { day: '2026-09-21', weightKg: 82 },
-        { day: '2026-09-20', weightKg: 83 },
-      ],
-      today,
-    );
-    expect(line).toEqual([82, 81, 80]);
   });
 });
 

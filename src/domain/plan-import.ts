@@ -1,4 +1,4 @@
-import { muscles, type Muscle } from './muscles';
+import { muscles, normalizeMuscles, type Muscle } from './muscles';
 import { macroKcal, MIN_DAILY_KCAL } from './nutrition';
 import { MAX_DROPS, type DropPlan } from './dropset';
 
@@ -35,7 +35,14 @@ export type ImportedExercise = {
   drops: DropPlan | null;
   notes: string;
   /** Only needed for exercises that are not in the catalogue (they are created). */
-  newExercise: { primaryMuscle: Muscle; equipment: string; logType: ImportLogType } | null;
+  newExercise: {
+    primaryMuscle: Muscle;
+    /** Muscles that help (half a set each) and that only steady (a quarter), DECISIONS 125. */
+    secondaryMuscles: Muscle[];
+    indirectMuscles: Muscle[];
+    equipment: string;
+    logType: ImportLogType;
+  } | null;
 };
 export type ImportedDay = { name: string; exercises: ImportedExercise[] };
 export type ImportedWorkout = {
@@ -122,14 +129,22 @@ function parseExercise(raw: unknown, where: string, warnings: string[]): Importe
   if (!isObject(raw)) return null;
   const name = text(raw.exercise ?? raw.name, 120);
   if (!name) return null;
-  const primary = text(raw.primary_muscle, 20).toLowerCase();
+  const names = (v: unknown) =>
+    Array.isArray(v) ? v.slice(0, 17).map((m) => text(m, 20).toLowerCase()) : [];
+  // The 17 muscles; the eight older names (back, shoulders, legs…) are still understood.
+  const found = normalizeMuscles({
+    primary: text(raw.primary_muscle, 20).toLowerCase(),
+    secondary: names(raw.secondary_muscles),
+    indirect: names(raw.indirect_muscles),
+  });
   const equipment = text(raw.equipment, 20).toLowerCase();
   const logType = text(raw.log_type, 20).toLowerCase();
   const newExercise =
-    (muscles as readonly string[]).includes(primary) &&
-    (equipmentList as readonly string[]).includes(equipment)
+    found && (equipmentList as readonly string[]).includes(equipment)
       ? {
-          primaryMuscle: primary as Muscle,
+          primaryMuscle: found.primary,
+          secondaryMuscles: [...found.secondary],
+          indirectMuscles: [...found.indirect],
           equipment,
           logType: ((logTypes as readonly string[]).includes(logType)
             ? logType
@@ -339,7 +354,7 @@ export function formatRules(exercises: readonly string[]): string {
     `- workout_plan.days: 1 to 14 days, each with 1 to 20 exercises. sets 1-20, reps a string like "8-12", rest_s 0-1800 seconds.`,
     '- "superset_with_next": true on an exercise links it with the NEXT exercise of the same day: a superset, done in turn with one rest after the round (A1 + A2; several in a row make a bigger one). Leave it out for normal exercises; the last exercise of a day cannot have it.',
     '- "drops" (optional) makes a drop set: {"on": "last" (after the last set) or "every" (after every set), "reps": ["10", "12"] (target reps of each drop, 1 to 4 drops)}. The weight of each drop is chosen during the workout. Leave it out for normal exercises; only for weight x reps exercises.',
-    '- "exercise" must be one of the names in the EXERCISE LIST below, spelled exactly. If you really need another exercise, add "primary_muscle" (chest, back, shoulders, biceps, triceps, legs, glutes, abs), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type" (weight_reps, reps, time, distance_time) to that exercise.',
+    `- "exercise" must be one of the names in the EXERCISE LIST below, spelled exactly. If you really need another exercise, add "primary_muscle" (one of: ${muscles.join(', ')}), optionally "secondary_muscles" and "indirect_muscles" (lists of the same names: muscles that help, and muscles that only steady), "equipment" (barbell, dumbbells, machine, cables, bodyweight, bands) and optionally "log_type" (weight_reps, reps, time, distance_time) to that exercise.`,
     '- diet_plan.mode: "fixed_meals" when the user wants set meals to follow (meals are required), or "tracking" when they only want a daily calorie and macro target and will log what they eat themselves (then leave "meals" out).',
     '- diet_plan.daily.kcal must be at least 1500 and the macros must match it (4 kcal per g of protein and carbs, 9 per g of fat). Never go below 1500 kcal or more than 25% under the maintenance calories.',
     '- diet_plan.meals (fixed_meals only): 1 to 8 meals that add up to the daily target. "main": true for bigger meals. "description" says what to eat. "workout_after" is the name of the meal after which the workout happens (optional).',

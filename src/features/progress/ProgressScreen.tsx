@@ -37,6 +37,7 @@ import { BalanceCard } from './BalanceScreens';
 import { ThisWeekCard } from '@/features/weekly/ThisWeekCard';
 import { poses, useBodyEntries, useBodyGoal, usePhotos } from './data';
 import { EmptyLine } from './EmptyLine';
+import { useChangeWords, useLineColors } from './PeriodLine';
 import { PhotoTile } from './PhotoTile';
 import { bodyProgress, changeArea, useProgressPeriod } from './series';
 import { useStrength } from './strength';
@@ -50,27 +51,7 @@ export function useChangeInk() {
   return (n: number) => (n > 0 ? colors.successText : n < 0 ? colors.danger : colors.text);
 }
 
-/** A change said in words for screen readers ("down 1.8 kg"): the arrow of a chip is not read. */
-export function useChangeWords() {
-  const { t } = useTranslation();
-  return (delta: number, text: string) =>
-    delta < 0
-      ? t('progress.downBy', { value: text })
-      : delta > 0
-        ? t('progress.upBy', { value: text })
-        : t('progress.steady');
-}
-
-/** A line takes the colour of its change: green better, red worse, black otherwise. */
-export function useLineColors() {
-  const { colors } = useTheme();
-  return {
-    lineColor: (a: Area) =>
-      a === 'better' ? colors.success : a === 'worse' ? colors.danger : colors.text,
-    lineFill: (a: Area) =>
-      a === 'better' ? colors.successSoft : a === 'worse' ? colors.dangerSoft : colors.surfaceAlt,
-  };
-}
+export { useChangeWords, useLineColors } from './PeriodLine';
 
 /** Fill missing chart values so every column shows at least one dot. */
 export const chartValues = (v: (number | null)[]) => {

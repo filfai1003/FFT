@@ -4,14 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
 import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
 import { ChipGroup } from '@/components/ui/ChipGroup';
 import { ExerciseImage } from '@/components/ui/ExerciseImage';
 import { FormHeader } from '@/components/ui/FormHeader';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { Input } from '@/components/ui/Input';
 import { OptionCard } from '@/components/ui/OptionCard';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
+import { musclesByGroup, strengthGroups } from '@/domain/muscles';
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { newId } from '@/lib/uuid';
 import { useExerciseImageUri } from './exercise-image';
@@ -37,6 +40,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
   const [logType, setLogType] = useState<LogType>(editing?.logType ?? 'weight_reps');
   const [primary, setPrimary] = useState<Muscle | null>(editing?.primaryMuscle ?? null);
   const [secondary, setSecondary] = useState<Muscle[]>(editing?.secondaryMuscles ?? []);
+  const [indirect, setIndirect] = useState<Muscle[]>(editing?.indirectMuscles ?? []);
   const [gear, setGear] = useState<string | null>(editing?.equipment ?? null);
   const [newImageUri, setNewImageUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +70,7 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
         name,
         primaryMuscle: primary!,
         secondaryMuscles: secondary,
+        indirectMuscles: indirect,
         equipment: gear!,
         logType,
         imagePath,
@@ -123,24 +128,77 @@ export function ExerciseForm({ exerciseId }: { exerciseId?: string }) {
           ))}
         </View>
 
-        <ChipGroup
-          legend={t('exerciseForm.primary')}
-          value={primary}
-          onChange={(m) => {
-            setPrimary(m);
-            setSecondary((s) => s.filter((x) => x !== m));
-          }}
-          options={muscles.map((m) => ({ value: m, label: t(`library.muscle.${m}`) }))}
-        />
-        <ChipGroup
-          multiple
-          legend={t('exerciseForm.secondary')}
-          value={secondary}
-          onChange={setSecondary}
-          options={muscles
-            .filter((m) => m !== primary)
-            .map((m) => ({ value: m, label: t(`library.muscle.${m}`) }))}
-        />
+        {/* The main muscle, grouped like the library filters (DECISIONS 125). */}
+        <View
+          style={{ gap: 10 }}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('exerciseForm.primary')}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text variant="label" muted>
+              {t('exerciseForm.primary')}
+            </Text>
+            <InfoButton topic="muscleLevels" />
+          </View>
+          <Text variant="bodyS" muted>
+            {t('exerciseForm.primaryHint')}
+          </Text>
+          {strengthGroups.map((g) => (
+            <View key={g} style={{ gap: 6 }}>
+              <Text variant="label" muted>
+                {t(`library.filter.${g}`)}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {musclesByGroup[g].map((m) => (
+                  <Chip
+                    key={m}
+                    role="radio"
+                    label={t(`library.muscle.${m}`)}
+                    selected={primary === m}
+                    onPress={() => {
+                      setPrimary(m);
+                      setSecondary((s) => s.filter((x) => x !== m));
+                      setIndirect((s) => s.filter((x) => x !== m));
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+        {primary == null ? (
+          <Text variant="bodyS" muted>
+            {t('exerciseForm.othersHint')}
+          </Text>
+        ) : (
+          <>
+            {/* A muscle sits at one level: picking it in one row takes it out of the other. */}
+            <ChipGroup
+              multiple
+              legend={t('exerciseForm.secondary')}
+              value={secondary}
+              onChange={(next) => {
+                setSecondary(next);
+                setIndirect((s) => s.filter((x) => !next.includes(x)));
+              }}
+              options={muscles
+                .filter((m) => m !== primary)
+                .map((m) => ({ value: m, label: t(`library.muscle.${m}`) }))}
+            />
+            <ChipGroup
+              multiple
+              legend={t('exerciseForm.indirect')}
+              value={indirect}
+              onChange={(next) => {
+                setIndirect(next);
+                setSecondary((s) => s.filter((x) => !next.includes(x)));
+              }}
+              options={muscles
+                .filter((m) => m !== primary)
+                .map((m) => ({ value: m, label: t(`library.muscle.${m}`) }))}
+            />
+          </>
+        )}
         <ChipGroup
           legend={t('exerciseForm.equipment')}
           value={gear}

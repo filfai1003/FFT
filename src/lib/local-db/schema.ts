@@ -1,3 +1,4 @@
+import { isMuscle, normalizeMuscles } from '@/domain/muscles';
 import { newId } from '../uuid';
 
 /** The user of the account-less offline mode (accounts use their own id). */
@@ -69,6 +70,7 @@ export const columns: Record<string, string[]> = {
     'name',
     'primary_muscle',
     'secondary_muscles',
+    'indirect_muscles',
     'equipment',
     'log_type',
     'image_path',
@@ -342,7 +344,7 @@ const userOwned = new Set([
 ]);
 
 const specific: Record<string, () => Row> = {
-  exercises: () => ({ secondary_muscles: [], log_type: 'weight_reps' }),
+  exercises: () => ({ secondary_muscles: [], indirect_muscles: [], log_type: 'weight_reps' }),
   workout_plans: () => ({ status: 'draft', source: 'manual' }),
   workout_sessions: () => ({
     out_of_order: false,
@@ -492,9 +494,42 @@ export type DbError = { message: string; code: string; details?: string };
 
 const num = (v: unknown) => (v == null ? null : Number(v));
 
+/**
+ * An exercise row's muscles in today's vocabulary (DECISIONS 125), in place: what the server's
+ * trigger `normalize_exercise_muscles` does. Old rows on the device, rows from an app not updated
+ * yet (sync, relay) and old exports all read the same way. True when something changed.
+ */
+export function normalizeExerciseRow(row: Row): boolean {
+  const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+  const m = normalizeMuscles({
+    primary: row.primary_muscle as string | null,
+    secondary: list(row.secondary_muscles),
+    indirect: list(row.indirect_muscles),
+  });
+  if (!m) return false;
+  const next = {
+    primary_muscle: m.primary,
+    secondary_muscles: [...m.secondary],
+    indirect_muscles: [...m.indirect],
+  };
+  if (
+    row.primary_muscle === next.primary_muscle &&
+    JSON.stringify(row.secondary_muscles) === JSON.stringify(next.secondary_muscles) &&
+    JSON.stringify(row.indirect_muscles) === JSON.stringify(next.indirect_muscles)
+  )
+    return false;
+  Object.assign(row, next);
+  return true;
+}
+
 /** Constraints of the database that the app relies on (checks and unique indexes). */
 export function checkRow(table: string, row: Row): DbError | null {
   const fail = (message: string): DbError => ({ message, code: '23514' });
+  if (table === 'exercises') {
+    normalizeExerciseRow(row);
+    if (!isMuscle(row.primary_muscle))
+      return fail('new row violates check constraint "exercises_primary_muscle_check"');
+  }
   if (table === 'nutrition_goals') {
     const kcal = num(row.kcal);
     // kcal null = "no target" from valid_from on (DECISIONS 104): all four null, nothing derived.

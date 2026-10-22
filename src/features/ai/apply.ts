@@ -54,7 +54,8 @@ async function resolveExercises(workout: ImportedWorkout, userId: string) {
           owner_id: userId,
           name: e.name,
           primary_muscle: e.newExercise.primaryMuscle,
-          secondary_muscles: [],
+          secondary_muscles: e.newExercise.secondaryMuscles,
+          indirect_muscles: e.newExercise.indirectMuscles,
           equipment: e.newExercise.equipment,
           log_type: e.newExercise.logType,
         });

@@ -17,7 +17,7 @@ const rows = [
   row('squat', '2026-09-02', 150),
   row('squat', '2026-10-11', 140),
 ];
-const muscle: Record<string, Muscle> = { bench: 'chest', squat: 'legs' };
+const muscle: Record<string, Muscle> = { bench: 'chest', squat: 'quads' };
 const from = '2026-08-30';
 const to = '2026-10-14';
 const changes = exerciseChanges(rows, from, to);
