@@ -12,19 +12,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
 import { CheckFill } from '@/components/ui/CheckFill';
-import { Icon, type IconName } from '@/components/ui/Icon';
-import { IconTile, type Area } from '@/components/ui/IconTile';
-import { Sparkline } from '@/components/ui/Sparkline';
-import { StatusChip } from '@/components/ui/StatusChip';
+import { Icon } from '@/components/ui/Icon';
 import { IconButton } from '@/components/ui/IconButton';
 import { useTabBarHeight } from '@/components/ui/TabBar';
 import { Text } from '@/components/ui/Text';
 import { useTheme } from '@/design/use-theme';
-import { addDays, compactDateLabel, shortDateLabel } from '@/domain/day';
+import { addDays } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
@@ -40,7 +36,6 @@ import {
   useWater,
 } from '@/features/diet/log';
 import { useProfile } from '@/features/profile/api';
-import { useBodyEntries } from '@/features/progress/data';
 import { MarkDoneSheet } from '@/features/train/MarkDoneSheet';
 import { useHomeDay } from './home-day';
 import { useStartWorkout } from '@/features/session/start';
@@ -53,98 +48,19 @@ import { useToastStore } from '@/lib/toast-store';
 import { useSetTaken, useSupplementLogs, useSupplements } from '@/features/supplements/data';
 import { SupplementsSheet } from '@/features/supplements/SupplementsSheet';
 import { StreakWidget } from '@/features/gamification/StreakWidget';
-import { supplementsCount, waterGoal, weightLine, weightTrend } from './day-logic';
+import { BigNumber, Frame } from './CardFrame';
+import { supplementsCount, waterGoal } from './day-logic';
 import { useTodayWorkout } from './day-status';
 import type { WidgetId, WidgetSize } from './layout-store';
+import { WeightWidget } from './WeightCard';
+
+export { WeightWidget };
 
 type Props = { size: WidgetSize };
 
-/** Header tile size: the same on every Today card, full or half width. */
-const HEAD_TILE = 32;
-
-/**
- * A widget box: a full-width card, or a small tile that shares the row with another. Every card
- * has the same header: its area's icon tile and its title (colour code, DECISIONS 107).
- */
 /** The box a CheckFill sits in: its own size, the check centred on the fill. */
 const checkBox = (size: number) =>
   ({ width: size, height: size, alignItems: 'center', justifyContent: 'center' }) as const;
-
-function Frame({
-  size,
-  label,
-  icon,
-  area,
-  right,
-  onPress,
-  pressLabel,
-  children,
-}: {
-  size: WidgetSize;
-  label: string;
-  icon: IconName;
-  area: Area;
-  right?: ReactNode;
-  onPress?: () => void;
-  /** What a tap on the card does, when it differs from its title ("Log your weight"). */
-  pressLabel?: string;
-  children: ReactNode;
-}) {
-  const title = (
-    <Text semibold accessibilityRole="header" numberOfLines={2} style={{ flex: 1 }}>
-      {label}
-    </Text>
-  );
-  // Half width: the title goes under the tile, so a long word ("Supplements") never splits.
-  const head =
-    size === 'large' ? (
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 36 }}>
-        <IconTile icon={icon} area={area} size={HEAD_TILE} />
-        {title}
-        {right}
-      </View>
-    ) : (
-      <View style={{ gap: 8 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            minHeight: 36,
-          }}
-        >
-          <IconTile icon={icon} area={area} size={HEAD_TILE} />
-          {right}
-        </View>
-        {title}
-      </View>
-    );
-  if (size === 'large') {
-    return (
-      <Card
-        gap={12}
-        style={{ flexGrow: 1, padding: 16 }}
-        onPress={onPress}
-        accessibilityLabel={onPress ? (pressLabel ?? label) : undefined}
-      >
-        {head}
-        {children}
-      </Card>
-    );
-  }
-  return (
-    <Card
-      size="small"
-      gap={12}
-      style={{ flexGrow: 1, padding: 16 }}
-      onPress={onPress}
-      accessibilityLabel={onPress ? (pressLabel ?? label) : undefined}
-    >
-      {head}
-      {children}
-    </Card>
-  );
-}
 
 /** Calories left, macros and the next meal, together. */
 export function NutritionWidget({ size }: Props) {
@@ -929,149 +845,6 @@ export function WaterWidget({ size }: Props) {
           </Text>
         </Pressable>
       </View>
-    </Frame>
-  );
-}
-
-/**
- * The number of a small Home card, in the calories' style (big, semibold, tabular digits), with
- * its unit beside it in muted text.
- */
-function BigNumber({ value, unit }: { value: string; unit?: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
-      <Text variant="displayM" numeric>
-        {value}
-      </Text>
-      {unit ? (
-        <Text variant="bodyS" muted>
-          {unit}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-/** Where the weight line will be: a flat row of dashes in the empty-track colour. */
-function PendingLine({ height }: { height: number }) {
-  const { colors } = useTheme();
-  return (
-    <View aria-hidden testID="pending-line" style={{ height, justifyContent: 'center' }}>
-      {/* Dashes drawn as small bars: a one-sided dashed border is solid on Android. */}
-      <View style={{ flexDirection: 'row', gap: 5 }}>
-        {Array.from({ length: 12 }, (_, i) => (
-          <View
-            key={i}
-            style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.dotOff }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** The latest weight, a line of the last weeks and how it moved this week. Opens Body. */
-export function WeightWidget({ size }: Props) {
-  const { t } = useTranslation();
-  const { colors } = useTheme();
-  const router = useRouter();
-  // The day Home shows: today, or a past day picked on the row of days (DECISIONS 123).
-  const { day: today, past } = useHomeDay();
-  // On a past day: the weight as it was then (nothing logged after it counts).
-  const entries = (useBodyEntries().data ?? []).filter((e) => e.day <= today);
-  const latest = entries.find((e) => e.weightKg != null);
-  // Toward the profile goal is green; otherwise neutral (arrow and words say the direction).
-  const trend = weightTrend(entries, today, useProfile().data?.goal);
-  const line = weightLine(entries, today);
-  const small = size === 'small';
-  const kg = trend ? Math.abs(trend.change).toFixed(1) : '';
-
-  return (
-    <Frame
-      size={size}
-      label={t('today.weight')}
-      icon="scale"
-      area="neutral"
-      // The check-in logs today: a past day without a weight has nothing to open.
-      onPress={
-        latest
-          ? () => router.push('/progress/body')
-          : past
-            ? undefined
-            : () => router.push('/check-in')
-      }
-      pressLabel={latest ? undefined : t('today.logWeight')}
-    >
-      {latest?.weightKg != null ? (
-        <>
-          <BigNumber value={latest.weightKg.toFixed(1)} unit={t('today.kgUnit')} />
-          {line.length > 1 ? (
-            <Sparkline
-              values={line}
-              height={small ? 40 : 48}
-              color={colors.text}
-              accessibilityLabel={t('today.weightLineA11y')}
-            />
-          ) : (
-            // One weigh-in: the line starts with the second one.
-            <PendingLine height={small ? 40 : 48} />
-          )}
-          {trend ? (
-            <View
-              accessible
-              accessibilityLabel={
-                trend.direction === 'flat'
-                  ? t('today.weightSteady')
-                  : t(trend.direction === 'down' ? 'today.weightDownA11y' : 'today.weightUpA11y', {
-                      kg,
-                    })
-              }
-            >
-              <StatusChip
-                area={trend.towardGoal ? 'better' : 'neutral'}
-                icon={
-                  trend.direction === 'down'
-                    ? 'arrowDown'
-                    : trend.direction === 'up'
-                      ? 'arrowUp'
-                      : undefined
-                }
-                label={
-                  trend.direction === 'flat'
-                    ? t('today.weightSteady')
-                    : t('today.weightChange', { kg })
-                }
-              />
-            </View>
-          ) : (
-            // Half width: "Logged Sun 18", wrapping rather than cut.
-            <Text variant={small ? 'label' : 'bodyS'} muted>
-              {t('today.weightOn', {
-                day: small ? compactDateLabel(latest.day) : shortDateLabel(latest.day),
-              })}
-            </Text>
-          )}
-        </>
-      ) : (
-        // No weight yet: the same card unfilled (a dash for the number, a flat dashed line where
-        // the trend goes) and the way to log it; the whole card opens the check-in.
-        <>
-          <BigNumber value={'–'} unit={t('today.kgUnit')} />
-          <PendingLine height={small ? 40 : 48} />
-          {past ? (
-            <Text variant="bodyS" muted>
-              {t('today.past.noWeight')}
-            </Text>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Icon name="plus" size={18} color={colors.text} />
-              <Text variant="bodyS" semibold>
-                {t('today.logWeight')}
-              </Text>
-            </View>
-          )}
-        </>
-      )}
     </Frame>
   );
 }

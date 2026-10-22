@@ -23,7 +23,10 @@ jest.mock('@/features/profile/use-today', () => ({ useToday: () => '2026-10-18' 
 jest.mock('@/features/profile/api', () => ({
   useProfile: () => ({ data: { goal: 'maintain', timezone: 'UTC' } }),
 }));
-jest.mock('@/features/progress/data', () => ({ useBodyEntries: () => ({ data: [] }) }));
+jest.mock('@/features/progress/data', () => ({
+  useBodyEntries: () => ({ data: [] }),
+  useBodyGoal: () => ({ data: null }),
+}));
 jest.mock('@/features/supplements/data', () => ({
   useSupplements: () => ({ data: [] }),
   useSupplementLogs: () => ({ data: new Map() }),

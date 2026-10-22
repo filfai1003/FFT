@@ -76,7 +76,10 @@ jest.mock('@/features/ai/use-coach-ready', () => ({
   useAskCoach: () => jest.fn(),
 }));
 let mockBody: { day: string; weightKg: number | null }[] = [];
-jest.mock('@/features/progress/data', () => ({ useBodyEntries: () => ({ data: mockBody }) }));
+jest.mock('@/features/progress/data', () => ({
+  useBodyEntries: () => ({ data: mockBody }),
+  useBodyGoal: () => ({ data: null }),
+}));
 
 beforeEach(() => {
   mockPush.mockClear();
