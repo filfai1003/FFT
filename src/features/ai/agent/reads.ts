@@ -3,6 +3,7 @@ import { rankFoods, type Food } from '@/features/diet/foods';
 import { dietDayStatus, goalForDay, hasTarget, targetForDay } from '@/domain/diet';
 import { fetchFixedPlan } from '@/features/diet/fixed';
 import { fetchGoals } from '@/features/diet/log';
+import { waterTargetForDay } from '@/features/diet/water-target';
 import { fetchPlans } from '@/features/train/plans';
 import { getSupabase } from '@/lib/supabase';
 import { exportDiet, exportWorkoutPlan } from '../context';
@@ -91,6 +92,8 @@ export async function readDay(ctx: ReadContext, day: string) {
   ]);
   const goal = goalForDay(goals, day);
   const target = targetForDay(goal, sessions.length > 0);
+  // The water target in force (DECISIONS 127): automatic from the user's details, or their own.
+  const waterTarget = await waterTargetForDay(day, { tz: ctx.timeZone, goals });
   const totals = totalsRows[0] ? macroText(totalsRows[0]) : macroText({});
   const checkByMeal = new Map(checks.map((c) => [String(c.fixed_meal_id), c]));
   return {
@@ -102,7 +105,7 @@ export async function readDay(ctx: ReadContext, day: string) {
           protein_g: target.protein,
           carbs_g: target.carbs,
           fat_g: target.fat,
-          water_ml: goal?.waterMl ?? null,
+          water_ml: waterTarget.ml,
         }
       : NO_TARGET,
     eaten: totals,
@@ -124,6 +127,8 @@ export async function readDay(ctx: ReadContext, day: string) {
       };
     }),
     water_ml: water.reduce((a, w) => a + n(w.ml), 0),
+    water_target_ml: waterTarget.ml,
+    water_target_automatic: waterTarget.automatic,
     workouts: sessions.map((s) => ({ name: s.name, minutes: s.minutes })),
   };
 }
@@ -320,10 +325,32 @@ type Shared = { diet: boolean; training: boolean };
 
 /** One day (readDay) with only what the user shared: diet fields and/or workouts. */
 export function dayShared(day: Awaited<ReturnType<typeof readDay>>, access: Shared) {
-  const { target, eaten, diet_status, food_log, fixed_meals, water_ml, workouts, ...rest } = day;
+  const {
+    target,
+    eaten,
+    diet_status,
+    food_log,
+    fixed_meals,
+    water_ml,
+    water_target_ml,
+    water_target_automatic,
+    workouts,
+    ...rest
+  } = day;
   return {
     ...rest,
-    ...(access.diet ? { target, eaten, diet_status, food_log, fixed_meals, water_ml } : {}),
+    ...(access.diet
+      ? {
+          target,
+          eaten,
+          diet_status,
+          food_log,
+          fixed_meals,
+          water_ml,
+          water_target_ml,
+          water_target_automatic,
+        }
+      : {}),
     ...(access.training ? { workouts } : {}),
   };
 }
@@ -372,12 +399,15 @@ export async function readPlans() {
 export async function readDiet(ctx: ReadContext) {
   const [goals, plan] = await Promise.all([fetchGoals(), fetchFixedPlan()]);
   const goal = goalForDay(goals, ctx.today);
+  const water = await waterTargetForDay(ctx.today, { tz: ctx.timeZone, goals });
   return {
     ...(hasTarget(goal) ? {} : { calorie_target: NO_TARGET }),
     diet_plan: exportDiet(goal, plan, ctx.dietMode),
     maintenance_kcal: goal?.maintenanceKcal ?? null,
     training_day_bonus_kcal: goal?.trainingDayBonusKcal ?? 0,
-    water_goal_ml: goal?.waterMl ?? null,
+    // Today's water target in force (DECISIONS 127), and whether the app works it out.
+    water_goal_ml: water.ml,
+    water_goal_automatic: water.automatic,
   };
 }
 

@@ -127,9 +127,11 @@ describe('supplements count', () => {
 });
 
 describe('water goal', () => {
-  it('about 2 litres in whole glasses', () => {
+  it('the day’s target in whole glasses (2 litres until it is read)', () => {
     expect(waterGoal(250)).toEqual({ glasses: 8, ml: 2000 });
-    expect(waterGoal(330)).toEqual({ glasses: 6, ml: 1980 });
+    expect(waterGoal(330)).toEqual({ glasses: 6, ml: 2000 });
+    expect(waterGoal(250, 2950)).toEqual({ glasses: 12, ml: 2950 });
+    expect(waterGoal(500, 200)).toEqual({ glasses: 1, ml: 200 });
   });
 });
 

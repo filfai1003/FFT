@@ -11,6 +11,8 @@ import {
   fetchTrainedDays,
   fetchWater,
 } from '@/features/diet/log';
+import { waterTargetForDay } from '@/features/diet/water-target';
+import { waterGoal } from '@/features/today/day-logic';
 import { fetchBodyEntries } from '@/features/progress/data';
 import { nextSetTarget, quickSetValues, type ActiveSession } from '@/features/session/logic';
 import { useSessionStore as useWorkoutStore } from '@/features/session/store';
@@ -106,6 +108,8 @@ export async function buildSnapshot(
     fetchTrainedDays(today, today, tz),
     fetchWater(today),
   ]);
+  // The day's water target, the same as Today's card (DECISIONS 127).
+  const waterTarget = await waterTargetForDay(today, { tz, goals });
   const goal = goalForDay(goals, today);
   const target = goal ? targetForDay(goal, trained.has(today)) : null;
 
@@ -234,7 +238,7 @@ export async function buildSnapshot(
     water: {
       ml: water.totalMl,
       glassMl,
-      goalGlasses: Math.max(1, Math.round((goal?.waterMl || 2000) / glassMl)),
+      goalGlasses: waterGoal(glassMl, waterTarget.ml).glasses,
     },
     workout,
     weight: {

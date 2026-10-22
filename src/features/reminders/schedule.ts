@@ -14,6 +14,7 @@ import type { WeightUnit } from '@/domain/units';
 import { buildWeeklySummary, type WeeklySummary } from '@/domain/weekly-summary';
 import { fetchFixedChecks, fetchFixedPlan } from '@/features/diet/fixed';
 import { fetchDayLog, fetchGoals, fetchWater } from '@/features/diet/log';
+import { waterTargetForDay } from '@/features/diet/water-target';
 import { fetchActivity } from '@/features/gamification/data';
 import { fetchBodyEntries } from '@/features/progress/data';
 import { useSessionStore as useWorkoutStore } from '@/features/session/store';
@@ -229,6 +230,8 @@ export async function plannerInput(
 
   const goal = goalForDay(goals, today);
   const dietTracked = hasTarget(goal);
+  // The day's water target, the same as Today's card (DECISIONS 127).
+  const waterTarget = await waterTargetForDay(today, { tz, goals });
   const summary = buildWeeklySummary({
     day: today,
     today,
@@ -266,7 +269,7 @@ export async function plannerInput(
       water: {
         time: clockMinutes(times.water),
         todayMl: water.totalMl,
-        goalMl: goal?.waterMl || 2000,
+        goalMl: waterTarget.ml,
       },
       weekly: { time: clockMinutes(times.weekly), weekStart: prefs.weekStart },
     },

@@ -75,6 +75,7 @@ describe('goals', () => {
     fatG: 75,
     trainingDayBonusKcal: 200,
     waterMl: 2000,
+    waterAuto: false,
   });
 
   it('picks the goal in force on that day', () => {
@@ -109,6 +110,7 @@ describe('goals', () => {
       fatG: null,
       trainingDayBonusKcal: 0,
       waterMl: 2500,
+      waterAuto: false,
     };
     const goals = [goal('2026-09-01', 2350), none];
     expect(hasTarget(goalForDay(goals, '2026-09-15'))).toBe(true);

@@ -17,6 +17,7 @@ import { DotBar } from '@/components/ui/DotBar';
 import { Gauge } from '@/components/ui/Gauge';
 import { CheckFill } from '@/components/ui/CheckFill';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { InfoButton } from '@/components/ui/InfoButton';
 import { IconTile, type Area } from '@/components/ui/IconTile';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { StatusChip } from '@/components/ui/StatusChip';
@@ -28,6 +29,9 @@ import { addDays, compactDateLabel, shortDateLabel } from '@/domain/day';
 import { formatInt } from '@/domain/numbers';
 import { checkAsPlanned, mealForHour, nextFixedMeal } from '@/domain/diet';
 import { useDayTarget } from '@/features/diet/day-hooks';
+import { useWaterTarget } from '@/features/diet/water-target';
+import { waterTargetLines } from '@/features/diet/water-text';
+import type { Translate } from '@/i18n';
 import { calorieStatus } from '@/features/diet/summary';
 import { useFixedChecks, useFixedPlan, useSetCheck } from '@/features/diet/fixed';
 import {
@@ -826,8 +830,13 @@ export function WaterWidget({ size }: Props) {
   const water = useWater(today);
   const addWater = useAddWater();
   const removeWater = useRemoveWater();
-  const goalGlasses = waterGoal(glassMl).glasses;
+  // The day's target (DECISIONS 127): automatic from the user's details or their own number.
+  const { target } = useWaterTarget(today);
+  const tr = t as unknown as Translate;
+  const goal = waterGoal(glassMl, target?.ml);
+  const goalGlasses = goal.glasses;
   const totalMl = water.data?.totalMl ?? 0;
+  const leftMl = Math.max(0, goal.ml - totalMl);
   const glasses = Math.round(totalMl / glassMl);
   const small = size === 'small';
 
@@ -871,20 +880,21 @@ export function WaterWidget({ size }: Props) {
       <View style={{ flexDirection: 'row', gap: small ? 10 : 12, alignItems: 'flex-end' }}>
         {/* A glass that fills to today's amount (water: sky blue). */}
         <WaterGlass
-          share={glasses / goalGlasses}
+          share={totalMl / goal.ml}
           width={small ? 40 : 44}
           height={small ? 64 : 72}
           accessibilityLabel={t('today.waterBar', { n: glasses, total: goalGlasses })}
         />
         <View style={{ flex: 1 }}>
           <BigNumber value={(totalMl / 1000).toFixed(1)} unit={t('today.litresUnit')} />
-          <Text variant="label" muted numeric>
-            {glasses >= goalGlasses
-              ? t('today.waterGoalReached')
-              : t('today.waterToGo', {
-                  l: (((goalGlasses - glasses) * glassMl) / 1000).toFixed(1),
-                })}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text variant="label" muted numeric style={{ flexShrink: 1 }}>
+              {leftMl <= 0
+                ? t('today.waterGoalReached')
+                : t('today.waterToGo', { l: (leftMl / 1000).toFixed(1) })}
+            </Text>
+            <InfoButton topic="water" yours={target ? waterTargetLines(tr, target) : undefined} />
+          </View>
         </View>
       </View>
       <View aria-hidden style={{ flexDirection: 'row', gap: 3 }}>

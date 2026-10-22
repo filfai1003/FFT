@@ -1,6 +1,7 @@
 import { deviceTimeZone, localDay } from '@/domain/day';
 import { getSupabase } from '@/lib/supabase';
 import { stableId } from '@/lib/uuid';
+import { DEFAULT_WATER_ML } from '@/domain/hydration';
 import {
   bodyDetails,
   POLICY_VERSION,
@@ -9,8 +10,6 @@ import {
   toIsoDate,
   type OnboardingDraft,
 } from './logic';
-
-export const DEFAULT_WATER_ML = 2000;
 
 /**
  * Writes everything the onboarding collected. Every row has a client UUID and the profile is
@@ -68,7 +67,9 @@ export async function completeOnboarding(
       carbs_g: withTarget ? t.macros.carbsG : null,
       fat_g: withTarget ? t.macros.fatG : null,
       maintenance_kcal: withTarget ? t.maintenance : null,
+      // The water target starts automatic (DECISIONS 127): from the details given here.
       water_ml: DEFAULT_WATER_ML,
+      water_auto: true,
     }),
   );
 

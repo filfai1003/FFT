@@ -41,15 +41,19 @@ import { starterMeals } from '@/features/onboarding/logic';
 import { useFixedPlan, useSaveFixedPlan } from './fixed';
 import { MacroSplitCard } from './MacroSplitCard';
 import { MealPlanEditor, type MealDraft } from './MealPlanEditor';
-import { useGoals, useRemoveTarget, useSaveGoal } from './log';
-import { DEFAULT_WATER_ML } from '@/features/onboarding/submit';
+import { useGoals, useRemoveTarget, useSaveGoal, useSaveWaterTarget } from './log';
+import { useWaterTarget } from './water-target';
+import { litres, waterTargetLines } from './water-text';
+import { DEFAULT_WATER_ML, WATER_MANUAL_MAX_ML, WATER_MANUAL_MIN_ML } from '@/domain/hydration';
+import type { Translate } from '@/i18n';
 import { useToastStore } from '@/lib/toast-store';
 import { newId } from '@/lib/uuid';
 import { goBack } from '@/lib/navigation';
 
 /**
  * Diet goals & tracking mode: how you track, a calorie target or none (DECISIONS 104), daily
- * calories, macro split, training-day bonus.
+ * calories, macro split, training-day bonus, and the water target: automatic (from the user's
+ * details, DECISIONS 127) or their own number.
  */
 export function DietGoalsScreen() {
   const { t } = useTranslation();
@@ -67,6 +71,8 @@ export function DietGoalsScreen() {
   const showToast = useToastStore((s) => s.show);
   const saveProfile = useUpdateProfile();
   const savePlan = useSaveFixedPlan();
+  const saveWater = useSaveWaterTarget();
+  const { target: water } = useWaterTarget(today);
 
   const [mode, setMode] = useState<'tracking' | 'fixed_meals' | null>(null);
   const [targetDraft, setTargetDraft] = useState<'set' | 'none' | null>(null);
@@ -84,6 +90,8 @@ export function DietGoalsScreen() {
   const [workoutDraft, setWorkoutDraft] = useState<string | null | undefined>(undefined);
   const [planName, setPlanName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [waterModeDraft, setWaterMode] = useState<'auto' | 'own' | null>(null);
+  const [waterMlDraft, setWaterMl] = useState<number | null>(null);
 
   if (goals.isPending || !profile.data)
     return (
@@ -172,6 +180,18 @@ export function DietGoalsScreen() {
   const workoutAfter = meals.some((m) => m.id === requestedWorkout) ? requestedWorkout : null;
   const mealsValid = chosenMode !== 'fixed_meals' || meals.every((m) => m.name.trim() !== '');
 
+  // Water (DECISIONS 127): automatic unless the user set their own number.
+  const autoWaterMl = water?.auto.ml ?? DEFAULT_WATER_ML;
+  const savedWaterAuto = goal?.waterAuto ?? true;
+  const waterMode = waterModeDraft ?? (savedWaterAuto ? 'auto' : 'own');
+  // Their own number starts from the last one they chose, else from the automatic target.
+  const ownWaterMl =
+    waterMlDraft ?? (goal && !goal.waterAuto ? goal.waterMl : Math.round(autoWaterMl / 100) * 100);
+  const waterAuto = waterMode === 'auto';
+  const waterMlToSave = waterAuto ? (goal?.waterMl ?? DEFAULT_WATER_ML) : ownWaterMl;
+  const waterChanged = waterAuto !== savedWaterAuto || (!waterAuto && ownWaterMl !== goal?.waterMl);
+  const tr = t as unknown as Translate;
+
   const changeKcal = (next: number) => {
     // Keep the percentages (grams follow the new target).
     setPercents(percents);
@@ -216,9 +236,19 @@ export function DietGoalsScreen() {
           fatG: macros.fatG,
           trainingDayBonusKcal: bonusOn ? TRAINING_DAY_BONUS_KCAL : 0,
           maintenanceKcal: maintenance,
-          waterMl: goal?.waterMl ?? DEFAULT_WATER_ML,
+          waterMl: waterMlToSave,
+          waterAuto,
         });
-      else if (current) undo = await removeTarget.mutateAsync({ day: today, current: goal });
+      else {
+        if (current) undo = await removeTarget.mutateAsync({ day: today, current: goal });
+        // Without a calorie target the water target still has its row (kcal null).
+        if (waterChanged)
+          await saveWater.mutateAsync({
+            day: today,
+            current: current ? null : goal,
+            water: { auto: waterAuto, ml: waterMlToSave },
+          });
+      }
       if (chosenMode === 'fixed_meals') {
         await savePlan.mutateAsync({
           planId: plan.data?.id ?? null,
@@ -406,6 +436,64 @@ export function DietGoalsScreen() {
           </>
         ) : null}
 
+        <Card gap={12}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <IconTile icon="droplet" area="water" />
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text semibold style={{ flexShrink: 1 }}>
+                {t('goals.waterMode')}
+              </Text>
+              <InfoButton
+                topic="water"
+                yours={
+                  water
+                    ? waterTargetLines(tr, {
+                        ...water,
+                        automatic: waterAuto,
+                        ml: waterAuto ? water.auto.ml : ownWaterMl,
+                      })
+                    : undefined
+                }
+              />
+            </View>
+            <Text variant="bodyS" muted numeric>
+              {waterAuto
+                ? t('goals.waterAutoValue', { l: litres(autoWaterMl) })
+                : t('goals.waterOwnValue', { l: litres(ownWaterMl) })}
+            </Text>
+          </View>
+          <Segmented
+            accessibilityLabel={t('goals.waterMode')}
+            value={waterMode}
+            onChange={setWaterMode}
+            options={[
+              { value: 'auto', label: t('goals.waterAuto') },
+              { value: 'own', label: t('goals.waterOwn') },
+            ]}
+          />
+          {waterAuto ? (
+            <Text variant="bodyS" muted>
+              {t('goals.waterAutoDetail', { l: litres(autoWaterMl) })}
+            </Text>
+          ) : (
+            <>
+              <Stepper
+                value={ownWaterMl}
+                min={WATER_MANUAL_MIN_ML}
+                max={WATER_MANUAL_MAX_ML}
+                step={100}
+                onChange={setWaterMl}
+                format={(v) => `${litres(v)} ${t('today.litresUnit')}`}
+                decreaseLabel={t('goals.waterLower')}
+                increaseLabel={t('goals.waterRaise')}
+              />
+              <Text variant="bodyS" muted>
+                {t('goals.waterOwnDetail', { l: litres(autoWaterMl) })}
+              </Text>
+            </>
+          )}
+        </Card>
+
         {chosenMode === 'fixed_meals' ? (
           <View style={{ gap: 12 }}>
             <Text variant="bodyS" muted>
@@ -446,7 +534,8 @@ export function DietGoalsScreen() {
             !mealsValid ||
             saveGoal.isPending ||
             saveProfile.isPending ||
-            savePlan.isPending
+            savePlan.isPending ||
+            saveWater.isPending
           }
           onPress={submit}
         />

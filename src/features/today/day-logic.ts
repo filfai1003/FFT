@@ -73,10 +73,13 @@ export function supplementsCount(
   return { taken: list.filter((s) => taken?.has(s.id)).length, total: list.length };
 }
 
-/** The daily water goal: about 2 litres in whole glasses. */
-export function waterGoal(glassMl: number): { glasses: number; ml: number } {
-  const glasses = Math.max(1, Math.round(2000 / glassMl));
-  return { glasses, ml: glasses * glassMl };
+/**
+ * The day's water target in whole glasses (at least one): the target itself comes from
+ * `useWaterTarget` / `waterTargetForDay` (DECISIONS 127; 2 L while it is being read).
+ */
+export function waterGoal(glassMl: number, targetMl = 2000): { glasses: number; ml: number } {
+  const glasses = Math.max(1, Math.round(targetMl / glassMl));
+  return { glasses, ml: targetMl };
 }
 
 export type WorkoutToday = { kind: 'done' } | { kind: 'next'; name: string } | { kind: 'none' };

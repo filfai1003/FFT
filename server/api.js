@@ -5,7 +5,8 @@
 // phones with the next sync. Docs: docs/API.md.
 import { createHash } from 'node:crypto';
 import { boundedMap } from './bounded-map.js';
-import { COACH_TOOLS, ToolError } from './coach.js';
+import { COACH_TOOLS, ToolError, waterTargetOn } from './coach.js';
+import { isWaterAutomatic } from '../src/domain/hydration.ts';
 import {
   CATEGORY_LABELS,
   categoryOf,
@@ -85,14 +86,25 @@ const rangeProps = {
   to: { type: 'string', description: 'Last day, YYYY-MM-DD (default: today)' },
 };
 
+/**
+ * The water target of a day (DECISIONS 127) from the goal row in force (null: none): the number
+ * in force (automatic from the user's details, or their own) and whether it is automatic.
+ */
+async function waterOf(q, userId, d, tz, goalRow) {
+  const goal = goalRow
+    ? { waterMl: Number(goalRow.water_ml), waterAuto: isWaterAutomatic(goalRow) }
+    : null;
+  return waterTargetOn(q, userId, d, tz, goal);
+}
+
 /** The day summary: what was eaten, the goal, water, body, workouts. */
-async function daySummary(q, d, tz) {
+async function daySummary(q, d, tz, userId) {
   const [totals, goal, water, logs, body, workouts] = await Promise.all([
     q(`select kcal, protein_g, carbs_g, fat_g from public.daily_nutrition_totals where day = $1`, [
       d,
     ]),
     q(
-      `select kcal, protein_g, carbs_g, fat_g, water_ml, training_day_bonus_kcal from public.nutrition_goals
+      `select kcal, protein_g, carbs_g, fat_g, water_ml, water_auto, training_day_bonus_kcal from public.nutrition_goals
        where deleted_at is null and valid_from <= $1 order by valid_from desc, created_at desc limit 1`,
       [d],
     ),
@@ -113,6 +125,7 @@ async function daySummary(q, d, tz) {
     workoutsBetween(q, d, d, tz),
   ]);
   const t = totals[0] ?? { kcal: 0, protein_g: 0, carbs_g: 0, fat_g: 0 };
+  const waterTarget = await waterOf(q, userId, d, tz, goal[0]);
   return {
     day: d,
     eaten: {
@@ -121,12 +134,24 @@ async function daySummary(q, d, tz) {
       carbs_g: Number(t.carbs_g),
       fat_g: Number(t.fat_g),
     },
-    goal: goal[0] ? nutritionGoal(numbers(goal[0])) : null,
+    goal: goal[0] ? nutritionGoal(withWater(numbers(goal[0]), waterTarget)) : null,
     water_ml: water[0].ml,
+    // The day's water target in force (DECISIONS 127), also without a goal row.
+    water_target_ml: waterTarget.ml,
     food_logs: logs.map(numbers),
     body: body[0] ? numbers(body[0]) : null,
     workouts,
   };
+}
+
+/**
+ * A goal row's water fields as the API shows them (DECISIONS 127): water_ml is the target in
+ * force (automatic or the user's own, so clients that read it get the right number) and
+ * water_automatic says which; the raw water_auto column is not shown.
+ */
+function withWater(g, water) {
+  const { water_auto: _raw, ...rest } = g;
+  return { ...rest, water_ml: water.ml, water_automatic: water.automatic };
 }
 
 /**
@@ -136,7 +161,7 @@ async function daySummary(q, d, tz) {
 function nutritionGoal(g) {
   if (g.kcal != null) return g;
   const out = { target: 'no target set' };
-  for (const k of ['valid_from', 'water_ml']) if (g[k] != null) out[k] = g[k];
+  for (const k of ['valid_from', 'water_ml', 'water_automatic']) if (g[k] != null) out[k] = g[k];
   return out;
 }
 
@@ -208,9 +233,9 @@ export const TOOLS = [
   {
     name: 'get_day',
     description:
-      'Summary of one day: calories and macros eaten against the goal, every food logged, water, body measurements and workouts.',
+      'Summary of one day: calories and macros eaten against the goal, every food logged, water drunk and the water target (water_target_ml), body measurements and workouts.',
     inputSchema: { type: 'object', properties: { day: dateProp('The day') } },
-    run: (q, args, ctx) => daySummary(q, day(args.day, 'day', ctx.today), ctx.tz),
+    run: (q, args, ctx) => daySummary(q, day(args.day, 'day', ctx.today), ctx.tz, ctx.userId),
   },
   {
     name: 'list_food_logs',
@@ -470,14 +495,15 @@ export const TOOLS = [
   {
     name: 'get_goals',
     description:
-      'The current nutrition goal (calories, macros, water; "no target set" when the user chose to have no calorie target) and body goal (target weight or body fat).',
+      'The current nutrition goal (calories, macros, water: water_ml is the daily water target in force, water_automatic true when the app works it out from the user details; "no target set" when the user chose to have no calorie target) and body goal (target weight or body fat).',
     inputSchema: { type: 'object', properties: {} },
     run: async (q, _args, ctx) => {
       const [nutrition] = await q(
-        `select valid_from, kcal, protein_g, carbs_g, fat_g, water_ml, training_day_bonus_kcal from public.nutrition_goals
+        `select valid_from, kcal, protein_g, carbs_g, fat_g, water_ml, water_auto, training_day_bonus_kcal from public.nutrition_goals
          where deleted_at is null and valid_from <= $1 order by valid_from desc, created_at desc limit 1`,
         [ctx.today],
       );
+      const water = await waterOf(q, ctx.userId, ctx.today, ctx.tz, nutrition);
       const [body] = await q(
         `select valid_from, start_weight_kg, target_weight_kg, target_body_fat_pct from public.body_goals
          where deleted_at is null and valid_from <= $1 order by valid_from desc, created_at desc limit 1`,
@@ -491,7 +517,10 @@ export const TOOLS = [
               ),
             )
           : null;
-      return { nutrition: nutritionGoal(clean(nutrition) ?? {}), body: clean(body) };
+      return {
+        nutrition: nutritionGoal(withWater(clean(nutrition) ?? {}, water)),
+        body: clean(body),
+      };
     },
   },
   // The rest of the in-app coach's tools (same names, descriptions and rules): server/coach.js.
@@ -581,7 +610,7 @@ function leaveOut(name, result, missing) {
   const out = { ...result };
   if (name === 'get_day') {
     if (missing.includes('diet'))
-      for (const k of ['eaten', 'goal', 'water_ml', 'food_logs']) delete out[k];
+      for (const k of ['eaten', 'goal', 'water_ml', 'water_target_ml', 'food_logs']) delete out[k];
     if (missing.includes('body')) delete out.body;
     if (missing.includes('training')) delete out.workouts;
   } else if (name === 'get_goals') {

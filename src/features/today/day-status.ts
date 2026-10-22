@@ -1,14 +1,15 @@
 import { deviceTimeZone, localDay } from '@/domain/day';
 import { nextStreakTarget } from '@/domain/gamification';
+import { DEFAULT_WATER_ML } from '@/domain/hydration';
 import { useDayTarget } from '@/features/diet/day-hooks';
 import { useDayTotals, useWater } from '@/features/diet/log';
+import { useWaterTarget } from '@/features/diet/water-target';
 import { useGamification } from '@/features/gamification/data';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
-import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { useMonthSessions } from '@/features/train/history';
 import { useActivePlan, useRotation } from '@/features/train/plans';
-import { waterGoal, type WorkoutToday } from './day-logic';
+import { type WorkoutToday } from './day-logic';
 
 /**
  * Today's workouts already done, the plan and the day up next (Home workout card, greeting).
@@ -41,7 +42,7 @@ export function useDayStatus() {
   const totals = useDayTotals(today);
   const target = useDayTarget(today);
   const water = useWater(today);
-  const glassMl = usePreferencesStore((s) => s.waterGlassMl);
+  const { target: waterTarget } = useWaterTarget(today);
   const game = useGamification();
   const { state: workout } = useTodayWorkout();
   const streak = game?.streak ?? 0;
@@ -50,7 +51,7 @@ export function useDayStatus() {
     targetKcal: target?.kcal ?? null,
     workout,
     waterMl: water.data?.totalMl ?? 0,
-    waterGoalMl: waterGoal(glassMl).ml,
+    waterGoalMl: waterTarget?.ml ?? DEFAULT_WATER_ML,
     streak,
     streakTarget: nextStreakTarget(streak),
   };

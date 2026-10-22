@@ -142,6 +142,7 @@ export function useApplyImport() {
       trainingDayBonusKcal: goal?.trainingDayBonusKcal ?? 0,
       maintenanceKcal: maintenance,
       waterMl: goal?.waterMl ?? 2000,
+      waterAuto: goal?.waterAuto ?? true,
     });
     const after = diet.meals.findIndex((m) => m.name === diet.workoutAfter);
     if (!tracking)

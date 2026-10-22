@@ -14,6 +14,13 @@ import {
 } from '../src/domain/data-tools.ts';
 import { checkAsPlanned } from '../src/domain/diet.ts';
 import {
+  ageOnDay,
+  DEFAULT_WATER_ML,
+  effectiveWaterTarget,
+  isWaterAutomatic,
+  workoutMinutes,
+} from '../src/domain/hydration.ts';
+import {
   macroKcal,
   MIN_DAILY_KCAL,
   rebalanceMeals,
@@ -121,8 +128,63 @@ async function goalForToday(q, today) {
         trainingDayBonusKcal: N(g.training_day_bonus_kcal) ?? 0,
         maintenanceKcal: N(g.maintenance_kcal),
         waterMl: N(g.water_ml),
+        waterAuto: isWaterAutomatic(g),
       }
     : null;
+}
+
+/** YYYY-MM-DD from a date column (text with the server's parser, or a Date). */
+const isoDay = (v) =>
+  v == null
+    ? null
+    : typeof v === 'string'
+      ? v.slice(0, 10)
+      : new Date(v).toISOString().slice(0, 10);
+
+/**
+ * The water target in force on a day (DECISIONS 127), computed by the app's own code
+ * (src/domain/hydration.ts) from what the server copy holds: the profile, the last weight (only
+ * when the user keeps body data on the server; else the fallback of the sex), that day's
+ * finished workouts. `goal` = the goal row in force ({ waterMl, waterAuto }) or null.
+ */
+export async function waterTargetOn(q, userId, day, tz, goal) {
+  const [[profile], [weight], sessions] = await Promise.all([
+    q(`select birth_date, sex, height_cm from public.profiles where id = $1`, [userId]),
+    q(
+      `select weight_kg from public.body_metrics where deleted_at is null and weight_kg is not null
+       and day <= $1 order by day desc, created_at desc limit 1`,
+      [day],
+    ),
+    q(
+      `select started_at, ended_at from public.workout_sessions
+       where deleted_at is null and status = 'done' and (started_at at time zone $2)::date = $1`,
+      [day, tz],
+    ),
+  ]);
+  const iso = (v) => (v == null ? null : new Date(v).toISOString());
+  const workouts = sessions.map((w) => ({
+    startedAt: iso(w.started_at),
+    endedAt: iso(w.ended_at),
+  }));
+  const sex = profile?.sex === 'male' || profile?.sex === 'female' ? profile.sex : null;
+  const w = effectiveWaterTarget(goal, {
+    weightKg: N(weight?.weight_kg),
+    heightCm: N(profile?.height_cm),
+    ageYears: ageOnDay(isoDay(profile?.birth_date), day),
+    sex,
+    trainedToday: workouts.length > 0,
+    workoutMinutes: workoutMinutes(workouts),
+  });
+  return { ml: w.ml, automatic: w.automatic };
+}
+
+/** The water fields of a goal change: automatic, the user's own number, or as they were. */
+function nextWater(args, current) {
+  if (args?.water_automatic === true)
+    return { waterMl: current?.waterMl ?? DEFAULT_WATER_ML, waterAuto: true };
+  const ml = optNum(args, 'water_ml', 500, 10000);
+  if (ml != null) return { waterMl: Math.round(ml), waterAuto: false };
+  return { waterMl: current?.waterMl ?? DEFAULT_WATER_ML, waterAuto: current?.waterAuto ?? true };
 }
 
 async function fixedPlan(q) {
@@ -201,12 +263,13 @@ async function ownFood(q, foodId, userId) {
 async function saveGoal(q, userId, g) {
   await q(
     `insert into public.nutrition_goals
-       (id, user_id, valid_from, kcal, protein_g, carbs_g, fat_g, training_day_bonus_kcal, maintenance_kcal, water_ml)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (id, user_id, valid_from, kcal, protein_g, carbs_g, fat_g, training_day_bonus_kcal, maintenance_kcal, water_ml, water_auto)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      on conflict (id) do update set kcal = excluded.kcal, protein_g = excluded.protein_g,
        carbs_g = excluded.carbs_g, fat_g = excluded.fat_g,
        training_day_bonus_kcal = excluded.training_day_bonus_kcal,
-       maintenance_kcal = excluded.maintenance_kcal, water_ml = excluded.water_ml, deleted_at = null`,
+       maintenance_kcal = excluded.maintenance_kcal, water_ml = excluded.water_ml,
+       water_auto = excluded.water_auto, deleted_at = null`,
     [
       stableId(userId, `goal-${g.validFrom}`),
       userId,
@@ -218,6 +281,7 @@ async function saveGoal(q, userId, g) {
       g.trainingDayBonusKcal,
       g.maintenanceKcal,
       g.waterMl,
+      g.waterAuto,
     ],
   );
 }
@@ -311,7 +375,8 @@ async function applyDiet(q, userId, today, diet, result) {
     ...target,
     trainingDayBonusKcal: goal?.trainingDayBonusKcal ?? 0,
     maintenanceKcal: maintenance,
-    waterMl: goal?.waterMl ?? 2000,
+    waterMl: goal?.waterMl ?? DEFAULT_WATER_ML,
+    waterAuto: goal?.waterAuto ?? true,
   });
   if (diet.mode !== 'tracking') {
     const current = await fixedPlan(q);
@@ -536,6 +601,7 @@ export const COACH_TOOLS = [
         fixedPlan(q),
         q(`select diet_mode from public.profiles where id = $1`, [ctx.userId]),
       ]);
+      const water = await waterTargetOn(q, ctx.userId, ctx.today, ctx.tz, goal);
       const after = plan?.meals.find((m) => m.id === plan.workoutAfterMealId)?.name;
       // kcal null = the user chose to have no calorie target (DECISIONS 104).
       const noTarget = !goal || goal.kcal == null;
@@ -566,7 +632,9 @@ export const COACH_TOOLS = [
           : null,
         maintenance_kcal: goal?.maintenanceKcal ?? null,
         training_day_bonus_kcal: goal?.trainingDayBonusKcal ?? 0,
-        water_goal_ml: goal?.waterMl ?? null,
+        // Today's water target in force (DECISIONS 127) and whether the app works it out.
+        water_goal_ml: water.ml,
+        water_goal_automatic: water.automatic,
       };
     },
   },
@@ -776,7 +844,16 @@ export const COACH_TOOLS = [
           type: 'number',
           description: 'Extra kcal on training days (optional).',
         },
-        water_ml: { type: 'number', description: 'Daily water goal in ml (optional).' },
+        water_ml: {
+          type: 'number',
+          description:
+            "Daily water target in ml (optional): the user's own number instead of the automatic one.",
+        },
+        water_automatic: {
+          type: 'boolean',
+          description:
+            "true = the app works out the water target from the user's details (optional).",
+        },
       },
       required: ['kcal', 'protein_g', 'carbs_g', 'fat_g'],
     },
@@ -811,7 +888,8 @@ export const COACH_TOOLS = [
           optNum(args, 'training_day_bonus_kcal', 0, 1000) ?? current?.trainingDayBonusKcal ?? 0,
         ),
         maintenanceKcal: maintenance,
-        waterMl: Math.round(optNum(args, 'water_ml', 500, 10000) ?? current?.waterMl ?? 2500),
+        // DECISIONS 127: a number = the user's own target; else it stays as it was.
+        ...nextWater(args, current),
       });
       return {
         saved: true,

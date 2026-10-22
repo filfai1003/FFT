@@ -1002,6 +1002,49 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal((await tool('get_diet', {})).diet_plan.daily.kcal, 2200);
   });
 
+  it('water target: automatic or the user’s own, the API shows the one in force (DECISIONS 127)', async () => {
+    const goal = { kcal: 2200, protein_g: 160, carbs_g: 230, fat_g: 70 };
+    // The user's own number.
+    await tool('set_nutrition_goal', { ...goal, water_ml: 3100 });
+    let g = (await tool('get_goals', {})).nutrition;
+    assert.equal(g.water_ml, 3100);
+    assert.equal(g.water_automatic, false);
+    assert.equal(g.water_auto, undefined, 'the raw column is not shown');
+    assert.deepEqual(
+      [
+        (await tool('get_diet', {})).water_goal_ml,
+        (await tool('get_diet', {})).water_goal_automatic,
+      ],
+      [3100, false],
+    );
+    // A calorie change keeps it.
+    await tool('set_nutrition_goal', goal);
+    assert.equal((await tool('get_goals', {})).nutrition.water_ml, 3100);
+    // Back to automatic: computed from the profile and the last weight (80.5 kg, above).
+    await as(A);
+    await db.query(
+      `update public.profiles set sex = 'male', height_cm = 180, birth_date = $1 where id = $2`,
+      [`${new Date().getUTCFullYear() - 40}-01-01`, A],
+    );
+    await tool('set_nutrition_goal', { ...goal, water_automatic: true });
+    g = (await tool('get_goals', {})).nutrition;
+    assert.equal(g.water_automatic, true);
+    // 80.5 kg × 33 ml (age 30–54) = 2657 → 2650 ml, + 0.5 L per hour if a workout was done today.
+    assert.ok(g.water_ml >= 2650 && g.water_ml <= 4150 && g.water_ml % 50 === 0, `${g.water_ml}`);
+    await admin();
+    const row = await one(
+      `select water_ml, water_auto from public.nutrition_goals
+       where user_id = $1 and deleted_at is null order by valid_from desc, updated_at desc limit 1`,
+      [A],
+    );
+    // water_ml keeps the last own number (older clients read it); water_auto says automatic.
+    assert.deepEqual([row.water_ml, row.water_auto], [3100, true]);
+    // A day shows the target in force, also on a day with nothing logged.
+    assert.equal(typeof (await tool('get_day', { day: D })).water_target_ml, 'number');
+    await as(A);
+    await db.query(`update public.profiles set sex = null, height_cm = null where id = $1`, [A]);
+  });
+
   it('no calorie target: get_goals and get_diet say so (DECISIONS 104)', async () => {
     await as(A);
     await db.exec(

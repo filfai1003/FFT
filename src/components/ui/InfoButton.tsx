@@ -39,9 +39,15 @@ export function InfoButton({
   topic,
   style,
   link = false,
+  yours,
 }: {
   topic: ExplainTopic;
   style?: StyleProp<ViewStyle>;
+  /**
+   * The user's own numbers (one step per line), shown under the explanation as "Yours today":
+   * for a target computed from their details (the water target, DECISIONS 127).
+   */
+  yours?: readonly string[];
   /**
    * A text link ("What does this mean?") instead of the ⓘ: for rows that are one control as a
    * whole (a switch row), where a button inside the row could not be reached.
@@ -84,7 +90,7 @@ export function InfoButton({
             {t('help.whatsThis')}
           </Text>
         </AnimatedPressable>
-        <ExplainSheet visible={open} onClose={() => setOpen(false)} info={info} />
+        <ExplainSheet visible={open} onClose={() => setOpen(false)} info={info} yours={yours} />
       </>
     );
   return (
@@ -113,7 +119,7 @@ export function InfoButton({
       >
         <Icon name="info" size={18} color={colors.textMuted} />
       </AnimatedPressable>
-      <ExplainSheet visible={open} onClose={() => setOpen(false)} info={info} />
+      <ExplainSheet visible={open} onClose={() => setOpen(false)} info={info} yours={yours} />
     </>
   );
 }
@@ -122,10 +128,12 @@ function ExplainSheet({
   visible,
   onClose,
   info,
+  yours,
 }: {
   visible: boolean;
   onClose: () => void;
   info: ReturnType<typeof useExplanation>;
+  yours?: readonly string[];
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -151,6 +159,26 @@ function ExplainSheet({
             {t('help.forExample')}
           </Text>
           <Text>{info.example}</Text>
+        </View>
+      ) : null}
+      {yours && yours.length > 0 ? (
+        <View
+          style={{
+            gap: 4,
+            padding: 14,
+            borderRadius: radius.tile,
+            borderWidth: 1,
+            borderColor: colors.borderDecorative,
+          }}
+        >
+          <Text variant="bodyS" semibold muted>
+            {t('help.forYou')}
+          </Text>
+          {yours.map((line, i) => (
+            <Text key={i} numeric>
+              {line}
+            </Text>
+          ))}
         </View>
       ) : null}
       {info.why ? (

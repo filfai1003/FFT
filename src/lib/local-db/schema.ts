@@ -209,6 +209,7 @@ export const columns: Record<string, string[]> = {
     'training_day_bonus_kcal',
     'maintenance_kcal',
     'water_ml',
+    'water_auto',
     'created_at',
     'updated_at',
     'deleted_at',
@@ -351,6 +352,8 @@ const specific: Record<string, () => Row> = {
   plan_exercises: () => ({ target_sets: 3, target_reps: '8-12', rest_s: 90 }),
   foods: () => ({ source: 'custom', verified: false, protein_100g: 0, carbs_100g: 0, fat_100g: 0 }),
   food_logs: () => ({ protein_g: 0, carbs_g: 0, fat_g: 0 }),
+  // water_auto stays null when not given: a row from before it existed (an old export, an older
+  // app) reads "2000 = automatic" (DECISIONS 127); the app always writes it.
   nutrition_goals: () => ({ training_day_bonus_kcal: 0, water_ml: 2000 }),
   fixed_meal_plans: () => ({ active: true, source: 'manual' }),
   fixed_meals: () => ({ protein_g: 0, carbs_g: 0, fat_g: 0, is_main: false }),
