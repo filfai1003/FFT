@@ -1,5 +1,5 @@
 import { computeGamification, nextStreakTarget } from '@/domain/gamification';
-import type { Activity, GameData } from '@/features/gamification/data';
+import { inputOf, type Activity, type GameData } from '@/features/gamification/data';
 
 /**
  * Streak and badges for the workout summary. The workout just finished is written to the device
@@ -19,6 +19,6 @@ export function gameWithWorkout(
         workouts: [...activity.workouts, workout],
         loggedDays: new Set([...activity.loggedDays, workout.day]),
       };
-  const game = computeGamification({ ...withIt, today });
+  const game = computeGamification(inputOf(withIt, today));
   return { ...game, activity: withIt, nextStreak: nextStreakTarget(game.streak) };
 }

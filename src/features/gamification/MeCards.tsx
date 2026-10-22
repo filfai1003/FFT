@@ -12,7 +12,7 @@ import { space } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { addDays } from '@/domain/day';
 import {
-  badgeCatalogue,
+  badgeFamilies,
   nextBadges,
   nextStreakTarget,
   latestRecords,
@@ -45,7 +45,6 @@ export function StreakCard({ game }: { game: GameData }) {
   const weekStart = usePreferencesStore((s) => s.weekStart);
   const week = streakWeek(game.activity.loggedDays, today, weekStart);
   const target = nextStreakTarget(game.streak);
-  const targetBadge = badgeCatalogue.find((b) => b.metric === 'streak' && b.target === target);
   const todayOpen = week.some((d) => d.state === 'today');
   const title =
     game.streak === 0
@@ -56,8 +55,8 @@ export function StreakCard({ game }: { game: GameData }) {
   const detail = [
     game.streak === 0
       ? t('game.firstDay')
-      : target && targetBadge
-        ? t('game.moreDays', { count: target - game.streak, badge: badgeName(t, targetBadge.id) })
+      : target
+        ? t('game.moreDays', { count: target - game.streak, target })
         : null,
     game.bestStreak > 0 ? t('game.best', { count: game.bestStreak }) : null,
   ]
@@ -125,20 +124,10 @@ export function StreakCard({ game }: { game: GameData }) {
 }
 
 /** "Next badge" with its ring, plus the two after it as small bars. */
-export function NextBadgeCard({
-  game,
-  skipMetric,
-}: {
-  game: GameData;
-  /** Badges of this kind left out (the workout summary shows the streak badge on its own card). */
-  skipMetric?: BadgeState['metric'];
-}) {
+export function NextBadgeCard({ game }: { game: GameData }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const [next, ...later] = nextBadges(
-    skipMetric ? game.badges.filter((b) => b.metric !== skipMetric) : game.badges,
-    3,
-  );
+  const [next, ...later] = nextBadges(game.badges, 3);
   if (!next) {
     return (
       <Card gap={4}>
@@ -451,9 +440,9 @@ function RarityTag({ rarity }: { rarity: 'rare' | 'epic' }) {
   );
 }
 
+/** Every badge: earned, in progress (x of y) or locked (how to unlock), grouped by family. */
 export function BadgeGrid({ badges }: { badges: readonly BadgeState[] }) {
   const { t } = useTranslation();
-  const label = useBadgeLabel();
   const earned = badges.filter((b) => b.earned).length;
   return (
     <>
@@ -462,46 +451,71 @@ export function BadgeGrid({ badges }: { badges: readonly BadgeState[] }) {
         info="badgeRarity"
         right={t('game.earnedOf', { count: earned, total: badges.length })}
       />
-      <Card
-        gap={16}
-        style={{
-          paddingHorizontal: 8,
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          rowGap: 16,
-          columnGap: 0,
-        }}
-      >
-        {badges.map((b) => (
-          <View
-            key={b.id}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel={
-              b.rarity === 'common' ? label(b) : `${t(`game.rarity.${b.rarity}`)}. ${label(b)}`
-            }
-            style={{ width: '25%', alignItems: 'center', gap: 6, paddingHorizontal: 2 }}
-          >
-            <BadgeMedal badge={b} />
-            {b.rarity !== 'common' ? <RarityTag rarity={b.rarity} /> : null}
-            <Text
-              variant="label"
-              semibold
-              muted={!b.earned && b.current === 0}
-              style={{ textAlign: 'center' }}
+      {/* One card per family (DECISIONS 126): Plans, Workouts, Diet… each with its header. */}
+      {badgeFamilies.map((family) => {
+        const list = badges.filter((b) => b.family === family);
+        if (list.length === 0) return null;
+        return (
+          <Card key={family} gap={12} style={{ paddingHorizontal: 8 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                paddingHorizontal: 8,
+                gap: 8,
+              }}
             >
-              {badgeName(t, b.id)}
-            </Text>
-            <Text variant="label" muted style={{ textAlign: 'center' }}>
-              {b.earned
-                ? t('game.earned')
-                : b.current === 0
-                  ? badgeHow(t, b.id)
-                  : t('game.ofCount', { current: b.current, target: b.target })}
-            </Text>
-          </View>
-        ))}
-      </Card>
+              <Text semibold accessibilityRole="header">
+                {t(`game.family.${family}`)}
+              </Text>
+              <Text variant="label" muted numeric>
+                {t('game.ofCount', {
+                  current: list.filter((b) => b.earned).length,
+                  target: list.length,
+                })}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }}>
+              {list.map((b) => (
+                <BadgeCell key={b.id} badge={b} />
+              ))}
+            </View>
+          </Card>
+        );
+      })}
     </>
+  );
+}
+
+function BadgeCell({ badge: b }: { badge: BadgeState }) {
+  const { t } = useTranslation();
+  const label = useBadgeLabel();
+  return (
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={
+        b.rarity === 'common' ? label(b) : `${t(`game.rarity.${b.rarity}`)}. ${label(b)}`
+      }
+      style={{ width: '25%', alignItems: 'center', gap: 6, paddingHorizontal: 2 }}
+    >
+      <BadgeMedal badge={b} />
+      {b.rarity !== 'common' ? <RarityTag rarity={b.rarity} /> : null}
+      <Text
+        variant="label"
+        semibold
+        muted={!b.earned && b.current === 0}
+        style={{ textAlign: 'center' }}
+      >
+        {badgeName(t, b.id)}
+      </Text>
+      <Text variant="label" muted style={{ textAlign: 'center' }}>
+        {b.earned
+          ? t('game.earned')
+          : b.current === 0
+            ? badgeHow(t, b.id)
+            : t('game.ofCount', { current: b.current, target: b.target })}
+      </Text>
+    </View>
   );
 }

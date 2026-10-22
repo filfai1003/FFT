@@ -14,8 +14,6 @@ import { Text } from '@/components/ui/Text';
 import { touch } from '@/design/tokens';
 import { useTheme } from '@/design/use-theme';
 import { deviceTimeZone, localDay, localHour, shortDateLabel } from '@/domain/day';
-import { badgeCatalogue } from '@/domain/gamification';
-import { badgeName } from '@/features/gamification/components';
 import { useActivity, useTimeZone } from '@/features/gamification/data';
 import { NextBadgeCard } from '@/features/gamification/MeCards';
 import { useToday } from '@/features/profile/use-today';
@@ -81,9 +79,6 @@ export function SummaryScreen() {
         today,
       )
     : null;
-  const streakBadge = badgeCatalogue.find(
-    (b) => b.metric === 'streak' && b.target === game?.nextStreak,
-  );
   const volume = displayWeight(sum.volumeKg, unit);
 
   // Canvas "Workout summary": each number with its tile (training purple, records orange).
@@ -228,18 +223,17 @@ export function SummaryScreen() {
                     {t('summary.streakDays', { count: game.streak })}
                   </Text>
                   <Text variant="bodyS" muted>
-                    {streakBadge && game.nextStreak
+                    {game.nextStreak
                       ? t('game.moreDays', {
                           count: game.nextStreak - game.streak,
-                          badge: badgeName(t, streakBadge.id),
+                          target: game.nextStreak,
                         })
                       : t('summary.streakKeep')}
                   </Text>
                 </View>
               </View>
             </Card>
-            {/* The streak card above already says how far the next streak badge is. */}
-            <NextBadgeCard game={game} skipMetric="streak" />
+            <NextBadgeCard game={game} />
           </>
         ) : null}
 

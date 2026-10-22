@@ -236,8 +236,8 @@
     "badgeRarity": {
       "term": "badges",
       "title": "Badges and rarity",
-      "body": "Badges reward milestones, like your first workout or a 30-day streak. Most are common. Rare and epic ones are harder: most need many days in a row.",
-      "example": "Clean week (rare): stay on your calorie target 7 days in a row."
+      "body": "Badges reward milestones, like your first workout or 10 days in a row on your diet. Most are common. Rare and epic ones are harder: they need many days, or many days in a row. Streaks allow a little slack: up to 2 off-target days a week if the week stays within 10% of its targets, and up to 2 rest days a week, never 2 in a row. Medals ask for diet, training, water goal and supplements on the same days.",
+      "example": "Iron medal: 10 days in a row with your diet, training, water goal and supplements all kept."
     },
     "boardWorkouts": {
       "term": "the workouts score",
@@ -2519,13 +2519,13 @@
   },
   "game": {
     "dayStreak": "day streak",
-    "streakA11y": "{{count}} day logging streak, {{count}} of {{target}} days to the next streak badge",
+    "streakA11y": "{{count}} day logging streak, {{count}} of {{target}} days to the next streak goal",
     "streakA11yNoTarget": "{{count}} day logging streak",
     "onARoll": "You are on a roll",
     "startStreak": "Start a streak",
     "keepGoing": "Keep it going",
-    "moreDays_one": "{{count}} more day for the {{badge}} badge.",
-    "moreDays_other": "{{count}} more days for the {{badge}} badge.",
+    "moreDays_one": "{{count}} more day to a {{target}}-day streak.",
+    "moreDays_other": "{{count}} more days to a {{target}}-day streak.",
     "firstDay": "Log food, a workout or a check-in today to start one.",
     "best_one": "Best: {{count}} day.",
     "best_other": "Best: {{count}} days.",
@@ -2562,6 +2562,7 @@
     "earnedOf": "{{count}} of {{total}} earned",
     "earned": "Earned",
     "badgeEarnedA11y": "{{name}}: earned {{date}}",
+    "badgeEarnedNoDateA11y": "{{name}}: earned",
     "badgeLockedA11y": "{{name}}: locked. {{how}}",
     "streakWord_one": "{{count}}-day streak",
     "streakWord_other": "{{count}}-day streak",
@@ -2584,9 +2585,29 @@
     "rarity": {
       "rare": "Rare",
       "epic": "Epic"
+    },
+    "family": {
+      "plans": "Plans",
+      "workouts": "Workouts",
+      "diet": "Diet",
+      "supplements": "Supplements",
+      "water": "Water",
+      "membership": "Membership",
+      "streaks": "Streaks",
+      "balance": "Balance",
+      "medals": "Medals",
+      "all": "All"
     }
   },
   "badges": {
+    "supporter": {
+      "name": "Supporter",
+      "how": "Have the Supporter or Premium plan"
+    },
+    "premium": {
+      "name": "Premium",
+      "how": "Have the Premium plan"
+    },
     "first_workout": {
       "name": "First workout",
       "how": "Finish a workout"
@@ -2607,89 +2628,349 @@
       "name": "100 workouts",
       "how": "Finish 100 workouts"
     },
-    "streak_7": {
-      "name": "7-day streak",
-      "how": "Log something 7 days in a row"
-    },
-    "streak_14": {
-      "name": "2-week streak",
-      "how": "Log something 14 days in a row"
-    },
-    "streak_30": {
-      "name": "30-day streak",
-      "how": "Log something 30 days in a row"
-    },
-    "streak_100": {
-      "name": "100-day streak",
-      "how": "Log something 100 days in a row"
-    },
-    "first_record": {
-      "name": "First record",
-      "how": "Beat your best weight in an exercise"
-    },
-    "records_10": {
-      "name": "10 records",
-      "how": "Set 10 personal records"
-    },
-    "records_50": {
-      "name": "50 records",
-      "how": "Set 50 personal records"
-    },
-    "diet_7": {
-      "name": "On target week",
-      "how": "7 days within 10% of your calorie target"
-    },
-    "diet_30": {
-      "name": "On target month",
-      "how": "30 days within 10% of your calorie target"
-    },
-    "checkins_10": {
-      "name": "10 check-ins",
-      "how": "Do a check-in on 10 days"
-    },
-    "early_bird": {
-      "name": "Early bird",
-      "how": "Start 5 workouts before 8:00"
-    },
-    "night_owl": {
-      "name": "Night owl",
-      "how": "Start 5 workouts after 9 pm"
-    },
-    "train_run_7": {
-      "name": "Iron week",
-      "how": "Train 7 days in a row"
-    },
-    "diet_run_7": {
-      "name": "Clean week",
-      "how": "Stay on your calorie target 7 days in a row"
-    },
-    "diet_run_30": {
-      "name": "Clean month",
-      "how": "Stay on your calorie target 30 days in a row"
-    },
-    "supplement_run_7": {
-      "name": "Steady stack",
-      "how": "Take all your supplements 7 days in a row"
-    },
-    "supplement_run_30": {
-      "name": "Never miss a dose",
-      "how": "Take all your supplements 30 days in a row"
-    },
-    "water_run_7": {
-      "name": "Well hydrated",
-      "how": "Reach your water target 7 days in a row"
-    },
-    "perfect_run_7": {
-      "name": "Perfect week",
-      "how": "7 days in a row with diet on target, all supplements, water target, and never two days without training"
-    },
     "workouts_250": {
       "name": "250 workouts",
       "how": "Finish 250 workouts"
     },
-    "streak_365": {
-      "name": "A whole year",
-      "how": "Log something 365 days in a row"
+    "workouts_500": {
+      "name": "500 workouts",
+      "how": "Finish 500 workouts"
+    },
+    "workouts_1000": {
+      "name": "1,000 workouts",
+      "how": "Finish 1,000 workouts"
+    },
+    "diet_days_1": {
+      "name": "First diet day",
+      "how": "Log food or a fixed meal on a day"
+    },
+    "diet_days_10": {
+      "name": "10 diet days",
+      "how": "Log food or a fixed meal on 10 days"
+    },
+    "diet_days_25": {
+      "name": "25 diet days",
+      "how": "Log food or a fixed meal on 25 days"
+    },
+    "diet_days_50": {
+      "name": "50 diet days",
+      "how": "Log food or a fixed meal on 50 days"
+    },
+    "diet_days_100": {
+      "name": "100 diet days",
+      "how": "Log food or a fixed meal on 100 days"
+    },
+    "diet_days_250": {
+      "name": "250 diet days",
+      "how": "Log food or a fixed meal on 250 days"
+    },
+    "diet_days_500": {
+      "name": "500 diet days",
+      "how": "Log food or a fixed meal on 500 days"
+    },
+    "diet_days_1000": {
+      "name": "1,000 diet days",
+      "how": "Log food or a fixed meal on 1,000 days"
+    },
+    "supplements_1": {
+      "name": "First supplement",
+      "how": "Tick a supplement as taken"
+    },
+    "supplements_10": {
+      "name": "10 supplements",
+      "how": "Tick 10 supplements as taken (each tick counts)"
+    },
+    "supplements_25": {
+      "name": "25 supplements",
+      "how": "Tick 25 supplements as taken (each tick counts)"
+    },
+    "supplements_50": {
+      "name": "50 supplements",
+      "how": "Tick 50 supplements as taken (each tick counts)"
+    },
+    "supplements_100": {
+      "name": "100 supplements",
+      "how": "Tick 100 supplements as taken (each tick counts)"
+    },
+    "supplements_250": {
+      "name": "250 supplements",
+      "how": "Tick 250 supplements as taken (each tick counts)"
+    },
+    "supplements_500": {
+      "name": "500 supplements",
+      "how": "Tick 500 supplements as taken (each tick counts)"
+    },
+    "supplements_1000": {
+      "name": "1,000 supplements",
+      "how": "Tick 1,000 supplements as taken (each tick counts)"
+    },
+    "water_1": {
+      "name": "First water goal",
+      "how": "Reach your water goal on a day"
+    },
+    "water_10": {
+      "name": "10 water goals",
+      "how": "Reach your water goal on 10 days"
+    },
+    "water_25": {
+      "name": "25 water goals",
+      "how": "Reach your water goal on 25 days"
+    },
+    "water_50": {
+      "name": "50 water goals",
+      "how": "Reach your water goal on 50 days"
+    },
+    "water_100": {
+      "name": "100 water goals",
+      "how": "Reach your water goal on 100 days"
+    },
+    "water_250": {
+      "name": "250 water goals",
+      "how": "Reach your water goal on 250 days"
+    },
+    "water_500": {
+      "name": "500 water goals",
+      "how": "Reach your water goal on 500 days"
+    },
+    "water_1000": {
+      "name": "1,000 water goals",
+      "how": "Reach your water goal on 1,000 days"
+    },
+    "member_1": {
+      "name": "1 day with FFT",
+      "how": "Use FFT for 1 day, counted from your first day"
+    },
+    "member_7": {
+      "name": "1 week with FFT",
+      "how": "Use FFT for 7 days, counted from your first day"
+    },
+    "member_30": {
+      "name": "1 month with FFT",
+      "how": "Use FFT for 30 days, counted from your first day"
+    },
+    "member_365": {
+      "name": "1 year with FFT",
+      "how": "Use FFT for 365 days, counted from your first day"
+    },
+    "member_730": {
+      "name": "2 years with FFT",
+      "how": "Use FFT for 730 days, counted from your first day"
+    },
+    "member_1825": {
+      "name": "5 years with FFT",
+      "how": "Use FFT for 1,825 days, counted from your first day"
+    },
+    "diet_run_1": {
+      "name": "1-day diet streak",
+      "how": "Stay within 10% of your calorie target for a day"
+    },
+    "diet_run_10": {
+      "name": "10-day diet streak",
+      "how": "Stay within 10% of your calorie target 10 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_25": {
+      "name": "25-day diet streak",
+      "how": "Stay within 10% of your calorie target 25 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_50": {
+      "name": "50-day diet streak",
+      "how": "Stay within 10% of your calorie target 50 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_100": {
+      "name": "100-day diet streak",
+      "how": "Stay within 10% of your calorie target 100 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_250": {
+      "name": "250-day diet streak",
+      "how": "Stay within 10% of your calorie target 250 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_500": {
+      "name": "500-day diet streak",
+      "how": "Stay within 10% of your calorie target 500 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "diet_run_1000": {
+      "name": "1,000-day diet streak",
+      "how": "Stay within 10% of your calorie target 1,000 days in a row (up to 2 off days a week if the week stays within 10%)"
+    },
+    "train_run_1": {
+      "name": "1-day training streak",
+      "how": "Finish a workout to start a training streak"
+    },
+    "train_run_10": {
+      "name": "10-day training streak",
+      "how": "Train 10 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_25": {
+      "name": "25-day training streak",
+      "how": "Train 25 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_50": {
+      "name": "50-day training streak",
+      "how": "Train 50 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_100": {
+      "name": "100-day training streak",
+      "how": "Train 100 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_250": {
+      "name": "250-day training streak",
+      "how": "Train 250 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_500": {
+      "name": "500-day training streak",
+      "how": "Train 500 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "train_run_1000": {
+      "name": "1,000-day training streak",
+      "how": "Train 1,000 days in a row (up to 2 rest days a week, never 2 in a row)"
+    },
+    "water_run_1": {
+      "name": "1-day water streak",
+      "how": "Reach your water goal for a day"
+    },
+    "water_run_10": {
+      "name": "10-day water streak",
+      "how": "Reach your water goal 10 days in a row"
+    },
+    "water_run_25": {
+      "name": "25-day water streak",
+      "how": "Reach your water goal 25 days in a row"
+    },
+    "water_run_50": {
+      "name": "50-day water streak",
+      "how": "Reach your water goal 50 days in a row"
+    },
+    "water_run_100": {
+      "name": "100-day water streak",
+      "how": "Reach your water goal 100 days in a row"
+    },
+    "water_run_250": {
+      "name": "250-day water streak",
+      "how": "Reach your water goal 250 days in a row"
+    },
+    "water_run_500": {
+      "name": "500-day water streak",
+      "how": "Reach your water goal 500 days in a row"
+    },
+    "water_run_1000": {
+      "name": "1,000-day water streak",
+      "how": "Reach your water goal 1,000 days in a row"
+    },
+    "supplement_run_1": {
+      "name": "1-day supplement streak",
+      "how": "Take all your supplements for a day"
+    },
+    "supplement_run_10": {
+      "name": "10-day supplement streak",
+      "how": "Take all your supplements 10 days in a row"
+    },
+    "supplement_run_25": {
+      "name": "25-day supplement streak",
+      "how": "Take all your supplements 25 days in a row"
+    },
+    "supplement_run_50": {
+      "name": "50-day supplement streak",
+      "how": "Take all your supplements 50 days in a row"
+    },
+    "supplement_run_100": {
+      "name": "100-day supplement streak",
+      "how": "Take all your supplements 100 days in a row"
+    },
+    "supplement_run_250": {
+      "name": "250-day supplement streak",
+      "how": "Take all your supplements 250 days in a row"
+    },
+    "supplement_run_500": {
+      "name": "500-day supplement streak",
+      "how": "Take all your supplements 500 days in a row"
+    },
+    "supplement_run_1000": {
+      "name": "1,000-day supplement streak",
+      "how": "Take all your supplements 1,000 days in a row"
+    },
+    "balanced_weeks_1": {
+      "name": "First balanced week",
+      "how": "Finish a week with every muscle group within its weekly sets guideline"
+    },
+    "balanced_weeks_10": {
+      "name": "10 balanced weeks",
+      "how": "Finish 10 weeks with every muscle group within its weekly sets guideline"
+    },
+    "balanced_weeks_25": {
+      "name": "25 balanced weeks",
+      "how": "Finish 25 weeks with every muscle group within its weekly sets guideline"
+    },
+    "balanced_weeks_50": {
+      "name": "50 balanced weeks",
+      "how": "Finish 50 weeks with every muscle group within its weekly sets guideline"
+    },
+    "balanced_weeks_100": {
+      "name": "100 balanced weeks",
+      "how": "Finish 100 weeks with every muscle group within its weekly sets guideline"
+    },
+    "balanced_weeks_250": {
+      "name": "250 balanced weeks",
+      "how": "Finish 250 weeks with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_1": {
+      "name": "1-week balance streak",
+      "how": "Finish a week with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_10": {
+      "name": "10-week balance streak",
+      "how": "10 weeks in a row with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_25": {
+      "name": "25-week balance streak",
+      "how": "25 weeks in a row with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_50": {
+      "name": "50-week balance streak",
+      "how": "50 weeks in a row with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_100": {
+      "name": "100-week balance streak",
+      "how": "100 weeks in a row with every muscle group within its weekly sets guideline"
+    },
+    "balanced_run_250": {
+      "name": "250-week balance streak",
+      "how": "250 weeks in a row with every muscle group within its weekly sets guideline"
+    },
+    "medal_bronze": {
+      "name": "Bronze medal",
+      "how": "Keep your diet, training, water goal and supplements on the same day"
+    },
+    "medal_iron": {
+      "name": "Iron medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 10 days in a row"
+    },
+    "medal_gold": {
+      "name": "Gold medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 25 days in a row"
+    },
+    "medal_platinum": {
+      "name": "Platinum medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 50 days in a row"
+    },
+    "medal_emerald": {
+      "name": "Emerald medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 100 days in a row"
+    },
+    "medal_diamond": {
+      "name": "Diamond medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 250 days in a row"
+    },
+    "medal_master": {
+      "name": "Master medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 500 days in a row"
+    },
+    "medal_champion": {
+      "name": "Champion medal",
+      "how": "Keep your diet, training, water goal and supplements on the same days, 1,000 days in a row"
+    },
+    "all_challenges": {
+      "name": "All challenges",
+      "how": "Earn every other badge (Supporter and Premium are not needed)"
     }
   },
   "look": {

@@ -253,6 +253,25 @@ describe('area colours (DECISIONS 118)', () => {
   });
 });
 
+describe('medal tiers (DECISIONS 126)', () => {
+  it('match tokens.json and read in both themes: disc on the card, glyph on the disc', () => {
+    const { note: _note, ...lightFills } = json.color.medal;
+    expect(color.medal).toEqual(lightFills);
+    for (const mode of ['light', 'dark'] as const) {
+      const p = palettes[mode];
+      for (const tier of Object.keys(p.medal) as (keyof typeof p.medal)[]) {
+        expect(contrast(p.medal[tier], p.surface)).toBeGreaterThanOrEqual(3);
+        expect(contrast(p.medalInk[tier], p.medal[tier])).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it('every tier has its own colour', () => {
+    for (const mode of ['light', 'dark'] as const)
+      expect(new Set(Object.values(palettes[mode].medal)).size).toBe(8);
+  });
+});
+
 describe('appearance store', () => {
   it('starts with defaults, can be changed and reset', () => {
     expect(useAppearanceStore.getState()).toMatchObject(defaultAppearance);
