@@ -22,6 +22,7 @@ import { BadgeMedal, badgeName, dayMonth } from '@/features/gamification/compone
 import { useRecordText } from '@/features/gamification/MeCards';
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
+import { setsText } from '@/domain/volume';
 import { useBalance } from '@/features/progress/balance';
 import { useBodyGoal } from '@/features/progress/data';
 import { changeArea } from '@/features/progress/series';
@@ -29,9 +30,6 @@ import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { goBack } from '@/lib/navigation';
 import { useWeeklySummary } from './data';
 import { weightChangeText } from './text';
-
-/** Sets as written: whole numbers plain, halves with one decimal (as Training balance). */
-const setsText = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 /**
  * "Your week" (DECISIONS 122): opened by the Sunday notification or from Progress. Workouts

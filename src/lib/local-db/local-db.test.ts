@@ -724,3 +724,97 @@ describe('deleted rows leave the device for good after a week (DECISIONS 79)', (
     expect(db.tables.water_logs.map((w) => w.id)).toEqual([id(50), id(52)]);
   });
 });
+
+describe('17 muscles and three levels (DECISIONS 125)', () => {
+  const key = `database-${LOCAL_USER_ID}.json`;
+  const at = '2026-10-01T10:00:00.000Z';
+  const oldRow = {
+    id: id(901),
+    owner_id: LOCAL_USER_ID,
+    slug: null,
+    name: 'Band pull',
+    primary_muscle: 'back',
+    secondary_muscles: ['shoulders', 'biceps'],
+    equipment: 'bands',
+    log_type: 'weight_reps',
+    image_path: null,
+    created_at: at,
+    updated_at: at,
+    deleted_at: null,
+  };
+
+  it('maps the own exercises of a database saved before, at start, keeping updated_at', async () => {
+    const kv = memoryKv();
+    await kv.setText(key, JSON.stringify({ format: 1, tables: { exercises: [oldRow] } }));
+    const db = new LocalDb(kv, LOCAL_USER_ID);
+    await db.ready;
+    const row = db.tables.exercises.find((r) => r.id === id(901))!;
+    expect(row).toMatchObject({
+      primary_muscle: 'lats',
+      secondary_muscles: ['upper_back', 'front_delts', 'biceps'],
+      indirect_muscles: [],
+      updated_at: at,
+    });
+    // Nothing to send: the server maps its copy the same way.
+    expect(Object.keys(db.outbox)).toHaveLength(0);
+    // The catalogue rows get their levels from the catalogue.
+    const squat = db.tables.exercises.find((r) => r.slug === 'back-squat')!;
+    expect(squat).toMatchObject({
+      primary_muscle: 'quads',
+      secondary_muscles: ['glutes', 'adductors'],
+      indirect_muscles: ['hamstrings', 'lower_back'],
+    });
+    // And it is saved, so the next start has nothing to do.
+    const saved = JSON.parse(kv.texts.get(key)!) as { tables: { exercises: { id: string }[] } };
+    expect(saved.tables.exercises.find((r) => r.id === id(901))).toMatchObject({
+      primary_muscle: 'lats',
+    });
+  });
+
+  it('writes are kept in the new vocabulary, each muscle at one level; an unknown main muscle is refused', async () => {
+    const { c } = setup();
+    await c.from('exercises').insert({
+      id: id(902),
+      owner_id: LOCAL_USER_ID,
+      name: 'Old style',
+      primary_muscle: 'legs',
+      secondary_muscles: ['glutes', 'back'],
+      indirect_muscles: ['glutes', 'calves'],
+      equipment: 'machine',
+    });
+    const { data } = await c
+      .from('exercises')
+      .select('primary_muscle, secondary_muscles, indirect_muscles')
+      .eq('id', id(902))
+      .single();
+    expect(data).toEqual({
+      primary_muscle: 'quads',
+      secondary_muscles: ['glutes', 'upper_back'],
+      indirect_muscles: ['lats', 'calves'],
+    });
+    const bad = await c.from('exercises').insert({
+      id: id(903),
+      owner_id: LOCAL_USER_ID,
+      name: 'Wings',
+      primary_muscle: 'wings',
+      equipment: 'machine',
+    });
+    expect(bad.error?.code).toBe('23514');
+  });
+
+  it('rows from an app not updated yet (sync, relay) read in the new vocabulary', async () => {
+    const { db, c } = setup();
+    await db.ready;
+    db.applyRemote('exercises', [{ ...oldRow, id: id(904), updated_at: new Date().toISOString() }]);
+    const { data } = await c
+      .from('exercises')
+      .select('primary_muscle, secondary_muscles, indirect_muscles')
+      .eq('id', id(904))
+      .single();
+    expect(data).toEqual({
+      primary_muscle: 'lats',
+      secondary_muscles: ['upper_back', 'front_delts', 'biceps'],
+      indirect_muscles: [],
+    });
+  });
+});

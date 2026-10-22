@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { addDays, deviceTimeZone, localDay } from '@/domain/day';
 import {
+  behindList,
+  guidedCount,
   mostBehind,
   muscleBalance,
   rangeDays,
@@ -55,7 +57,7 @@ export async function fetchVolumeSets(from: string, timeZone: string): Promise<V
     .filter((s) => s.day >= from);
 }
 
-/** Training balance of a range: hard sets and volume per muscle group (DECISIONS 121). */
+/** Training balance of a range: hard sets and volume per muscle (DECISIONS 121, 125). */
 export function useBalance(range: BalanceRange) {
   const today = useToday();
   const weekStart = usePreferencesStore((s) => s.weekStart);
@@ -71,7 +73,7 @@ export function useBalance(range: BalanceRange) {
   const byId = new Map<string, ExerciseMuscles>(
     (exercises.data ?? []).map((e) => [
       e.id,
-      { primary: e.primaryMuscle, secondary: e.secondaryMuscles },
+      { primary: e.primaryMuscle, secondary: e.secondaryMuscles, indirect: e.indirectMuscles },
     ]),
   );
   const rows = muscleBalance(sets.data ?? [], (id) => byId.get(id), range, today, weekStart);
@@ -79,7 +81,11 @@ export function useBalance(range: BalanceRange) {
     isPending: sets.isPending || exercises.isPending,
     rows,
     behind: mostBehind(rows),
+    /** The muscles with a guideline below it, fewest sets first. */
+    behindList: behindList(rows),
     within: withinCount(rows),
+    /** How many muscles have a guideline (the "of N"). */
+    guided: guidedCount(rows),
     empty: rows.every((r) => r.sets === 0),
   };
 }

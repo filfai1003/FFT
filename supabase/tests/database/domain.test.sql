@@ -1,7 +1,7 @@
 -- Domain rules in SQL: Epley, records, strength score, nutrition totals, safety limits.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(22);
 
 create function pg_temp.as_user(uid uuid) returns void language plpgsql as $$
 begin
@@ -29,6 +29,13 @@ select is(public.strength_group('biceps'), 'arms', 'biceps -> arms');
 select is(public.strength_group('abs'), 'core', 'abs -> core');
 select is(public.strength_group('glutes'), 'legs', 'glutes -> legs');
 select is(public.strength_group('chest'), 'chest', 'chest stays chest');
+-- The 17 muscles (DECISIONS 125); old names still map to their group.
+select is(public.strength_group('upper_back'), 'back', 'upper_back -> back');
+select is(public.strength_group('rear_delts'), 'shoulders', 'rear_delts -> shoulders');
+select is(public.strength_group('forearms'), 'arms', 'forearms -> arms');
+select is(public.strength_group('adductors'), 'legs', 'adductors -> legs');
+select is(public.strength_group('obliques'), 'core', 'obliques -> core');
+select is(public.strength_group('legs'), 'legs', 'old legs -> legs');
 
 select pg_temp.as_user('aaaaaaaa-0000-0000-0000-00000000000a');
 

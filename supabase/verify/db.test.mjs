@@ -17,9 +17,23 @@ import { dumpsToDelete, idsOf } from '../../backup/retention.mjs';
 import { maskOf, maskRows, searchableColumns } from '../../admin/privacy.js';
 import { panelRoleSetup } from '../../admin/roles.js';
 import { createHash, randomUUID } from 'node:crypto';
+import {
+  legacyMuscles,
+  muscles,
+  normalizeMuscles,
+  strengthGroup,
+} from '../../src/domain/muscles.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const supabaseDir = path.join(here, '..');
+
+// The app's offline catalogue (generated with seed.sql). Its file also require()s the images, so
+// only the list literal is read here.
+const catalogue = (() => {
+  const src = fs.readFileSync(path.join(here, '../../src/lib/local-db/catalogue.ts'), 'utf8');
+  const list = src.split('export const catalogue: CatalogueExercise[] = ')[1].split('];')[0];
+  return new Function(`return ${list}];`)();
+})();
 
 const A = 'aaaaaaaa-0000-0000-0000-00000000000a';
 const B = 'bbbbbbbb-0000-0000-0000-00000000000b';
@@ -220,6 +234,142 @@ describe('row level security', () => {
       0,
       'the catalogue is for signed-in users only',
     );
+  });
+});
+
+describe('17 muscles and three levels of involvement (DECISIONS 125)', () => {
+  it('the seed gives every catalogue exercise the levels of the generator, one known primary each', async () => {
+    await admin();
+    const rows = (
+      await db.query(
+        `select slug, primary_muscle, secondary_muscles, indirect_muscles from public.exercises
+         where owner_id is null and slug is not null`,
+      )
+    ).rows;
+    assert.equal(rows.length, catalogue.length);
+    const names = (await one('select public.muscle_names() as m')).m;
+    assert.deepEqual(names, [...muscles], 'SQL muscle_names() = TS muscles');
+    const bySlug = new Map(rows.map((r) => [r.slug, r]));
+    for (const e of catalogue) {
+      const r = bySlug.get(e.slug);
+      assert.ok(r, `${e.slug} seeded`);
+      assert.deepEqual(
+        [r.primary_muscle, r.secondary_muscles, r.indirect_muscles],
+        [e.primary, e.secondary, e.indirect],
+        e.slug,
+      );
+    }
+    assert.deepEqual(bySlug.get('back-squat'), {
+      slug: 'back-squat',
+      primary_muscle: 'quads',
+      secondary_muscles: ['glutes', 'adductors'],
+      indirect_muscles: ['hamstrings', 'lower_back'],
+    });
+  });
+
+  it('strength_group matches the app for the 17 muscles and the old names', async () => {
+    await admin();
+    for (const m of [...muscles, ...legacyMuscles]) {
+      const r = await one('select public.strength_group($1) as g', [m]);
+      assert.equal(r.g, strengthGroup(m), m);
+    }
+    assert.equal((await one(`select public.strength_group('wings') as g`)).g, null);
+  });
+
+  it('old muscle names written by an old app (or the sync) are mapped like the app maps them', async () => {
+    await as(A);
+    // Inserted by the row level security tests with the old 'back'.
+    const mine = await one(
+      `select primary_muscle, secondary_muscles, indirect_muscles from public.exercises
+       where name = 'My cable move'`,
+    );
+    assert.deepEqual(mine, {
+      primary_muscle: 'lats',
+      secondary_muscles: ['upper_back'],
+      indirect_muscles: [],
+    });
+    const cases = [
+      ['legs', ['glutes', 'back'], ['glutes', 'calves']],
+      ['shoulders', ['triceps', 'shoulders'], []],
+      ['chest', ['chest', 'legs'], ['quads', 'wings']],
+    ];
+    for (const [p, s, i] of cases) {
+      const r = await one(
+        `insert into public.exercises (name, primary_muscle, secondary_muscles, indirect_muscles, equipment, owner_id)
+         values ('Mapped', $1, $2, $3, 'barbell', '${A}')
+         returning primary_muscle, secondary_muscles, indirect_muscles`,
+        [p, s, i],
+      );
+      const app = normalizeMuscles({ primary: p, secondary: s, indirect: i });
+      assert.deepEqual(
+        r,
+        {
+          primary_muscle: app.primary,
+          secondary_muscles: app.secondary,
+          indirect_muscles: app.indirect,
+        },
+        `${p} ${s} ${i}`,
+      );
+    }
+    await rejects(
+      `insert into public.exercises (name, primary_muscle, equipment, owner_id)
+       values ('Wings', 'wings', 'barbell', '${A}')`,
+      '23514',
+    );
+    await admin();
+    await db.exec(`delete from public.exercises where name = 'Mapped'`);
+  });
+
+  it('the migration maps the user exercises saved with the old muscles', async () => {
+    // A database as it was before the migration, with an own exercise of each old kind.
+    const old = await PGlite.create({ extensions: { pg_trgm } });
+    await old.exec(fs.readFileSync(path.join(here, 'supabase-stub.sql'), 'utf8'));
+    const migrations = fs.readdirSync(path.join(supabaseDir, 'migrations')).sort();
+    const target = '20261022100000_muscle_detail.sql';
+    for (const file of migrations.filter((f) => f < target))
+      await old.exec(fs.readFileSync(path.join(supabaseDir, 'migrations', file), 'utf8'));
+    await old.exec(`
+      insert into auth.users (id, instance_id, aud, role, email) values
+        ('${A}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'a@test.dev');
+      insert into public.exercises (id, owner_id, name, primary_muscle, secondary_muscles, equipment, updated_at) values
+        (gen_random_uuid(), '${A}', 'Old back', 'back', '{biceps}', 'cables', '2026-10-01 10:00+00'),
+        (gen_random_uuid(), '${A}', 'Old shoulders', 'shoulders', '{triceps}', 'dumbbells', '2026-10-01 10:00+00'),
+        (gen_random_uuid(), '${A}', 'Old legs', 'legs', '{glutes,back}', 'machine', '2026-10-01 10:00+00'),
+        (gen_random_uuid(), '${A}', 'Old chest', 'chest', '{shoulders,triceps}', 'machine', '2026-10-01 10:00+00'),
+        (gen_random_uuid(), '${A}', 'Old curl', 'biceps', '{}', 'cables', '2026-10-01 10:00+00');
+    `);
+    await old.exec(fs.readFileSync(path.join(supabaseDir, 'migrations', target), 'utf8'));
+    const rows = (
+      await old.query(
+        `select name, primary_muscle, secondary_muscles, indirect_muscles,
+                to_char(updated_at at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS.MS') as at
+         from public.exercises order by name`,
+      )
+    ).rows;
+    const by = Object.fromEntries(rows.map((r) => [r.name, r]));
+    const levels = (r) => [r.primary_muscle, r.secondary_muscles, r.indirect_muscles];
+    assert.deepEqual(levels(by['Old back']), ['lats', ['upper_back', 'biceps'], []]);
+    assert.deepEqual(levels(by['Old shoulders']), ['front_delts', ['triceps'], []]);
+    assert.deepEqual(levels(by['Old legs']), ['quads', ['glutes', 'upper_back'], ['lats']]);
+    assert.deepEqual(levels(by['Old chest']), ['chest', ['front_delts', 'triceps'], []]);
+    // Mapped rows move on by one millisecond (devices take them; later changes still win).
+    assert.equal(by['Old back'].at, '2026-10-01 10:00:00.001');
+    // Rows already valid are not touched.
+    assert.deepEqual(levels(by['Old curl']), ['biceps', [], []]);
+    assert.equal(by['Old curl'].at, '2026-10-01 10:00:00.000');
+    // The device maps them the same way (local-db, toExercise).
+    for (const r of rows.filter((x) => x.name.startsWith('Old'))) {
+      const orig = {
+        'Old back': ['back', ['biceps']],
+        'Old shoulders': ['shoulders', ['triceps']],
+        'Old legs': ['legs', ['glutes', 'back']],
+        'Old chest': ['chest', ['shoulders', 'triceps']],
+        'Old curl': ['biceps', []],
+      }[r.name];
+      const app = normalizeMuscles({ primary: orig[0], secondary: orig[1] });
+      assert.deepEqual(levels(r), [app.primary, app.secondary, app.indirect], r.name);
+    }
+    await old.close();
   });
 });
 
@@ -834,6 +984,33 @@ describe('personal API and MCP (server/api.js)', () => {
     );
   });
 
+  it('MCP list_exercises: the old fields plus group and muscles; filter by muscle or group (DECISIONS 125)', async () => {
+    const all = (await tool('list_exercises', {})).exercises;
+    const squat = all.find((e) => e.name === 'Back squat');
+    assert.deepEqual(squat, {
+      name: 'Back squat',
+      muscle: 'quads',
+      group: 'legs',
+      muscles: { quads: 1, glutes: 0.5, adductors: 0.5, hamstrings: 0.25, lower_back: 0.25 },
+      equipment: 'barbell',
+    });
+    // The user's own exercise saved with the old 'back' reads in the new muscles.
+    assert.deepEqual(
+      all.find((e) => e.name === 'My cable move'),
+      {
+        name: 'My cable move',
+        muscle: 'lats',
+        group: 'back',
+        muscles: { lats: 1, upper_back: 0.5 },
+        equipment: 'cables',
+      },
+    );
+    const quads = (await tool('list_exercises', { muscle: 'quads' })).exercises;
+    assert.ok(quads.length > 0 && quads.every((e) => e.muscle === 'quads'));
+    const legs = (await tool('list_exercises', { muscle: 'legs' })).exercises;
+    assert.ok(legs.some((e) => e.muscle === 'hamstrings') && legs.every((e) => e.group === 'legs'));
+  });
+
   it('MCP: initialize, list the tools, log a generic food by id and see it in the day', async () => {
     const init = (await mcp('initialize', { protocolVersion: '2025-06-18', capabilities: {} }))
       .result;
@@ -1084,6 +1261,41 @@ describe('personal API and MCP (server/api.js)', () => {
     });
     assert.equal(again.workout_updated, true);
     assert.equal(again.backup, 'API plan (before AI)');
+  });
+
+  it('propose_plans: a new exercise keeps its three levels of muscles (DECISIONS 125)', async () => {
+    const r = await tool('propose_plans', {
+      workout_plan: {
+        name: 'Zercher plan',
+        days: [
+          {
+            name: 'Legs',
+            exercises: [
+              {
+                exercise: 'Zercher squat',
+                sets: 3,
+                reps: '6-8',
+                primary_muscle: 'quads',
+                secondary_muscles: ['glutes', 'adductors'],
+                indirect_muscles: ['upper_back', 'abs'],
+                equipment: 'barbell',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    assert.equal(r.saved, true, JSON.stringify(r));
+    const made = (await tool('list_exercises', { muscle: 'quads' })).exercises.find(
+      (e) => e.name === 'Zercher squat',
+    );
+    assert.deepEqual(made.muscles, {
+      quads: 1,
+      glutes: 0.5,
+      adductors: 0.5,
+      upper_back: 0.25,
+      abs: 0.25,
+    });
   });
 
   it('own foods: create, change, delete; catalogue foods cannot be changed', async () => {

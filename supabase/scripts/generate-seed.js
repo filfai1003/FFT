@@ -3,116 +3,141 @@
 const fs = require('fs');
 const path = require('path');
 
-const E = (slug, name, primary, secondary, equipment, log = 'weight_reps') => ({
+// The 17 muscles (src/domain/muscles.ts, DECISIONS 125).
+const MUSCLES = [
+  'chest',
+  'lats',
+  'upper_back',
+  'lower_back',
+  'front_delts',
+  'side_delts',
+  'rear_delts',
+  'biceps',
+  'triceps',
+  'forearms',
+  'quads',
+  'hamstrings',
+  'glutes',
+  'adductors',
+  'calves',
+  'abs',
+  'obliques',
+];
+
+const words = (s) => (s ? s.split(' ').filter(Boolean) : []);
+
+/**
+ * One catalogue exercise. Muscles by how much the exercise works them (DECISIONS 125):
+ * `primary` = 1 set per set done, `secondary` (space-separated) = half a set each (they help),
+ * `indirect` = a quarter set each (they steady or assist a little).
+ */
+const E = (slug, name, equipment, log, primary, secondary = '', indirect = '') => ({
   slug,
   name,
   primary,
-  secondary,
+  secondary: words(secondary),
+  indirect: words(indirect),
   equipment,
   log,
 });
 
+const W = 'weight_reps';
+const R = 'reps';
+
+// Levels follow the usual EMG / training-volume reading of each lift: the muscle that moves the
+// load most is primary, the clear helpers secondary, stabilisers and small assistants indirect.
+// prettier-ignore
 const list = [
+  //  slug                          name                              equipment     log              primary        secondary (½)                 indirect (¼)
   // chest
-  E('bench-press', 'Barbell bench press', 'chest', ['shoulders', 'triceps'], 'barbell'),
-  E(
-    'incline-bench-press',
-    'Incline barbell bench press',
-    'chest',
-    ['shoulders', 'triceps'],
-    'barbell',
-  ),
-  E('decline-bench-press', 'Decline barbell bench press', 'chest', ['triceps'], 'barbell'),
-  E('db-bench-press', 'Dumbbell bench press', 'chest', ['shoulders', 'triceps'], 'dumbbells'),
-  E('incline-db-press', 'Incline dumbbell press', 'chest', ['shoulders', 'triceps'], 'dumbbells'),
-  E('db-fly', 'Dumbbell fly', 'chest', ['shoulders'], 'dumbbells'),
-  E('cable-fly', 'Cable fly', 'chest', ['shoulders'], 'cables'),
-  E('pec-deck', 'Pec deck', 'chest', [], 'machine'),
-  E('chest-press-machine', 'Chest press machine', 'chest', ['shoulders', 'triceps'], 'machine'),
-  E('push-up', 'Push-up', 'chest', ['shoulders', 'triceps'], 'bodyweight', 'reps'),
-  E('chest-dip', 'Chest dip', 'chest', ['triceps', 'shoulders'], 'bodyweight', 'reps'),
+  E('bench-press',                 'Barbell bench press',            'barbell',    W,               'chest',       'front_delts triceps'),
+  E('incline-bench-press',         'Incline barbell bench press',    'barbell',    W,               'chest',       'front_delts triceps'),
+  E('decline-bench-press',         'Decline barbell bench press',    'barbell',    W,               'chest',       'triceps',                    'front_delts'),
+  E('db-bench-press',              'Dumbbell bench press',           'dumbbells',  W,               'chest',       'front_delts triceps'),
+  E('incline-db-press',            'Incline dumbbell press',         'dumbbells',  W,               'chest',       'front_delts triceps'),
+  E('db-fly',                      'Dumbbell fly',                   'dumbbells',  W,               'chest',       '',                           'front_delts'),
+  E('cable-fly',                   'Cable fly',                      'cables',     W,               'chest',       '',                           'front_delts'),
+  E('pec-deck',                    'Pec deck',                       'machine',    W,               'chest',       '',                           'front_delts'),
+  E('chest-press-machine',         'Chest press machine',            'machine',    W,               'chest',       'front_delts triceps'),
+  E('push-up',                     'Push-up',                        'bodyweight', R,               'chest',       'front_delts triceps',        'abs'),
+  E('chest-dip',                   'Chest dip',                      'bodyweight', R,               'chest',       'triceps front_delts'),
   // back
-  E('pull-up', 'Pull-up', 'back', ['biceps'], 'bodyweight', 'reps'),
-  E('chin-up', 'Chin-up', 'back', ['biceps'], 'bodyweight', 'reps'),
-  E('lat-pulldown', 'Lat pulldown', 'back', ['biceps'], 'cables'),
-  E('barbell-row', 'Barbell row', 'back', ['biceps', 'shoulders'], 'barbell'),
-  E('db-row', 'One-arm dumbbell row', 'back', ['biceps'], 'dumbbells'),
-  E('seated-cable-row', 'Seated cable row', 'back', ['biceps'], 'cables'),
-  E('t-bar-row', 'T-bar row', 'back', ['biceps'], 'barbell'),
-  E('chest-supported-row', 'Chest-supported row machine', 'back', ['biceps'], 'machine'),
-  E('straight-arm-pulldown', 'Straight-arm pulldown', 'back', [], 'cables'),
-  E('face-pull', 'Face pull', 'back', ['shoulders'], 'cables'),
-  E('deadlift', 'Deadlift', 'back', ['legs', 'glutes'], 'barbell'),
-  E('rack-pull', 'Rack pull', 'back', ['glutes'], 'barbell'),
-  E('back-extension', 'Back extension', 'back', ['glutes', 'legs'], 'bodyweight', 'reps'),
-  E('inverted-row', 'Inverted row', 'back', ['biceps'], 'bodyweight', 'reps'),
+  E('pull-up',                     'Pull-up',                        'bodyweight', R,               'lats',        'biceps upper_back',          'rear_delts forearms'),
+  E('chin-up',                     'Chin-up',                        'bodyweight', R,               'lats',        'biceps upper_back',          'forearms'),
+  E('lat-pulldown',                'Lat pulldown',                   'cables',     W,               'lats',        'biceps upper_back',          'rear_delts forearms'),
+  E('barbell-row',                 'Barbell row',                    'barbell',    W,               'upper_back',  'lats biceps rear_delts',     'lower_back forearms'),
+  E('db-row',                      'One-arm dumbbell row',           'dumbbells',  W,               'lats',        'upper_back biceps',          'rear_delts forearms'),
+  E('seated-cable-row',            'Seated cable row',               'cables',     W,               'upper_back',  'lats biceps',                'rear_delts forearms'),
+  E('t-bar-row',                   'T-bar row',                      'barbell',    W,               'upper_back',  'lats biceps',                'rear_delts lower_back forearms'),
+  E('chest-supported-row',         'Chest-supported row machine',    'machine',    W,               'upper_back',  'lats biceps',                'rear_delts'),
+  E('straight-arm-pulldown',       'Straight-arm pulldown',          'cables',     W,               'lats',        '',                           'triceps abs'),
+  E('face-pull',                   'Face pull',                      'cables',     W,               'rear_delts',  'upper_back',                 'side_delts'),
+  E('deadlift',                    'Deadlift',                       'barbell',    W,               'lower_back',  'glutes hamstrings',          'quads upper_back forearms'),
+  E('rack-pull',                   'Rack pull',                      'barbell',    W,               'lower_back',  'upper_back glutes',          'hamstrings forearms'),
+  E('back-extension',              'Back extension',                 'bodyweight', R,               'lower_back',  'glutes hamstrings'),
+  E('inverted-row',                'Inverted row',                   'bodyweight', R,               'upper_back',  'lats biceps',                'rear_delts abs'),
   // shoulders
-  E('overhead-press', 'Overhead press', 'shoulders', ['triceps'], 'barbell'),
-  E(
-    'seated-db-shoulder-press',
-    'Seated dumbbell shoulder press',
-    'shoulders',
-    ['triceps'],
-    'dumbbells',
-  ),
-  E('arnold-press', 'Arnold press', 'shoulders', ['triceps'], 'dumbbells'),
-  E('machine-shoulder-press', 'Machine shoulder press', 'shoulders', ['triceps'], 'machine'),
-  E('lateral-raise', 'Lateral raise', 'shoulders', [], 'dumbbells'),
-  E('cable-lateral-raise', 'Cable lateral raise', 'shoulders', [], 'cables'),
-  E('front-raise', 'Front raise', 'shoulders', [], 'dumbbells'),
-  E('rear-delt-fly', 'Rear delt fly', 'shoulders', ['back'], 'dumbbells'),
-  E('upright-row', 'Upright row', 'shoulders', ['biceps'], 'barbell'),
-  E('db-shrug', 'Dumbbell shrug', 'shoulders', ['back'], 'dumbbells'),
+  E('overhead-press',              'Overhead press',                 'barbell',    W,               'front_delts', 'triceps side_delts',         'upper_back abs'),
+  E('seated-db-shoulder-press',    'Seated dumbbell shoulder press', 'dumbbells',  W,               'front_delts', 'triceps side_delts',         'upper_back'),
+  E('arnold-press',                'Arnold press',                   'dumbbells',  W,               'front_delts', 'side_delts triceps',         'upper_back'),
+  E('machine-shoulder-press',      'Machine shoulder press',         'machine',    W,               'front_delts', 'triceps side_delts'),
+  E('lateral-raise',               'Lateral raise',                  'dumbbells',  W,               'side_delts',  '',                           'front_delts upper_back'),
+  E('cable-lateral-raise',         'Cable lateral raise',            'cables',     W,               'side_delts',  '',                           'front_delts upper_back'),
+  E('front-raise',                 'Front raise',                    'dumbbells',  W,               'front_delts', '',                           'side_delts chest'),
+  E('rear-delt-fly',               'Rear delt fly',                  'dumbbells',  W,               'rear_delts',  'upper_back'),
+  E('upright-row',                 'Upright row',                    'barbell',    W,               'side_delts',  'upper_back',                 'front_delts biceps'),
+  E('db-shrug',                    'Dumbbell shrug',                 'dumbbells',  W,               'upper_back',  '',                           'forearms'),
   // biceps
-  E('biceps-curl', 'Dumbbell biceps curl', 'biceps', [], 'dumbbells'),
-  E('barbell-curl', 'Barbell curl', 'biceps', [], 'barbell'),
-  E('hammer-curl', 'Hammer curl', 'biceps', [], 'dumbbells'),
-  E('incline-db-curl', 'Incline dumbbell curl', 'biceps', [], 'dumbbells'),
-  E('preacher-curl', 'Preacher curl', 'biceps', [], 'machine'),
-  E('cable-curl', 'Cable curl', 'biceps', [], 'cables'),
+  E('biceps-curl',                 'Dumbbell biceps curl',           'dumbbells',  W,               'biceps',      '',                           'forearms'),
+  E('barbell-curl',                'Barbell curl',                   'barbell',    W,               'biceps',      '',                           'forearms'),
+  E('hammer-curl',                 'Hammer curl',                    'dumbbells',  W,               'biceps',      'forearms'),
+  E('incline-db-curl',             'Incline dumbbell curl',          'dumbbells',  W,               'biceps',      '',                           'forearms'),
+  E('preacher-curl',               'Preacher curl',                  'machine',    W,               'biceps',      '',                           'forearms'),
+  E('cable-curl',                  'Cable curl',                     'cables',     W,               'biceps',      '',                           'forearms'),
   // triceps
-  E('pushdown', 'Triceps pushdown', 'triceps', [], 'cables'),
-  E('rope-pushdown', 'Rope pushdown', 'triceps', [], 'cables'),
-  E('skull-crusher', 'Skull crusher', 'triceps', [], 'barbell'),
-  E('overhead-triceps-extension', 'Overhead triceps extension', 'triceps', [], 'dumbbells'),
-  E(
-    'close-grip-bench-press',
-    'Close-grip bench press',
-    'triceps',
-    ['chest', 'shoulders'],
-    'barbell',
-  ),
-  E('bench-dip', 'Bench dip', 'triceps', ['shoulders'], 'bodyweight', 'reps'),
+  E('pushdown',                    'Triceps pushdown',               'cables',     W,               'triceps'),
+  E('rope-pushdown',               'Rope pushdown',                  'cables',     W,               'triceps'),
+  E('skull-crusher',               'Skull crusher',                  'barbell',    W,               'triceps'),
+  E('overhead-triceps-extension',  'Overhead triceps extension',     'dumbbells',  W,               'triceps'),
+  E('close-grip-bench-press',      'Close-grip bench press',         'barbell',    W,               'triceps',     'chest front_delts'),
+  E('bench-dip',                   'Bench dip',                      'bodyweight', R,               'triceps',     'front_delts',                'chest'),
   // legs
-  E('back-squat', 'Back squat', 'legs', ['glutes', 'abs'], 'barbell'),
-  E('front-squat', 'Front squat', 'legs', ['glutes', 'abs'], 'barbell'),
-  E('goblet-squat', 'Goblet squat', 'legs', ['glutes'], 'dumbbells'),
-  E('hack-squat', 'Hack squat', 'legs', ['glutes'], 'machine'),
-  E('leg-press', 'Leg press', 'legs', ['glutes'], 'machine'),
-  E('romanian-deadlift', 'Romanian deadlift', 'legs', ['glutes', 'back'], 'barbell'),
-  E('leg-extension', 'Leg extension', 'legs', [], 'machine'),
-  E('lying-leg-curl', 'Lying leg curl', 'legs', [], 'machine'),
-  E('seated-leg-curl', 'Seated leg curl', 'legs', [], 'machine'),
-  E('walking-lunge', 'Walking lunge', 'legs', ['glutes'], 'dumbbells'),
-  E('bulgarian-split-squat', 'Bulgarian split squat', 'legs', ['glutes'], 'dumbbells'),
-  E('standing-calf-raise', 'Standing calf raise', 'legs', [], 'machine'),
-  E('seated-calf-raise', 'Seated calf raise', 'legs', [], 'machine'),
+  E('back-squat',                  'Back squat',                     'barbell',    W,               'quads',       'glutes adductors',           'hamstrings lower_back'),
+  E('front-squat',                 'Front squat',                    'barbell',    W,               'quads',       'glutes adductors',           'upper_back abs'),
+  E('goblet-squat',                'Goblet squat',                   'dumbbells',  W,               'quads',       'glutes adductors',           'abs'),
+  E('hack-squat',                  'Hack squat',                     'machine',    W,               'quads',       'glutes adductors'),
+  E('leg-press',                   'Leg press',                      'machine',    W,               'quads',       'glutes adductors',           'hamstrings'),
+  E('romanian-deadlift',           'Romanian deadlift',              'barbell',    W,               'hamstrings',  'glutes lower_back',          'adductors forearms'),
+  E('leg-extension',               'Leg extension',                  'machine',    W,               'quads'),
+  E('lying-leg-curl',              'Lying leg curl',                 'machine',    W,               'hamstrings',  '',                           'calves'),
+  E('seated-leg-curl',             'Seated leg curl',                'machine',    W,               'hamstrings',  '',                           'calves'),
+  E('walking-lunge',               'Walking lunge',                  'dumbbells',  W,               'quads',       'glutes',                     'adductors hamstrings'),
+  E('bulgarian-split-squat',       'Bulgarian split squat',          'dumbbells',  W,               'quads',       'glutes',                     'adductors hamstrings'),
+  E('standing-calf-raise',         'Standing calf raise',            'machine',    W,               'calves'),
+  E('seated-calf-raise',           'Seated calf raise',              'machine',    W,               'calves'),
   // glutes
-  E('hip-thrust', 'Barbell hip thrust', 'glutes', ['legs'], 'barbell'),
-  E('glute-bridge', 'Glute bridge', 'glutes', ['legs'], 'bodyweight', 'reps'),
-  E('cable-kickback', 'Cable glute kickback', 'glutes', [], 'cables'),
-  // abs
-  E('plank', 'Plank', 'abs', ['shoulders'], 'bodyweight', 'time'),
-  E('side-plank', 'Side plank', 'abs', ['shoulders'], 'bodyweight', 'time'),
-  E('crunch', 'Crunch', 'abs', [], 'bodyweight', 'reps'),
-  E('cable-crunch', 'Cable crunch', 'abs', [], 'cables'),
-  E('hanging-leg-raise', 'Hanging leg raise', 'abs', [], 'bodyweight', 'reps'),
-  E('ab-wheel-rollout', 'Ab wheel rollout', 'abs', ['shoulders'], 'bodyweight', 'reps'),
+  E('hip-thrust',                  'Barbell hip thrust',             'barbell',    W,               'glutes',      'hamstrings',                 'quads adductors'),
+  E('glute-bridge',                'Glute bridge',                   'bodyweight', R,               'glutes',      'hamstrings'),
+  E('cable-kickback',              'Cable glute kickback',           'cables',     W,               'glutes',      '',                           'hamstrings'),
+  // core
+  E('plank',                       'Plank',                          'bodyweight', 'time',          'abs',         'obliques',                   'front_delts'),
+  E('side-plank',                  'Side plank',                     'bodyweight', 'time',          'obliques',    'abs',                        'glutes side_delts'),
+  E('crunch',                      'Crunch',                         'bodyweight', R,               'abs',         '',                           'obliques'),
+  E('cable-crunch',                'Cable crunch',                   'cables',     W,               'abs',         '',                           'obliques'),
+  E('hanging-leg-raise',           'Hanging leg raise',              'bodyweight', R,               'abs',         '',                           'obliques forearms'),
+  E('ab-wheel-rollout',            'Ab wheel rollout',               'bodyweight', R,               'abs',         '',                           'obliques lats'),
   // conditioning
-  E('treadmill-run', 'Treadmill run', 'legs', [], 'machine', 'distance_time'),
-  E('rowing-machine', 'Rowing machine', 'back', ['legs'], 'machine', 'distance_time'),
-  E('stationary-bike', 'Stationary bike', 'legs', [], 'machine', 'distance_time'),
+  E('treadmill-run',               'Treadmill run',                  'machine',    'distance_time', 'quads',       '',                           'calves hamstrings'),
+  E('rowing-machine',              'Rowing machine',                 'machine',    'distance_time', 'upper_back',  'quads',                      'lats'),
+  E('stationary-bike',             'Stationary bike',                'machine',    'distance_time', 'quads'),
 ];
+
+// Every exercise names known muscles, each once (primary > secondary > indirect).
+for (const e of list) {
+  const all = [e.primary, ...e.secondary, ...e.indirect];
+  for (const m of all) if (!MUSCLES.includes(m)) throw new Error(`${e.slug}: unknown muscle ${m}`);
+  if (new Set(all).size !== all.length) throw new Error(`${e.slug}: a muscle is listed twice`);
+}
 
 // Slugs whose image exists in assets/exercise-images/<slug>.png (uploaded to the public bucket).
 const withImage = new Set(
@@ -143,7 +168,7 @@ const q = (s) => "'" + s.replace(/'/g, "''") + "'";
 const arr = (a) => (a.length ? 'array[' + a.map(q).join(', ') + ']::text[]' : "'{}'::text[]");
 const rows = list.map(
   (e) =>
-    `  (${q(catalogueId(e.slug))}::uuid, ${q(e.slug)}, ${q(e.name)}, ${q(e.primary)}, ${arr(e.secondary)}, ${q(e.equipment)}, ${q(e.log)}, ${withImage.has(e.slug) ? q(e.slug + '.png') : 'null'})`,
+    `  (${q(catalogueId(e.slug))}::uuid, ${q(e.slug)}, ${q(e.name)}, ${q(e.primary)}, ${arr(e.secondary)}, ${arr(e.indirect)}, ${q(e.equipment)}, ${q(e.log)}, ${withImage.has(e.slug) ? q(e.slug + '.png') : 'null'})`,
 );
 
 // Idempotent: the server (server/migrate.js) runs it at every start, so catalogue edits reach it.
@@ -153,7 +178,8 @@ const sql = [
   '-- Ids are derived from the slug (same as the app), so rows can move between device and server.',
   'drop table if exists pg_temp.catalogue_seed;',
   'create temporary table catalogue_seed (id uuid, slug text, name text, primary_muscle text,',
-  '  secondary_muscles text[], equipment text, log_type text, image_path text);',
+  '  secondary_muscles text[], indirect_muscles text[], equipment text, log_type text,',
+  '  image_path text);',
   'insert into catalogue_seed values',
   rows.join(',\n') + ';',
   '',
@@ -165,11 +191,14 @@ const sql = [
   '    and not exists (select 1 from public.session_exercises p where p.exercise_id = e.id)',
   '    and not exists (select 1 from public.session_sets p where p.exercise_id = e.id);',
   '',
-  'insert into public.exercises (id, slug, name, primary_muscle, secondary_muscles, equipment, log_type, image_path)',
-  'select id, slug, name, primary_muscle, secondary_muscles, equipment, log_type, image_path from catalogue_seed',
+  'insert into public.exercises (id, slug, name, primary_muscle, secondary_muscles, indirect_muscles,',
+  '  equipment, log_type, image_path)',
+  'select id, slug, name, primary_muscle, secondary_muscles, indirect_muscles, equipment, log_type,',
+  '  image_path from catalogue_seed',
   'on conflict (id) do update set',
   '  name = excluded.name, primary_muscle = excluded.primary_muscle,',
-  '  secondary_muscles = excluded.secondary_muscles, equipment = excluded.equipment,',
+  '  secondary_muscles = excluded.secondary_muscles, indirect_muscles = excluded.indirect_muscles,',
+  '  equipment = excluded.equipment,',
   '  log_type = excluded.log_type, image_path = excluded.image_path;',
   '',
   'drop table catalogue_seed;',
@@ -199,7 +228,7 @@ const foodsSql = [
   '',
   'insert into public.foods (id, owner_id, name, kcal_100g, protein_100g, carbs_100g, sugars_100g,',
   '  fat_100g, saturates_100g, fiber_100g, salt_100g, source, verified)',
-  'select id, null, name, kcal, protein, carbs, sugars, fat, saturates, fiber, salt, \'ciqual\', true',
+  "select id, null, name, kcal, protein, carbs, sugars, fat, saturates, fiber, salt, 'ciqual', true",
   '  from generic_food_seed',
   'on conflict (id) do update set',
   '  name = excluded.name, kcal_100g = excluded.kcal_100g, protein_100g = excluded.protein_100g,',
@@ -259,6 +288,7 @@ const ts = [
   '  name: string;',
   '  primary: string;',
   '  secondary: string[];',
+  '  indirect: string[];',
   '  equipment: string;',
   '  log: string;',
   '  image: string | null;',

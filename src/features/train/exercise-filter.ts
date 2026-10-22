@@ -43,9 +43,16 @@ export function groupByMuscle(list: readonly Exercise[]): { muscle: Muscle; item
     .filter((g) => g.items.length > 0);
 }
 
-/** "Chest · triceps · bodyweight" (picker rows; sentence case, no uppercase labels). */
-export function exerciseMeta(e: Exercise): string {
-  const line = [e.primaryMuscle, ...e.secondaryMuscles, e.equipment].join(' · ').toLowerCase();
+/**
+ * "Chest · front shoulders · triceps · barbell" (picker rows; sentence case, no uppercase labels):
+ * the main muscle, the muscles that help, the equipment. `name` gives a muscle's words (i18n).
+ */
+export function exerciseMeta(e: Exercise, name: (m: Muscle) => string): string {
+  const line = [e.primaryMuscle, ...e.secondaryMuscles]
+    .map(name)
+    .concat(e.equipment)
+    .join(' · ')
+    .toLowerCase();
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
 

@@ -61,7 +61,7 @@ export function ExerciseBrowser({
   const groups = groupByMuscle(visible);
 
   const infoFor = (e: Exercise) => {
-    if (mode === 'select') return exerciseMeta(e);
+    if (mode === 'select') return exerciseMeta(e, (m) => t(`library.muscle.${m}`));
     const label = recordLabel(e, records.data?.get(e.id), unit);
     switch (label.kind) {
       case 'weight':

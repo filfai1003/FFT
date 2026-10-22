@@ -40,7 +40,7 @@ export type PlanView = {
 };
 
 const PLAN_SELECT =
-  '*, plan_days(*, plan_exercises(*, exercises(id, owner_id, name, primary_muscle, secondary_muscles, equipment, log_type, image_path)))';
+  '*, plan_days(*, plan_exercises(*, exercises(id, owner_id, name, primary_muscle, secondary_muscles, indirect_muscles, equipment, log_type, image_path)))';
 
 type Raw = {
   id: string;

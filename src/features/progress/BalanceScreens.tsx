@@ -15,29 +15,31 @@ import { StatusChip } from '@/components/ui/StatusChip';
 import { Text } from '@/components/ui/Text';
 import { TopBar } from '@/components/ui/TopBar';
 import { useTheme } from '@/design/use-theme';
+import { strengthGroups } from '@/domain/muscles';
 import { formatInt } from '@/domain/numbers';
 import { displayWeight } from '@/domain/units';
 import {
   balanceRanges,
-  movements,
+  setsText,
   WEEKLY_SETS_GUIDE,
   type BalanceRange,
   type BalanceRow,
   type GuideStatus,
+  type SetsGuide,
 } from '@/domain/volume';
 import { usePreferencesStore } from '@/features/settings/preferences-store';
 import { goBack } from '@/lib/navigation';
 import { useBalance } from './balance';
 
 const { min: GUIDE_MIN, max: GUIDE_MAX } = WEEKLY_SETS_GUIDE;
+/** How many of the muscles most behind the Me card shows. */
+const CARD_BEHIND = 4;
 
-/** Sets as written: whole numbers plain, halves (secondary muscles) with one decimal. */
-const setsText = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-
-const statusIcon: Record<GuideStatus, IconName> = {
+const statusIcon: Record<GuideStatus, IconName | undefined> = {
   under: 'arrowDown',
   within: 'check',
   over: 'arrowUp',
+  none: undefined,
 };
 
 /** The words a screen reader hears for a row ("Chest, 12 sets this week, within the 10 to 20 guideline"). */
@@ -48,23 +50,28 @@ function useRowLabel(range: BalanceRange) {
       name: t(`library.muscle.${r.muscle}`),
       sets: t('balance.sets', { count: r.sets, value: setsText(r.sets) }),
       when: t(`balance.when.${range}`),
-      status: t(`balance.statusLong.${r.status}`, { min: GUIDE_MIN, max: GUIDE_MAX }),
+      status: t(`balance.statusLong.${r.status}`, {
+        min: r.guide?.min ?? GUIDE_MIN,
+        max: r.guide?.max ?? GUIDE_MAX,
+      }),
     });
 }
 
 /**
  * A horizontal bar of weekly sets with the guideline band marked behind it (training colour,
- * read from the theme: the area colours can be changed, DECISIONS 118). Decoration only: the
- * number and the status words next to it say the same.
+ * read from the theme: the area colours can be changed, DECISIONS 118); no band for the helper
+ * muscles (DECISIONS 125). Decoration only: the number and the status words next to it say the same.
  */
 export function BalanceBar({
   sets,
   scale,
   height = 8,
+  guide = WEEKLY_SETS_GUIDE,
 }: {
   sets: number;
   scale: number;
   height?: number;
+  guide?: SetsGuide | null;
 }) {
   const { colors } = useTheme();
   const pct = (v: number): `${number}%` => `${Math.max(0, Math.min(100, (v / scale) * 100))}%`;
@@ -75,20 +82,22 @@ export function BalanceBar({
         style={{ height, borderRadius: height / 2, backgroundColor: colors.dotOff, width: '100%' }}
       />
       {/* The guideline: a soft band with its two edges in the control border colour (≥ 3:1). */}
-      <View
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: pct(GUIDE_MIN),
-          width: pct(GUIDE_MAX - GUIDE_MIN),
-          backgroundColor: colors.trainingSoft,
-          borderLeftWidth: 2,
-          borderRightWidth: 2,
-          borderColor: colors.borderControl,
-          borderRadius: 3,
-        }}
-      />
+      {guide ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: pct(guide.min),
+            width: pct(guide.max - guide.min),
+            backgroundColor: colors.trainingSoft,
+            borderLeftWidth: 2,
+            borderRightWidth: 2,
+            borderColor: colors.borderControl,
+            borderRadius: 3,
+          }}
+        />
+      ) : null}
       {sets > 0 ? (
         <View
           style={{
@@ -110,7 +119,10 @@ export function BalanceBar({
 const scaleOf = (rows: readonly BalanceRow[]) =>
   Math.max(GUIDE_MAX + 4, ...rows.map((r) => Math.ceil(r.sets)));
 
-/** Progress · Me: how many groups are within the guideline this week, and who is behind. */
+/**
+ * Progress · Me: how many muscles are within the guideline this week, and the few most behind
+ * (17 bars would not read at a glance; the page has them all).
+ */
 export function BalanceCard() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -119,10 +131,11 @@ export function BalanceCard() {
   const label = useRowLabel('this');
   if (b.isPending) return null;
   const scale = scaleOf(b.rows);
+  const behindRows = b.behindList.slice(0, CARD_BEHIND);
 
   const summary = b.empty
     ? t('balance.emptyTitle.this')
-    : t('balance.cardWithin', { within: b.within, total: b.rows.length });
+    : t('balance.cardWithin', { within: b.within, total: b.guided });
   const behind = b.behind
     ? t('balance.behind', {
         name: t(`library.muscle.${b.behind.muscle}`),
@@ -156,46 +169,48 @@ export function BalanceCard() {
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
           <Text variant="displayM" numeric>
-            {t('balance.ofTotal', { within: b.within, total: b.rows.length })}
+            {t('balance.ofTotal', { within: b.within, total: b.guided })}
           </Text>
           <Text variant="bodyS" muted style={{ flex: 1 }}>
             {t('balance.cardWithinShort', { min: GUIDE_MIN, max: GUIDE_MAX })}
           </Text>
         </View>
       )}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, columnGap: 14 }}>
-        {b.rows.map((r) => (
-          <View
-            key={r.muscle}
-            accessible
-            accessibilityLabel={label(r)}
-            style={{ width: '46%', flexGrow: 1, gap: 2 }}
-          >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="label" muted>
-                {t(`library.muscle.${r.muscle}`)}
-              </Text>
-              <Text variant="label" semibold numeric>
-                {setsText(r.sets)}
-              </Text>
-            </View>
-            <BalanceBar sets={r.sets} scale={scale} height={6} />
+      {behindRows.length > 0 ? (
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="arrowDown" size={14} color={colors.text} />
+            <Text variant="bodyS" semibold style={{ flex: 1 }}>
+              {t('balance.behindTitle')}
+            </Text>
           </View>
-        ))}
-      </View>
-      {behind ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Icon name="arrowDown" size={14} color={colors.text} />
-          <Text variant="bodyS" semibold style={{ flex: 1 }}>
-            {behind}
-          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8, columnGap: 14 }}>
+            {behindRows.map((r) => (
+              <View
+                key={r.muscle}
+                accessible
+                accessibilityLabel={label(r)}
+                style={{ width: '46%', flexGrow: 1, gap: 2 }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 6 }}>
+                  <Text variant="label" muted numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {t(`library.muscle.${r.muscle}`)}
+                  </Text>
+                  <Text variant="label" semibold numeric>
+                    {setsText(r.sets)}
+                  </Text>
+                </View>
+                <BalanceBar sets={r.sets} scale={scale} height={6} guide={r.guide} />
+              </View>
+            ))}
+          </View>
         </View>
       ) : null}
     </Card>
   );
 }
 
-/** Training balance: weekly hard sets per muscle group against the 10–20 guideline. */
+/** Training balance: weekly hard sets per muscle, by group, against the 10–20 guideline. */
 export function BalanceScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -234,6 +249,9 @@ export function BalanceScreen() {
         <Text variant="bodyS" muted>
           {t('balance.guideNote')}
         </Text>
+        <Text variant="bodyS" muted>
+          {t('balance.helperNote')}
+        </Text>
       </Card>
 
       {b.isPending ? (
@@ -265,10 +283,14 @@ export function BalanceScreen() {
               </Text>
             </Card>
           ) : null}
-          {movements.map((m) => {
-            const rows = b.rows.filter((r) => r.movement === m);
+          {strengthGroups.map((g, gi) => {
+            const rows = b.rows.filter((r) => r.group === g);
             return (
-              <Section key={m} title={t(`balance.movement.${m}`)}>
+              <Section
+                key={g}
+                title={t(`library.filter.${g}`)}
+                info={gi === 0 ? 'muscleLevels' : undefined}
+              >
                 <Card gap={0} style={{ paddingVertical: 4 }}>
                   {rows.map((r, i) => (
                     <View
@@ -294,7 +316,7 @@ export function BalanceScreen() {
                           {t('balance.setsUnit', { count: r.sets })}
                         </Text>
                       </View>
-                      <BalanceBar sets={r.sets} scale={scale} />
+                      <BalanceBar sets={r.sets} scale={scale} guide={r.guide} />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         {/* Neutral on purpose: a guideline, not a verdict (icon + words). */}
                         <StatusChip
