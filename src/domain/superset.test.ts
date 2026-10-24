@@ -1,4 +1,4 @@
-import { afterSetInSuperset, supersetLabels, supersetOf } from './superset';
+import { afterSetInSuperset, supersetGroups, supersetLabels, supersetOf } from './superset';
 
 describe('supersets', () => {
   // 0 alone, 1+2 together, 3 alone, 4+5+6 together.
@@ -10,6 +10,11 @@ describe('supersets', () => {
     expect(supersetOf(links, 2)).toEqual([1, 2]);
     expect(supersetOf(links, 5)).toEqual([4, 5, 6]);
     expect(supersetOf(links, 3)).toEqual([3]);
+  });
+
+  it('splits a day into runs: one per superset, one per other exercise', () => {
+    expect(supersetGroups(links)).toEqual([[0], [1, 2], [3], [4, 5, 6]]);
+    expect(supersetGroups([])).toEqual([]);
   });
 
   it('labels supersets A1, A2, B1…', () => {

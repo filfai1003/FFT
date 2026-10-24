@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { BottomActionBar, useActionBarHeight } from '@/components/ui/BottomActionBar';
@@ -15,7 +15,8 @@ import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { Icon } from '@/components/ui/Icon';
 import { DragHandle, moveActionDelta, useReorder } from '@/components/ui/reorder';
-import { supersetLabels } from '@/domain/superset';
+import { IconTile, useAreaColors } from '@/components/ui/IconTile';
+import { supersetGroups, supersetLabels } from '@/domain/superset';
 import { MAX_DROPS, type DropPlan } from '@/domain/dropset';
 import { Segmented } from '@/components/ui/Segmented';
 import { radius, touch } from '@/design/tokens';
@@ -27,6 +28,7 @@ import {
   openDay,
   openNewDay,
   removeFromDay,
+  setGroupRest,
   summaryLine,
   updateInDay,
   useDayEditorStore,
@@ -88,9 +90,105 @@ export function DayEditorScreen() {
   if (!state || !showing || !plan.data) return <Screen>{null}</Screen>;
 
   const valid = state.name.trim().length > 0;
-  const labels = supersetLabels(
-    state.exercises.map((e, i) => e.supersetWithNext && i < state.exercises.length - 1),
-  );
+  const links = state.exercises.map((e, i) => e.supersetWithNext && i < state.exercises.length - 1);
+  const labels = supersetLabels(links);
+
+  /**
+   * One exercise: its grip and either its summary or its settings. Inside a superset card it has
+   * no frame of its own (the card is the frame) and no rest: the card shows the round's rest once.
+   */
+  const renderRow = (index: number, inSuperset: boolean) => {
+    const e = state.exercises[index];
+    const row = reorder.rowProps(index);
+    return (
+      <View
+        key={e.id}
+        onLayout={row.onLayout}
+        style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 4 }, row.style]}
+      >
+        {/* Hold the grip, then slide the exercise to its new place. */}
+        <DragHandle
+          {...reorder.handleProps(index)}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel={t('plan.reorderLabel', { name: e.exercise.name })}
+          accessibilityHint={t('plan.reorderHint')}
+          accessibilityActions={[
+            { name: 'decrement', label: t('plan.moveUp') },
+            { name: 'increment', label: t('plan.moveDown') },
+          ]}
+          onAccessibilityAction={(ev) =>
+            patch((s) => moveInDay(s, e.id, moveActionDelta(ev.nativeEvent.actionName)))
+          }
+          style={{
+            width: 32,
+            minHeight: 60,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="grip" size={20} color={colors.textMuted} />
+        </DragHandle>
+        <View style={{ flex: 1 }}>
+          {state.expandedId === e.id ? (
+            <ExpandedExercise
+              e={e}
+              label={labels[index]}
+              inSuperset={inSuperset}
+              canLink={index < state.exercises.length - 1}
+              onChange={(p) => patch((s) => updateInDay(s, e.id, p))}
+              onRemove={() => patch((s) => removeFromDay(s, e.id))}
+              onCollapse={() => patch((s) => ({ ...s, expandedId: null }))}
+            />
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={e.exercise.name}
+              accessibilityHint={t('plan.editExerciseHint')}
+              onPress={() => patch((s) => ({ ...s, expandedId: e.id }))}
+              style={({ pressed }) => ({
+                minHeight: 60,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingHorizontal: inSuperset ? 0 : 12,
+                borderRadius: radius.row + 2,
+                borderWidth: inSuperset ? 0 : 1,
+                borderColor: colors.borderDecorative,
+                backgroundColor: inSuperset ? 'transparent' : colors.surfaceAlt,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <ExerciseThumb exercise={e.exercise} size={40} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="body" numberOfLines={1}>
+                  {e.exercise.name}
+                </Text>
+                <Text variant="bodyS" muted>
+                  {[
+                    // In the card the label is enough ("A1"); the rest is said once under it.
+                    labels[index]
+                      ? inSuperset
+                        ? labels[index]
+                        : t('plan.supersetLabel', { label: labels[index] })
+                      : null,
+                    inSuperset
+                      ? t('plan.summaryNoRest', summaryLine(e))
+                      : t('plan.summary', summaryLine(e)),
+                    e.drops?.reps.length
+                      ? t('plan.dropSummary', { count: e.drops.reps.length })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </View>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    );
+  };
   const subtitle = `${plan.data.name} · ${t('plan.dayN', { n: state.position + 1 })}`;
 
   const submit = async () => {
@@ -136,89 +234,29 @@ export function DayEditorScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          {state.exercises.map((e, index) => {
-            const row = reorder.rowProps(index);
+          {supersetGroups(links).map((group) => {
+            if (group.length < 2) return renderRow(group[0], false);
+            const members = group.map((i) => state.exercises[i]);
+            const ids = members.map((m) => m.id);
+            const last = members[members.length - 1];
             return (
-              <View
-                key={e.id}
-                onLayout={row.onLayout}
-                style={[{ flexDirection: 'row', alignItems: 'flex-start', gap: 4 }, row.style]}
+              <SupersetCard
+                key={`group-${members[0].id}`}
+                letter={(labels[group[0]] ?? 'A').charAt(0)}
+                names={members.map((m) => m.exercise.name)}
+                selected={ids.includes(state.expandedId ?? '')}
+                // The dragged row must pass over the next cards, not under them.
+                lifted={reorder.dragging != null && group.includes(reorder.dragging)}
+                restS={last.restS}
+                onRest={(v) => patch((s) => setGroupRest(s, ids, v))}
               >
-                {/* Hold the grip, then slide the exercise to its new place. */}
-                <DragHandle
-                  {...reorder.handleProps(index)}
-                  accessible
-                  accessibilityRole="adjustable"
-                  accessibilityLabel={t('plan.reorderLabel', { name: e.exercise.name })}
-                  accessibilityHint={t('plan.reorderHint')}
-                  accessibilityActions={[
-                    { name: 'decrement', label: t('plan.moveUp') },
-                    { name: 'increment', label: t('plan.moveDown') },
-                  ]}
-                  onAccessibilityAction={(ev) =>
-                    patch((s) => moveInDay(s, e.id, moveActionDelta(ev.nativeEvent.actionName)))
-                  }
-                  style={{
-                    width: 32,
-                    minHeight: 60,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Icon name="grip" size={20} color={colors.textMuted} />
-                </DragHandle>
-                <View style={{ flex: 1 }}>
-                  {state.expandedId === e.id ? (
-                    <ExpandedExercise
-                      e={e}
-                      label={labels[index]}
-                      canLink={index < state.exercises.length - 1}
-                      onChange={(p) => patch((s) => updateInDay(s, e.id, p))}
-                      onRemove={() => patch((s) => removeFromDay(s, e.id))}
-                      onCollapse={() => patch((s) => ({ ...s, expandedId: null }))}
-                    />
-                  ) : (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={e.exercise.name}
-                      accessibilityHint={t('plan.editExerciseHint')}
-                      onPress={() => patch((s) => ({ ...s, expandedId: e.id }))}
-                      style={({ pressed }) => ({
-                        minHeight: 60,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 12,
-                        paddingHorizontal: 12,
-                        borderRadius: radius.row + 2,
-                        borderWidth: 1,
-                        borderColor: colors.borderDecorative,
-                        backgroundColor: colors.surfaceAlt,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
-                    >
-                      <ExerciseThumb exercise={e.exercise} size={40} />
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text variant="body" numberOfLines={1}>
-                          {e.exercise.name}
-                        </Text>
-                        <Text variant="bodyS" muted>
-                          {[
-                            labels[index]
-                              ? t('plan.supersetLabel', { label: labels[index] })
-                              : null,
-                            t('plan.summary', summaryLine(e)),
-                            e.drops?.reps.length
-                              ? t('plan.dropSummary', { count: e.drops.reps.length })
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
+                {group.map((i, k) => (
+                  <Fragment key={state.exercises[i].id}>
+                    {k > 0 ? <SupersetDivider /> : null}
+                    {renderRow(i, true)}
+                  </Fragment>
+                ))}
+              </SupersetCard>
             );
           })}
         </View>
@@ -279,6 +317,8 @@ function ExpandedExercise(props: {
   e: DayDraftExercise;
   /** "A1" when it is in a superset. */
   label: string | null;
+  /** Shown inside a superset card: no frame of its own, no rest (the card has it). */
+  inSuperset: boolean;
   /** Not the last exercise: it can be linked with the next one. */
   canLink: boolean;
   onChange: (
@@ -294,8 +334,9 @@ function ExpandedExercise(props: {
 }) {
   const { t } = useTranslation();
   const { e } = props;
+  const Frame = props.inSuperset ? BareFrame : SelectedFrame;
   return (
-    <Card size="small" selected gap={12}>
+    <Frame>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <ExerciseThumb exercise={e.exercise} size={40} />
         <Pressable
@@ -343,21 +384,15 @@ function ExpandedExercise(props: {
         </View>
       </View>
 
-      <View style={{ gap: 6 }}>
-        <Text variant="bodyS" muted>
-          {t('plan.rest')}
-        </Text>
-        <Stepper
-          value={e.restS}
-          min={0}
-          max={600}
-          step={15}
-          format={(s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`}
-          onChange={(v) => props.onChange({ restS: v })}
-          decreaseLabel={t('plan.lessRest')}
-          increaseLabel={t('plan.moreRest')}
-        />
-      </View>
+      {/* In a superset the rest comes after the round: the card shows it once, at its end. */}
+      {props.inSuperset ? null : (
+        <View style={{ gap: 6 }}>
+          <Text variant="bodyS" muted>
+            {t('plan.rest')}
+          </Text>
+          <RestStepper value={e.restS} onChange={(v) => props.onChange({ restS: v })} />
+        </View>
+      )}
 
       {e.exercise.logType === 'weight_reps' ? (
         <DropSetEditor drops={e.drops} onChange={(drops) => props.onChange({ drops })} />
@@ -368,7 +403,8 @@ function ExpandedExercise(props: {
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={{ flexShrink: 1 }}>{t('plan.supersetToggle')}</Text>
-              <InfoButton topic="superset" />
+              {/* Explained once: in a superset the card's header has the button. */}
+              {props.inSuperset ? null : <InfoButton topic="superset" />}
             </View>
             <Text variant="bodyS" muted>
               {props.label
@@ -390,7 +426,139 @@ function ExpandedExercise(props: {
         value={e.notes}
         onChangeText={(v) => props.onChange({ notes: v })}
       />
+    </Frame>
+  );
+}
+
+/** An exercise open on its own: a selected card. */
+function SelectedFrame({ children }: { children: ReactNode }) {
+  return (
+    <Card size="small" selected gap={12}>
+      {children}
     </Card>
+  );
+}
+
+/** An exercise open inside a superset card: the card is already its frame (and is selected). */
+function BareFrame({ children }: { children: ReactNode }) {
+  return <View style={{ gap: 12, paddingBottom: 4 }}>{children}</View>;
+}
+
+function RestStepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
+  return (
+    <Stepper
+      value={value}
+      min={0}
+      max={600}
+      step={15}
+      format={(s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`}
+      onChange={onChange}
+      decreaseLabel={t('plan.lessRest')}
+      increaseLabel={t('plan.moreRest')}
+    />
+  );
+}
+
+/**
+ * A superset as ONE card (owner's request, DECISIONS 129): a header (training tile, "Superset A",
+ * what's this), its exercises one under the other split by a hairline with a link mark, and the
+ * rest of the round once at the end. Screen readers hear "Superset of 2: Curl, Pushdown" first.
+ */
+export function SupersetCard({
+  letter,
+  names,
+  selected,
+  lifted,
+  restS,
+  onRest,
+  children,
+}: {
+  letter: string;
+  names: readonly string[];
+  /** One of its exercises is open. */
+  selected: boolean;
+  /** One of its rows is being dragged: draw the card over its neighbours. */
+  lifted: boolean;
+  restS: number;
+  onRest: (v: number) => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  return (
+    <View testID="superset-card" style={{ zIndex: lifted ? 2 : 0 }}>
+      <Card size="small" selected={selected} gap={4} style={{ paddingLeft: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 8 }}>
+          <View
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={t('plan.supersetGroup', {
+              n: names.length,
+              names: names.join(', '),
+            })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}
+          >
+            <IconTile icon="link" area="training" size={28} />
+            <Text variant="bodyS" medium style={{ flexShrink: 1 }}>
+              {t('plan.supersetTitle', { letter })}
+            </Text>
+          </View>
+          <InfoButton topic="superset" />
+        </View>
+        {children}
+        <SupersetHairline />
+        <View style={{ gap: 6, paddingLeft: 8, paddingTop: 6 }}>
+          <View style={{ gap: 2 }}>
+            <Text variant="bodyS" muted>
+              {t('plan.supersetRest')}
+            </Text>
+            <Text variant="bodyS" muted>
+              {t('plan.supersetRestDetail')}
+            </Text>
+          </View>
+          <RestStepper value={restS} onChange={onRest} />
+        </View>
+      </Card>
+    </View>
+  );
+}
+
+/** The plain hairline inside a superset card. */
+function SupersetHairline() {
+  const { colors } = useTheme();
+  return (
+    <View
+      aria-hidden
+      style={{ height: 1, marginLeft: 8, backgroundColor: colors.borderDecorative }}
+    />
+  );
+}
+
+/** Between two exercises of a superset: a hairline with a small link mark ("then, no rest"). */
+export function SupersetDivider() {
+  const { colors } = useTheme();
+  const area = useAreaColors('training');
+  return (
+    <View
+      testID="superset-divider"
+      aria-hidden
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 8 }}
+    >
+      <View style={{ flex: 1, height: 1, backgroundColor: colors.borderDecorative }} />
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          backgroundColor: area.soft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Icon name="link" size={14} color={area.ink} />
+      </View>
+      <View style={{ flex: 1, height: 1, backgroundColor: colors.borderDecorative }} />
+    </View>
   );
 }
 

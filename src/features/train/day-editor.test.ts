@@ -7,6 +7,7 @@ import {
   summaryLine,
   updateInDay,
   moveInDayTo,
+  setGroupRest,
 } from './day-editor';
 import type { Exercise } from './exercises';
 import type { PlanDayView } from './plans';
@@ -114,6 +115,13 @@ describe('supersets in the day editor', () => {
     expect(s.exercises.map((e) => e.supersetWithNext)).toEqual([true, false]);
     const off = updateInDay(s, 'pe1', { supersetWithNext: false });
     expect(off.exercises[0].supersetWithNext).toBe(false);
+  });
+
+  it('the superset rest is one value for every exercise of the superset', () => {
+    const s = openDay('p1', day, 1);
+    const next = setGroupRest(s, ['pe1', 'pe2'], 120);
+    expect(next.exercises.map((e) => e.restS)).toEqual([120, 120]);
+    expect(setGroupRest(s, ['pe2'], 45).exercises.map((e) => e.restS)).toEqual([150, 45]);
   });
 });
 

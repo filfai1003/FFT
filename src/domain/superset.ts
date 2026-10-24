@@ -13,6 +13,17 @@ export function supersetOf(links: readonly boolean[], index: number): number[] {
   return Array.from({ length: end - start + 1 }, (_, i) => start + i);
 }
 
+/** The exercises split into runs: each superset is one run, every other exercise a run of its own. */
+export function supersetGroups(links: readonly boolean[]): number[][] {
+  const groups: number[][] = [];
+  for (let i = 0; i < links.length;) {
+    const group = supersetOf(links, i);
+    groups.push(group);
+    i = group[group.length - 1] + 1;
+  }
+  return groups;
+}
+
 /** The label of each exercise: "A1", "A2", "B1"… for supersets, null for the others. */
 export function supersetLabels(links: readonly boolean[]): (string | null)[] {
   const labels: (string | null)[] = [];

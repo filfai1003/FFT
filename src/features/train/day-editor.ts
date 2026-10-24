@@ -133,6 +133,21 @@ export function updateInDay(
   return { ...s, exercises: s.exercises.map((e) => (e.id === id ? { ...e, ...patch } : e)) };
 }
 
+/**
+ * The rest of a superset: one rest after each round, so every exercise of the superset gets the
+ * same rest (the round can end on any of them when their sets differ; DECISIONS 53 and 129).
+ */
+export function setGroupRest(
+  s: DayEditorState,
+  ids: readonly string[],
+  restS: number,
+): DayEditorState {
+  return {
+    ...s,
+    exercises: s.exercises.map((e) => (ids.includes(e.id) ? { ...e, restS } : e)),
+  };
+}
+
 /** "4 × 6–8 · REST 2:30" shown under a collapsed exercise. */
 export function summaryLine(e: Pick<DayDraftExercise, 'targetSets' | 'targetReps' | 'restS'>): {
   sets: number;

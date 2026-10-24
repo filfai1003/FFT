@@ -9,6 +9,10 @@ type Shape = string | readonly [cx: number, cy: number, r: number];
 const shapes = {
   plus: ['M12 5v14M5 12h14'],
   minus: ['M5 12h14'],
+  link: [
+    'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1',
+    'M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1',
+  ],
   check: ['M5 12.5l4.5 4.5L19 7.5'],
   chevronLeft: ['M14.5 6l-6 6 6 6'],
   chevronRight: ['M9.5 6l6 6-6 6'],
