@@ -22,12 +22,22 @@ describe('SuggestionCard', () => {
     const onKeep = jest.fn();
     await renderUI(
       <SuggestionCard
-        exercise={exercise({ kind: 'up', from: 80, to: 82.5, reps: [8, 8, 8] })}
+        exercise={exercise({
+          kind: 'up',
+          from: 80,
+          to: 82.5,
+          last: [
+            { weight: 80, reps: 8 },
+            { weight: 80, reps: 8 },
+            { weight: 80, reps: 8 },
+          ],
+          reps: 6,
+        })}
         unit="kg"
         onKeep={onKeep}
       />,
     );
-    expect(screen.getByText('+2.5 kg today')).toBeTruthy();
+    expect(screen.getByText('+2.5 kg: 82.5 kg × 6 on every set')).toBeTruthy();
     expect(screen.getByText('Last time 80 kg × 8, 8, 8: target reached')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText("Keep last time's weight, 80 kg"));
     expect(onKeep).toHaveBeenCalledWith(true);
@@ -36,7 +46,17 @@ describe('SuggestionCard', () => {
   it('a step up is a green panel; going down stays neutral, never red', async () => {
     const { unmount } = await renderUI(
       <SuggestionCard
-        exercise={exercise({ kind: 'up', from: 80, to: 82.5, reps: [8, 8, 8] })}
+        exercise={exercise({
+          kind: 'up',
+          from: 80,
+          to: 82.5,
+          last: [
+            { weight: 80, reps: 8 },
+            { weight: 80, reps: 8 },
+            { weight: 80, reps: 8 },
+          ],
+          reps: 6,
+        })}
         unit="kg"
         onKeep={() => undefined}
       />,
@@ -45,24 +65,67 @@ describe('SuggestionCard', () => {
     await unmount();
     await renderUI(
       <SuggestionCard
-        exercise={exercise({ kind: 'down', from: 80, to: 75, reps: [5, 4] })}
+        exercise={exercise({
+          kind: 'down',
+          from: 80,
+          to: 75,
+          last: [
+            { weight: 80, reps: 5 },
+            { weight: 80, reps: 4 },
+          ],
+          reps: 6,
+        })}
         unit="kg"
         onKeep={() => undefined}
       />,
     );
-    expect(screen.getByText('Go down to 75 kg today')).toBeTruthy();
+    expect(screen.getByText('Down to 75 kg × 6 on every set')).toBeTruthy();
     expect(screen.getByTestId('suggestion')).toHaveStyle({ backgroundColor: color.surfaceAlt });
+  });
+
+  it('last time at two weights: listed by weight', async () => {
+    await renderUI(
+      <SuggestionCard
+        exercise={exercise({
+          kind: 'up',
+          from: 105,
+          to: 107.5,
+          last: [
+            { weight: 100, reps: 10 },
+            { weight: 100, reps: 10 },
+            { weight: 105, reps: 10 },
+            { weight: 105, reps: 10 },
+          ],
+          reps: 8,
+        })}
+        unit="kg"
+        onKeep={() => undefined}
+      />,
+    );
+    expect(screen.getByText('+2.5 kg: 107.5 kg × 8 on every set')).toBeTruthy();
+    expect(
+      screen.getByText('Last time 100 kg × 10, 10 · 105 kg × 10, 10: target reached'),
+    ).toBeTruthy();
   });
 
   it('same weight: no keep button, only the explanation (DECISIONS 124)', async () => {
     await renderUI(
       <SuggestionCard
-        exercise={exercise({ kind: 'same', from: 80, to: 80, reps: [8, 7] })}
+        exercise={exercise({
+          kind: 'same',
+          from: 80,
+          to: 80,
+          last: [
+            { weight: 80, reps: 8 },
+            { weight: 80, reps: 7 },
+          ],
+          reps: 8,
+        })}
         unit="kg"
         onKeep={() => undefined}
       />,
     );
-    expect(screen.getByText('Same weight, one more rep')).toBeTruthy();
+    expect(screen.getByText('80 kg × 8 on every set')).toBeTruthy();
     expect(screen.getAllByRole('button')).toHaveLength(1);
     await fireEvent.press(screen.getByLabelText('About the weight suggestion'));
     expect(screen.getByText('Next weight suggestion')).toBeTruthy();

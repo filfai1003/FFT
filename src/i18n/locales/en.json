@@ -93,7 +93,7 @@
     "weightSuggestion": {
       "term": "the weight suggestion",
       "title": "Next weight suggestion",
-      "body": "The app looks at your last workout. If you reached the top of the rep range in every set, it adds a little weight; if you fell short, it lowers it a bit. Otherwise it keeps the weight and you aim for one more rep.",
+      "body": "The app looks at your last workout and gives every set the same weight and reps. If you reached the top of the rep range with your heaviest weight, it adds a little weight and starts again from the bottom of the range; if you fell short, it lowers it a bit. Otherwise it keeps the weight and you aim for one more rep.",
       "example": "Target 6–8 reps. Last time 60 kg × 8 in every set, so today: 62.5 kg.",
       "why": "Adding a little weight or a rep over time is called progressive overload. It is how you get stronger."
     },
@@ -949,11 +949,11 @@
     "nextNamed": "Next: {{name}}",
     "restOf": "of {{time}}",
     "suggest": {
-      "up": "+{{step}} {{unit}} today",
-      "down": "Go down to {{weight}} today",
-      "same": "Same weight, one more rep",
+      "up": "+{{step}} {{unit}}: {{weight}} × {{reps}} on every set",
+      "down": "Down to {{weight}} × {{reps}} on every set",
+      "same": "{{weight}} × {{reps}} on every set",
       "kept": "Staying at {{weight}}",
-      "last": "Last time {{weight}} × {{reps}}",
+      "last": "Last time {{sets}}",
       "reached": "target reached",
       "short": "below the target",
       "oneMore": "aim for one more rep",

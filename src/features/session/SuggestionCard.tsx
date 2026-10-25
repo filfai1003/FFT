@@ -47,15 +47,26 @@ export function SuggestionCard({
     );
   const w = (n: number) => `${trimNumber(n)} ${unit}`;
   const step = trimNumber(Math.abs(g.to - g.from));
-  const why = t('session.suggest.last', { weight: w(g.from), reps: g.reps.join(', ') });
+  // Last time's working sets by weight: "100 kg × 10, 10 · 105 kg × 10, 10".
+  const runs: { weight: number; reps: number[] }[] = [];
+  for (const x of g.last) {
+    const run = runs[runs.length - 1];
+    if (run && run.weight === x.weight) run.reps.push(x.reps);
+    else runs.push({ weight: x.weight, reps: [x.reps] });
+  }
+  const why = t('session.suggest.last', {
+    sets: runs.map((r) => `${w(r.weight)} × ${r.reps.join(', ')}`).join(' · '),
+  });
+  // Every working set today: the same weight and reps (DECISIONS 130).
+  const every = { weight: w(g.kept ? g.from : g.to), reps: g.reps };
 
   const title = g.kept
-    ? t('session.suggest.kept', { weight: w(g.from) })
+    ? t('session.suggest.kept', every)
     : g.kind === 'up'
-      ? t('session.suggest.up', { step, unit })
+      ? t('session.suggest.up', { ...every, step, unit })
       : g.kind === 'down'
-        ? t('session.suggest.down', { weight: w(g.to) })
-        : t('session.suggest.same');
+        ? t('session.suggest.down', every)
+        : t('session.suggest.same', every);
   const reason = g.kept
     ? why
     : g.kind === 'up'

@@ -8,6 +8,7 @@ import {
 import { parseDecimal } from '@/domain/numbers';
 import { parseTargetReps, stepFor, suggestNextWeight, type Suggestion } from '@/domain/progression';
 import { afterSetInSuperset, supersetOf } from '@/domain/superset';
+import { WARM_UP_SHARE } from '@/domain/volume';
 import {
   firstDropWeight,
   hasDrops,
@@ -195,7 +196,12 @@ export function buildExercise(
       : undefined;
   const sets = Array.from({ length: e.targetSets }, (_, i) => {
     const set = emptySet(e.previous[i] ?? e.previous[e.previous.length - 1], e.logType, unit);
-    return { ...set, reps: suggestedReps(set, e.logType, targetReps, suggestion) };
+    // Every working set starts at the same suggested weight and reps (DECISIONS 130); warm-ups
+    // (lighter than WARM_UP_SHARE of last time's heaviest) stay as they were.
+    const weight = parseDecimal(set.weight);
+    if (suggestion && (weight == null || weight >= suggestion.from * WARM_UP_SHARE))
+      return { ...set, weight: trimNumber(suggestion.to), reps: String(suggestion.reps) };
+    return { ...set, reps: suggestedReps(set, e.logType, targetReps) };
   });
   // Drop sets: each drop has its own suggestion, from the same drop last time (not the main weight).
   const drops = e.logType === 'weight_reps' && e.drops?.reps.length ? e.drops : null;
@@ -226,9 +232,8 @@ export function buildExercise(
     suggestion,
     drops,
     dropSuggestions,
-    // Working sets start at the suggested weight (warm-ups at a lighter one stay as they were).
     sets: withDrops(
-      suggestion ? withWeight(sets, suggestion.from, suggestion.to) : sets,
+      sets,
       drops,
       dropSuggestions,
       e.previous,
@@ -239,27 +244,17 @@ export function buildExercise(
 }
 
 /**
- * Reps a set starts with: with a weight suggestion, the bottom of the target after a step up or
- * down, else last time's reps plus one (never above the top of the target); without one, last
- * time's reps, else the bottom of the target. Warm-ups (lighter than the working weight) keep
- * last time's reps.
+ * Reps a set starts with when it gets no weight suggestion (a warm-up, or no suggestion): last
+ * time's reps, else the bottom of the target.
  */
 export function suggestedReps(
-  set: Pick<SessionSet, 'weight' | 'reps'>,
+  set: Pick<SessionSet, 'reps'>,
   logType: LogType,
   targetReps: string | undefined,
-  suggestion: Suggestion | undefined,
 ): string {
   if (logType !== 'weight_reps' && logType !== 'reps') return '';
+  if (parseDecimal(set.reps) != null) return set.reps;
   const target = parseTargetReps(targetReps);
-  const last = parseDecimal(set.reps);
-  const warmUp =
-    suggestion != null && set.weight !== '' && set.weight !== trimNumber(suggestion.from);
-  if (suggestion && target && !warmUp) {
-    if (suggestion.kind !== 'same') return String(target.min);
-    if (last != null) return String(Math.min(Math.round(last) + 1, target.max));
-  }
-  if (last != null) return set.reps;
   return target ? String(target.min) : '';
 }
 

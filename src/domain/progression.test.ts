@@ -20,7 +20,8 @@ describe('suggestNextWeight', () => {
       kind: 'up',
       from: 80,
       to: 82.5,
-      reps: [8, 8, 8],
+      last: sets(80, 8, 8, 8),
+      reps: 6,
     });
   });
 
@@ -63,7 +64,32 @@ describe('suggestNextWeight', () => {
   it('warm-up sets at a lighter weight do not count', () => {
     expect(
       suggestNextWeight({ ...base, previous: [...sets(40, 10), ...sets(80, 8, 8)] }),
-    ).toMatchObject({ kind: 'up', from: 80, reps: [8, 8] });
+    ).toMatchObject({ kind: 'up', from: 80, last: sets(80, 8, 8) });
+  });
+
+  it('two working weights: one weight and one rep target for every set (DECISIONS 130)', () => {
+    const previous = [...sets(100, 10, 10), ...sets(105, 10, 10)];
+    expect(suggestNextWeight({ ...base, targetReps: '8-10', previous })).toEqual({
+      kind: 'up',
+      from: 105,
+      to: 107.5,
+      last: previous,
+      reps: 8,
+    });
+  });
+
+  it('same weight: one rep more than the fewest, never above the top', () => {
+    expect(suggestNextWeight({ ...base, previous: sets(80, 8, 7, 6) })?.reps).toBe(7);
+    expect(suggestNextWeight({ ...base, previous: sets(80, 8, 8, 7) })?.reps).toBe(8);
+  });
+
+  it('short at the heaviest weight: back to a lighter one where every set was in the target', () => {
+    const previous = [...sets(100, 8, 8), ...sets(105, 5, 4)];
+    expect(suggestNextWeight({ ...base, previous })).toMatchObject({
+      kind: 'down',
+      to: 100,
+      reps: 6,
+    });
   });
 
   it('no suggestion without a rep target, history, or a load to add', () => {

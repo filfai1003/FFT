@@ -447,7 +447,7 @@ describe('next weight suggestion', () => {
     expect(s.exercises[0].sets.map((x) => x.reps)).toEqual(['10', '6', '6', '6']);
   });
 
-  it('same weight: one more rep than last time, never above the top of the target', () => {
+  it('same weight: one rep more than the fewest last time, the same on every set', () => {
     const previous = [7, 6, 8].map((reps) => ({
       weightKg: 80,
       reps,
@@ -457,10 +457,28 @@ describe('next weight suggestion', () => {
     const s = build({ ...bench, previous });
     expect(s.exercises[0].suggestion?.kind).toBe('same');
     expect(s.exercises[0].sets.map((x) => `${x.weight}×${x.reps}`)).toEqual([
-      '80×8',
       '80×7',
-      '80×8',
+      '80×7',
+      '80×7',
     ]);
+  });
+
+  it('two working weights last time: every set starts at the same weight and reps (DECISIONS 130)', () => {
+    const previous = [100, 100, 105, 105].map((weightKg) => ({
+      weightKg,
+      reps: 10,
+      durationS: null,
+      distanceM: null,
+    }));
+    const s = build({ ...bench, targetSets: 4, targetReps: '8-10', previous });
+    expect(s.exercises[0].sets.map((x) => `${x.weight}×${x.reps}`)).toEqual([
+      '107.5×8',
+      '107.5×8',
+      '107.5×8',
+      '107.5×8',
+    ]);
+    const kept = keepLastWeight(s, 0);
+    expect(kept.exercises[0].sets.map((x) => x.weight)).toEqual(['105', '105', '105', '105']);
   });
 
   it('no history: no load, the reps start at the bottom of the target', () => {
