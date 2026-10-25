@@ -15,7 +15,6 @@ import { Text } from '@/components/ui/Text';
 import { Toggle } from '@/components/ui/Toggle';
 import { Icon } from '@/components/ui/Icon';
 import { DragHandle, moveActionDelta, useReorder } from '@/components/ui/reorder';
-import { IconTile, useAreaColors } from '@/components/ui/IconTile';
 import { supersetGroups, supersetLabels } from '@/domain/superset';
 import { MAX_DROPS, type DropPlan } from '@/domain/dropset';
 import { Segmented } from '@/components/ui/Segmented';
@@ -28,7 +27,7 @@ import {
   openDay,
   openNewDay,
   removeFromDay,
-  setGroupRest,
+  setGroup,
   summaryLine,
   updateInDay,
   useDayEditorStore,
@@ -172,8 +171,11 @@ export function DayEditorScreen() {
                         ? labels[index]
                         : t('plan.supersetLabel', { label: labels[index] })
                       : null,
+                    // The sets and the rest are the card's: here only this exercise's reps.
                     inSuperset
-                      ? t('plan.summaryNoRest', summaryLine(e))
+                      ? e.targetReps.trim()
+                        ? t('plan.summaryReps', summaryLine(e))
+                        : null
                       : t('plan.summary', summaryLine(e)),
                     e.drops?.reps.length
                       ? t('plan.dropSummary', { count: e.drops.reps.length })
@@ -247,8 +249,10 @@ export function DayEditorScreen() {
                 selected={ids.includes(state.expandedId ?? '')}
                 // The dragged row must pass over the next cards, not under them.
                 lifted={reorder.dragging != null && group.includes(reorder.dragging)}
+                sets={members[0].targetSets}
+                onSets={(v) => patch((s) => setGroup(s, ids, { targetSets: v }))}
                 restS={last.restS}
-                onRest={(v) => patch((s) => setGroupRest(s, ids, v))}
+                onRest={(v) => patch((s) => setGroup(s, ids, { restS: v }))}
               >
                 {group.map((i, k) => (
                   <Fragment key={state.exercises[i].id}>
@@ -357,22 +361,25 @@ function ExpandedExercise(props: {
       </View>
 
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text variant="bodyS" muted>
-              {t('plan.sets')}
-            </Text>
-            <InfoButton topic="setsReps" />
+        {/* In a superset the sets are the rounds: the card sets them once for all. */}
+        {props.inSuperset ? null : (
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="bodyS" muted>
+                {t('plan.sets')}
+              </Text>
+              <InfoButton topic="setsReps" />
+            </View>
+            <Stepper
+              value={e.targetSets}
+              min={1}
+              max={20}
+              onChange={(v) => props.onChange({ targetSets: v })}
+              decreaseLabel={t('plan.fewerSets')}
+              increaseLabel={t('plan.moreSets')}
+            />
           </View>
-          <Stepper
-            value={e.targetSets}
-            min={1}
-            max={20}
-            onChange={(v) => props.onChange({ targetSets: v })}
-            decreaseLabel={t('plan.fewerSets')}
-            increaseLabel={t('plan.moreSets')}
-          />
-        </View>
+        )}
         <View style={{ flex: 1 }}>
           <Input
             variant="compact"
@@ -461,15 +468,17 @@ function RestStepper({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 /**
- * A superset as ONE card (owner's request, DECISIONS 129): a header (training tile, "Superset A",
- * what's this), its exercises one under the other split by a hairline with a link mark, and the
- * rest of the round once at the end. Screen readers hear "Superset of 2: Curl, Pushdown" first.
+ * A superset as ONE card (owner's request, DECISIONS 129): a header ("Superset A", what's this),
+ * its exercises one under the other split by a hairline with a link mark, and what they share once
+ * at the end: the sets (rounds) and the rest after each round. Neutral like the rest of the form. Screen readers hear "Superset of 2: Curl, Pushdown" first.
  */
 export function SupersetCard({
   letter,
   names,
   selected,
   lifted,
+  sets,
+  onSets,
   restS,
   onRest,
   children,
@@ -480,11 +489,15 @@ export function SupersetCard({
   selected: boolean;
   /** One of its rows is being dragged: draw the card over its neighbours. */
   lifted: boolean;
+  /** Sets of every exercise: one per round. */
+  sets: number;
+  onSets: (v: number) => void;
   restS: number;
   onRest: (v: number) => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   return (
     <View testID="superset-card" style={{ zIndex: lifted ? 2 : 0 }}>
       <Card size="small" selected={selected} gap={4} style={{ paddingLeft: 6 }}>
@@ -498,7 +511,7 @@ export function SupersetCard({
             })}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 }}
           >
-            <IconTile icon="link" area="training" size={28} />
+            <Icon name="link" size={18} color={colors.textMuted} />
             <Text variant="bodyS" medium style={{ flexShrink: 1 }}>
               {t('plan.supersetTitle', { letter })}
             </Text>
@@ -507,16 +520,34 @@ export function SupersetCard({
         </View>
         {children}
         <SupersetHairline />
-        <View style={{ gap: 6, paddingLeft: 8, paddingTop: 6 }}>
-          <View style={{ gap: 2 }}>
-            <Text variant="bodyS" muted>
-              {t('plan.supersetRest')}
-            </Text>
-            <Text variant="bodyS" muted>
-              {t('plan.supersetRestDetail')}
-            </Text>
+        <View style={{ gap: 12, paddingLeft: 8, paddingTop: 6 }}>
+          <View style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="bodyS" muted>
+                {t('plan.supersetSets')}
+              </Text>
+              <InfoButton topic="setsReps" />
+            </View>
+            <Stepper
+              value={sets}
+              min={1}
+              max={20}
+              onChange={onSets}
+              decreaseLabel={t('plan.fewerSets')}
+              increaseLabel={t('plan.moreSets')}
+            />
           </View>
-          <RestStepper value={restS} onChange={onRest} />
+          <View style={{ gap: 6 }}>
+            <View style={{ gap: 2 }}>
+              <Text variant="bodyS" muted>
+                {t('plan.supersetRest')}
+              </Text>
+              <Text variant="bodyS" muted>
+                {t('plan.supersetRestDetail')}
+              </Text>
+            </View>
+            <RestStepper value={restS} onChange={onRest} />
+          </View>
         </View>
       </Card>
     </View>
@@ -537,7 +568,6 @@ function SupersetHairline() {
 /** Between two exercises of a superset: a hairline with a small link mark ("then, no rest"). */
 export function SupersetDivider() {
   const { colors } = useTheme();
-  const area = useAreaColors('training');
   return (
     <View
       testID="superset-divider"
@@ -550,12 +580,14 @@ export function SupersetDivider() {
           width: 22,
           height: 22,
           borderRadius: 11,
-          backgroundColor: area.soft,
+          backgroundColor: colors.surfaceAlt,
+          borderWidth: 1,
+          borderColor: colors.borderDecorative,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Icon name="link" size={14} color={area.ink} />
+        <Icon name="link" size={14} color={colors.textMuted} />
       </View>
       <View style={{ flex: 1, height: 1, backgroundColor: colors.borderDecorative }} />
     </View>

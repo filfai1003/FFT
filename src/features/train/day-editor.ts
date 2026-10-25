@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supersetOf } from '@/domain/superset';
 import { newId } from '@/lib/uuid';
 import type { Exercise } from './exercises';
 import type { DayDraftExercise, PlanDayView } from './plans';
@@ -130,21 +131,27 @@ export function updateInDay(
     >
   >,
 ): DayEditorState {
-  return { ...s, exercises: s.exercises.map((e) => (e.id === id ? { ...e, ...patch } : e)) };
+  const next = { ...s, exercises: s.exercises.map((e) => (e.id === id ? { ...e, ...patch } : e)) };
+  if (patch.supersetWithNext !== true) return next;
+  // Linked: the superset now does as many rounds as this exercise has sets (one sets value).
+  const index = next.exercises.findIndex((e) => e.id === id);
+  const links = next.exercises.map((e) => e.supersetWithNext);
+  const ids = supersetOf(links, index).map((i) => next.exercises[i].id);
+  return setGroup(next, ids, { targetSets: next.exercises[index].targetSets });
 }
 
 /**
- * The rest of a superset: one rest after each round, so every exercise of the superset gets the
- * same rest (the round can end on any of them when their sets differ; DECISIONS 53 and 129).
+ * What a superset shares (DECISIONS 129): its rounds (the sets, the same for every exercise) and
+ * one rest after each round. The reps stay each exercise's own.
  */
-export function setGroupRest(
+export function setGroup(
   s: DayEditorState,
   ids: readonly string[],
-  restS: number,
+  patch: Partial<Pick<DayDraftExercise, 'targetSets' | 'restS'>>,
 ): DayEditorState {
   return {
     ...s,
-    exercises: s.exercises.map((e) => (ids.includes(e.id) ? { ...e, restS } : e)),
+    exercises: s.exercises.map((e) => (ids.includes(e.id) ? { ...e, ...patch } : e)),
   };
 }
 

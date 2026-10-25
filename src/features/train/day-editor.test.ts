@@ -7,7 +7,7 @@ import {
   summaryLine,
   updateInDay,
   moveInDayTo,
-  setGroupRest,
+  setGroup,
 } from './day-editor';
 import type { Exercise } from './exercises';
 import type { PlanDayView } from './plans';
@@ -119,9 +119,27 @@ describe('supersets in the day editor', () => {
 
   it('the superset rest is one value for every exercise of the superset', () => {
     const s = openDay('p1', day, 1);
-    const next = setGroupRest(s, ['pe1', 'pe2'], 120);
+    const next = setGroup(s, ['pe1', 'pe2'], { restS: 120 });
     expect(next.exercises.map((e) => e.restS)).toEqual([120, 120]);
-    expect(setGroupRest(s, ['pe2'], 45).exercises.map((e) => e.restS)).toEqual([150, 45]);
+    expect(setGroup(s, ['pe2'], { restS: 45 }).exercises.map((e) => e.restS)).toEqual([150, 45]);
+  });
+
+  it('the sets are one value for the superset; the reps stay each exercise keeps its own', () => {
+    const s = openDay('p1', day, 1);
+    const next = setGroup(updateInDay(s, 'pe2', { targetReps: '15' }), ['pe1', 'pe2'], {
+      targetSets: 5,
+    });
+    expect(next.exercises.map((e) => e.targetSets)).toEqual([5, 5]);
+    expect(next.exercises.map((e) => e.targetReps)).toEqual([s.exercises[0].targetReps, '15']);
+  });
+
+  it('linking two exercises gives the next one the same sets', () => {
+    const s = openDay('p1', day, 1);
+    const apart = updateInDay(updateInDay(s, 'pe1', { supersetWithNext: false }), 'pe2', {
+      targetSets: 2,
+    });
+    const linked = updateInDay(apart, 'pe1', { supersetWithNext: true });
+    expect(linked.exercises.map((e) => e.targetSets)).toEqual([4, 4]);
   });
 });
 

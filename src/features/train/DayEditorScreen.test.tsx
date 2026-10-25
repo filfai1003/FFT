@@ -87,8 +87,10 @@ describe('day editor: a superset is one card (DECISIONS 129)', () => {
     expect(a.getAllByTestId('superset-divider', { includeHiddenElements: true })).toHaveLength(1);
     // The rest is said once, at the end of the card: not on each exercise.
     expect(a.getByText('Rest after each round')).toBeTruthy();
-    expect(a.getByText('A1 · 3 × 10')).toBeTruthy();
-    expect(a.getByText('A2 · 3 × 10')).toBeTruthy();
+    // The sets are the card's too (one value): each exercise shows only its reps.
+    expect(a.getByText('Sets (rounds)')).toBeTruthy();
+    expect(a.getByText('A1 · 10 reps')).toBeTruthy();
+    expect(a.getByText('A2 · 10 reps')).toBeTruthy();
     expect(a.getByLabelText('About supersets')).toBeTruthy();
   });
 
@@ -133,7 +135,9 @@ describe('day editor: a superset is one card (DECISIONS 129)', () => {
     await fireEvent.press(screen.getByLabelText('Curl'));
     const a = within(screen.getAllByTestId('superset-card')[0]);
     expect(a.getByLabelText('Remove Curl')).toBeTruthy();
-    expect(a.getByLabelText('More sets')).toBeTruthy();
+    // One sets stepper (the card's), the reps field is the exercise's own.
+    expect(a.getAllByLabelText('More sets')).toHaveLength(1);
+    expect(a.getByLabelText('Reps')).toBeTruthy();
     expect(a.getByLabelText('Superset with the next exercise')).toBeTruthy();
     // Only the card's rest stepper: one "More rest" in the card.
     expect(a.getAllByLabelText('More rest')).toHaveLength(1);
