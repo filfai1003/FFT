@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeStorage } from '@/lib/safe-storage';
 
 /**
  * One-time explanations, each shown until dismissed (per device): the Home tips and the
@@ -25,7 +25,7 @@ export const useHintsStore = create<State>()(
     }),
     {
       name: 'fft.hints.v1',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeStorage),
       partialize: (s) => ({ seen: s.seen }),
       onRehydrateStorage: () => () => useHintsStore.setState({ hydrated: true }),
     },

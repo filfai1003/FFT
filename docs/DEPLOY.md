@@ -14,7 +14,7 @@ Services, all in Railway's EU region (`europe-west4-drams3a`, Amsterdam; moved f
 |------------|------------------------------------|-------------------------------------------------|
 | `Postgres` | supabase/postgres:17.6.1.136       | volume `/var/lib/postgresql`                    |
 | `auth`     | supabase/gotrue:v2.189.0           | email + password, `GOTRUE_MAILER_AUTOCONFIRM=true` (no SMTP yet) |
-| `rest`     | postgrest/postgrest:v14.12         |                                                 |
+| `rest`     | postgrest/postgrest:v14.12         | `GHCRTS=-N2 -A4m` (**to set by hand**, not applied yet): PostgREST starts with `-N -A16m`, one 16 MB allocation area per host core (~48 on Railway), which keeps ~380 MB of RAM on a service that is nearly idle |
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `backend`  | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
 | `api`      | this repo (`server/Dockerfile`)    | public domain `fft-api`: the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `AI_PROVIDERS` (DECISIONS 88), `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `src/domain/` (the coach rules the API runs), `supabase/migrations/`, `supabase/functions/` or `supabase/seed.sql` |
