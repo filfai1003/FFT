@@ -2292,7 +2292,7 @@ describe('security headers of the web app and the site (nginx, DECISIONS 78)', (
         'Strict-Transport-Security',
       ])
         assert.ok(snippet.includes(h), `${dir}: ${h}`);
-      assert.match(conf, /^\s{2}include \/etc\/nginx\/snippets\/security-headers\.conf;/m);
+      assert.match(conf, /^\s{2}include \/etc\/nginx\/snippets\/(site-)?security-headers\.conf;/m);
       // A location with its own add_header drops the server's: it must include the snippet too.
       const locations = conf.split(/\n\s*location /).slice(1);
       assert.ok(locations.length > 0);
@@ -2305,9 +2305,22 @@ describe('security headers of the web app and the site (nginx, DECISIONS 78)', (
           );
       }
       const docker = fs.readFileSync(path.join(root, dir, 'Dockerfile'), 'utf8');
-      assert.match(docker, /security-headers\.conf \/etc\/nginx\/snippets\/security-headers\.conf/);
+      assert.match(
+        docker,
+        /security-headers\.conf \/etc\/nginx\/snippets\/(site-)?security-headers\.conf/,
+      );
     });
   }
+
+  it('one nginx serves both: the web image installs the site with its own headers', () => {
+    const docker = fs.readFileSync(path.join(root, 'web', 'Dockerfile'), 'utf8');
+    assert.match(docker, /site\/nginx\.conf \/etc\/nginx\/templates\/site\.conf\.template/);
+    assert.match(
+      docker,
+      /site\/security-headers\.conf \/etc\/nginx\/snippets\/site-security-headers\.conf/,
+    );
+    assert.match(docker, /worker_processes 1/);
+  });
 
   it('web: the only inline script of the Expo export is allowed by its hash', () => {
     const snippet = fs.readFileSync(path.join(root, 'web', 'security-headers.conf'), 'utf8');

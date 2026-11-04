@@ -14,12 +14,12 @@ Services, all in Railway's EU region (`europe-west4-drams3a`, Amsterdam; moved f
 |------------|------------------------------------|-------------------------------------------------|
 | `Postgres` | supabase/postgres:17.6.1.136       | volume `/var/lib/postgresql`                    |
 | `auth`     | supabase/gotrue:v2.189.0           | email + password, `GOTRUE_MAILER_AUTOCONFIRM=true` (no SMTP yet) |
-| `rest`     | postgrest/postgrest:v14.12         | `GHCRTS=-N2 -A4m` (**to set by hand**, not applied yet): PostgREST starts with `-N -A16m`, one 16 MB allocation area per host core (~48 on Railway), which keeps ~380 MB of RAM on a service that is nearly idle |
+| `rest`     | postgrest/postgrest:v14.12         | `GHCRTS=-N2 -A4m` (**to set by hand**, see Memory and cost): PostgREST starts with `-N -A16m`, one 16 MB allocation area per host core (~48 on Railway), and they fill up with use |
 | `storage`  | supabase/storage-api:v1.60.4       | volume `/var/lib/storage`                       |
 | `backend`  | kong/kong:3.9.1                    | public domain; routes `/auth/v1`, `/rest/v1`, `/storage/v1`, `/functions/v1`; `KONG_NGINX_WORKER_PROCESSES=1`, `KONG_MEM_CACHE_SIZE=16m` (with the default `auto` nginx starts one worker per host core, ~48 on Railway: 5.4 GB of RAM) |
 | `api`      | this repo (`server/Dockerfile`)    | public domain `fft-api`: the personal API (REST `/v1`, MCP `/mcp`, docs/API.md); functions `off`, `delete-account`, `ai` (needs `OPENROUTER_API_KEY`; optional `AI_MODEL`, `AI_PROVIDERS` (DECISIONS 88), `EUR_PER_USD`); **redeploys on every push to `main`** that touches `server/`, `src/domain/` (the coach rules the API runs), `supabase/migrations/`, `supabase/functions/` or `supabase/seed.sql` |
-| `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`; build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
-| `site`     | this repo (`site/Dockerfile`)      | install page, public domain `fft`                 |
+| `web`      | this repo (`web/Dockerfile`)       | the web app (premium accounts), public domain `web-fft`, and the install page (`site/`, on any address not starting with `web`; DECISIONS 131); build variables `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` |
+| `site`     | this repo (`site/Dockerfile`)      | install page alone, public domain `fft`, until its domain moves to `web` (see Memory and cost) |
 | `admin`    | this repo (`admin/`)               | admin panel, **no public domain by default** (add `admin-fft` in Settings > Networking only while you use it, then remove it); sign-in = `ADMIN_PASSWORD` + a code from an authenticator app (`ADMIN_TOTP_SECRET`, base32, generated on Railway: add it to the app with "enter a setup key", time based); optional `SUPABASE_URL` (the backend URL, as on `api`) so Reported photos can show the images (public bucket, no key) |
 
 Public URL: `https://your-backend.example.com` (the `backend` service domain, Kong).
@@ -78,6 +78,19 @@ Package name: `com.filfai1003.fft`.
   the schema (DDL) from the panel's SQL page no longer works (it is not the owner): use a
   migration.
 
+## Memory and cost (DECISIONS 131)
+Railway bills memory held, about $10 per GB a month, used or idle, and CPU is almost nothing here. Measured
+2026-11-04 (7-day average, MB): rest 379, storage 222, backend 155, Postgres 113, api 61, site 40, auth 40,
+web 39, admin 25. Done by hand on Railway, one at a time, checking the service after each:
+1. `rest` → Variables: `GHCRTS` = `-N2 -A4m`. Local test at 48 capabilities after 30,000 requests: 115 MB
+   against 31 MB, and three times as fast. Undo: delete the variable.
+2. Move the install page to `web`: `site` → Settings → Networking: remove the `fft` domain; `web` → Settings →
+   Networking: add the same `fft` name on port 8080; open both addresses; delete the `site` service, then
+   `site/Dockerfile` from the repository. The page is away for the minutes in between. `web` reads
+   `BACKEND_URL` from its own build variable, so nothing else is needed. Local test: 5 MB for both pages.
+3. Optional, not tested on the real stack: `auth`: `GOMAXPROCS=2`, `GOGC=50`; `storage`:
+   `NODE_OPTIONS=--max-old-space-size=128` (watch a photo upload and an APK publish afterwards).
+
 ## Rotating the keys (JWT secret, anon and service-role keys)
 When a key may have leaked (the service-role key was a GitHub secret until 2026-10-18; rotated on
 2026-10-18). An app that opens with the old anon key before taking the update fails to renew its
@@ -121,7 +134,7 @@ the repository; nothing here changes Railway by itself):
   change) or publishes an over-the-air update (everything else).
 
 ## Install page and APK download
-- Page: `site/` (static, nginx), Railway service `site`, redeploys on every push that touches `site/`.
+- Page: `site/` (static, nginx), served by the same nginx as the web app (`web/Dockerfile`; on its own in `site/Dockerfile` until the domain moves).
   Same look as the app (light, Figtree, follows the phone's dark mode): the download button, the
   install steps, screenshots (`site/screens/`, taken from the web preview at 390×844) and a few exercise
   pictures (`site/exercises/`).
