@@ -1390,7 +1390,10 @@ describe('personal API and MCP (server/api.js)', () => {
       duration_minutes: 45,
       exercises: [
         { exercise: 'landmine press', sets: [{ weight_kg: 100, reps: 10 }] },
-        { exercise_id: made.exercise_id, sets: [{ weight_kg: 105.555, reps: 8 }] },
+        {
+          exercise_id: made.exercise_id,
+          sets: [{ weight_kg: 105.555, reps: 8, drops: [{ weight_kg: 80, reps: 10 }] }],
+        },
       ],
     };
     const saved = await tool('log_workout', workout);
@@ -1409,7 +1412,7 @@ describe('personal API and MCP (server/api.js)', () => {
         exercise: 'Landmine press',
         sets: [
           { weight_kg: 100, reps: 10 },
-          { weight_kg: 105.56, reps: 8 },
+          { weight_kg: 105.56, reps: 8, drops: [{ weight_kg: 80, reps: 10 }] },
         ],
       },
     ]);

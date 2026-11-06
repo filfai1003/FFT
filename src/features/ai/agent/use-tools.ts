@@ -11,6 +11,15 @@ import {
 import { DEFAULT_WATER_ML } from '@/domain/hydration';
 import { listExercises, MUSCLE_FILTER_HELP, type ExerciseListRow } from '@/domain/muscles';
 import { MIN_DAILY_KCAL, macroKcal, targetProblem } from '@/domain/nutrition';
+import {
+  findExercise,
+  parseNewExercise,
+  parsePastWorkout,
+  pastWorkoutSets,
+  sameDayMessage,
+  WORKOUT_TOOL_SPECS,
+  type KnownExercise,
+} from '@/domain/past-workout';
 import { parseBundle } from '@/domain/plan-import';
 import { useSessionStore } from '@/features/auth/session-store';
 import { fetchFixedPlan, useSetCheck } from '@/features/diet/fixed';
@@ -32,6 +41,8 @@ import {
 import { useProfile } from '@/features/profile/api';
 import { useToday } from '@/features/profile/use-today';
 import { useSaveCheckIn, type MeasureKey } from '@/features/progress/data';
+import { useDeleteExercise, useSaveExercise, type ExerciseInput } from '@/features/train/exercises';
+import { useLogPastWorkout, useSetWorkoutDeleted } from '@/features/train/mark-done';
 import { getSupabase } from '@/lib/supabase';
 import { useApplyImport } from '../apply';
 import { useAiContext } from '../context';
@@ -58,6 +69,7 @@ import {
   readHistory,
   readPlans,
   readWorkouts,
+  sessionsBetween,
   type ReadContext,
 } from './reads';
 import type { ChangeLine, ToolDef } from './types';
@@ -67,6 +79,33 @@ const specOf = (name: keyof typeof DATA_TOOL_SPECS) => ({
   description: DATA_TOOL_SPECS[name].description,
   schema: DATA_TOOL_SPECS[name].schema as unknown as Record<string, unknown>,
 });
+
+/** Description and schema shared with the MCP server (domain/past-workout.ts). */
+const workoutSpec = (name: keyof typeof WORKOUT_TOOL_SPECS) => ({
+  description: WORKOUT_TOOL_SPECS[name].description,
+  schema: WORKOUT_TOOL_SPECS[name].schema as unknown as Record<string, unknown>,
+});
+
+async function knownExercises(): Promise<KnownExercise[]> {
+  const { data, error } = await getSupabase()
+    .from('exercises')
+    .select('id, name, log_type, owner_id')
+    .is('deleted_at', null);
+  if (error) throw new Error(error.message);
+  return data as KnownExercise[];
+}
+
+/** "Bench press, Squat · 7 sets" before the model's input has been checked. */
+function workoutLines(input: Input): ChangeLine[] {
+  const list = Array.isArray(input.exercises) ? (input.exercises as Input[]) : [];
+  const sets = list.reduce((sum, e) => sum + (Array.isArray(e?.sets) ? e.sets.length : 0), 0);
+  return [
+    ...line('name', input.name),
+    ...line('day', input.day),
+    ...line('exercises', list.map((e) => e?.exercise ?? e?.exercise_id).join(', ')),
+    ...line('sets', sets),
+  ];
+}
 
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
   type: 'object',
@@ -236,6 +275,10 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
   const saveSupplement = useSaveSupplement();
   const setSupplementDeleted = useSetSupplementDeleted();
   const setTaken = useSetTaken();
+  const saveExercise = useSaveExercise();
+  const deleteExercise = useDeleteExercise();
+  const logPastWorkout = useLogPastWorkout();
+  const setWorkoutDeleted = useSetWorkoutDeleted();
 
   const ownFood = async (id: string) => {
     const food = await fetchFood(id);
@@ -650,6 +693,84 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
       },
     },
     {
+      name: 'create_exercise',
+      write: true,
+      ...workoutSpec('create_exercise'),
+      describe: (input) => [
+        ...line('name', input.name),
+        ...line('muscle', input.primary_muscle),
+        ...line('equipment', input.equipment),
+      ],
+      run: async (input) => {
+        const e = parseNewExercise(input);
+        const existing = findExercise(await knownExercises(), e.name);
+        if (existing)
+          return { content: { exercise_id: existing.id, name: existing.name, created: false } };
+        const id = newId();
+        await saveExercise.mutateAsync({ ...e, id } as ExerciseInput);
+        return {
+          content: { exercise_id: id, name: e.name, created: true },
+          undo: async () => {
+            await deleteExercise.mutateAsync(id);
+          },
+        };
+      },
+    },
+    {
+      name: 'log_workout',
+      write: true,
+      ...workoutSpec('log_workout'),
+      describe: workoutLines,
+      run: async (input) => {
+        const w = parsePastWorkout(input, today, await knownExercises());
+        if (!w.allowSecond) {
+          const wanted = w.name.toLowerCase();
+          const same = (await sessionsBetween(ctx, w.day, w.day)).find(
+            (x) => x.name.toLowerCase() === wanted,
+          );
+          if (same) throw new Error(sameDayMessage(w.name, w.day, same.id));
+        }
+        const id = await logPastWorkout.mutateAsync(w);
+        return {
+          content: {
+            workout_id: id,
+            day: w.day,
+            name: w.name,
+            exercises: w.exercises.length,
+            sets: pastWorkoutSets(w),
+          },
+          undo: async () => {
+            await setWorkoutDeleted.mutateAsync({ id, deleted: true });
+          },
+        };
+      },
+    },
+    {
+      name: 'delete_workout',
+      write: true,
+      ...workoutSpec('delete_workout'),
+      describe: (input) => line('workout', input.workout_id),
+      run: async (input) => {
+        const id = str(input, 'workout_id', 60);
+        const { data, error } = await getSupabase()
+          .from('workout_sessions')
+          .select('id, day_name')
+          .eq('id', id)
+          .eq('status', 'done')
+          .is('deleted_at', null)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error('Workout not found.');
+        await setWorkoutDeleted.mutateAsync({ id, deleted: true });
+        return {
+          content: { deleted: id, name: (data as { day_name: string | null }).day_name },
+          undo: async () => {
+            await setWorkoutDeleted.mutateAsync({ id, deleted: false });
+          },
+        };
+      },
+    },
+    {
       name: 'log_food',
       write: true,
       description:
@@ -1003,6 +1124,9 @@ export function useAgentTools(access: AiAccess): ToolDef[] {
     log_body: 'profile',
     get_workouts: 'training',
     get_workout_plans: 'training',
+    create_exercise: 'training',
+    log_workout: 'training',
+    delete_workout: 'training',
     get_diet: 'diet',
     add_supplement: 'diet',
     set_supplement: 'diet',

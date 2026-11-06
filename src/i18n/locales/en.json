@@ -2088,7 +2088,12 @@
       "workoutPlan": "Workout plan",
       "dietPlan": "Diet",
       "problem": "Problem",
-      "note": "Note"
+      "note": "Note",
+      "muscle": "Main muscle",
+      "equipment": "Equipment",
+      "exercises": "Exercises",
+      "sets": "Sets",
+      "workout": "Workout"
     },
     "tool": {
       "get_overview": "Looked at your overview",
@@ -2114,7 +2119,10 @@
       "query_data": "Query",
       "get_strength": "Strength",
       "add_supplement": "Add a supplement",
-      "set_supplement": "Supplement taken"
+      "set_supplement": "Supplement taken",
+      "create_exercise": "Save a new exercise",
+      "log_workout": "Add a past workout",
+      "delete_workout": "Remove a workout"
     },
     "actionsTitle": "Changes it suggests",
     "applyActions": "Apply these changes",

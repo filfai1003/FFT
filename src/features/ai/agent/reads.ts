@@ -22,7 +22,7 @@ async function rows(query: PromiseLike<{ data: unknown; error: { message: string
 }
 
 /** Finished workouts started on or around [from, to], with their local day. */
-async function sessionsBetween(ctx: ReadContext, from: string, to: string) {
+export async function sessionsBetween(ctx: ReadContext, from: string, to: string) {
   const list = await rows(
     getSupabase()
       .from('workout_sessions')
@@ -246,7 +246,7 @@ export async function readWorkouts(limit: number) {
       supabase
         .from('session_sets')
         .select(
-          'session_id, exercise_id, set_index, weight_kg, reps, duration_s, distance_m, completed_at',
+          'session_id, exercise_id, set_index, drop_index, weight_kg, reps, duration_s, distance_m, completed_at',
         )
         .in('session_id', ids)
         .is('deleted_at', null)
@@ -257,7 +257,9 @@ export async function readWorkouts(limit: number) {
   const names = new Map(exercises.map((e) => [String(e.id), String(e.name)]));
   return {
     workouts: sessions.map((s) => {
-      const mine = sets.filter((x) => x.session_id === s.id && x.completed_at != null);
+      const mine = sets
+        .filter((x) => x.session_id === s.id && x.completed_at != null)
+        .sort((a, b) => n(a.set_index) - n(b.set_index) || n(a.drop_index) - n(b.drop_index));
       const byExercise = new Map<string, string[]>();
       for (const set of mine) {
         const name = names.get(String(set.exercise_id)) ?? 'Exercise';
@@ -269,9 +271,11 @@ export async function readWorkouts(limit: number) {
               : set.distance_m != null
                 ? `${n(set.distance_m)} m`
                 : `${n(set.reps)} reps`;
-        byExercise.set(name, [...(byExercise.get(name) ?? []), text]);
+        const entry = n(set.drop_index) > 0 ? `drop ${text}` : text;
+        byExercise.set(name, [...(byExercise.get(name) ?? []), entry]);
       }
       return {
+        id: s.id,
         started_at: s.started_at,
         name: s.day_name,
         feeling: s.feeling ?? null,

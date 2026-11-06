@@ -52,11 +52,14 @@ describe('the assistant changing data (after approval)', () => {
       .sort();
     expect(writes).toEqual([
       'add_supplement',
+      'create_exercise',
       'create_food',
       'delete_food',
+      'delete_workout',
       'log_body',
       'log_food',
       'log_water',
+      'log_workout',
       'propose_plans',
       'remove_food_log',
       'set_meal_status',
@@ -74,6 +77,60 @@ describe('the assistant changing data (after approval)', () => {
             ['list_exercises', 'list_data', 'query_data'].includes(t.name),
         ),
     ).toBe(true);
+  });
+
+  it('saves a past workout with an own exercise and drops, UNDO takes it back', async () => {
+    const { call, asked } = await setup();
+    const made = await call('create_exercise', {
+      name: 'Landmine press',
+      primary_muscle: 'front_delts',
+      equipment: 'barbell',
+    });
+    expect(made.outcome).toBe('done');
+    const again = await call('create_exercise', {
+      name: 'LANDMINE press',
+      primary_muscle: 'chest',
+      equipment: 'barbell',
+    });
+    expect(JSON.parse(again.content).created).toBe(false);
+
+    const input = {
+      day: '2026-03-02',
+      name: 'Old push',
+      exercises: [
+        {
+          exercise: 'landmine press',
+          sets: [{ weight_kg: 60, reps: 8, drops: [{ weight_kg: 40, reps: 10 }] }],
+        },
+      ],
+    };
+    const run = await call('log_workout', input);
+    expect(run.outcome).toBe('done');
+    expect(JSON.parse(run.content)).toMatchObject({ exercises: 1, sets: 1 });
+    expect(asked).toContain('log_workout');
+
+    const twice = await call('log_workout', input);
+    expect(twice.outcome).toBe('error');
+    expect(twice.content).toMatch(/already on 2026-03-02/);
+
+    const seen = await call('get_workouts', { limit: 5 });
+    expect(JSON.parse(seen.content).workouts[0].exercises).toEqual([
+      { name: 'Landmine press', sets: ['60 kg x 8', 'drop 40 kg x 10'] },
+    ]);
+
+    await undoCall(run.callId);
+    const gone = await call('get_workouts', { limit: 5 });
+    expect(JSON.parse(gone.content).workouts).toEqual([]);
+  });
+
+  it('a past workout with an unknown exercise saves nothing', async () => {
+    const { call } = await setup();
+    const run = await call('log_workout', {
+      day: '2026-03-03',
+      exercises: [{ exercise: 'No such lift', sets: [{ weight_kg: 5, reps: 5 }] }],
+    });
+    expect(run.outcome).toBe('error');
+    expect(run.content).toMatch(/Not found: No such lift/);
   });
 
   it('logs body values, rejects nonsense, and reads them back', async () => {

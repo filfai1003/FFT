@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { pastWorkoutRows, type PastWorkout } from '@/domain/past-workout';
 import { isOutOfOrder } from '@/domain/rotation';
 import { useSessionStore as useAuth } from '@/features/auth/session-store';
 import { getSupabase } from '@/lib/supabase';
@@ -55,6 +56,53 @@ export function useMarkWorkoutDone() {
           })),
         );
         if (res.error) throw res.error;
+      }
+      return id;
+    },
+    onSuccess: () => invalidateTraining(queryClient),
+  });
+}
+
+/**
+ * A workout done in the past, entered with its sets (the coach, DECISIONS 132): checked by
+ * domain/past-workout.ts, saved as finished. Returns the id, so it can be taken back (UNDO).
+ */
+export function useLogPastWorkout() {
+  const userId = useAuth((s) => s.userId);
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (w: PastWorkout) => {
+      const id = newId();
+      const startedAt = new Date(`${w.day}T${w.startTime}:00`);
+      const endedAt = new Date(startedAt.getTime() + w.minutes * 60000).toISOString();
+      const db = getSupabase();
+      const { error } = await db.from('workout_sessions').insert({
+        id,
+        user_id: userId!,
+        day_name: w.name,
+        started_at: startedAt.toISOString(),
+        ended_at: endedAt,
+        feeling: w.feeling,
+        notes: w.notes,
+        status: 'done',
+      });
+      if (error) throw error;
+      const rows = pastWorkoutRows(w, {
+        sessionId: id,
+        userId: userId!,
+        completedAt: endedAt,
+        newId,
+      });
+      const exercises = await db.from('session_exercises').insert(rows.exercises);
+      const sets = exercises.error ? null : await db.from('session_sets').insert(rows.sets);
+      const failed = exercises.error ?? sets?.error;
+      if (failed) {
+        // All or nothing: no half workout in the history.
+        await db
+          .from('workout_sessions')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id);
+        throw failed;
       }
       return id;
     },
