@@ -85,6 +85,9 @@ claude mcp add --transport http fft https://fft-api.up.railway.app/mcp --header 
 | `list_body_metrics` | `GET /v1/body` | `from`, `to` |
 | `log_body` | `POST /v1/body` | `weight_kg`, `body_fat_pct`, `waist_cm`, `hips_cm`, `chest_cm`, `arm_cm`, `thigh_cm`, `day` |
 | `list_workouts` | `GET /v1/workouts` | `from`, `to` |
+| `log_workout` | `POST /v1/workouts` | `day`, `exercises` [{`exercise` or `exercise_id`, `sets` [{`weight_kg`, `reps`, `duration_s`, `distance_m`}]}], `name`, `start_time`, `duration_minutes`, `feeling`, `notes`, `allow_second_on_day` |
+| `delete_workout` | `DELETE /v1/workouts/{id}` | `workout_id` |
+| `create_exercise` | `POST /v1/exercises` | `name`, `primary_muscle`, `equipment`, `secondary_muscles`, `indirect_muscles`, `log_type` |
 | `get_goals` | `GET /v1/goals` | |
 
 **The in-app coach's tools** (same names, descriptions and rules; the logic is the app's own

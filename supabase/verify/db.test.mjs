@@ -1359,6 +1359,94 @@ describe('personal API and MCP (server/api.js)', () => {
     assert.equal((await tool('delete_food', { food_id })).deleted, 'Protein bar');
   });
 
+  it('past workouts: own exercises, sets as the app saves them, all or nothing', async () => {
+    const made = await tool('create_exercise', {
+      name: 'Landmine press',
+      primary_muscle: 'front_delts',
+      secondary_muscles: ['triceps', 'front_delts'],
+      equipment: 'barbell',
+    });
+    assert.equal(made.created, true);
+    const again = await tool('create_exercise', {
+      name: 'landmine PRESS',
+      primary_muscle: 'chest',
+      equipment: 'machine',
+    });
+    assert.deepEqual(again, {
+      exercise_id: made.exercise_id,
+      name: 'Landmine press',
+      created: false,
+    });
+    assert.match(
+      (await tool('create_exercise', { name: 'X', primary_muscle: 'wings', equipment: 'barbell' }))
+        .error,
+      /primary_muscle must be/,
+    );
+
+    const workout = {
+      day: '2026-03-02',
+      name: 'Old push',
+      start_time: '18:30',
+      duration_minutes: 45,
+      exercises: [
+        { exercise: 'landmine press', sets: [{ weight_kg: 100, reps: 10 }] },
+        { exercise_id: made.exercise_id, sets: [{ weight_kg: 105.555, reps: 8 }] },
+      ],
+    };
+    const saved = await tool('log_workout', workout);
+    assert.equal(saved.exercises, 1);
+    assert.equal(saved.sets, 2);
+
+    assert.match((await tool('log_workout', workout)).error, /already on 2026-03-02/);
+    const second = await tool('log_workout', { ...workout, allow_second_on_day: true });
+    assert.ok(second.workout_id);
+    assert.ok((await tool('delete_workout', { workout_id: second.workout_id })).deleted);
+
+    const [listed] = await tool('list_workouts', { from: '2026-03-02', to: '2026-03-02' });
+    assert.equal(listed.id, saved.workout_id);
+    assert.deepEqual(listed.exercises, [
+      {
+        exercise: 'Landmine press',
+        sets: [
+          { weight_kg: 100, reps: 10 },
+          { weight_kg: 105.56, reps: 8 },
+        ],
+      },
+    ]);
+    assert.equal(new Date(listed.ended_at) - new Date(listed.started_at), 45 * 60000);
+
+    await as(A);
+    const rec = await one(
+      `select actual_max_kg::float as m from public.exercise_records where exercise_id = '${made.exercise_id}'`,
+    );
+    assert.equal(rec.m, 105.56);
+
+    const before = await one(`select count(*)::int as n from public.workout_sessions`);
+    const refused = await tool('log_workout', {
+      day: '2026-03-03',
+      exercises: [
+        { exercise: 'Landmine press', sets: [{ weight_kg: 50, reps: 5 }] },
+        { exercise: 'No such lift', sets: [{ weight_kg: 50, reps: 5 }] },
+      ],
+    });
+    assert.match(refused.error, /Not found: No such lift/);
+    assert.match(
+      (
+        await tool('log_workout', {
+          day: '2026-03-03',
+          exercises: [{ exercise: 'Landmine press', sets: [{ reps: 5 }] }],
+        })
+      ).error,
+      /weight_kg is required/,
+    );
+    assert.match(
+      (await tool('log_workout', { day: '2999-01-01', exercises: workout.exercises })).error,
+      /future/,
+    );
+    await as(A);
+    assert.equal((await one(`select count(*)::int as n from public.workout_sessions`)).n, before.n);
+  });
+
   it('every tool is also REST: POST /v1/tools/<name>', async () => {
     const r = await call('POST', '/v1/tools/get_strength', { period: '4w' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -4451,6 +4539,8 @@ describe('deleting an account leaves nothing (DECISIONS 85)', () => {
       }
       // A token copied from another account must not keep that account's AI app.
       if (t === 'api_tokens') row.client_id = null;
+      // Same workout and exercise as its source: unique among rows not deleted.
+      if (t === 'session_exercises') row.deleted_at = new Date().toISOString();
       await db.query(
         `insert into public.${t} select * from jsonb_populate_record(null::public.${t}, $1)
          on conflict do nothing`,

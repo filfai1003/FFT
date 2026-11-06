@@ -3,7 +3,7 @@
 // made in the app: Settings → API & MCP); every query then runs as that user, so row level
 // security decides what can be read or written, exactly as for the app. Writes reach the user's
 // phones with the next sync. Docs: docs/API.md.
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { boundedMap } from './bounded-map.js';
 import { COACH_TOOLS, ToolError, waterTargetOn } from './coach.js';
 import { isWaterAutomatic } from '../src/domain/hydration.ts';
@@ -13,8 +13,11 @@ import {
   DATA_CATEGORIES,
   normalizeCategories,
 } from '../src/domain/data-categories.ts';
+import { isMuscle, muscles } from '../src/domain/muscles.ts';
 
 const MEALS = ['breakfast', 'lunch', 'snack', 'dinner'];
+const EQUIPMENT = ['barbell', 'dumbbells', 'machine', 'cables', 'bodyweight', 'bands'];
+const LOG_TYPES = ['weight_reps', 'reps', 'time', 'distance_time'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Requests per user and minute. */
@@ -75,6 +78,30 @@ const range = (args, today) => {
   return { from, to };
 };
 const round1 = (n) => Math.round(n * 10) / 10;
+const muscleList = (v, name, primary) => {
+  if (v == null) return [];
+  if (!Array.isArray(v)) throw bad(`${name} must be a list of muscles`);
+  for (const m of v) if (!isMuscle(m)) throw bad(`${name}: unknown muscle "${m}"`);
+  return [...new Set(v)].filter((m) => !primary.includes(m));
+};
+/** One set of a past workout: the columns of its exercise's log type, as the app saves them. */
+function setRow(raw, logType, label) {
+  const weight_kg = () => {
+    const kg = num(raw?.weight_kg, `${label}: weight_kg`, { required: true, max: 1000 });
+    return Math.round(kg * 100) / 100;
+  };
+  const reps = () =>
+    Math.round(num(raw?.reps, `${label}: reps`, { required: true, min: 1, max: 1000 }));
+  const duration_s = () =>
+    Math.round(
+      num(raw?.duration_s, `${label}: duration_s`, { required: true, min: 1, max: 86400 }),
+    );
+  if (logType === 'weight_reps') return { weight_kg: weight_kg(), reps: reps() };
+  if (logType === 'reps') return { reps: reps() };
+  if (logType === 'time') return { duration_s: duration_s() };
+  const distance_m = num(raw?.distance_m, `${label}: distance_m`, { required: true, min: 1 });
+  return { duration_s: duration_s(), distance_m: round1(distance_m) };
+}
 
 // --- tools --------------------------------------------------------------------------------------
 const dateProp = (what) => ({
@@ -493,6 +520,245 @@ export const TOOLS = [
     },
   },
   {
+    name: 'create_exercise',
+    write: true,
+    description:
+      'Save a new exercise of the user, for one list_exercises does not have. If the name exists it is not created again: the answer gives the existing one (created: false).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'e.g. "Landmine press"' },
+        primary_muscle: { type: 'string', enum: [...muscles], description: 'The main muscle' },
+        secondary_muscles: {
+          type: 'array',
+          items: { type: 'string', enum: [...muscles] },
+          description: 'Muscles that help (half a set each)',
+        },
+        indirect_muscles: {
+          type: 'array',
+          items: { type: 'string', enum: [...muscles] },
+          description: 'Muscles that steady (a quarter of a set each)',
+        },
+        equipment: { type: 'string', enum: EQUIPMENT },
+        log_type: {
+          type: 'string',
+          enum: LOG_TYPES,
+          description: 'What a set records; weight_reps by default',
+        },
+      },
+      required: ['name', 'primary_muscle', 'equipment'],
+    },
+    run: async (q, args, ctx) => {
+      const name = str(args.name, 'name', { max: 80, required: true });
+      if (!isMuscle(args.primary_muscle))
+        throw bad(`primary_muscle must be one of: ${muscles.join(', ')}`);
+      if (!EQUIPMENT.includes(args.equipment))
+        throw bad(`equipment must be one of: ${EQUIPMENT.join(', ')}`);
+      const logType = args.log_type ?? 'weight_reps';
+      if (!LOG_TYPES.includes(logType))
+        throw bad(`log_type must be one of: ${LOG_TYPES.join(', ')}`);
+      const primary = args.primary_muscle;
+      const secondary = muscleList(args.secondary_muscles, 'secondary_muscles', [primary]);
+      const indirect = muscleList(args.indirect_muscles, 'indirect_muscles', [
+        primary,
+        ...secondary,
+      ]);
+      const [existing] = await q(
+        `select id, name from public.exercises
+         where deleted_at is null and lower(name) = lower($1)
+         order by owner_id nulls last limit 1`,
+        [name],
+      );
+      if (existing) return { exercise_id: existing.id, name: existing.name, created: false };
+      const id = randomUUID();
+      await q(
+        `insert into public.exercises (id, owner_id, name, primary_muscle, secondary_muscles,
+           indirect_muscles, equipment, log_type)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [id, ctx.userId, name, primary, secondary, indirect, args.equipment, logType],
+      );
+      return { exercise_id: id, name, created: true };
+    },
+  },
+  {
+    name: 'log_workout',
+    write: true,
+    description:
+      'Records a finished workout from a past day or today, with its weights and reps. It counts like one done in the app (history, records, strength, badges), but not for the plan rotation. Exercise names must be exact (list_exercises); create_exercise first for a missing one. All or nothing: on an error nothing is saved.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        day: dateProp('The day of the workout'),
+        name: { type: 'string', description: 'e.g. "Push A"; "Workout" by default' },
+        start_time: { type: 'string', description: 'Local time like 18:30; 12:00 by default' },
+        duration_minutes: { type: 'number', description: 'How long it took, if known' },
+        feeling: { type: 'number', description: 'From 1 to 5' },
+        notes: { type: 'string' },
+        exercises: {
+          type: 'array',
+          description: 'In the order they were done',
+          items: {
+            type: 'object',
+            properties: {
+              exercise: { type: 'string', description: 'Exact name' },
+              exercise_id: { type: 'string', description: 'Instead of the name' },
+              sets: {
+                type: 'array',
+                description:
+                  "Each set. By the exercise's log type: weight_reps weight_kg + reps; reps reps; time duration_s; distance_time distance_m + duration_s",
+                items: {
+                  type: 'object',
+                  properties: {
+                    weight_kg: { type: 'number' },
+                    reps: { type: 'number' },
+                    duration_s: { type: 'number' },
+                    distance_m: { type: 'number' },
+                  },
+                },
+              },
+            },
+            required: ['sets'],
+          },
+        },
+        allow_second_on_day: {
+          type: 'boolean',
+          description:
+            'Only if the user really did a second workout with this name on this day: without it that is refused, so a repeated call adds nothing twice.',
+        },
+      },
+      required: ['day', 'exercises'],
+    },
+    run: async (q, args, ctx) => {
+      const d = day(args.day, 'day', ctx.today);
+      if (d > ctx.today) throw bad('day must not be in the future');
+      if (d < '2000-01-01') throw bad('day is too far in the past');
+      const startTime = str(args.start_time, 'start_time', { max: 5 }) ?? '12:00';
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime))
+        throw bad('start_time must be a time like 18:30');
+      const minutes = num(args.duration_minutes, 'duration_minutes', { min: 1, max: 1440 }) ?? 0;
+      const feeling = num(args.feeling, 'feeling', { min: 1, max: 5 });
+      const name = str(args.name, 'name', { max: 80 }) ?? 'Workout';
+      const notes = str(args.notes, 'notes', { max: 2000 });
+      const given = args.exercises;
+      if (!Array.isArray(given) || given.length === 0) throw bad('exercises must not be empty');
+      if (given.length > 40) throw bad('at most 40 exercises');
+
+      const ids = given
+        .filter((e) => e?.exercise_id)
+        .map((e) => uuid(e.exercise_id, 'exercise_id'));
+      const names = given
+        .filter((e) => !e?.exercise_id)
+        .map((e) => String(e?.exercise ?? '').trim());
+      if (names.some((n) => !n)) throw bad('every exercise needs exercise or exercise_id');
+      const known = await q(
+        `select id, name, log_type from public.exercises
+         where deleted_at is null and (id = any($1::uuid[]) or lower(name) = any($2::text[]))
+         order by owner_id nulls first`,
+        [ids, names.map((n) => n.toLowerCase())],
+      );
+      // Own exercises come last, so an own exercise wins over a catalogue one of the same name.
+      const byId = new Map(known.map((e) => [e.id, e]));
+      const byLower = new Map(known.map((e) => [e.name.toLowerCase(), e]));
+      const missing = given
+        .map((e) => e.exercise_id ?? String(e.exercise).trim())
+        .filter((k) => !byId.has(k) && !byLower.has(String(k).toLowerCase()));
+      if (missing.length > 0)
+        throw bad(
+          `Not found: ${missing.join(', ')}. Use exact names from list_exercises, or create_exercise first. Nothing was saved.`,
+        );
+
+      // The same exercise twice in one list is one exercise of the workout, with all its sets.
+      const merged = new Map();
+      for (const e of given) {
+        const ex = e.exercise_id
+          ? byId.get(e.exercise_id)
+          : byLower.get(String(e.exercise).trim().toLowerCase());
+        if (!Array.isArray(e.sets) || e.sets.length === 0)
+          throw bad(`${ex.name}: sets must not be empty`);
+        if (!merged.has(ex.id)) merged.set(ex.id, { ex, sets: [] });
+        const row = merged.get(ex.id);
+        for (const raw of e.sets)
+          row.sets.push(setRow(raw, ex.log_type, `${ex.name}, set ${row.sets.length + 1}`));
+        if (row.sets.length > 60) throw bad(`${ex.name}: at most 60 sets`);
+      }
+
+      if (!args.allow_second_on_day) {
+        const [same] = await q(
+          `select id from public.workout_sessions
+           where deleted_at is null and status = 'done' and lower(day_name) = lower($1)
+             and (started_at at time zone $2)::date = $3 limit 1`,
+          [name, ctx.tz, d],
+        );
+        if (same)
+          throw bad(
+            `A workout named "${name}" is already on ${d} (id ${same.id}). Nothing was saved. If it is really a second one, call again with allow_second_on_day.`,
+          );
+      }
+
+      const id = randomUUID();
+      const [{ started_at: startedAt, ended_at: endedAt }] = await q(
+        `insert into public.workout_sessions (id, user_id, day_name, started_at, ended_at, feeling, notes, status)
+         select $1, $2, $3, t.at, t.at + make_interval(mins => $4), $5, $6, 'done'
+           from (select (($7::date + $8::time) at time zone $9) as at) t
+         returning started_at, ended_at`,
+        [id, ctx.userId, name, minutes, feeling, notes, d, startTime, ctx.tz],
+      );
+      let position = 0;
+      let total = 0;
+      for (const { ex, sets } of merged.values()) {
+        await q(
+          `insert into public.session_exercises (id, user_id, session_id, exercise_id, position)
+           values ($1, $2, $3, $4, $5)`,
+          [randomUUID(), ctx.userId, id, ex.id, position++],
+        );
+        for (const [i, set] of sets.entries()) {
+          await q(
+            `insert into public.session_sets (id, user_id, session_id, exercise_id, set_index, drop_index,
+               weight_kg, reps, duration_s, distance_m, completed_at)
+             values ($1, $2, $3, $4, $5, 0, $6, $7, $8, $9, $10)`,
+            [
+              randomUUID(),
+              ctx.userId,
+              id,
+              ex.id,
+              i,
+              set.weight_kg ?? null,
+              set.reps ?? null,
+              set.duration_s ?? null,
+              set.distance_m ?? null,
+              endedAt ?? startedAt,
+            ],
+          );
+          total++;
+        }
+      }
+      return { workout_id: id, day: d, name, exercises: merged.size, sets: total };
+    },
+  },
+  {
+    name: 'delete_workout',
+    write: true,
+    // Deletes or replaces data (MCP destructiveHint, DECISIONS 84).
+    destructive: true,
+    description:
+      'Removes a finished workout from the history (id from list_workouts or log_workout).',
+    inputSchema: {
+      type: 'object',
+      properties: { workout_id: { type: 'string' } },
+      required: ['workout_id'],
+    },
+    run: async (q, args) => {
+      const id = uuid(args.workout_id, 'workout_id');
+      const rows = await q(
+        `update public.workout_sessions set deleted_at = now()
+         where id = $1 and deleted_at is null and status = 'done' returning day_name`,
+        [id],
+      );
+      if (rows.length === 0) throw new ApiError(404, 'workout not found');
+      return { deleted: id, name: rows[0].day_name };
+    },
+  },
+  {
     name: 'get_goals',
     description:
       'The current nutrition goal (calories, macros, water: water_ml is the daily water target in force, water_automatic true when the app works it out from the user details; "no target set" when the user chose to have no calorie target) and body goal (target weight or body fat).',
@@ -567,6 +833,9 @@ const TOOL_CATEGORY = {
   get_workout_plans: 'training',
   get_diet: 'diet',
   list_exercises: 'training',
+  create_exercise: 'training',
+  log_workout: 'training',
+  delete_workout: 'training',
   create_food: 'diet',
   update_food: 'diet',
   delete_food: 'diet',
@@ -639,6 +908,9 @@ const ROUTES = [
   ['GET', /^\/v1\/body$/, 'list_body_metrics'],
   ['POST', /^\/v1\/body$/, 'log_body'],
   ['GET', /^\/v1\/workouts$/, 'list_workouts'],
+  ['POST', /^\/v1\/workouts$/, 'log_workout'],
+  ['DELETE', /^\/v1\/workouts\/([^/]+)$/, 'delete_workout', (m) => ({ workout_id: m[1] })],
+  ['POST', /^\/v1\/exercises$/, 'create_exercise'],
   ['GET', /^\/v1\/goals$/, 'get_goals'],
 ];
 
